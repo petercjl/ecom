@@ -62,7 +62,7 @@ function writeGclientConfig(
       name: 'src/brave',
       // We do not use gclient to manage brave-core, so this should not
       // actually get used.
-      url: 'https://github.com/brave/brave-core.git',
+      url: 'https://github.com/petercjl/ecom.git',
     })
 
     const braveGclientConfig = {
@@ -70,7 +70,7 @@ function writeGclientConfig(
         {
           managed: false,
           name: '.',
-          url: 'https://github.com/brave/brave-core.git',
+          url: 'https://github.com/petercjl/ecom.git',
         },
       ],
       cache_dir: config.gitCachePath,
