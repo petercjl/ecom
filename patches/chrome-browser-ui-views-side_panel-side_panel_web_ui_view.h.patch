@@ -1,0 +1,13 @@
+diff --git a/chrome/browser/ui/views/side_panel/side_panel_web_ui_view.h b/chrome/browser/ui/views/side_panel/side_panel_web_ui_view.h
+index a634928d61f600ced2ab2e18b86a46c7cf275688..134b0f48ca133bc644043c2a218d3a0f05ba184c 100644
+--- a/chrome/browser/ui/views/side_panel/side_panel_web_ui_view.h
++++ b/chrome/browser/ui/views/side_panel/side_panel_web_ui_view.h
+@@ -57,6 +57,8 @@ class SidePanelWebUIView : public views::WebView,
+   bool HandleKeyboardEvent(content::WebContents* source,
+                            const input::NativeWebKeyboardEvent& event) override;
+ 
++  bool HandleContextMenu(content::RenderFrameHost& render_frame_host, const content::ContextMenuParams& params) override;
++
+  private:
+   base::RepeatingClosure on_show_cb_;
+   base::RepeatingClosure close_cb_;

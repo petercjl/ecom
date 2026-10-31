@@ -1,0 +1,28 @@
+diff --git a/chrome/browser/extensions/BUILD.gn b/chrome/browser/extensions/BUILD.gn
+index bd3a172183d755d0ba68d5e863c6c8156f504d8f..4a73dda7040bfba16474b6f3477f9f5a32b5fe88 100644
+--- a/chrome/browser/extensions/BUILD.gn
++++ b/chrome/browser/extensions/BUILD.gn
+@@ -2,6 +2,7 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("//brave/browser/extensions/resources.gni")
+ import("//build/config/chromebox_for_meetings/buildflags.gni")
+ import("//build/config/features.gni")
+ import("//build/config/ozone.gni")
+@@ -646,6 +647,7 @@ source_set("extensions") {
+     "//ui/native_window_tracker",
+     "//ui/shell_dialogs",
+   ]
++  deps += brave_extensions_resources
+   public_deps = [
+     "//chrome/browser/extensions/api/messaging",
+     "//chrome/browser/media/webrtc",
+@@ -2040,6 +2042,7 @@ source_set("unit_tests") {
+     "//base",
+     "//base/test:test_config",
+     "//base/test:test_support",
++    "//brave/browser/extensions",
+     "//chrome/browser:browser_process_impl",
+     "//chrome/browser:global_features",
+     "//chrome/browser/background",

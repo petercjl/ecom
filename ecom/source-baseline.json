@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "project": "Ecom",
+  "source": {
+    "repository": "https://github.com/brave/brave-core.git",
+    "release": "v1.98.63",
+    "commit": "cc92146ef17860a4511f7de658b078128dbaad53",
+    "verifiedOn": "2026-10-31"
+  },
+  "development": {
+    "mode": "independent-snapshot",
+    "braveSynchronization": false,
+    "sourceRoot": ".",
+    "buildWorkspace": ".brave-build",
+    "excludedSourcePaths": [
+      ".github/"
+    ]
+  },
+  "dependencies": {
+    "chromium": "156.0.8078.80",
+    "depotTools": "a20039648c0de69d8156906b18052bd47e9bf230"
+  },
+  "verification": {
+    "nativeBuild": false,
+    "browserCLI": false
+  }
+}

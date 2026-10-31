@@ -1,0 +1,12 @@
+diff --git a/services/network/public/cpp/BUILD.gn b/services/network/public/cpp/BUILD.gn
+index 5810434e1b65df27cead7c2cf33046cac8edfa39..7d79c6908f054353eda9c0db0f1d0b89dc34e827 100644
+--- a/services/network/public/cpp/BUILD.gn
++++ b/services/network/public/cpp/BUILD.gn
+@@ -203,6 +203,7 @@ component("cpp") {
+     ":cpp_base",
+     ":flags_and_switches",
+     ":is_potentially_trustworthy",
++    "//brave/services/network/public/cpp",
+     "//net",
+     "//services/network/public/mojom",
+     "//services/network/public/mojom:url_loader_base",

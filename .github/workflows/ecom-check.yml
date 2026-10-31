@@ -1,0 +1,17 @@
+name: Ecom source checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  source:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node ecom/verify-source.mjs
+      - run: node --test ecom/tests/*.test.mjs

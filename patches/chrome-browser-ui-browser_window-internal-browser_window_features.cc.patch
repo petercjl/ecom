@@ -1,0 +1,111 @@
+diff --git a/chrome/browser/ui/browser_window/internal/browser_window_features.cc b/chrome/browser/ui/browser_window/internal/browser_window_features.cc
+index f51b0713750fb9775d39c252edc3f3caf4be7c52..208c269de59c254cec3a55317848415ec1cb47c0 100644
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features.cc
+@@ -243,10 +243,10 @@
+ #include "chrome/browser/ui/overscroll_pref_manager.h"
+ #endif  // defined(USE_AURA)
+ 
+-BrowserWindowFeatures::BrowserWindowFeatures() = default;
+-BrowserWindowFeatures::~BrowserWindowFeatures() = default;
++BrowserWindowFeatures_ChromiumImpl::BrowserWindowFeatures_ChromiumImpl() = default;
++BrowserWindowFeatures_ChromiumImpl::~BrowserWindowFeatures_ChromiumImpl() = default;
+ 
+-void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
++void BrowserWindowFeatures_ChromiumImpl::Init(BrowserWindowInterface* browser) {
+   // This is used only for the controllers which will be created on demand
+   // later.
+   browser_ = browser;
+@@ -323,7 +323,7 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
+           BrowserInitState::From(browser)
+               ->browser_window_create_params()
+               .is_trusted_source,
+-          browser->GetUnownedUserDataHost());
++          browser->GetUnownedUserDataHost(), browser->GetFeatures().vertical_tab_controller()->GetWeakPtr());
+ 
+   side_panel_registry_ =
+       GetUserDataFactory().CreateInstance<SidePanelRegistry>(*browser, browser);
+@@ -333,11 +333,11 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
+   // initializes the default enabled states for UI commands
+   // (InitCommandState). If BrowserActions is not built first, those initial
+   // enabled updates will be completely dropped.
+-  browser_actions_ = std::make_unique<BrowserActions>(browser);
++  browser_actions_ = std::make_unique<BraveBrowserActions>(browser);
+   browser_actions_->InitializeBrowserActions();
+ 
+   browser_command_controller_ =
+-      std::make_unique<chrome::BrowserCommandController>(browser);
++      std::make_unique<chrome::BraveBrowserCommandController>(browser);
+ 
+   browser_animation_controller_ =
+       GetUserDataFactory().CreateInstance<BrowserAnimationController>(*browser,
+@@ -383,7 +383,7 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
+ 
+   content_setting_bubble_model_delegate_ =
+       GetUserDataFactory()
+-          .CreateInstance<BrowserContentSettingBubbleModelDelegate>(*browser,
++          .CreateInstance<BraveBrowserContentSettingBubbleModelDelegate>(*browser,
+                                                                     browser);
+ 
+   context_highlight_window_feature_ =
+@@ -683,7 +683,7 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
+   embedder_browser_window_features_->Init(browser);
+ }
+ 
+-void BrowserWindowFeatures::InitPostWindowConstruction(
++void BrowserWindowFeatures_ChromiumImpl::InitPostWindowConstruction(
+     BrowserWindowInterface* browser) {
+   // Foundational state used throughout this function. Computed/assigned early
+   // so the alphabetical sections below can rely on them.
+@@ -812,7 +812,7 @@ void BrowserWindowFeatures::InitPostWindowConstruction(
+ 
+   // Must be after exclusive_access_manager_,
+   // desktop_browser_window_capabilities_, and browser_ui_controller_.
+-  browser_web_contents_delegate_ = std::make_unique<BrowserWebContentsDelegate>(
++  browser_web_contents_delegate_ = std::make_unique<BraveBrowserWebContentsDelegate>(
+       browser, *exclusive_access_manager_, *browser_command_controller_,
+       *unload_controller_, app_browser_controller_.get(),
+       *BrowserWindow::FromBrowser(browser),
+@@ -908,7 +908,7 @@ void BrowserWindowFeatures::InitPostWindowConstruction(
+   // this for most browser.h types, we should also stop making the side_panel_.
+   if (browser_view) {
+     side_panel_coordinator_ =
+-        GetUserDataFactory().CreateInstance<SidePanelCoordinator>(*browser_,
++        GetUserDataFactory().CreateInstance<BraveSidePanelCoordinator>(*browser_,
+                                                                   browser);
+   } else if (webui_browser_window) {
+     webui_browser_side_panel_ui_ =
+@@ -1124,7 +1124,7 @@ void BrowserWindowFeatures::InitPostWindowConstruction(
+   embedder_browser_window_features_->InitPostWindowConstruction(browser);
+ }
+ 
+-void BrowserWindowFeatures::InitPostBrowserViewConstruction(
++void BrowserWindowFeatures_ChromiumImpl::InitPostBrowserViewConstruction(
+     BrowserView* browser_view) {
+   // WARNING: DO NOT ADD ANY MORE CODE HERE. Please perform setup in
+   // InitPostWindowConstruction() instead.
+@@ -1134,7 +1134,7 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
+       browser_view);
+ }
+ 
+-void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
++void BrowserWindowFeatures_ChromiumImpl::TearDownPreBrowserWindowDestruction() {
+   // Tear down in reverse order of construction: embedder first, then
+   // InitPostWindowConstruction, then Init. Within each section, members are
+   // torn down in reverse of the corresponding Init* ordering. Dependency
+@@ -1267,13 +1267,13 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
+ 
+ // static
+ ui::UserDataFactoryWithOwner<BrowserWindowInterface>&
+-BrowserWindowFeatures::GetUserDataFactoryForTesting() {
++BrowserWindowFeatures_ChromiumImpl::GetUserDataFactoryForTesting() {
+   return GetUserDataFactory();
+ }
+ 
+ // static
+ ui::UserDataFactoryWithOwner<BrowserWindowInterface>&
+-BrowserWindowFeatures::GetUserDataFactory() {
++BrowserWindowFeatures_ChromiumImpl::GetUserDataFactory() {
+   static base::NoDestructor<
+       ui::UserDataFactoryWithOwner<BrowserWindowInterface>>
+       factory;

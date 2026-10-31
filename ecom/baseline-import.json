@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "cc92146ef17860a4511f7de658b078128dbaad53",
+  "sourceFilesIncluded": 63623,
+  "sourceFilesExcluded": 16,
+  "exclusion": ".github/",
+  "unchangedSourceFiles": 63617,
+  "ecomControlFilesChanged": [
+    ".claude/CLAUDE.md",
+    ".git-blame-ignore-revs",
+    ".gitignore",
+    "AGENTS.md",
+    "README.md",
+    "package.json"
+  ],
+  "missingSourceFiles": 0
+}

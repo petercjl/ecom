@@ -1,0 +1,28 @@
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index 5aa5b0447d68508bd5224b84ec040617c9a136ac..28d187fce7397c4c3e0b4bbbdb384660c4e5e835 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -2,6 +2,7 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("//brave/browser/sources.gni")
+ import("//base/allocator/allocator.gni")
+ import("//build/buildflag_header.gni")
+ import("//build/config/buildflags_paint_preview.gni")
+@@ -2044,6 +2045,7 @@ source_set("browser") {
+     # should be added to browser_generated_files.
+     ":browser_public_dependencies",
+     ":core",
++    "//brave/browser:core",
+     "//chrome/browser/accessibility/accessibility_prefs",
+     "//chrome/browser/browsing_data",
+     "//chrome/browser/download",
+@@ -3472,6 +3474,7 @@ group("browser_public_dependencies") {
+     "//sql",
+     "//ui/lottie",
+   ]
++  public_deps += brave_chrome_browser_public_deps
+   if (is_android) {
+     public_deps += [
+       "//chrome/android/features/dev_ui:buildflags",
