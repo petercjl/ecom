@@ -14,13 +14,17 @@ function canonicalTarget(target) {
   while (!fs.existsSync(ancestor)) { missing.unshift(path.basename(ancestor)); ancestor = path.dirname(ancestor); }
   return path.join(fs.realpathSync(ancestor), ...missing);
 }
+function sameDirectory(left, right) {
+  const a = fs.statSync(left, { bigint: true }); const b = fs.statSync(right, { bigint: true });
+  return a.isDirectory() && b.isDirectory() && a.dev === b.dev && a.ino === b.ino;
+}
 function commonDirectory(cwd) { return fs.realpathSync(git(cwd, ['rev-parse', '--path-format=absolute', '--git-common-dir'])); }
 export function canonicalRepository(cwd) { return path.dirname(commonDirectory(cwd)); }
 export function workspaceStatus(repo, workspace) {
   const sourceRevision = git(repo, ['rev-parse', 'HEAD']);
   if (!fs.existsSync(workspace)) return { sourceRevision, workspace, exists: false, managed: false };
   let managed = false;
-  try { managed = fs.existsSync(path.join(workspace, '.git')) && fs.realpathSync(git(workspace, ['rev-parse', '--show-toplevel'])) === fs.realpathSync(workspace) && commonDirectory(workspace) === commonDirectory(repo); } catch { /* An unrelated directory is not managed. */ }
+  try { managed = fs.existsSync(path.join(workspace, '.git')) && sameDirectory(git(workspace, ['rev-parse', '--show-toplevel']), workspace) && sameDirectory(commonDirectory(workspace), commonDirectory(repo)); } catch { /* An unrelated directory is not managed. */ }
   return { sourceRevision, workspace, exists: true, managed, ...(managed ? { revision: git(workspace, ['rev-parse', 'HEAD']), dirty: Boolean(git(workspace, ['status', '--porcelain'])) } : {}) };
 }
 export function prepareWorkspace(repo, workspace, ref = 'HEAD') {

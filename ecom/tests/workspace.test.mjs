@@ -17,6 +17,7 @@ test('a managed worktree prepares, repeats without changes and advances to an Ec
     const initial = git(dir, ['rev-parse', 'HEAD']);
     assert.equal(prepareWorkspace(dir, workspace).changed, true);
     assert.equal(workspaceStatus(dir, workspace).managed, true);
+    if (process.platform === 'win32') assert.equal(workspaceStatus(dir.toLowerCase(), workspace.toUpperCase()).managed, true);
     assert.equal(prepareWorkspace(dir, workspace).changed, false);
     fs.writeFileSync(path.join(dir, 'source.txt'), 'two'); git(dir, ['add', 'source.txt']); git(dir, ['commit', '-m', 'Ecom change']);
     assert.equal(prepareWorkspace(dir, workspace).changed, true);
