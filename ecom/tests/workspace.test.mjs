@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { git, prepareWorkspace, workspaceStatus } from '../workspace.mjs';
+import { git, prepareWorkspace, workspaceStatus, developmentStartArgs } from '../workspace.mjs';
 function fixture() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecom-git-'));
   git(dir, ['init', '-b', 'main']); git(dir, ['config', 'user.name', 'Ecom test']); git(dir, ['config', 'user.email', 'test@example.invalid']);
@@ -51,4 +51,12 @@ test('unsafe paths and an unknown revision refuse before filesystem creation', (
     assert.throws(() => prepareWorkspace(dir, workspace, 'missing-revision'), { code: 'GIT_ERROR' });
     assert.equal(fs.existsSync(workspace), false);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('native development launch selects an Ecom profile and keeps its update channel', () => {
+  const repo = path.resolve('ecom-source');
+  const result = developmentStartArgs(repo, ['Component']);
+  assert.ok(result.includes('--user-data-dir=' + path.join(repo, '.brave-build/profiles/Ecom-Dev')));
+  assert.deepEqual(developmentStartArgs(repo, ['--user-data-dir=explicit-dev-profile']), ['--user-data-dir=explicit-dev-profile']);
+  assert.throws(() => developmentStartArgs(repo, ['--enable_brave_update']), { code: 'ECOM_UPDATE_CHANNEL' });
 });
