@@ -20,3 +20,9 @@ pnpm run ecom:icons:mac --check
 这是开发工作区命令。图标属于品牌资源，本次不新增浏览器可操作能力，产品 Agent CLI 的实现状态保持在能力规划中。
 
 格式参考：[Apple App Icon Asset Catalog](https://developer.apple.com/library/archive/documentation/Xcode/Reference/xcode_ref-Asset_Catalog_Format/AppIconType.html)。
+
+## 本机验证（2026-11-01）
+
+macOS 26.5.2 arm64 已完成源图与输出校验、实际打包校验和界面检查。原生构建 `0a98de9c20f4d93b296a5798d51adebd1566d30d` 增量命令耗时 34.811 秒，原生阶段执行 93 个步骤并通过。应用中的 app.icns、Assets.car 与 development 渠道源文件校验一致。
+
+Finder 的 Ecom Dev 应用简介、顶部图标与预览均已目视确认为三色购物车图标。Dev 版重新启动后已检查原生窗口及网页显示。原始构建和启动日志保存在忽略提交的 `.brave-build/icon-update-d_pa3xls/`。本轮应用图标验收完成；工具栏各功能图标按产品界面规划单独维护。
