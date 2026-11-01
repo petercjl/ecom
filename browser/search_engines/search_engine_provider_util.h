@@ -11,7 +11,7 @@ class PrefService;
 
 namespace brave {
 
-void SetBraveAsDefaultPrivateSearchProvider(Profile& profile);
+void SetNormalAsDefaultPrivateSearchProvider(Profile& profile);
 
 // Initialize default provider for private profile.
 void PrepareDefaultPrivateSearchProviderDataIfNeeded(Profile& profile);

@@ -36,7 +36,7 @@ int GetDataVersion(PrefService* prefs) {
 }
 
 // Chromium picks Google (if on the list, otherwise the first prepopulated on
-// the list). We should return the default engine by country, or Brave.
+// the list). We should return the default engine by country, or Google.
 std::unique_ptr<TemplateURLData> GetPrepopulatedFallbackSearch(
     BravePrepopulatedEngineID default_engine_id,
     PrefService& prefs,
@@ -48,19 +48,19 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedFallbackSearch(
     return nullptr;
   }
 
-  std::unique_ptr<TemplateURLData> brave_engine;
+  std::unique_ptr<TemplateURLData> google_engine;
   for (auto& engine : prepopulated_engines) {
     if (engine->prepopulate_id == static_cast<int>(default_engine_id)) {
       return std::move(engine);
     } else if (engine->prepopulate_id ==
-               TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_BRAVE) {
-      brave_engine = std::move(engine);
+               TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_GOOGLE) {
+      google_engine = std::move(engine);
     }
   }
 
-  // Default engine wasn't found, then return Brave, if found.
-  if (brave_engine) {
-    return brave_engine;
+  // Default engine wasn't found, then return Google, if found.
+  if (google_engine) {
+    return google_engine;
   }
 
   // If all else fails, return the first engine on the list.

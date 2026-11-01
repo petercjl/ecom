@@ -57,8 +57,29 @@ void NormalWindowSearchEngineProviderService::Shutdown() {
 
 void NormalWindowSearchEngineProviderService::OnTemplateURLServiceLoaded() {
   template_url_service_subscription_ = {};
+  auto* service = TemplateURLServiceFactory::GetForProfile(profile_);
+  const auto* provider = service->GetDefaultSearchProvider();
+  if (provider && provider->prepopulate_id() ==
+                      TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_BRAVE) {
+    auto* resolver =
+        TemplateURLPrepopulateData::ResolverFactory::GetForProfile(profile_);
+    if (auto data = resolver->GetPrepopulatedEngine(
+            TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_GOOGLE)) {
+      TemplateURL replacement(*data);
+      service->SetUserSelectedDefaultSearchProvider(&replacement);
+    }
+  }
   PrepareInitialPrivateSearchProvider();
   MigrateSearchEnginePrefsInJP();
+  // Remove the retired bundled provider after both defaults have migrated.
+  const auto providers = service->GetTemplateURLs();
+  for (const auto* candidate : providers) {
+    if (candidate->prepopulate_id() ==
+            TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_BRAVE &&
+        candidate != service->GetDefaultSearchProvider()) {
+      service->Remove(candidate);
+    }
+  }
 }
 
 void NormalWindowSearchEngineProviderService::

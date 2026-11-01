@@ -90,6 +90,11 @@ void BraveContentClient::AddAdditionalSchemes(Schemes* schemes) {
   schemes->secure_schemes.push_back(content::kBraveUIScheme);
   schemes->cors_enabled_schemes.push_back(content::kBraveUIScheme);
   schemes->savable_schemes.push_back(content::kBraveUIScheme);
+  // Retain navigation compatibility for previously saved internal links.
+  schemes->standard_schemes.push_back("brave");
+  schemes->secure_schemes.push_back("brave");
+  schemes->cors_enabled_schemes.push_back("brave");
+  schemes->savable_schemes.push_back("brave");
 }
 
 void BraveContentClient::AddContentDecryptionModules(

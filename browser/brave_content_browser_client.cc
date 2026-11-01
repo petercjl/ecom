@@ -1448,7 +1448,7 @@ void BraveContentBrowserClient::MaybeHideReferrer(
 
 bool BraveContentBrowserClient::IsHandledURL(const GURL& url) {
   // Keep the brave:// alias out of the external-protocol permission fallback.
-  return url.SchemeIs(content::kBraveUIScheme) ||
+  return url.SchemeIs(content::kBraveUIScheme) || url.SchemeIs("brave") ||
          ChromeContentBrowserClient::IsHandledURL(url);
 }
 
@@ -1482,7 +1482,7 @@ bool BraveContentBrowserClient::HandleURLOverrideRewrite(
   //
   // Scope of schema is intentionally narrower than content::HasWebUIScheme(url)
   // which also allows both `chrome-untrusted` and `chrome-devtools`.
-  if (!url->SchemeIs(content::kBraveUIScheme) &&
+  if (!url->SchemeIs(content::kBraveUIScheme) && !url->SchemeIs("brave") &&
       !url->SchemeIs(content::kChromeUIScheme)) {
     return false;
   }

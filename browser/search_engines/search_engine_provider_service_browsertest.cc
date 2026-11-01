@@ -80,19 +80,47 @@ TemplateURLData CreateTestSearchEngine() {
   return result;
 }
 
-std::string GetBraveSearchProviderSyncGUID(Profile* profile) {
+std::string GetInitialSearchProviderSyncGUID(Profile* profile) {
   CHECK(profile);
   auto data = TemplateURLPrepopulateData::GetPrepopulatedEngine(
       *profile->GetPrefs(),
       regional_capabilities::RegionalCapabilitiesServiceFactory::GetForProfile(
           profile)
           ->GetRegionalPrepopulatedEngines(),
-      TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_BRAVE);
+      TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_GOOGLE);
   DCHECK(data);
   return data->sync_guid;
 }
 
 }  // namespace
+
+IN_PROC_BROWSER_TEST_F(SearchEngineProviderServiceTest,
+                       MigratesLegacyPrivateSearchProvider) {
+  auto* profile = browser()->GetProfile();
+  auto* service = TemplateURLServiceFactory::GetForProfile(profile);
+  ASSERT_TRUE(VerifyTemplateURLServiceLoad(service));
+  auto legacy_data = TemplateURLDataFromPrepopulatedEngine(
+      TemplateURLPrepopulateData::brave_search);
+  auto legacy = std::make_unique<TemplateURL>(*legacy_data);
+  const auto guid = legacy->sync_guid();
+  service->Add(std::move(legacy));
+  profile->GetPrefs()->SetString(
+      prefs::kSyncedDefaultPrivateSearchProviderGUID, guid);
+  brave::PrepareDefaultPrivateSearchProviderDataIfNeeded(*profile);
+  EXPECT_EQ(service->GetDefaultSearchProvider()->sync_guid(),
+            profile->GetPrefs()->GetString(
+                prefs::kSyncedDefaultPrivateSearchProviderGUID));
+
+  // A separately chosen private provider survives subsequent preparation.
+  auto custom = std::make_unique<TemplateURL>(CreateTestSearchEngine());
+  const auto custom_guid = custom->sync_guid();
+  service->Add(std::move(custom));
+  profile->GetPrefs()->SetString(
+      prefs::kSyncedDefaultPrivateSearchProviderGUID, custom_guid);
+  brave::PrepareDefaultPrivateSearchProviderDataIfNeeded(*profile);
+  EXPECT_EQ(custom_guid, profile->GetPrefs()->GetString(
+                             prefs::kSyncedDefaultPrivateSearchProviderGUID));
+}
 
 IN_PROC_BROWSER_TEST_F(SearchEngineProviderServiceTest,
                        PRE_InvalidPrivateSearchProviderRestoreTest) {
@@ -109,7 +137,7 @@ IN_PROC_BROWSER_TEST_F(SearchEngineProviderServiceTest,
   auto* service = TemplateURLServiceFactory::GetForProfile(profile);
   EXPECT_TRUE(VerifyTemplateURLServiceLoad(service));
 
-  EXPECT_EQ(GetBraveSearchProviderSyncGUID(profile),
+  EXPECT_EQ(GetInitialSearchProviderSyncGUID(profile),
             profile->GetPrefs()->GetString(
                 prefs::kSyncedDefaultPrivateSearchProviderGUID));
 }
@@ -156,9 +184,9 @@ IN_PROC_BROWSER_TEST_F(SearchEngineProviderServiceTest,
       service->GetDefaultSearchProvider()->prepopulate_id();
   const int initial_private_provider_id =
       incognito_service->GetDefaultSearchProvider()->prepopulate_id();
-  // Check Brave Search is default provider for private window.
+  // Check Google is the initial default provider for private window.
   EXPECT_EQ(static_cast<int>(
-                TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_BRAVE),
+                TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_GOOGLE),
             initial_private_provider_id);
 
   // Check changing normal provider doesn't affect private provider.
@@ -200,7 +228,7 @@ IN_PROC_BROWSER_TEST_F(SearchEngineProviderServiceTest,
   // properly.
   profile->GetPrefs()->SetString(prefs::kSyncedDefaultPrivateSearchProviderGUID,
                                  "invalid_id");
-  EXPECT_EQ(GetBraveSearchProviderSyncGUID(profile),
+  EXPECT_EQ(GetInitialSearchProviderSyncGUID(profile),
             profile->GetPrefs()->GetString(
                 prefs::kSyncedDefaultPrivateSearchProviderGUID));
   EXPECT_EQ(initial_private_provider_id,
@@ -459,11 +487,11 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest,
   UnloadExtension(extension->id());
   EXPECT_EQ(default_provider, url_service->GetDefaultSearchProvider());
 
-  // Check Brave Search is back to as a default provider for private window
+  // Check Google is restored as the default provider for private window
   // after unloading extension.
   current_incognito_dse = incognito_url_service->GetDefaultSearchProvider();
   EXPECT_EQ(static_cast<int>(
-                TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_BRAVE),
+                TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_GOOGLE),
             current_incognito_dse->prepopulate_id());
   EXPECT_EQ(TemplateURL::NORMAL, current_incognito_dse->type());
 }

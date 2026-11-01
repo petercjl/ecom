@@ -5,6 +5,8 @@
 
 #include "components/regional_capabilities/regional_capabilities_utils.h"
 
+#include <algorithm>
+
 #include "base/check.h"
 #include "base/check_op.h"
 #include "base/containers/fixed_flat_map.h"
@@ -737,7 +739,12 @@ std::vector<raw_ptr<const TemplateURLPrepopulateData::PrepopulatedEngine>>
 GetPrepopulatedEngines(CountryId country_id,
                        PrefService& prefs,
                        SearchEngineListType search_engine_list_type) {
-  return GetBravePrepopulatedEnginesForCountryID(country_id);
+  auto engines = GetBravePrepopulatedEnginesForCountryID(country_id);
+  std::erase_if(engines, [](const auto& engine) {
+    return engine->id ==
+           TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_BRAVE;
+  });
+  return engines;
 }
 
 TemplateURLPrepopulateData::BravePrepopulatedEngineID GetDefaultEngine(
@@ -748,7 +755,10 @@ TemplateURLPrepopulateData::BravePrepopulatedEngineID GetDefaultEngine(
     version = prefs.GetInteger(::prefs::kBraveDefaultSearchVersion);
   }
 
-  return GetDefaultSearchEngine(country_id, version);
+  const auto engine = GetDefaultSearchEngine(country_id, version);
+  return engine == TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_BRAVE
+             ? TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_GOOGLE
+             : engine;
 }
 
 }  // namespace regional_capabilities
