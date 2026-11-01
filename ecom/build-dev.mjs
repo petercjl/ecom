@@ -4,7 +4,6 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
-import { once } from 'node:events';
 import { canonicalRepository, git } from './workspace.mjs';
 
 const root = canonicalRepository(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
@@ -14,36 +13,41 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const alive = pid => { try { process.kill(pid, 0); return true; } catch (error) { if (error.code === 'ESRCH') return false; throw error; } };
 const query = (file, args) => { const r = spawnSync(file, args, { encoding: 'utf8' }); if (r.error || r.status !== 0) throw r.error || new Error(r.stderr.trim()); return r.stdout.trim(); };
 
-// The fixed workspace profile and executable identify only this project's Dev.
-// A stale endpoint or a different Chrome/Brave process never grants quit access.
+// Process identity is independent of a browser debugging endpoint.
+export function findDevProcess(listing, expected) {
+  const matches = [];
+  for (const line of listing.split('\n')) {
+    const match = line.match(/^\s*(\d+)\s+(\d+)\s+(.+)$/);
+    if (!match) continue;
+    const [, rawPid, rawUid, command] = match;
+    if (!command.startsWith(expected.executable + ' ') || !command.split(' ').includes('--user-data-dir=' + expected.profile) || Number(rawUid) !== expected.uid) continue;
+    const pid = Number(rawPid);
+    if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error('Dev 进程 ID 无效');
+    matches.push({ pid, command });
+  }
+  if (matches.length > 1) throw new Error('发现多个相同工作区 Dev 主进程，已停止重启');
+  return matches[0] || null;
+}
 function runningDev() {
-  const file = path.join(profile, 'DevToolsActivePort');
-  if (!fs.existsSync(file)) return null;
-  const [port, endpoint] = fs.readFileSync(file, 'utf8').trim().split('\n');
-  if (!/^\d+$/.test(port) || Number(port) < 1024 || Number(port) > 65535 || ['9223', '9224'].includes(port) || !/^\/devtools\/browser\/[a-zA-Z0-9-]+$/.test(endpoint)) throw new Error('Dev 调试端点无效，已停止重启');
-  const result = spawnSync('lsof', ['-nP', '-a', '-iTCP:' + port, '-sTCP:LISTEN', '-t'], { encoding: 'utf8' });
-  if (result.status === 1 && !result.stdout.trim()) return null;
-  if (result.error || result.status !== 0) throw result.error || new Error('无法核对 Dev 端口的进程');
-  const pids = [...new Set(result.stdout.trim().split(/\s+/).map(Number))];
-  if (pids.length !== 1 || !Number.isSafeInteger(pids[0]) || pids[0] <= 0) throw new Error('Dev 端口的进程身份不明确');
-  const pid = pids[0];
-  const command = query('ps', ['-ww', '-p', String(pid), '-o', 'command=']);
-  if (!command.startsWith(executable + ' ') || !command.split(' ').includes('--user-data-dir=' + profile) || Number(query('ps', ['-p', String(pid), '-o', 'uid='])) !== process.getuid()) throw new Error('端口未对应当前工作区的 Ecom Dev，已保留原进程');
-  return { pid, port, endpoint };
+  const instance = findDevProcess(query('ps', ['-axo', 'pid=,uid=,command=', '-ww']), { executable, profile, uid: process.getuid() });
+  if (instance && query('ps', ['-p', String(instance.pid), '-o', 'comm=']) !== executable) throw new Error('Dev 可执行文件身份不匹配，已保留原进程');
+  return instance;
 }
 
 async function quitDev(instance) {
-  const socket = new WebSocket(`ws://127.0.0.1:${instance.port}${instance.endpoint}`);
-  try {
-    await once(socket, 'open', { signal: AbortSignal.timeout(5000) });
-    const current = runningDev();
-    if (current?.pid !== instance.pid || current.endpoint !== instance.endpoint) throw new Error('Dev 实例已改变，已停止退出操作');
-    const closed = once(socket, 'close', { signal: AbortSignal.timeout(10000) });
-    socket.send(JSON.stringify({ id: 1, method: 'Browser.close' }));
-    await closed;
-  } finally { socket.close(); }
+  const current = runningDev();
+  if (current?.pid !== instance.pid || current.command !== instance.command) throw new Error('Dev 实例已改变，已停止退出操作');
+  // Chromium's POSIX handler routes SIGINT through its normal Exit() path.
+  process.kill(instance.pid, 'SIGINT');
   for (let n = 0; n < 80 && alive(instance.pid); n++) await pause(250);
   if (alive(instance.pid)) throw new Error('Ecom Dev 尚未正常退出；请关闭该 Dev 窗口后重试');
+}
+
+function verifyInteractiveDev(instance) {
+  if (/--(?:remote-debugging|headless|enable-automation|auto-open-devtools-for-tabs)/.test(instance.command)) throw new Error('Dev 启动参数包含调试或自动化入口');
+  const listeners = spawnSync('lsof', ['-nP', '-a', '-p', String(instance.pid), '-iTCP', '-sTCP:LISTEN'], { encoding: 'utf8' });
+  if (listeners.status !== 1 || listeners.stdout.trim()) throw new Error('Dev 仍有 TCP 监听或监听检查失败，未通过普通启动验证');
+  if (fs.existsSync(path.join(profile, 'DevToolsActivePort'))) throw new Error('Dev 重新生成了调试端点文件，未通过普通启动验证');
 }
 
 function prepareComponentExecutable(runDir) {
@@ -101,15 +105,28 @@ async function main() {
     if (git(root, ['rev-parse', 'HEAD']) !== base || git(root, ['status', '--porcelain'])) throw new Error('编译期间源码已变化，保留当前 Dev；提交后重新构建');
     const previous = runningDev();
     if (previous) { console.log('编译成功，正在正常退出 Ecom Dev…'); await quitDev(previous); }
+    const oldEndpoint = path.join(profile, 'DevToolsActivePort');
+    if (fs.existsSync(oldEndpoint)) {
+      if (!fs.lstatSync(oldEndpoint).isFile()) throw new Error('旧调试端点不是普通文件，已保留现场');
+      const saved = path.join(runDir, 'previous-debug-endpoint.txt');
+      if (fs.existsSync(saved)) throw new Error('调试端点归档路径已存在');
+      fs.renameSync(oldEndpoint, saved); fs.chmodSync(saved, 0o600);
+    }
     prepareComponentExecutable(runDir);
     const log = path.join(runDir, 'start.log');
     if (fs.existsSync(log)) throw new Error('启动日志已存在');
     const fd = fs.openSync(log, 'wx', 0o600);
-    const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'start', 'Component', '--no-first-run', '--no-default-browser-check', '--restore-last-session', '--remote-debugging-port=0', '--remote-debugging-address=127.0.0.1', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone'], { cwd: root, env, stdio: ['ignore', fd, fd], detached: true });
+    const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'start', 'Component', '--no-first-run', '--no-default-browser-check', '--restore-last-session', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone'], { cwd: root, env, stdio: ['ignore', fd, fd], detached: true });
     child.on('error', () => {}); child.unref(); fs.closeSync(fd);
     for (let n = 0; n < 480; n++) {
       const current = runningDev();
-      if (current && current.pid !== previous?.pid) { console.log(JSON.stringify({ ok: true, sourceRevision: base, pid: current.pid, profile, log })); return; }
+      if (current && current.pid !== previous?.pid) {
+        await pause(2000);
+        const ready = runningDev();
+        if (!ready || ready.pid !== current.pid) throw new Error('Dev 启动后未保持运行');
+        verifyInteractiveDev(ready);
+        console.log(JSON.stringify({ ok: true, sourceRevision: base, pid: ready.pid, profile, log, launchMode: 'interactive', debugging: false })); return;
+      }
       if (child.exitCode !== null) throw new Error('Dev 启动未成功，请查看启动日志：' + log);
       await pause(250);
     }
@@ -118,4 +135,4 @@ async function main() {
     if (JSON.parse(fs.readFileSync(lock, 'utf8')).id === identity.id) fs.renameSync(lock, path.join(runDir, 'finished-lock.json'));
   }
 }
-main().catch(error => { console.error(error.message); process.exitCode = 1; });
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main().catch(error => { console.error(error.message); process.exitCode = 1; });

@@ -59,4 +59,7 @@ test('native development launch selects an Ecom profile and keeps its update cha
   assert.ok(result.includes('--user-data-dir=' + path.join(repo, '.brave-build/profiles/Ecom-Dev')));
   assert.deepEqual(developmentStartArgs(repo, ['--user-data-dir=explicit-dev-profile']), ['--user-data-dir=explicit-dev-profile']);
   assert.throws(() => developmentStartArgs(repo, ['--enable_brave_update']), { code: 'ECOM_UPDATE_CHANNEL' });
+  for (const flag of ['--remote-debugging-port=0', '--remote-debugging-port=9330', '--remote-debugging-pipe', '--remote-debugging-address=127.0.0.1', '--headless=new', '--enable-automation', '--auto-open-devtools-for-tabs']) {
+    assert.throws(() => developmentStartArgs(repo, [flag]), { code: 'ECOM_INTERACTIVE_ONLY' });
+  }
 });
