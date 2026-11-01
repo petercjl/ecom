@@ -16,9 +16,6 @@ aggregate_vector_icons("brave_components_vector_icons") {
     "app_menu_color.icon",
     "app_menu_outline.icon",
     "autoplay_status.icon",
-    "leo_brave_icon_monochrome.icon",
-    "leo_brave_icon_only_face.icon",
-    "leo_brave_icon_only_face_disabled.icon",
   ]
 
   # The Skia icon names are transformed to make them easier to use in Brave Core
@@ -26,6 +23,9 @@ aggregate_vector_icons("brave_components_vector_icons") {
   leo_icons = [
     "leo_arrow_right.icon",
     "leo_arrow_small_right.icon",
+    "leo_brave_icon_monochrome.icon",
+    "leo_brave_icon_only_face.icon",
+    "leo_brave_icon_only_face_disabled.icon",
     "leo_browser_add.icon",
     "leo_browser_bookmark_add.icon",
     "leo_browser_bookmark_normal.icon",
@@ -160,8 +160,18 @@ aggregate_vector_icons("brave_components_vector_icons") {
     ]
   }
 
-  sources +=
-      rebase_path(leo_icons, ".", "//brave/node_modules/@brave/leo/icons-skia")
+  # Keep declaration order stable when substituting Ecom brand artwork.
+  foreach(icon, leo_icons) {
+    if (icon == "leo_brave_icon_monochrome.icon" ||
+        icon == "leo_brave_icon_only_face.icon" ||
+        icon == "leo_brave_icon_only_face_disabled.icon") {
+      sources += [ icon ]
+    } else {
+      sources += rebase_path([ icon ],
+                            ".",
+                            "//brave/node_modules/@brave/leo/icons-skia")
+    }
+  }
 }
 
 static_library("vector_icons") {
