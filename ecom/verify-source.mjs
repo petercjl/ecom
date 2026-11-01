@@ -8,6 +8,12 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 const baseline = JSON.parse(read('ecom/source-baseline.json'));
 assert.equal(pkg.name, 'ecom-core');
+for (const name of ['BRANDING', 'BRANDING.development']) {
+  const branding = read('app/theme/brave/' + name);
+  assert.match(branding, /^PRODUCT_FULLNAME=Ecom Dev$/m);
+  assert.match(branding, /^MAC_BUNDLE_ID=app\.ecom\.browser\.dev$/m);
+  assert.match(branding, /^MAC_TEAM_ID=$/m);
+}
 assert.equal(pkg.private, true);
 assert.equal(pkg.config.siso_jobs_limit, 6);
 for (const flag of ['symbol_level', 'v8_symbol_level', 'blink_symbol_level']) assert.equal(pkg.config.gn.args[flag], 0);
