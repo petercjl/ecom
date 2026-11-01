@@ -12,7 +12,9 @@ export function checkUIIconAssets() {
   const receipt = JSON.parse(read(receiptName));
   if (receipt.sourceSha256 !== hash(read(receipt.source))) throw new Error('UI icon source changed; regenerate assets');
   for (const [name, digest] of Object.entries(receipt.outputs)) {
-    if (hash(read(name)) !== digest) throw new Error('UI icon mismatch: ' + name);
+    const bytes = read(name);
+    const content = name.endsWith('.svg') ? Buffer.from(bytes.toString().replaceAll('\r\n', '\n')) : bytes;
+    if (hash(content) !== digest) throw new Error('UI icon mismatch: ' + name);
   }
 }
 function run(file, args) {
@@ -48,7 +50,18 @@ function generate() {
   const png = fs.readFileSync(path.join(staging, '256.png')).toString('base64');
   const svg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="256" height="256" viewBox="0 0 256 256"><image width="256" height="256" xlink:href="data:image/png;base64,${png}"/></svg>\n`);
   for (const name of ['app/theme/brave/product_logo.svg', 'app/theme/brave/product_logo_animation.svg', 'app/theme/brave/password_manager_logo.svg', 'components/brave_welcome_ui/components/images/lion_logo.svg']) replacements.set(name, svg);
-  for (const name of ['brave-icon-monochrome', 'brave-icon-only-face', 'brave-icon-outline', 'brave-icon-release-color']) replacements.set('ui/webui/resources/images/ecom/' + name + '.svg', svg);
+  // Leo's non-color icons use an alpha mask. Extract the source cart rather
+  // than masking the opaque circular background into a solid disk.
+  const white = vector.toString().split('PATH_COLOR_ARGB, 0xFF, 0xFF, 0xFF, 0xFF,')[1];
+  if (!white) throw new Error('Source cart mask is missing');
+  const runs = [...white.matchAll(/MOVE_TO, (\d+), (\d+),\nLINE_TO, (\d+), \d+,\nLINE_TO, \d+, (\d+),\nLINE_TO, \d+, \d+,\nCLOSE,/g)]
+    .map(m => m.slice(1).map(Number)).filter(([x,y,end,bottom]) => x>=16 && y>=16 && end<=80 && bottom<=80);
+  if (!runs.length) throw new Error('Source cart mask is empty');
+  const left=Math.min(...runs.map(r=>r[0]))-3, top=Math.min(...runs.map(r=>r[1]))-3;
+  const right=Math.max(...runs.map(r=>r[2]))+3, bottom=Math.max(...runs.map(r=>r[3]))+3;
+  const side=Math.max(right-left,bottom-top), cx=(left+right)/2, cy=(top+bottom)/2;
+  const cart = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${cx-side/2} ${cy-side/2} ${side} ${side}"><path d="${runs.map(([x,y,end,bottom])=>`M${x} ${y}H${end}V${bottom}H${x}Z`).join('')}"/></svg>\n`);
+  for (const name of ['brave-icon-monochrome', 'brave-icon-only-face', 'brave-icon-outline', 'brave-icon-release-color']) replacements.set('ui/webui/resources/images/ecom/' + name + '.svg', name.endsWith('-color') ? svg : cart);
   const receipt = { schemaVersion: 1, source: 'assets/ecom-icon.png', sourceSha256: hash(read('assets/ecom-icon.png')), outputs: Object.fromEntries([...replacements].map(([name, bytes]) => [name, hash(bytes)])) };
   replacements.set(receiptName, Buffer.from(JSON.stringify(receipt, null, 2) + '\n'));
   const backup = fs.mkdtempSync(path.join(root, '.local-backups/ui-icon-assets-'));

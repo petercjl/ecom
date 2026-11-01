@@ -52,9 +52,9 @@
     "app/theme/brave/product_logo_animation.svg": "71e867f21bbacba90cbc822316bac6efc2b915a0cf445877a40b2759693e1359",
     "app/theme/brave/password_manager_logo.svg": "71e867f21bbacba90cbc822316bac6efc2b915a0cf445877a40b2759693e1359",
     "components/brave_welcome_ui/components/images/lion_logo.svg": "71e867f21bbacba90cbc822316bac6efc2b915a0cf445877a40b2759693e1359",
-    "ui/webui/resources/images/ecom/brave-icon-monochrome.svg": "71e867f21bbacba90cbc822316bac6efc2b915a0cf445877a40b2759693e1359",
-    "ui/webui/resources/images/ecom/brave-icon-only-face.svg": "71e867f21bbacba90cbc822316bac6efc2b915a0cf445877a40b2759693e1359",
-    "ui/webui/resources/images/ecom/brave-icon-outline.svg": "71e867f21bbacba90cbc822316bac6efc2b915a0cf445877a40b2759693e1359",
+    "ui/webui/resources/images/ecom/brave-icon-monochrome.svg": "85b79d9c09de88683cffa49428c729c33c6024b504e7bf5f7f5f600e2e845061",
+    "ui/webui/resources/images/ecom/brave-icon-only-face.svg": "85b79d9c09de88683cffa49428c729c33c6024b504e7bf5f7f5f600e2e845061",
+    "ui/webui/resources/images/ecom/brave-icon-outline.svg": "85b79d9c09de88683cffa49428c729c33c6024b504e7bf5f7f5f600e2e845061",
     "ui/webui/resources/images/ecom/brave-icon-release-color.svg": "71e867f21bbacba90cbc822316bac6efc2b915a0cf445877a40b2759693e1359"
   }
 }

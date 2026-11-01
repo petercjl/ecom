@@ -31,6 +31,6 @@ Finder 的 Ecom Dev 应用简介、顶部图标与预览均已目视确认为三
 
 桌面品牌资源以同一份 `assets/ecom-icon.png` 生成：设置页标题与渠道标志、关于页、内置页面图标、地址栏产品图标、菜单中的产品图标及 Shields 按钮。保留原有资源名称和功能绑定；Shields 关闭状态采用较低透明度，原有状态文字与交互继续生效。
 
-`node ecom/generate-ui-icons.mjs` 在 macOS 使用 Xcode Swift、CoreGraphics 和 sips 转换已确认源图。转换仅移除与画布边缘连通的浅色背景，保留中央白色购物车，按资源原尺寸居中等比输出；原生 VectorIcon 使用同一源图的颜色采样。WebUI 的品牌 SVG 包含透明 PNG，明暗主题共享购物车图标。生成前备份已有资源，清单保存于 `ecom/ui-icons.json`。
+`node ecom/generate-ui-icons.mjs` 在 macOS 使用 Xcode Swift、CoreGraphics 和 sips 转换已确认源图。转换仅移除与画布边缘连通的浅色背景，保留中央白色购物车，按资源原尺寸居中等比输出；原生 VectorIcon 使用同一源图的颜色采样。WebUI 的彩色品牌 SVG 包含透明 PNG；单色遮罩从同一源图提取购物车轮廓，适配主题颜色。生成前备份已有资源，清单保存于 `ecom/ui-icons.json`。
 
 `node ecom/generate-ui-icons.mjs --check` 可跨平台校验源图与输出 SHA-256，已纳入源码检查。资源修改后使用 `node ecom/build-dev.mjs` 编译并重启 Ecom Dev。此改动属于外观资源更新，不新增可操作功能或产品 CLI 命令。
