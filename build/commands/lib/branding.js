@@ -261,11 +261,10 @@ const update = () => {
   fileMap.add([
     path.join(
       config.braveCoreDir,
-      'node_modules',
-      '@brave',
-      'leo',
-      'icons',
-      config.getBraveLogoIconName(),
+      'app',
+      'theme',
+      'brave',
+      'product_logo.svg',
     ),
     path.join(
       config.srcDir,

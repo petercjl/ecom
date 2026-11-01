@@ -690,6 +690,15 @@ copy("fonts_copy") {
 }
 
 copy("icons_copy") {
-  sources = rebase_path(leo_icons_sources, ".", leo_icons_base_path)
+  ecom_brand_icons = [
+    "brave-icon-monochrome.svg",
+    "brave-icon-only-face.svg",
+    "brave-icon-outline.svg",
+    "brave-icon-release-color.svg",
+  ]
+  sources = rebase_path(filter_exclude(leo_icons_sources, ecom_brand_icons),
+                        ".",
+                        leo_icons_base_path)
+  sources += rebase_path(ecom_brand_icons, ".", "images/ecom")
   outputs = [ "$brave_resources_extra_grdps_path/icons/{{source_file_part}}" ]
 }
