@@ -10,6 +10,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import * as Log from './log.ts'
 import util from './util.js'
+import { applyDepotToolsPolicy } from '../../../ecom/depot-tools-policy.mjs'
 
 // The .disable_auto_update file in the depot_tools directory, regardless of
 // its content, disables auto-updates. If a specific depot_tools reference is
@@ -149,6 +150,10 @@ function installDepotTools(options = config.defaultOptions) {
       })
     }
   })
+  const policy = applyDepotToolsPolicy(config.depotToolsDir)
+  if (policy.changed) {
+    Log.status('Enabled Ecom CIPD dependency exclusions')
+  }
 }
 
 // Opt-out of chromium build telemetry. See for details:
