@@ -22,6 +22,7 @@
 #include "components/search_engines/template_url_prepopulate_data.h"
 #include "components/search_engines/template_url_prepopulate_data_resolver.h"
 #include "components/search_engines/template_url_service.h"
+#include "components/search_engines/template_url_starter_pack_data.h"
 
 NormalWindowSearchEngineProviderService::
     NormalWindowSearchEngineProviderService(Profile* profile)
@@ -73,9 +74,11 @@ void NormalWindowSearchEngineProviderService::OnTemplateURLServiceLoaded() {
   MigrateSearchEnginePrefsInJP();
   // Remove the retired bundled provider after both defaults have migrated.
   const auto providers = service->GetTemplateURLs();
-  for (const auto* candidate : providers) {
-    if (candidate->prepopulate_id() ==
-            TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_BRAVE &&
+  for (const auto& candidate : providers) {
+    if ((candidate->prepopulate_id() ==
+             TemplateURLPrepopulateData::PREPOPULATED_ENGINE_ID_BRAVE ||
+         candidate->starter_pack_id() ==
+             template_url_starter_pack_data::StarterPackId::kAskBraveSearch) &&
         candidate != service->GetDefaultSearchProvider()) {
       service->Remove(candidate);
     }

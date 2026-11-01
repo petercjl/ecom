@@ -25,14 +25,14 @@
 namespace {
 
 constexpr char kChromeSchema[] = "chrome://";
-constexpr char kBraveSchema[] = "brave://";
+constexpr char kBraveSchema[] = "ecom://";
 
 }  // namespace
 
 namespace template_url_starter_pack_data {
 
 // Update this whenever a change is made to any Brave-defined starter pack data.
-const int kCurrentBraveDataVersion = 1;
+const int kCurrentBraveDataVersion = 2;
 
 const StarterPackEngine ask_brave_search = {
     .name_message_id = IDS_SEARCH_ENGINES_STARTER_PACK_ASK_BRAVE_SEARCH_NAME,
@@ -45,8 +45,7 @@ const StarterPackEngine ask_brave_search = {
     .type = SEARCH_ENGINE_STARTER_PACK_ASK_BRAVE_SEARCH,
 };
 
-const StarterPackEngine* brave_engines[] = {&bookmarks, &history, &tabs,
-                                            &ask_brave_search};
+const StarterPackEngine* brave_engines[] = {&bookmarks, &history, &tabs};
 
 int GetDataVersion() {
   return GetDataVersion_ChromiumImpl() + kCurrentBraveDataVersion;
