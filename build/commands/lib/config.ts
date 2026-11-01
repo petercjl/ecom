@@ -902,6 +902,24 @@ export class Config {
       }
     }
 
+    // The local Siso path also consumes --ninja j; it does not forward -j.
+    if (!this.useRemoteExec && this.sisoJobsLimit !== undefined) {
+      assert(Number.isSafeInteger(this.sisoJobsLimit) && this.sisoJobsLimit > 0,
+        '--ninja j requires a positive integer')
+      const limits = new Map<string, number>()
+      for (const item of (env.SISO_LIMITS || '').split(',')) {
+        const separator = item.indexOf('=')
+        const value = Number.parseInt(item.slice(separator + 1), 10)
+        if (separator > 0 && Number.isFinite(value)) {
+          limits.set(item.slice(0, separator).trim(), value)
+        }
+      }
+      const localLimit = limits.get('local') || this.sisoJobsLimit
+      const configuredLimit = this.sisoLimits.local || this.sisoJobsLimit
+      limits.set('local', Math.min(localLimit, configuredLimit, this.sisoJobsLimit))
+      env.SISO_LIMITS = Array.from(limits.entries()).map(([key, value]) => `${key}=${value}`).join(',')
+    }
+
     if (isCI) {
       // Enables autoninja to show build speed and final stats on finish.
       env.NINJA_SUMMARIZE_BUILD = '1'
