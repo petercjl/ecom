@@ -19,3 +19,9 @@ node ecom/build-dev.mjs
 Component 开发版依赖构建目录中的动态库。启动时使用构建目录里的主程序，并在需要时保留备份、校验字节后解除旧更新副本的可执行文件硬链接。此开发入口关闭仅服务于整包自动更新的 MacAppCodeSignClone 功能；正式产物的更新与签名流程单独验证。
 
 本机 macOS arm64 是当前验证环境。Windows 的构建与重启实现及验收在后续平台工作中补充。
+
+## 普通启动验证（2026-11-02）
+
+本机 macOS arm64 已通过标准构建重启入口验证：11 项开发检查通过，增量原生构建无待执行任务，编译与重启命令总耗时 18.08 秒。重启后主进程不含 remote-debugging、headless 或 enable-automation 参数，没有 TCP 监听，也未生成 DevToolsActivePort。原有 2 个配置容器的元数据保持一致。证据保存在忽略提交的 `.brave-build/interactive-launch-9tvpptmj/`。
+
+该验证证明普通启动配置与进程生命周期检查通过；淘宝滑块结果需要用户在原有容器中手动对照，当前记录不将启动参数变化等同于平台验证已通过。无 CDP 的原生容器取数入口仍按 PRD 的最小任务单独实现和验收。
