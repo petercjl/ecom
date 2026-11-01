@@ -47,7 +47,8 @@
     "ecom:status": "node ecom/workspace.mjs status",
     "ecom:bootstrap": "node ecom/workspace.mjs bootstrap",
     "ecom:check": "node ecom/verify-source.mjs",
-    "ecom:test": "node --test ecom/tests/*.test.mjs"
+    "ecom:test": "node --test ecom/tests/*.test.mjs",
+    "ecom:icons:mac": "node ecom/generate-macos-icons.mjs"
   },
   "repository": {
     "type": "git",

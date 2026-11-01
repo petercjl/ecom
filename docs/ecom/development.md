@@ -43,3 +43,5 @@ macOS 图形渲染构建同时需要 Xcode 的 Metal Toolchain 组件。通过�
 ## 验证记录
 
 [2026-11-01 macOS arm64 Dev 验证](mac-dev-validation-2026-11-01.md) 记录实际应用身份、基础功能检查与增量构建耗时。
+
+macOS 应用图标的 ICNS 与 AppIcon 资源目录由同一确认源图生成，维护和校验入口见 [图标资源](icons.md)。

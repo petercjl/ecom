@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { git } from './workspace.mjs';
+import { checkMacIconAssets } from './generate-macos-icons.mjs';
+checkMacIconAssets();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const pkg = JSON.parse(read('package.json'));

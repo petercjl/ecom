@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "source": "assets/ecom-icon.png",
+  "sourceSha256": "36d9d4bf85544c2868560041375aa7e8184bf5b4b85206a553ef52c117233e40",
+  "xcode": "Xcode 26.5\nBuild version 17F42",
+  "outputs": {
+    "app/theme/brave/mac/app.icns": "11cb92513d98d6364be7421f564ba0e1bddba1d2756eee6b077003f0fa8352d8",
+    "app/theme/brave/mac/Assets.car": "1d0e846e551446916ef83033599f83ae5956b4bd1b0881c0de468b4f5200699e",
+    "app/theme/brave/mac/development/app.icns": "11cb92513d98d6364be7421f564ba0e1bddba1d2756eee6b077003f0fa8352d8",
+    "app/theme/brave/mac/development/Assets.car": "1d0e846e551446916ef83033599f83ae5956b4bd1b0881c0de468b4f5200699e"
+  }
+}
