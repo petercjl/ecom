@@ -11,6 +11,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import * as Log from './log.ts'
 import util from './util.js'
+import { resolveLocalDependencyRevision } from '../../../ecom/dependency-revision.mjs'
 
 function toGClientConfigItem(name, value, pretty = true) {
   if (value === undefined) {
@@ -333,7 +334,7 @@ function syncChromium(program) {
 
   if (!tryLeanCheckout) {
     args.push('--revision')
-    args.push('src@' + requiredChromiumRef)
+    args.push('src@' + resolveLocalDependencyRevision(config.srcDir, requiredChromiumRef))
   }
 
   util.runGclient(args)
