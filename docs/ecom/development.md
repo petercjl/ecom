@@ -35,3 +35,7 @@ macOS 桌面构建的 Swift 编译器由选定的 Xcode 提供。Chromium 的旧
 macOS 构建命令通过 DEVELOPER_DIR 选择完整 Xcode 的 Contents/Developer 目录。本机验证环境为 Xcode 26.5（17F42）和 macOS 26.5 SDK；系统默认 Command Line Tools 的选择保持独立。
 
 Ecom 桌面构建在 package.json 的 config.gn.args 中选择功能范围：AI 助手、资讯和钱包使用现有 GN 开关关闭；应用更新由 Ecom 自身的更新方案承接，Brave 的应用更新组件关闭。基础浏览、下载、设置和容器沿用原生能力。
+
+macOS 图形渲染构建同时需要 Xcode 的 Metal Toolchain 组件。通过所选 Xcode 的 xcodebuild -downloadComponent MetalToolchain 安装，再以 xcrun metal --version 验证。本机对应 Metal Toolchain 17F42，编译器版本 metalfe-32023.883。
+
+本机编译并发可通过 --ninja j:6 设置；本地 Siso 将其映射为 local 上限，并保留环境或配置中更低的上限。首次构建可将 symbol_level、v8_symbol_level 和 blink_symbol_level 设为 0，调试需要时再显式调整。
