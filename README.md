@@ -11,7 +11,7 @@ Ecom 是面向多账号与 Agent 操作的独立桌面浏览器，目标平台�
 - 面向具备本地执行能力的任意 Agent 的稳定 CLI：导航、页面读取与操作、容器、下载和设置。
 - Ecom 名称、已确认图标、精简功能与 npm 分发更新。
 
-当前已经建立原生源码基础与开发工作区管理。完整原生编译、Ecom 界面品牌替换、浏览器产品 CLI、安装器和更新程序仍待实现或验收。开发工具命令与浏览器产品 CLI 分别记录状态。
+已在 macOS arm64 完成 Ecom Dev 原生构建和基础浏览功能验证，并实测增量编译。应用名称、标识及图标已接入；Chrome 式界面裁剪、容器多账号兼容性、浏览器产品 CLI、安装器和更新程序继续按项目规划实施与验收。详见 [macOS 开发验证记录](docs/ecom/mac-dev-validation-2026-11-01.md)。
 
 ## 开发
 
@@ -27,7 +27,7 @@ pnpm run build
 pnpm start
 ```
 
-`ecom:bootstrap` 获取固定的 Chromium 与构建依赖，不拉取或合并 Brave 的后续源码。完整编译需要 macOS Xcode/SDK 或 Windows 对应 C++ 工具链；当前机器尚未完成原生构建准备。
+`ecom:bootstrap` 获取固定的 Chromium 与构建依赖，不拉取或合并 Brave 的后续源码。完整编译需要 macOS Xcode/SDK 或 Windows 对应 C++ 工具链；当前 Mac 的已验证工具链与构建条件见开发工作区及验证记录。
 
 ## 项目文件
 

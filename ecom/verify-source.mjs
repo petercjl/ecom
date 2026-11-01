@@ -37,4 +37,5 @@ const remotes = git(root, ['remote']).split('\n').filter(Boolean);
 assert.deepEqual(remotes, ['origin']);
 assert.match(git(root, ['remote', 'get-url', 'origin']), /github\.com[:/]petercjl\/ecom(?:\.git)?$/);
 assert.ok(!read('AGENTS.md').includes('Electron'));
-console.log(JSON.stringify({ ok: true, project: 'Ecom', sourceRelease: baseline.source.release, sourceCommit: baseline.source.commit, chromium: baseline.dependencies.chromium, nativeBuildVerified: false, browserCLIImplemented: false }));
+if (baseline.verification.nativeBuild) assert.ok(fs.statSync(path.join(root, baseline.verification.nativeBuildEvidence)).isFile());
+console.log(JSON.stringify({ ok: true, project: 'Ecom', sourceRelease: baseline.source.release, sourceCommit: baseline.source.commit, chromium: baseline.dependencies.chromium, nativeBuildVerified: baseline.verification.nativeBuild, nativeBuildPlatforms: baseline.verification.nativeBuildPlatforms, nativeBuildExecutedByThisCheck: false, browserCLIImplemented: false }));

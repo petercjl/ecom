@@ -39,3 +39,7 @@ Ecom 桌面构建在 package.json 的 config.gn.args 中选择功能范围：AI 
 macOS 图形渲染构建同时需要 Xcode 的 Metal Toolchain 组件。通过所选 Xcode 的 xcodebuild -downloadComponent MetalToolchain 安装，再以 xcrun metal --version 验证。本机对应 Metal Toolchain 17F42，编译器版本 metalfe-32023.883。
 
 开发构建默认使用 6 个本地任务和 1 个链接任务，symbol_level、v8_symbol_level、blink_symbol_level 默认均为 0。默认配置纳入 package.json，日常构建沿用同一组参数和输出目录。通过 --ninja j:6 可显式选择并发；本地 Siso 保留环境或 siso_limits 配置中更低的上限。调试符号需要时通过 --gn 显式调整，使用独立的 -C 输出目录可保留多组构建配置。
+
+## 验证记录
+
+[2026-11-01 macOS arm64 Dev 验证](mac-dev-validation-2026-11-01.md) 记录实际应用身份、基础功能检查与增量构建耗时。

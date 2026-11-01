@@ -21,7 +21,11 @@
     "depotTools": "a20039648c0de69d8156906b18052bd47e9bf230"
   },
   "verification": {
-    "nativeBuild": false,
-    "browserCLI": false
+    "nativeBuild": true,
+    "browserCLI": false,
+    "nativeBuildPlatforms": [
+      "macos-arm64"
+    ],
+    "nativeBuildEvidence": "docs/ecom/mac-dev-validation-2026-11-01.md"
   }
 }
