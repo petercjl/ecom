@@ -16,6 +16,14 @@
 
 已下载依赖随构建工作树保留。depot_tools 的首次 bootstrap 若中断，先在现有下载上完成 ensure_bootstrap，再归档 guard；不删除整个缓存重来。锁定版本不一致、目标路径被其他仓库占用或本地修改存在时明确报错。
 
-完整源码与工具链下载需要持续检查磁盘；本机前一初始化任务已停止以便切换为 Ecom 工作树。后续原生编译需完成完整 Xcode/SDK 准备。构建和安装的支持范围以真实运行证据为准。
+完整源码与工具链下载需要持续检查磁盘。macOS 原生编译使用完整 Xcode 与匹配的 SDK；当前基线对应 Xcode 26.5/macOS 26.5 SDK。构建和安装的支持范围以真实运行证据为准。
 
 开发启动默认使用 .brave-build/profiles/Ecom-Dev 保存独立数据。显式开发数据目录参数按调用方选择执行；Ecom 开发入口保持自身更新渠道。
+
+## macOS 开发构建
+
+当前原生品牌为 Ecom Dev，应用标识为 app.ecom.browser.dev，默认原生数据目录为 Ecom/Ecom-Dev；开发启动入口另指定工作区内的独立 Profile。macOS 应用图标从 assets/ecom-icon.png 转换为 ICNS。正式产品身份与发布配置在首次发布前单独确定。
+
+使用独立安装的 Node 24 与 pnpm 11。先执行 pnpm run ecom:bootstrap 下载固定依赖并应用补丁，再在构建工作树中通过 pnpm run gclient -- runhooks 准备编译器及生成资源。执行 pnpm run build Component --target_arch arm64 进行本机开发编译，完成后通过 pnpm run start Component 启动。
+
+源码品牌、图标和配置检查不等于原生编译通过；只有构建产物实际启动后才能记录 macOS 运行验证。
