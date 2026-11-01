@@ -281,15 +281,15 @@ const char* const kBraveSyncImplLink[1] = {"https://github.com/brave/go-sync"};
 #if BUILDFLAG(ENABLE_BRAVE_WALLET)
 #define BRAVE_NATIVE_WALLET_FEATURE_ENTRIES                                   \
   EXPAND_FEATURE_ENTRIES(                                                     \
-      {"brave-wallet-zcash", "Enable BraveWallet ZCash support",              \
-       "Zcash support for native Brave Wallet", kOsDesktop | kOsAndroid,      \
+      {"brave-wallet-zcash", "Enable EcomWallet ZCash support",              \
+       "Zcash support for native Ecom Wallet", kOsDesktop | kOsAndroid,      \
        FEATURE_WITH_PARAMS_VALUE_TYPE(                                        \
            brave_wallet::features::kBraveWalletZCashFeature,                  \
            kZCashFeatureVariations, "BraveWalletZCash")},                     \
       {                                                                       \
           "brave-wallet-polkadot",                                            \
-          "Enable Brave Wallet Polkadot support",                             \
-          "Polkadot support for native Brave Wallet",                         \
+          "Enable Ecom Wallet Polkadot support",                             \
+          "Polkadot support for native Ecom Wallet",                         \
           kOsDesktop,                                                         \
           FEATURE_WITH_PARAMS_VALUE_TYPE(                                     \
               brave_wallet::features::kBraveWalletPolkadotFeature,            \
@@ -297,16 +297,16 @@ const char* const kBraveSyncImplLink[1] = {"https://github.com/brave/go-sync"};
       },                                                                      \
       {                                                                       \
           "brave-wallet-bitcoin",                                             \
-          "Enable Brave Wallet Bitcoin support",                              \
-          "Bitcoin support for native Brave Wallet",                          \
+          "Enable Ecom Wallet Bitcoin support",                              \
+          "Bitcoin support for native Ecom Wallet",                          \
           kOsDesktop | kOsAndroid,                                            \
           FEATURE_VALUE_TYPE(                                                 \
               brave_wallet::features::kBraveWalletBitcoinFeature),            \
       },                                                                      \
       {                                                                       \
           "brave-wallet-cardano",                                             \
-          "Enable Brave Wallet Cardano support",                              \
-          "Cardano support for native Brave Wallet",                          \
+          "Enable Ecom Wallet Cardano support",                              \
+          "Cardano support for native Ecom Wallet",                          \
           kOsDesktop,                                                         \
           FEATURE_VALUE_TYPE(                                                 \
               brave_wallet::features::kBraveWalletCardanoFeature),            \
@@ -314,7 +314,7 @@ const char* const kBraveSyncImplLink[1] = {"https://github.com/brave/go-sync"};
       {                                                                       \
           "brave-wallet-enable-ankr-balances",                                \
           "Enable Ankr balances",                                             \
-          "Enable usage of Ankr Advanced API for fetching balances in Brave " \
+          "Enable usage of Ankr Advanced API for fetching balances in Ecom " \
           "Wallet",                                                           \
           kOsDesktop | kOsAndroid,                                            \
           FEATURE_VALUE_TYPE(                                                 \
@@ -324,14 +324,14 @@ const char* const kBraveSyncImplLink[1] = {"https://github.com/brave/go-sync"};
           "brave-wallet-enable-transaction-simulations",                      \
           "Enable transaction simulations",                                   \
           "Enable usage of Blowfish API for running transaction simulations " \
-          "in Brave Wallet",                                                  \
+          "in Ecom Wallet",                                                  \
           kOsDesktop | kOsAndroid,                                            \
           FEATURE_VALUE_TYPE(brave_wallet::features::                         \
                                  kBraveWalletTransactionSimulationsFeature),  \
       },                                                                      \
       {                                                                       \
           "brave-wallet-side-panel",                                          \
-          "Enable Brave Wallet in the sidebar panel",                         \
+          "Enable Ecom Wallet in the sidebar panel",                         \
           "Show the Wallet panel UI in the browser sidebar instead of "       \
           "opening a full-page tab",                                          \
           kOsDesktop,                                                         \
@@ -346,23 +346,23 @@ const char* const kBraveSyncImplLink[1] = {"https://github.com/brave/go-sync"};
   EXPAND_FEATURE_ENTRIES(                                                      \
       {                                                                        \
           "brave-news-peek",                                                   \
-          "Brave News prompts on New Tab Page",                                \
-          "Prompt Brave News via the top featured article peeking up from "    \
+          "Ecom News prompts on New Tab Page",                                \
+          "Prompt Ecom News via the top featured article peeking up from "    \
           "the bottom of the New Tab Page, after a short delay.",              \
           kOsDesktop,                                                          \
           FEATURE_VALUE_TYPE(brave_news::features::kBraveNewsCardPeekFeature), \
       },                                                                       \
       {                                                                        \
           "brave-news-feed-update",                                            \
-          "Brave News Feed Update",                                            \
-          "Use the updated Brave News feed",                                   \
+          "Ecom News Feed Update",                                            \
+          "Use the updated Ecom News feed",                                   \
           kOsDesktop,                                                          \
           FEATURE_VALUE_TYPE(brave_news::features::kBraveNewsFeedUpdate),      \
       },                                                                       \
       {                                                                        \
           "brave-news-sidebar",                                                \
-          "Brave News Sidebar",                                                \
-          "Show a Brave News entry in the sidebar that opens a side panel.",   \
+          "Ecom News Sidebar",                                                \
+          "Show a Ecom News entry in the sidebar that opens a side panel.",   \
           kOsDesktop,                                                          \
           FEATURE_VALUE_TYPE(brave_news::features::kBraveNewsSidebar),         \
       })
@@ -443,13 +443,13 @@ const char* const kBraveSyncImplLink[1] = {"https://github.com/brave/go-sync"};
   EXPAND_FEATURE_ENTRIES(                                                   \
       {                                                                     \
           "brave-commands",                                                 \
-          "Brave Commands",                                                 \
+          "Ecom Commands",                                                 \
           "Enable experimental page for viewing and executing commands in " \
-          "Brave",                                                          \
+          "Ecom",                                                          \
           kOsWin | kOsMac | kOsLinux,                                       \
           FEATURE_VALUE_TYPE(commands::features::kBraveCommands),           \
       },                                                                    \
-      {"brave-commands-omnibox", "Brave Commands in Omnibox",               \
+      {"brave-commands-omnibox", "Ecom Commands in Omnibox",               \
        "Enable quick commands in the omnibox", kOsWin | kOsMac | kOsLinux,  \
        FEATURE_VALUE_TYPE(features::kBraveCommandsInOmnibox)})
 #else
@@ -561,7 +561,7 @@ const char* const kBraveSyncImplLink[1] = {"https://github.com/brave/go-sync"};
   EXPAND_FEATURE_ENTRIES({                                           \
       "brave-android-tab-groups-settings",                           \
       "Android tab groups settings",                                 \
-      "Expose Brave's replacement Tabs and tab groups settings UI.", \
+      "Expose Ecom's replacement Tabs and tab groups settings UI.", \
       kOsAndroid,                                                    \
       FEATURE_VALUE_TYPE(features::kBraveAndroidTabGroupsSettings),  \
   })
@@ -604,7 +604,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
     {"Force upstream vertical tabs",
      tabs::switches::kVerticalTabMigrationSwitch,
      tabs::switches::kVerticalTabMigrationForceUpstreamValue},
-    {"Reset to Brave vertical tabs",
+    {"Reset to Ecom vertical tabs",
      tabs::switches::kVerticalTabMigrationSwitch,
      tabs::switches::kVerticalTabMigrationResetValue},
 };
@@ -634,37 +634,37 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                      \
       {                                                                       \
           "brave-vertical-tab-hide-completely",                               \
-          "Brave Vertical Tab Hide Completely",                               \
+          "Ecom Vertical Tab Hide Completely",                               \
           "Hides the vertical tab strip when collapsed",                      \
           kOsWin | kOsMac | kOsLinux,                                         \
           FEATURE_VALUE_TYPE(tabs::kBraveVerticalTabHideCompletely),          \
       },                                                                      \
       {                                                                       \
           "brave-vertical-tab-expand-delay",                                  \
-          "Brave Vertical Tab Expand Delay",                                  \
+          "Ecom Vertical Tab Expand Delay",                                  \
           "Delay before expanding the vertical tab strip when hovering",      \
           kOsWin | kOsMac | kOsLinux,                                         \
           MULTI_VALUE_TYPE(kVerticalTabExpandDelayChoices),                   \
       },                                                                      \
       {                                                                       \
           "brave-vertical-tab-collapse-delay",                                \
-          "Brave Vertical Tab Collapse Delay",                                \
+          "Ecom Vertical Tab Collapse Delay",                                \
           "Delay before collapsing the vertical tab strip when mouse exits",  \
           kOsWin | kOsMac | kOsLinux,                                         \
           MULTI_VALUE_TYPE(kVerticalTabCollapseDelayChoices),                 \
       },                                                                      \
       {                                                                       \
           "brave-vertical-tab-migration",                                     \
-          "Brave Vertical Tab Migration (testing)",                           \
+          "Ecom Vertical Tab Migration (testing)",                           \
           "Force-route to Chromium's native vertical tabs, or reset back to " \
-          "Brave's own vertical tabs. Internal testing of the migration "     \
+          "Ecom's own vertical tabs. Internal testing of the migration "     \
           "effort only - not a real user-facing setting.",                    \
           kOsWin | kOsMac | kOsLinux,                                         \
           MULTI_VALUE_TYPE(kVerticalTabMigrationChoices),                     \
       },                                                                      \
       {                                                                       \
           "brave-tree-tab",                                                   \
-          "Brave Tree Tab",                                                   \
+          "Ecom Tree Tab",                                                   \
           "Enables the Tree Tab feature",                                     \
           kOsWin | kOsMac | kOsLinux,                                         \
           FEATURE_VALUE_TYPE(tabs::kBraveTreeTab),                            \
@@ -705,8 +705,8 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
 #define BRAVE_DARKER_THEME_FEATURE_ENTRIES                           \
   EXPAND_FEATURE_ENTRIES({                                           \
       "brave-ultra-dark-theme",                                      \
-      "Brave Ultra Dark Theme",                                      \
-      "Enables the Brave Ultra Dark theme",                          \
+      "Ecom Ultra Dark Theme",                                      \
+      "Enables the Ecom Ultra Dark theme",                          \
       kOsWin | kOsMac | kOsLinux,                                    \
       FEATURE_VALUE_TYPE(darker_theme::features::kBraveDarkerTheme), \
   })
@@ -734,8 +734,8 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
 #define BRAVE_PAGE_INFO_FEATURE_ENTRIES                                     \
   EXPAND_FEATURE_ENTRIES({                                                  \
       "brave-shields-page-info",                                            \
-      "Show Brave Shields in Page Info",                                    \
-      "Shows Brave Shields settings in the Page Info bubble",               \
+      "Show Ecom Shields in Page Info",                                    \
+      "Shows Ecom Shields settings in the Page Info bubble",               \
       kOsWin | kOsMac | kOsLinux,                                           \
       FEATURE_VALUE_TYPE(page_info::features::kShowBraveShieldsInPageInfo), \
   })
@@ -761,28 +761,28 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
   EXPAND_FEATURE_ENTRIES(                                                      \
       {                                                                        \
           "brave-ai-chat",                                                     \
-          "Brave AI Chat",                                                     \
+          "Ecom AI Chat",                                                     \
           "Summarize articles and engage in conversation with AI",             \
           kOsWin | kOsMac | kOsLinux | kOsAndroid,                             \
           FEATURE_VALUE_TYPE(ai_chat::features::kAIChat),                      \
       },                                                                       \
       {                                                                        \
           "brave-ai-first",                                                    \
-          "Brave AI Chat First",                                               \
-          "Prioritize Leo vs Search within Brave",                             \
+          "Ecom AI Chat First",                                               \
+          "Prioritize Leo vs Search within Ecom",                             \
           kOsWin | kOsMac | kOsLinux | kOsAndroid,                             \
           FEATURE_VALUE_TYPE(ai_chat::features::kAIChatFirst),                 \
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-history",                                             \
-          "Brave AI Chat History",                                             \
+          "Ecom AI Chat History",                                             \
           "Enables AI Chat History persistence and management",                \
           kOsWin | kOsMac | kOsLinux | kOsAndroid,                             \
           FEATURE_VALUE_TYPE(ai_chat::features::kAIChatHistory),               \
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-global-side-panel",                                   \
-          "Brave AI Chat Global Side Panel",                                   \
+          "Ecom AI Chat Global Side Panel",                                   \
           "Keeps the same conversation when navigating sites or changing "     \
           "active tab",                                                        \
           kOsDesktop,                                                          \
@@ -791,7 +791,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-move-full-page-to-side-panel",                        \
-          "Brave AI Chat Move Full Page To Side Panel",                        \
+          "Ecom AI Chat Move Full Page To Side Panel",                        \
           "Moves the full-page AI Chat conversation into the side panel when " \
           "an in-conversation link is clicked, and back to a tab when "        \
           "opening "                                                           \
@@ -802,14 +802,14 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-rich-search-widgets",                                 \
-          "Brave AI Chat Rich Search Widgets",                                 \
+          "Ecom AI Chat Rich Search Widgets",                                 \
           "Enables AI Chat Rich Search Widgets",                               \
           kOsWin | kOsMac | kOsLinux | kOsAndroid,                             \
           FEATURE_VALUE_TYPE(ai_chat::features::kRichSearchWidgets),           \
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-user-choice-tool",                                    \
-          "Brave AI Chat User Choice Tool",                                    \
+          "Ecom AI Chat User Choice Tool",                                    \
           "AI can offer a multiple choice question to the user during a "      \
           "conversation.",                                                     \
           kOsAll,                                                              \
@@ -817,7 +817,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-agent-profile",                                       \
-          "Brave's AI browsing",                                               \
+          "Ecom's AI browsing",                                               \
           "Enables Ai browsing features and only in a separate built-in "      \
           "profile.",                                                          \
           kOsWin | kOsMac | kOsLinux,                                          \
@@ -825,14 +825,14 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-ai-host-specific-distillation",                               \
-          "Brave AI Host-Specific Distillation",                               \
+          "Ecom AI Host-Specific Distillation",                               \
           "Enables support for host-specific distillation scripts",            \
           kOsWin | kOsMac | kOsLinux | kOsAndroid,                             \
           FEATURE_VALUE_TYPE(ai_chat::features::kCustomSiteDistillerScripts),  \
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-context-menu-rewrite-in-place",                       \
-          "Brave AI Chat Rewrite In Place From Context Menu",                  \
+          "Ecom AI Chat Rewrite In Place From Context Menu",                  \
           "Enables AI Chat rewrite in place feature from the context menu",    \
           kOsDesktop,                                                          \
           FEATURE_VALUE_TYPE(ai_chat::features::kContextMenuRewriteInPlace),   \
@@ -846,14 +846,14 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-open-leo-from-brave-search",                          \
-          "Open Leo AI Chat from Brave Search",                                \
-          "Enables opening Leo AI Chat from Brave Search",                     \
+          "Open Leo AI Chat from Ecom Search",                                \
+          "Enables opening Leo AI Chat from Ecom Search",                     \
           kOsDesktop | kOsAndroid,                                             \
           FEATURE_VALUE_TYPE(ai_chat::features::kOpenAIChatFromBraveSearch),   \
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-web-content-association-default",                     \
-          "Brave AI Chat Web Content Association Default",                     \
+          "Ecom AI Chat Web Content Association Default",                     \
           "For AI Chat Conversations which are associated with web content, "  \
           "allow the toggle for sending page content to be set to enabled "    \
           "when the conversation is created.",                                 \
@@ -863,13 +863,13 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       {                                                                        \
           "brave-ai-chat-show-input-on-new-tab-page",                          \
           "Show AI Chat input on the New Tab Page",                            \
-          "Show a Brave AI chat input on the New Tab Page.",                   \
+          "Show a Ecom AI chat input on the New Tab Page.",                   \
           kOsDesktop,                                                          \
           FEATURE_VALUE_TYPE(ai_chat::features::kShowAIChatInputOnNewTabPage), \
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-detailed-page-content-extraction",                    \
-          "Brave AI Chat Detailed Page Content Extraction",                    \
+          "Ecom AI Chat Detailed Page Content Extraction",                    \
           "Uses optimization_guide-based page content extraction as the "      \
           "default method for AI Chat page context.",                          \
           kOsWin | kOsMac | kOsLinux | kOsAndroid,                             \
@@ -878,14 +878,14 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-conversation-share",                                  \
-          "Brave AI Chat Conversation Sharing",                                \
+          "Ecom AI Chat Conversation Sharing",                                \
           "Enables sharing a conversation from the conversation header.",      \
           kOsWin | kOsMac | kOsLinux | kOsAndroid,                             \
           FEATURE_VALUE_TYPE(ai_chat::features::kAIChatConversationShare),     \
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-export-json",                                         \
-          "Brave AI Chat Export JSON",                                         \
+          "Ecom AI Chat Export JSON",                                         \
           "Enables copying serialized conversation data as JSON to the "       \
           "clipboard when using the alt+meta key and the \"Copy entire "       \
           "conversation\" menu option.",                                       \
@@ -894,7 +894,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-ai-chat-math-rendering",                                      \
-          "Brave AI Chat Math Rendering",                                      \
+          "Ecom AI Chat Math Rendering",                                      \
           "Renders LaTeX expressions in assistant responses as typeset math.", \
           kOsWin | kOsMac | kOsLinux | kOsAndroid,                             \
           FEATURE_VALUE_TYPE(ai_chat::features::kAIChatMathRendering),         \
@@ -907,7 +907,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
   IF_BUILDFLAG(ENABLE_AI_CHAT_TAB_MANAGEMENT_TOOL,                            \
                EXPAND_FEATURE_ENTRIES({                                       \
                    "brave-ai-chat-tab-management-tool",                       \
-                   "Brave AI Chat Tab Management Tool",                       \
+                   "Ecom AI Chat Tab Management Tool",                       \
                    "AI can offer to sort, group, or close tabs to solve a "   \
                    "user task during a conversation.",                        \
                    kOsDesktop,                                                \
@@ -934,7 +934,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
   EXPAND_FEATURE_ENTRIES(                                                     \
       {                                                                       \
           "brave-omnibox-tab-switch-by-default",                              \
-          "Brave Tab Switch by Default",                                      \
+          "Ecom Tab Switch by Default",                                      \
           "Prefer switching to already open tabs, rather than navigating in " \
           "a "                                                                \
           "new tab",                                                          \
@@ -943,7 +943,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                      \
       {                                                                       \
           "brave-history-more-search-results",                                \
-          "Brave More History",                                               \
+          "Ecom More History",                                               \
           "Include more history in the omnibox search results",               \
           kOsWin | kOsLinux | kOsMac | kOsAndroid,                            \
           FEATURE_VALUE_TYPE(history::kHistoryMoreSearchResults),             \
@@ -954,8 +954,8 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       ENABLE_EXTENSIONS,                                                       \
       EXPAND_FEATURE_ENTRIES({                                                 \
           "brave-extensions-manifest-v2",                                      \
-          "Brave Extensions manifest V2",                                      \
-          "Enables Brave support for some manifest V2 extensions",             \
+          "Ecom Extensions manifest V2",                                      \
+          "Enables Ecom support for some manifest V2 extensions",             \
           kOsDesktop,                                                          \
           FEATURE_VALUE_TYPE(extensions_mv2::features::kExtensionsManifestV2), \
       }))
@@ -980,8 +980,8 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       EXPAND_FEATURE_ENTRIES({                                             \
           "brave-extension-malware-blocklist",                             \
           "Enhanced malicious extension blocking",                         \
-          "Also turns off extensions flagged on Brave's own "              \
-          "malicious-extension list, in addition to the extensions Brave " \
+          "Also turns off extensions flagged on Ecom's own "              \
+          "malicious-extension list, in addition to the extensions Ecom " \
           "already blocks.",                                               \
           kOsWin | kOsLinux | kOsMac,                                      \
           FEATURE_VALUE_TYPE(extension_malware_blocklist::features::       \
@@ -1054,7 +1054,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
 #define BRAVE_WORKSPACE_FEATURE_ENTRY                            \
   EXPAND_FEATURE_ENTRIES({                                       \
       "brave-workspace",                                         \
-      "Brave Workspace",                                         \
+      "Ecom Workspace",                                         \
       "Save sets of windows and tabs into loadable workspaces.", \
       kOsWin | kOsLinux | kOsMac,                                \
       FEATURE_VALUE_TYPE(features::kWorkspaces),                 \
@@ -1067,7 +1067,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
 #define BRAVE_SCREENSHOT_FEATURE_ENTRY                                        \
   EXPAND_FEATURE_ENTRIES({                                                    \
       "brave-screenshot",                                                     \
-      "Enable Brave Screenshot",                                              \
+      "Enable Ecom Screenshot",                                              \
       "Adds a toolbar button for capturing the visible area or full page as " \
       "a PNG.",                                                               \
       kOsDesktop,                                                             \
@@ -1114,7 +1114,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-ntp-search-widget",                                           \
-          "Brave Search Widget on the NTP",                                    \
+          "Ecom Search Widget on the NTP",                                    \
           "Enables searching directly from the New Tab Page",                  \
           kOsDesktop,                                                          \
           FEATURE_VALUE_TYPE(features::kBraveNtpSearchWidget),                 \
@@ -1197,7 +1197,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       {                                                                        \
           "brave-adblock-default-1p-blocking",                                 \
           "Shields first-party network blocking",                              \
-          "Allow Brave Shields to block first-party network requests in "      \
+          "Allow Ecom Shields to block first-party network requests in "      \
           "Standard blocking mode",                                            \
           kOsAll,                                                              \
           FEATURE_VALUE_TYPE(                                                  \
@@ -1224,10 +1224,10 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-adblock-experimental-list-default",                           \
-          "Treat 'Brave Experimental Adblock Rules' as a default list "        \
+          "Treat 'Ecom Experimental Adblock Rules' as a default list "        \
           "source",                                                            \
                                                                                \
-          "Enables the 'Brave Experimental Adblock Rules' regional list if "   \
+          "Enables the 'Ecom Experimental Adblock Rules' regional list if "   \
           "its toggle in brave://adblock hasn't otherwise been modified",      \
           kOsAll,                                                              \
           FEATURE_VALUE_TYPE(                                                  \
@@ -1262,7 +1262,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       {                                                                        \
           "brave-domain-block-1pes",                                           \
           "Enable domain blocking using First Party Ephemeral Storage",        \
-          "When visiting a blocked domain, Brave will try to enable "          \
+          "When visiting a blocked domain, Ecom will try to enable "          \
           "Ephemeral Storage for a first party context, meaning neither "      \
           "cookies nor localStorage data will be persisted after a website "   \
           "is closed. Ephemeral Storage will be auto-enabled only if no data " \
@@ -1336,21 +1336,21 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
           "transition-to-upstream-https-upgrades",                             \
           "Transition to use upstream HTTPS upgrades",                         \
           "Transition to upstream HTTPS upgrade implementation instead of "    \
-          "Brave's own.",                                                      \
+          "Ecom's own.",                                                      \
           kOsAll,                                                              \
           FEATURE_VALUE_TYPE(                                                  \
               brave_shields::features::kTransitionToUpstreamHttpsUpgrades),    \
       },                                                                       \
       {                                                                        \
           "brave-farbling",                                                    \
-          "Enable Brave Farbling",                                             \
+          "Enable Ecom Farbling",                                             \
           "Enables randomization of fingerprinting-susceptible WebAPIs",       \
           kOsAll,                                                              \
           FEATURE_VALUE_TYPE(brave_shields::features::kBraveFarbling),         \
       },                                                                       \
       {                                                                        \
           "brave-farbling-token-reset",                                        \
-          "Enable Brave Farbling token reset",                                 \
+          "Enable Ecom Farbling token reset",                                 \
           "Enables resetting of the brave farbling token across browser "      \
           "restarts.",                                                         \
           kOsAll,                                                              \
@@ -1384,27 +1384,27 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       {                                                                        \
           "brave-forget-first-party-storage",                                  \
           "Enable First Party Storage Cleanup support",                        \
-          "Add cookie blocking mode which allows Brave to cleanup first "      \
+          "Add cookie blocking mode which allows Ecom to cleanup first "      \
           "party storage (Cookies, DOM Storage) on website close",             \
           kOsAll,                                                              \
           FEATURE_VALUE_TYPE(net::features::kBraveForgetFirstPartyStorage),    \
       },                                                                       \
       {                                                                        \
           "brave-rewards-verbose-logging",                                     \
-          "Enable Brave Rewards verbose logging",                              \
-          "Enables detailed logging of Brave Rewards system events to a log "  \
+          "Enable Ecom Rewards verbose logging",                              \
+          "Enables detailed logging of Ecom Rewards system events to a log "  \
           "file stored on your device. Please note that this log file could "  \
           "include information such as browsing history and credentials such " \
           "as passwords and access tokens depending on your activity. Please " \
-          "do not share it unless asked to by Brave staff.",                   \
+          "do not share it unless asked to by Ecom staff.",                   \
           kOsDesktop | kOsAndroid,                                             \
           FEATURE_VALUE_TYPE(brave_rewards::features::kVerboseLoggingFeature), \
       },                                                                       \
       {                                                                        \
           "brave-rewards-allow-unsupported-wallet-providers",                  \
-          "Always show Brave Rewards custodial connection options",            \
+          "Always show Ecom Rewards custodial connection options",            \
                                                                                \
-          "Allows all custodial options to be selected in Brave Rewards, "     \
+          "Allows all custodial options to be selected in Ecom Rewards, "     \
           "including those not supported for your Rewards country.",           \
           kOsDesktop | kOsAndroid,                                             \
           FEATURE_VALUE_TYPE(brave_rewards::features::                         \
@@ -1412,8 +1412,8 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-rewards-allow-self-custody-providers",                        \
-          "Enable Brave Rewards self-custody connection options",              \
-          "Enables self-custody options to be selected in Brave Rewards.",     \
+          "Enable Ecom Rewards self-custody connection options",              \
+          "Enables self-custody options to be selected in Ecom Rewards.",     \
           kOsDesktop | kOsAndroid,                                             \
           FEATURE_VALUE_TYPE(                                                  \
               brave_rewards::features::kAllowSelfCustodyProvidersFeature),     \
@@ -1428,8 +1428,8 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-rewards-platform-creator-detection",                          \
-          "Detect Brave Creators on media platform sites",                     \
-          "Enables detection of Brave Creator pages on media platform sites.", \
+          "Detect Ecom Creators on media platform sites",                     \
+          "Enables detection of Ecom Creator pages on media platform sites.", \
           kOsDesktop | kOsAndroid,                                             \
           FEATURE_VALUE_TYPE(                                                  \
               brave_rewards::features::kPlatformCreatorDetectionFeature),      \
@@ -1565,7 +1565,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
           "brave-show-strict-fingerprinting-mode",                             \
           "Show Strict Fingerprinting Mode",                                   \
           "Show Strict (aggressive) option for Fingerprinting Mode in "        \
-          "Brave Shields ",                                                    \
+          "Ecom Shields ",                                                    \
           kOsAll,                                                              \
           FEATURE_VALUE_TYPE(                                                  \
               brave_shields::features::kBraveShowStrictFingerprintingMode),    \
@@ -1591,7 +1591,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       {                                                                        \
           "brave-webcompat-exceptions-service",                                \
           "Allow feature exceptions for webcompat",                            \
-          "Disables Brave features for specific websites when they break "     \
+          "Disables Ecom features for specific websites when they break "     \
           "website functionality.",                                            \
           kOsAll,                                                              \
           FEATURE_VALUE_TYPE(                                                  \
@@ -1607,14 +1607,14 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-override-sync-server-url",                                    \
-          "Override Brave Sync server URL",                                    \
-          "Allows you to use a self-hosted server with Brave Sync. You can "   \
+          "Override Ecom Sync server URL",                                    \
+          "Allows you to use a self-hosted server with Ecom Sync. You can "   \
           "learn more about the server implementation in the repository link " \
           "mentioned below. "                                                  \
           "Note: Only HTTPS URLs are supported by default. HTTP URLs are "     \
           "only allowed for potentially trustworthy origins like localhost. "  \
           "Insecure URLs that don't meet these requirements will be ignored "  \
-          "in favor of the official Brave-hosted server",                      \
+          "in favor of the official Ecom-hosted server",                      \
           kOsAll,                                                              \
           STRING_VALUE_TYPE(syncer::kSyncServiceURL, ""),                      \
           kBraveSyncImplLink,                                                  \
@@ -1623,7 +1623,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
           "brave-ad-block-only-mode",                                          \
           "Adblock-Only mode availability",                                    \
           "Adds an option in settings for Adblock-Only mode, which retains "   \
-          "core ad blocking rules of Brave Shields. This is an experimental "  \
+          "core ad blocking rules of Ecom Shields. This is an experimental "  \
           "mode, go to brave://settings/shields to enable.",                   \
           kOsWin | kOsLinux | kOsMac,                                          \
           FEATURE_VALUE_TYPE(brave_shields::features::kAdblockOnlyMode),       \
@@ -1631,7 +1631,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       {                                                                        \
           "brave-show-updated-shields-panel",                                  \
           "Show updated shields panel",                                        \
-          "Shows an updated WebUI for the Brave Shields panel.",               \
+          "Shows an updated WebUI for the Ecom Shields panel.",               \
           kOsWin | kOsLinux | kOsMac,                                          \
           FEATURE_VALUE_TYPE(                                                  \
               brave_shields::features::kShowUpdatedShieldsPanel),              \
@@ -1646,8 +1646,8 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
       },                                                                       \
       {                                                                        \
           "brave-shred",                                                       \
-          "Enable Brave 'Shred' Feature",                                      \
-          "Enable the Brave 'Shred' feature which will allow a user to "       \
+          "Enable Ecom 'Shred' Feature",                                      \
+          "Enable the Ecom 'Shred' feature which will allow a user to "       \
           "easily delete all site data on demand or automatically when "       \
           "closing a site or terminating the application.",                    \
           kOsAll,                                                              \
@@ -1705,8 +1705,8 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabMigrationChoices[] = {
   BRAVE_WORKSPACE_FEATURE_ENTRY                                                \
   EXPAND_FEATURE_ENTRIES({                                                     \
       "brave-origin",                                                          \
-      "Enable Brave Origin",                                                   \
-      "Enables Brave Origin features and settings.",                           \
+      "Enable Ecom Origin",                                                   \
+      "Enables Ecom Origin features and settings.",                           \
       kOsDesktop | kOsAndroid,                                                 \
       FEATURE_VALUE_TYPE(brave_origin::features::kBraveOrigin),                \
   })                                                                           \

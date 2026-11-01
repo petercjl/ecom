@@ -5,6 +5,7 @@
 
 from collections import defaultdict
 import json
+import re
 
 from override_utils import override_function, override_method
 
@@ -12,6 +13,45 @@ from grit.node import message
 
 # Length of the 'IDS_' prefix in message names
 _IDS_PREFIX_LEN = 4
+
+# Apply product branding after translation lookup, preserving message IDs and
+# existing translations. Legal owners and technical destinations retain their
+# original identity; only displayed prose is branded.
+_ECOM_BRAND_WORD = re.compile(
+    r'(?<![A-Za-z0-9_])brave(?:'
+    r'(?![A-Za-z0-9_])|(?=(?:Wallet|Rewards|Shields|News|Talk|VPN|Sync|Origin)'
+    r'(?![A-Za-z0-9_])))', re.I)
+_ECOM_PROTECTED_TEXT = re.compile(
+    r'<[^>]*>'
+    r'|(?:[a-z][a-z0-9+.-]*://|mailto:|www\.)[^\s<>"\x27]+'
+    r'|[\w.+-]+@[\w.-]+\.\w+'
+    r'|(?:[\w-]+\.)*brave\.[a-z][^\s<>"\x27]*'
+    r'|--[a-z0-9_-]+'
+    r'|(?:[a-z_]\w*\.)+brave\b'
+    r'|The Brave Authors'
+    r'|Brave Software(?:,? Inc\.?)?', re.I)
+_ECOM_LEGAL_IDS = re.compile(
+    r'COPYRIGHT|LICENSE|LICENSING|CREDITS|TERMS|PRIVACY_POLICY|TRADEMARK|ATTRIBUTION|SOURCE_CODE')
+
+
+def _EcomBrandMessage(text, name=''):
+    if ('brave' not in text.lower() or _ECOM_LEGAL_IDS.search(name)
+            or name in ('IDS_IMPORT_FROM_BRAVE', 'IDS_IMPORTER_BRAVE')):
+        return text
+    result = []
+    start = 0
+    for match in _ECOM_PROTECTED_TEXT.finditer(text):
+        result.append(_ECOM_BRAND_WORD.sub('Ecom', text[start:match.start()]))
+        result.append(match.group())
+        start = match.end()
+    result.append(_ECOM_BRAND_WORD.sub('Ecom', text[start:]))
+    return ''.join(result)
+
+
+@override_method(message.MessageNode)
+def Translate(self, original_method, lang, gender):
+    return _EcomBrandMessage(original_method(self, lang, gender),
+                             self.attrs.get('name', ''))
 
 
 def _GetSwiftExportMessageIds(root):

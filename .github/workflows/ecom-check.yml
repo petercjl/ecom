@@ -15,3 +15,7 @@ jobs:
           node-version: 24
       - run: node ecom/verify-source.mjs
       - run: node --test ecom/tests/*.test.mjs
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - run: python -B -m unittest script.lib.l10n.ecom_branding_test
