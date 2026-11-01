@@ -39,7 +39,7 @@ const std::u16string& NavigationEntryImpl::GetTitleForDisplay() const {
 
 // Virtual url should never be set to the display alias
 void NavigationEntryImpl::SetVirtualURL(const GURL& url) {
-  DCHECK(!url.SchemeIs(kBraveUIScheme))
+  DCHECK(!url.SchemeIs(kBraveUIScheme) && !url.SchemeIs("ecom"))
       << "Virtual URL should not use ecom:// scheme";
   SetVirtualURL_ChromiumImpl(url);
 }

@@ -12,7 +12,7 @@ namespace {
 // brave
 void MaybeRewriteVirtualURL(GURL* virtual_url) {
   if (virtual_url && (virtual_url->SchemeIs(content::kBraveUIScheme) ||
-                      virtual_url->SchemeIs("brave"))) {
+                      virtual_url->SchemeIs("ecom"))) {
     GURL::Replacements replacements;
     replacements.SetSchemeStr(content::kChromeUIScheme);
     *virtual_url = virtual_url->ReplaceComponents(replacements);

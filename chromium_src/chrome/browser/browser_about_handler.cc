@@ -15,7 +15,7 @@
 bool HandleChromeAboutAndChromeSyncRewrite(
     GURL* url,
     content::BrowserContext* browser_context) {
-  if (url->SchemeIs(content::kBraveUIScheme) || url->SchemeIs("brave")) {
+  if (url->SchemeIs(content::kBraveUIScheme) || url->SchemeIs("ecom")) {
     GURL::Replacements replacements;
     replacements.SetSchemeStr(content::kChromeUIScheme);
     *url = url->ReplaceComponents(replacements);

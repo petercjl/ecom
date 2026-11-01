@@ -29,7 +29,7 @@ BraveAutocompleteSchemeClassifier::GetInputTypeForScheme(
   }
   if (base::IsStringASCII(scheme) &&
       (base::EqualsCaseInsensitiveASCII(scheme, kBraveUIScheme) ||
-       base::EqualsCaseInsensitiveASCII(scheme, "brave"))) {
+       base::EqualsCaseInsensitiveASCII(scheme, "ecom"))) {
     return metrics::OmniboxInputType::URL;
   }
 

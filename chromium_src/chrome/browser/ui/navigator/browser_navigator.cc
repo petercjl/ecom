@@ -22,7 +22,7 @@ namespace {
 
 void UpdateBraveScheme(NavigateParams* params) {
   if (params->url.SchemeIs(content::kBraveUIScheme) ||
-      params->url.SchemeIs("brave")) {
+      params->url.SchemeIs("ecom")) {
     GURL::Replacements replacements;
     replacements.SetSchemeStr(content::kChromeUIScheme);
     params->url = params->url.ReplaceComponents(replacements);

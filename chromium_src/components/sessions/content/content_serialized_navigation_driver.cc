@@ -69,7 +69,7 @@ void ContentSerializedNavigationDriver::Sanitize(
   // Restore previous saved urls with brave:// scheme as chrome://
   const auto& virtual_url = navigation->virtual_url();
   if (virtual_url.SchemeIs(content::kBraveUIScheme) ||
-      virtual_url.SchemeIs("brave")) {
+      virtual_url.SchemeIs("ecom")) {
     GURL::Replacements replacements;
     replacements.SetSchemeStr(content::kChromeUIScheme);
     navigation->set_virtual_url(virtual_url.ReplaceComponents(replacements));

@@ -16,7 +16,7 @@ void BraveAdjustTextForCopy(GURL* url) {
 #if !BUILDFLAG(IS_IOS)
   if (url->scheme() == content::kChromeUIScheme) {
     GURL::Replacements replacements;
-    replacements.SetSchemeStr(content::kBraveUIScheme);
+    replacements.SetSchemeStr("ecom");
     *url = url->ReplaceComponents(replacements);
   }
 #endif

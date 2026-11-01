@@ -78,7 +78,7 @@ void BraveBrowserWebContentsDelegate::UpdateTargetURL(
   GURL target_url = url;
   if (url.SchemeIs(content::kChromeUIScheme)) {
     GURL::Replacements replacements;
-    replacements.SetSchemeStr(content::kBraveUIScheme);
+    replacements.SetSchemeStr("ecom");
     target_url = target_url.ReplaceComponents(replacements);
   }
   BrowserWebContentsDelegate::UpdateTargetURL(source, target_url);
