@@ -62,10 +62,14 @@ function bootstrapDepotTools(options) {
   }
 }
 
-// Remove the depot_tools directory.
+// Preserve interrupted or superseded downloads for recovery.
 function removeDepotTools() {
   if (fs.existsSync(config.depotToolsDir)) {
-    fs.rmSync(config.depotToolsDir, { recursive: true })
+    const preserved = `${config.depotToolsDir}.preserved-${Date.now()}`
+    if (fs.existsSync(preserved)) {
+      throw new Error('Recovery directory already exists')
+    }
+    fs.renameSync(config.depotToolsDir, preserved)
   }
 }
 

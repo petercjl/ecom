@@ -43,7 +43,7 @@ export function prepareWorkspace(repo, workspace, ref = 'HEAD') {
   return { ok: true, workspace, revision, changed: !before.exists || before.revision !== revision };
 }
 function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, stdio: 'inherit', windowsHide: true, env: { ...process.env, DEPOT_TOOLS_UPDATE: '0' } });
+  const result = spawnSync(command, args, { cwd, stdio: 'inherit', windowsHide: true, env: { ...process.env, DEPOT_TOOLS_UPDATE: '0', PATH: [path.join(cwd, 'vendor/depot_tools/.cipd_bin'), path.join(cwd, 'vendor/depot_tools'), process.env.PATH].join(path.delimiter) } });
   if (result.error || result.status !== 0) throw failure('NATIVE_COMMAND_FAILED', result.error?.message || `Command exited with ${result.status ?? result.signal}`);
 }
 function runBatch(file, cwd) {
