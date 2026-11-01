@@ -29,3 +29,7 @@
 源码品牌、图标和配置检查不等于原生编译通过；只有构建产物实际启动后才能记录 macOS 运行验证。
 
 macOS 桌面构建的 Swift 编译器由选定的 Xcode 提供。Chromium 的旧版 iOS Swift 5.8 工具链通过 custom_deps 排除；原生 GN 中该工具链只用于特定 iOS 构建条件，Ecom 的 macOS/Windows 桌面目标不使用它。
+
+固定版本的 depot_tools 由 ecom/depot-tools-policy.mjs 应用 Ecom 的 CIPD 排除适配。适配前验证 Git 提交并保留原文件备份；发现其他本地修改时停止，保留现场。构建工作树内的工具文件由此流程管理，适配源码在项目根目录维护。
+
+macOS 构建命令通过 DEVELOPER_DIR 选择完整 Xcode 的 Contents/Developer 目录。本机验证环境为 Xcode 26.5（17F42）和 macOS 26.5 SDK；系统默认 Command Line Tools 的选择保持独立。
