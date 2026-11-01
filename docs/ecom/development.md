@@ -27,3 +27,5 @@
 使用独立安装的 Node 24 与 pnpm 11。先执行 pnpm run ecom:bootstrap 下载固定依赖并应用补丁，再在构建工作树中通过 pnpm run gclient -- runhooks 准备编译器及生成资源。执行 pnpm run build Component --target_arch arm64 进行本机开发编译，完成后通过 pnpm run start Component 启动。
 
 源码品牌、图标和配置检查不等于原生编译通过；只有构建产物实际启动后才能记录 macOS 运行验证。
+
+macOS 桌面构建的 Swift 编译器由选定的 Xcode 提供。Chromium 的旧版 iOS Swift 5.8 工具链通过 custom_deps 排除；原生 GN 中该工具链只用于特定 iOS 构建条件，Ecom 的 macOS/Windows 桌面目标不使用它。

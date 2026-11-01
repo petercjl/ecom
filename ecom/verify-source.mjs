@@ -13,6 +13,7 @@ assert.equal(baseline.development.mode, 'independent-snapshot');
 assert.equal(baseline.development.braveSynchronization, false);
 assert.match(baseline.source.commit, /^[a-f0-9]{40}$/);
 assert.equal(pkg.config.projects.chrome.tag, baseline.dependencies.chromium);
+assert.equal(pkg.config.projects.chrome.custom_deps['src/third_party/swift-toolchain'], null);
 assert.equal(pkg.config.projects.depot_tools.revision, baseline.dependencies.depotTools);
 assert.equal(pkg.repository.url, 'https://github.com/petercjl/ecom.git');
 assert.equal(pkg.scripts.sync, undefined);
