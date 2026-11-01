@@ -45,3 +45,7 @@ macOS 图形渲染构建同时需要 Xcode 的 Metal Toolchain 组件。通过�
 [2026-11-01 macOS arm64 Dev 验证](mac-dev-validation-2026-11-01.md) 记录实际应用身份、基础功能检查与增量构建耗时。
 
 macOS 应用图标的 ICNS 与 AppIcon 资源目录由同一确认源图生成，维护和校验入口见 [图标资源](icons.md)。
+
+## 本地编译后重启 Dev
+
+统一入口为 `node ecom/build-dev.mjs`，或 `pnpm run dev:restart`。脚本沿用上述固定构建配置，编译成功后正常退出并重新启动本工作区的 Ecom Dev，复用原数据目录。使用条件和日志位置见 [构建重启脚本](build-dev.md)。
