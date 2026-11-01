@@ -33,3 +33,5 @@ macOS 桌面构建的 Swift 编译器由选定的 Xcode 提供。Chromium 的旧
 固定版本的 depot_tools 由 ecom/depot-tools-policy.mjs 应用 Ecom 的 CIPD 排除适配。适配前验证 Git 提交并保留原文件备份；发现其他本地修改时停止，保留现场。构建工作树内的工具文件由此流程管理，适配源码在项目根目录维护。
 
 macOS 构建命令通过 DEVELOPER_DIR 选择完整 Xcode 的 Contents/Developer 目录。本机验证环境为 Xcode 26.5（17F42）和 macOS 26.5 SDK；系统默认 Command Line Tools 的选择保持独立。
+
+Ecom 桌面构建在 package.json 的 config.gn.args 中选择功能范围：AI 助手、资讯和钱包使用现有 GN 开关关闭；应用更新由 Ecom 自身的更新方案承接，Brave 的应用更新组件关闭。基础浏览、下载、设置和容器沿用原生能力。

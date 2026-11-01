@@ -98,6 +98,16 @@
         },
         "revision": "a20039648c0de69d8156906b18052bd47e9bf230"
       }
+    },
+    "gn": {
+      "args": {
+        "enable_ai_chat": false,
+        "enable_brave_news": false,
+        "enable_brave_wallet": false,
+        "enable_updater": false,
+        "enable_sparkle": false,
+        "enable_update_notifications": false
+      }
     }
   },
   "devDependencies": {
