@@ -46,6 +46,26 @@ async function quitDev(instance) {
   if (alive(instance.pid)) throw new Error('Ecom Dev 尚未正常退出；请关闭该 Dev 窗口后重试');
 }
 
+function prepareComponentExecutable(runDir) {
+  const info = fs.lstatSync(executable);
+  if (!info.isFile()) throw new Error('Dev 主程序不是普通文件，已停止启动');
+  if (info.nlink <= 1) return;
+  // Chromium's update clone can retain a hard link to this executable. Give
+  // the Component build its own inode so dyld resolves sibling libraries from
+  // the build directory rather than from a former update clone.
+  const backup = path.join(runDir, 'previous-main-executable');
+  const temporary = executable + '.ecom-restart-' + crypto.randomUUID();
+  if (fs.existsSync(backup) || fs.existsSync(temporary)) throw new Error('Dev 主程序准备路径已存在');
+  const checksum = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  fs.copyFileSync(executable, backup, fs.constants.COPYFILE_EXCL);
+  fs.chmodSync(backup, info.mode & 0o777);
+  fs.copyFileSync(executable, temporary, fs.constants.COPYFILE_EXCL);
+  fs.chmodSync(temporary, info.mode & 0o777);
+  if (checksum(backup) !== checksum(executable) || checksum(temporary) !== checksum(backup)) throw new Error('Dev 主程序备份校验失败');
+  fs.renameSync(temporary, executable);
+  if (fs.statSync(executable).nlink !== 1 || checksum(executable) !== checksum(backup)) throw new Error('Dev 主程序准备校验失败');
+}
+
 async function main() {
   if (process.argv.includes('--help')) { console.log('用法：node ecom/build-dev.mjs\n本地增量编译成功后，正常退出并重新启动当前工作区的 Ecom Dev。当前验证平台：macOS。'); return; }
   if (process.argv.length > 2) throw new Error('不支持的参数；使用 --help 查看用法');
@@ -81,10 +101,11 @@ async function main() {
     if (git(root, ['rev-parse', 'HEAD']) !== base || git(root, ['status', '--porcelain'])) throw new Error('编译期间源码已变化，保留当前 Dev；提交后重新构建');
     const previous = runningDev();
     if (previous) { console.log('编译成功，正在正常退出 Ecom Dev…'); await quitDev(previous); }
+    prepareComponentExecutable(runDir);
     const log = path.join(runDir, 'start.log');
     if (fs.existsSync(log)) throw new Error('启动日志已存在');
     const fd = fs.openSync(log, 'wx', 0o600);
-    const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'start', 'Component', '--no-first-run', '--no-default-browser-check', '--restore-last-session', '--remote-debugging-port=0', '--remote-debugging-address=127.0.0.1'], { cwd: root, env, stdio: ['ignore', fd, fd], detached: true });
+    const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'start', 'Component', '--no-first-run', '--no-default-browser-check', '--restore-last-session', '--remote-debugging-port=0', '--remote-debugging-address=127.0.0.1', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone'], { cwd: root, env, stdio: ['ignore', fd, fd], detached: true });
     child.on('error', () => {}); child.unref(); fs.closeSync(fd);
     for (let n = 0; n < 480; n++) {
       const current = runningDev();

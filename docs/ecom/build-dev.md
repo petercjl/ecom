@@ -12,4 +12,6 @@ node ecom/build-dev.mjs
 
 当前 Profile 为 `.brave-build/profiles/Ecom-Dev`。启动日志位于每次单独创建的 `.brave-build/dev-restart-*/start.log`；日志目录和文件分别采用 0700、0600 权限。脚本使用任务锁避免重复执行，保留中断任务的旧锁记录。
 
+Component 开发版依赖构建目录中的动态库。启动时使用构建目录里的主程序，并在需要时保留备份、校验字节后解除旧更新副本的可执行文件硬链接。此开发入口关闭仅服务于整包自动更新的 MacAppCodeSignClone 功能；正式产物的更新与签名流程单独验证。
+
 本机 macOS arm64 是当前验证环境。Windows 的构建与重启实现及验收在后续平台工作中补充。
