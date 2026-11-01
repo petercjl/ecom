@@ -99,6 +99,7 @@
         "revision": "a20039648c0de69d8156906b18052bd47e9bf230"
       }
     },
+    "siso_jobs_limit": 6,
     "gn": {
       "args": {
         "enable_ai_chat": false,
@@ -106,7 +107,11 @@
         "enable_brave_wallet": false,
         "enable_updater": false,
         "enable_sparkle": false,
-        "enable_update_notifications": false
+        "enable_update_notifications": false,
+        "symbol_level": 0,
+        "v8_symbol_level": 0,
+        "blink_symbol_level": 0,
+        "concurrent_links": 1
       }
     }
   },

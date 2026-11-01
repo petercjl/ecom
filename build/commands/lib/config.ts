@@ -244,7 +244,7 @@ export class Config {
     this.extraGnGenOpts = envConfig.getString(['brave_extra_gn_gen_opts'], '')
     this.extraNinjaOpts = []
     this.sisoLimits = envConfig.getMergedObject(['siso_limits'])
-    this.sisoJobsLimit = undefined
+    this.sisoJobsLimit = envConfig.getNumber(['siso_jobs_limit'])
     this.sisoCacheDir =
       envConfig.getPath(['siso_cache_dir']) || this.resolveCacheDir('siso')
     this.braveAndroidSafeBrowsingApiKey = envConfig.getString([
