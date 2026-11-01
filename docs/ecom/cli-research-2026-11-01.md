@@ -1,0 +1,87 @@
+# Ecom CLI 调研与接口建议
+
+调研日期：2026-11-01。状态：建议稿。下列 Ecom 命令为拟议接口，尚未实现；第三方能力依据当前官方仓库与文档核实。本轮未安装候选工具，也未进行 Ecom 运行兼容性测试。
+
+## 建议方向
+
+Ecom 提供统一的 `ecom` CLI。网页控制优先验证复用现有项目的实现，容器、原生设置、窗口和实例身份通过 Ecom 浏览器进程的共同能力层提供。CLI 与桌面界面操作同一套浏览器状态，上层业务 Skill 决定电商任务与操作流程。
+
+最小缺口是：带实例认证的本地能力入口，以及 `instanceId / windowId / tabId / containerId` 与真实原生对象的准确映射。随后接入页面快照及点击、输入、导航，完成双容器验证，再扩展能力。
+
+## GitHub 项目对照
+
+| 项目 | 核实的能力与实现特点 | Ecom 借鉴位置 | 需适配的边界 |
+| --- | --- | --- | --- |
+| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) | 面向 Agent 的 CLI；snapshot/ref、JSON、CDP 连接、标签目标；当前主线为 Rust CLI 与直接使用 CDP 的 Rust daemon | 首选命令设计及页面控制实现评估对象 | 自动发现、启动、退出与会话策略改为 Ecom 的实例身份；补充容器路由与原生设置 |
+| [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) | 页面快照、ref 交互、表单、文件上传、存储、截图；支持 attach CDP 及 detach | 交互、等待机制与测试验收参考，作为页面后端的备选 | 对既有 Ecom 的 CDP 连接逐项验证；自动化 context 不能直接当作 Ecom 容器 |
+| [browser-use/browser-harness](https://github.com/browser-use/browser-harness) | 通过 CDP 操作已登录的真实 Chrome；支持已有 Agent，允许工作区 helper 扩展 | 复用当前登录会话、人机协作与恢复流程参考 | 经常使用的 helper 需要归入 Ecom 的正式命令、schema 与测试 |
+| [ChromeDevTools/chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp) | 包含独立 chrome-devtools CLI；daemon、本地 socket/Windows named pipe、JSON；页面、网络、控制台、性能工具 | 诊断接口及本地通信设计参考 | 采用 Ecom 的认证、目标权限、文件范围和实例生命周期 |
+
+以上项目均未归档。GitHub 报告 agent-browser、playwright-cli、chrome-devtools-mcp 为 Apache-2.0，browser-harness 为 MIT。具体复用代码前核对所选版本的 LICENSE、NOTICE、依赖与需保留的来源声明。
+
+调研源码定位：
+
+| 仓库 | 核实 main 提交 |
+| --- | --- |
+| vercel-labs/agent-browser | `5868f7c05020e047c00e68e4abf9253cce864f41` |
+| microsoft/playwright-cli | `0a808078d96496cf2a8fa725143c870354f63cda` |
+| browser-use/browser-harness | `0727ae724122e3f70e103f55d07c6528f60e7241` |
+| ChromeDevTools/chrome-devtools-mcp | `8d009e854f8aa55b1ec31628e836d4d4731b8ec8` |
+
+补充依据：[Playwright CDP 连接文档](https://playwright.dev/docs/api/class-browsertype#browser-type-connect-over-cdp) 明确提示，其能力完整性低于 Playwright 原生协议连接，浏览器启动参数也可能影响功能；因此“能连接 Chromium”不等于已经兼容 Ecom。Chrome DevTools 的 [CLI 文档](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/docs/cli.md) 和 [工具参考](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/docs/tool-reference.md) 用于区分 CLI 与 MCP 实际暴露的命令；部分 MCP 命令未进入 CLI 生成。
+
+## Ecom 源码依据
+
+项目已有容器原生基础，可复用其逻辑与校验：
+
+- `components/containers/core/browser/containers_service.h` 提供容器列举、运行时查询、临时容器创建等能力。
+- `components/containers/core/browser/containers_settings_handler.h` 提供容器新增、更新、删除、排序及可编辑属性校验。
+- `components/containers/content/browser/storage_partition_utils.cc` 通过 StoragePartitionConfig 的 partition domain/name 及 WebContents 附属数据识别容器。
+
+因此需要建立 Ecom 原生容器映射，分别验证目标页面的交互、存储读取与清理。第三方的 session、profile、BrowserContext 与 Ecom 的容器具有不同职责。实现时复用或提取原生共同能力，避免把操作设置页面或修改磁盘 Preferences 当作管理接口。
+
+## 拟议接口表
+
+命令组统一以 `ecom` 开头。P0 为首批必做；P1 为随后补齐；P2 为后续扩展。同一组内先提供最小可用操作，缺口通过 capabilities 明确公布。
+
+| 优先级 | 接口组与拟议子命令 | 面向 Agent 的用途 | 适配方式 |
+| --- | --- | --- | --- |
+| P0 | `help / version / capabilities / schema / doctor` | 发现当前版本真正支持的命令、参数、权限及连接问题 | Ecom 统一契约，借鉴已有 CLI 的发现与诊断设计 |
+| P0 | `instance list / inspect / connect / disconnect`；`app status` | 精确连接 dev 或正式实例，报告真实身份 | Ecom 原生发现与认证；disconnect 只断开客户端 |
+| P0 | `window list / inspect / create / activate / close` | 列举和控制浏览器窗口 | 原生 Browser/窗口能力 |
+| P0 | `tab list / inspect / create / activate / close` | 找到现有标签，并在指定容器创建标签 | 原生标签管理及 CDP target 映射；始终返回容器归属 |
+| P0 | `page navigate / back / forward / reload / stop` | 打开页面、浏览导航与停止加载 | 复用页面控制实现；指定 tabId，核对容器与弹窗归属 |
+| P0 | `container list / inspect / create / update` | 创建、命名、着色并查询多账号容器 | 复用 Ecom 容器能力与属性校验 |
+| P0 | `tab open-in-container` | 在目标容器重新打开 URL，使用目标会话 | 原生明确操作；不迁移当前页面内存、表单或登录数据 |
+| P0 | `page snapshot / find / read` | 获取可操作元素、正文、链接、表格与属性 | 借鉴 snapshot/ref 与语义定位；带 frame 和页面版本 |
+| P0 | `page click / fill / type / select / check / press / scroll / hover / drag` | 表单填写、按钮交互及页面滚动 | 评估现有页面动作复用；失效引用与目标歧义明确报错 |
+| P0 | `page wait`；`dialog inspect / accept / dismiss` | 等待元素或导航；处理网页 JS 弹窗 | 条件等待；超时报告状态，不盲目重试有副作用动作 |
+| P0 | `page screenshot` | 页面、元素和整页截图供 Agent 判断 | 复用网页截图；完整浏览器窗口截图单独声明支持范围 |
+| P0 | `settings schema / get / set / reset` | 读取和修改浏览器配置 | 原生设置能力；首批涵盖启动行为、下载目录、外观、语言、默认搜索引擎，逐项公布读写支持 |
+| P0 | `operation inspect / wait / cancel`；`events watch` | 查询命令结果，订阅导航、标签、容器和下载变化 | Ecom 操作记录与事件协议；标明取消是否仍可能留下已执行动作 |
+| P1 | `upload set`；`download list / inspect / wait / cancel / reveal` | 上传文件、跟踪下载完成及定位产物 | 页面文件选择与原生下载管理结合；绑定容器、目标路径和实际文件 |
+| P1 | `permission list / get / set / reset` | 管理站点摄像头、麦克风、通知等权限 | 原生 ContentSettings；schema 公开实际作用域和容器支持情况 |
+| P1 | `storage inspect / read / clear`；`container remove` | 查看指定容器、站点的存储及执行定向清理 | 原生分区路由；敏感值受控读取，清理/删除先提供影响预览与确认契约 |
+| P1 | `session inspect / restore`；`app launch / quit / restart` | 恢复窗口、标签及容器归属，管理应用生命周期 | 原生会话和进程能力；网站登录有效性由网站决定 |
+| P1 | `network list / inspect`；`console list`；`page evaluate` | 诊断网页请求与错误，处理结构化读取的高级需求 | 借鉴 DevTools；响应体、凭据和脚本执行采用独立授权范围 |
+| P2 | `history / bookmark / tab-group / pdf / print / zoom / find-in-page` | 补齐原生浏览与个人整理功能 | 原生能力及页面能力按职责接入 |
+| P2 | `extension / performance / update` | 扩展管理、性能诊断和后续更新流程 | 按产品范围逐项开放；更新复用已确认的下载与重启确认流程 |
+
+## 接口共同规则
+
+1. 所有网页动作明确 `instanceId` 和 `tabId`，并可附预期 `containerId` 校验。容器 ID 持久；实例 ID 标识一次运行；标签 ID 在声明的生命周期内稳定。浏览器重启后旧目标应显式失效或通过会话恢复记录重新定位。
+2. 元素引用绑定 `tabId + frameId + documentVersion`。导航或重建后重新取快照；同名元素有歧义时返回错误。
+3. JSON 结果统一包含协议版本、操作 ID、真实目标、执行状态及结构化错误。区分未执行、已执行和结果未知；stdout 给结果，stderr 给诊断。
+4. macOS 优先评估受文件权限保护的 Unix domain socket，Windows 评估带用户 ACL 的 named pipe；分别验证调用方认证。网页无管理权限，生产接口通过认证桥接页面能力，原始调试端口属于开发诊断能力。
+5. 设置通过公开 schema 暴露类型、范围、默认值、只读/策略管理状态及重启要求。CLI 与桌面界面共享操作和校验。站点权限及存储支持范围单独公布，不推断为天然按容器隔离。
+6. 对同一标签的写操作排序；目标切换、页面更新和并发冲突返回可恢复错误。删除、清理与安全设置提供影响预览和确认机制，继承已有有效授权。Cookie、令牌及密码等默认脱敏；必要读取或导出依据明确授权。
+
+## 首批验证顺序
+
+1. 发现并认证连接现有 Ecom Dev，列出真实窗口、标签和容器；不创建另一个自动化浏览器来替代用户会话。
+2. 在容器 A/B 分别新建标签，完成导航、快照、点击、输入、读取和截图。用户切换当前标签时，CLI 继续准确操作原目标。
+3. 验证同一容器共享持久会话、不同容器存储隔离、弹窗和跨域跳转归属、单独退出及重启恢复。先使用本地可控站点，再按授权实测淘宝/千牛。
+4. 提供原生设置 schema、读取及一项可恢复配置修改，验证 GUI/CLI 一致，再扩展首批设置。
+5. 注入元素失效、连接中断、操作超时和双客户端并发，验证错误与操作查询契约。
+
+页面后端选型以该验证结果决定：先对 agent-browser 固定版本做复用评估，Playwright 作为备选与验收参照。代码可抽取范围、维护成本、运行依赖、平台支持和性能尚待实测，当前调研不构成兼容性或性能结论。Ecom 统一 CLI 契约保持独立，电商平台的商品、订单和广告策略由上层业务工具组合调用这些通用接口。
