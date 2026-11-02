@@ -51,4 +51,4 @@ sycmcli ecom run shop.trade-summary --container '<现有容器ID或名称>' \
 
 ## 尚未验证与缺口
 
-已验证 `shop.trade-summary` 的真实 Cookie-only 单店取数；平台店铺身份独立验证、其他接口适用性、多店并发与跨重启恢复需继续实测。若接口需要额外 CSRF 上下文，先以实际失败证据决定最小浏览器内部扩展。Windows 通信及 ACL、完整 schema/doctor、操作查询/取消、GUI/CLI 全能力覆盖、正式安装分发仍待实现。实现不承诺浏览器退出后仍可读取 Cookie；当前由运行中的 Ecom 网络服务托管会话。
+已验证 `shop.trade-summary` 的真实 Cookie-only 单店取数；双容器同一接口已通过交替与同时取数验证，见 [多容器取数测试](multi-container-test-2026-11-02.md)。平台店铺身份独立验证、其他接口适用性、更多店铺并发与跨重启恢复需继续实测。若接口需要额外 CSRF 上下文，先以实际失败证据决定最小浏览器内部扩展。Windows 通信及 ACL、完整 schema/doctor、操作查询/取消、GUI/CLI 全能力覆盖、正式安装分发仍待实现。实现不承诺浏览器退出后仍可读取 Cookie；当前由运行中的 Ecom 网络服务托管会话。
