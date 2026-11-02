@@ -39,14 +39,14 @@ node ecom/cli.mjs capabilities
 
 `shops verify --container '<ID>'` 请求平台身份。成功解析后返回候选身份及五分钟有效的 candidateId，待用户核对名称和账号；`shops confirm --container '<ID>' --shop-id '<候选店铺ID>' --candidate-id '<候选ID>'` 完成绑定。已绑定店铺的 `session.get` 在业务请求前重新核验，身份不符停止请求。普通容器保持原有行为；一个服务的身份核验不表示其他服务已经登录或获授权。
 
-当前双店服务返回登录错误 5810，界面显示“生意参谋需登录”。完成必要的人工登录后，再验收自动显示登录有效与身份绑定的正向路径；该状态不能作为店铺数据已验证的证据。
+服务登录和店铺身份绑定分别核验。生意参谋固定 JSON 检查通过时显示登录已核验；具体店铺身份仍以平台身份字段核对结果为准。当前持久 Cookie 修复及真实重启验收见 [会话 Cookie 保存](cookie-persistence-2026-11-02.md)。
 
 ## 管理、平台与自动状态
 
 `shops create|configure|update` 支持 `--home-url <HTTPS页面网址>`。`shops list` 返回生效的 `homeUrl`；`shops open --container <ID> --service home` 在该容器打开已保存首页。未设置时使用平台／用途的默认入口，现有账号的 ID 和会话保持不变。首页可独立于平台归属设置，禁止凭证 URL 及非 HTTPS 方案；已有明确服务参数（如 sycm、qianniu）继续作为固定快捷入口。GUI 的常用预设填写同一 URL 字段，用户可编辑任意页面路径。
 
 
-淘宝账号可通过 `--account-type merchant|buyer` 在创建或配置时明确用途。买家账号仍属于 `taobao` 分类；`shops open --service taobao` 使用同一容器打开淘宝首页，商家服务检查不会应用到买家账号。未绑定具体身份的账号可明确调整用途；已绑定身份的用途变更被拒绝。编辑名称与外观保持用途。GUI 的淘宝账号表单提供相同的用途选项。买家自动登录核验尚未接入，界面如实显示待核验。
+淘宝分类中的所有账号使用相同的容器管理与服务入口；账号名称及历史用途元数据不改变能力。保存的首页独立决定“打开”的目标，淘宝服务还提供 `taobao|sycm|qianniu|alimama` 固定入口。历史 `--account-type` 参数仅用于兼容及未指定首页时的默认入口，GUI 按统一账号模型管理。自动核验依据已接入服务的真实响应；某个服务未授权或未登录不等同于整个淘宝账号退出登录。
 
 
 - `shops platforms` 返回六类平台及其入口／服务和自动核验能力。平台 ID 为 `taobao`、`douyin`、`pinduoduo`、`jd`、`xiaohongshu`、`custom`。
