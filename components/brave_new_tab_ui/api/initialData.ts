@@ -7,7 +7,6 @@ import * as preferencesAPI from './preferences'
 import * as statsAPI from './stats'
 import * as wallpaper from './wallpaper'
 import getNTPBrowserAPI from './background'
-import { loadTimeData } from '$web-common/loadTimeData'
 
 export type InitialData = {
   preferences: NewTab.Preferences

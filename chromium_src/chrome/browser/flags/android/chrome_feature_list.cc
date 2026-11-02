@@ -61,7 +61,6 @@
 #endif
 
 // CHROMIUM_SRC_INTERNAL_USE
-#define BRAVE_VPN_FLAG
 
 #if BUILDFLAG(ENABLE_EMAIL_ALIASES)
 // CHROMIUM_SRC_INTERNAL_USE
@@ -76,7 +75,6 @@
     BRAVE_AI_CHAT_FLAGS                                                        \
     BRAVE_NEW_TAB_PAGE_AD_FLAG                                                 \
     BRAVE_WEB_DISCOVERY_FLAG                                                   \
-    BRAVE_VPN_FLAG                                                             \
     EMAIL_ALIASES_FLAG                                                         \
     &brave_rewards::features::kBraveRewards,                                   \
     &brave_search_conversion::features::kOmniboxBanner,                        \
@@ -109,5 +107,4 @@
 #undef BRAVE_AI_CHAT_FLAGS
 #undef BRAVE_NEW_TAB_PAGE_AD_FLAG
 #undef BRAVE_WEB_DISCOVERY_FLAG
-#undef BRAVE_VPN_FLAG
 #undef EMAIL_ALIASES_FLAG

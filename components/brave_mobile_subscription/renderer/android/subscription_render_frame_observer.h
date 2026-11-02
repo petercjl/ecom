@@ -25,7 +25,7 @@
 namespace brave_subscription {
 
 // Used on Android to conditionally inject the purchase token (via local
-// storage) for Brave VPN purchased on the Google Play Store. The Brave accounts
+// storage) for subscriptions purchased on the Google Play Store. The accounts
 // website will use this to link the purchase to a desktop credential.
 //
 // Implementation-wise, those methods will only resolve in a regular
@@ -51,7 +51,7 @@ class SubscriptionRenderFrameObserver : public content::RenderFrameObserver {
                            IsAllowed);
   FRIEND_TEST_ALL_PREFIXES(SubscriptionRenderFrameObserverTest, ExtractParam);
   FRIEND_TEST_ALL_PREFIXES(SubscriptionRenderFrameObserverTest, IsValueAllowed);
-  enum class Product { kVPN = 0, kLeo = 1, kOrigin = 2 };
+  enum class Product { kLeo = 1, kOrigin = 2 };
   enum class Page { kInitialLandingPage = 0, kResultLandingPage = 1 };
 
   bool EnsureConnected();

@@ -36,7 +36,6 @@ inline constexpr char kIntentParamName[] = "intent";
 inline constexpr char kIntentParamValue[] = "connect-receipt";
 inline constexpr char kIntentParamTestValue[] = "connect-receipt-test";
 inline constexpr char kProductParamName[] = "product";
-inline constexpr char kProductVPNParamValue[] = "vpn";
 inline constexpr char kProductLeoParamValue[] = "leo";
 inline constexpr char kProductOriginParamValue[] = "origin";
 inline constexpr char kIntentParamValueLinkOrder[] = "link-order";
@@ -94,8 +93,7 @@ void SubscriptionRenderFrameObserver::DidCreateScriptContext(
     return;
   }
 
-  if (product_ == Product::kVPN) {
-  } else if (product_ == Product::kLeo) {
+  if (product_ == Product::kLeo) {
     if (ai_chat_subscription_.is_bound()) {
       // Inject only linkResult object on the
       // https://account.brave.com/order-link/?product=leo page
@@ -178,8 +176,6 @@ void SubscriptionRenderFrameObserver::SetLinkStatus(
   // The payload looks like that
   // { status: <value>}
   // where value 0 means it's not linked otherwise it's linked.
-  // VPN uses a different way to detect that.
-  // It uses Guardian backend call for that.
   if (status_dict.empty()) {
     return;
   }
@@ -200,9 +196,7 @@ std::string SubscriptionRenderFrameObserver::GetPurchaseTokenJSString(
   }
 
   std::string_view receipt_var_name;
-  if (product_ == Product::kVPN) {
-    receipt_var_name = "braveVpn.receipt";
-  } else if (product_ == Product::kLeo) {
+  if (product_ == Product::kLeo) {
     receipt_var_name = "braveLeo.receipt";
   } else if (product_ == Product::kOrigin) {
     receipt_var_name = "braveOrigin.receipt";
@@ -284,9 +278,7 @@ bool SubscriptionRenderFrameObserver::IsAllowed() {
 
   std::string intent = ExtractParam(current_url, kIntentParamName);
   std::string product = ExtractParam(current_url, kProductParamName);
-  if (product == kProductVPNParamValue) {
-    product_ = Product::kVPN;
-  } else if (product == kProductLeoParamValue) {
+  if (product == kProductLeoParamValue) {
     product_ = Product::kLeo;
   } else if (product == kProductOriginParamValue) {
     product_ = Product::kOrigin;
