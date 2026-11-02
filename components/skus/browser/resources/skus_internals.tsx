@@ -50,7 +50,6 @@ function App() {
   const resetSkusState = () => {
     API.resetSkusState()
     setSkusState({})
-    setVpnState({})
     setLeoState({})
   }
 

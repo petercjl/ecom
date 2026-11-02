@@ -234,7 +234,7 @@ void WebcompatReportUploader::CreateAndStartURLLoader(
             "Though the 'Report a Broken Site' option of the help menu or"
             "the Brave Shields panel."
           data: "Broken URL, IP address, Shields settings, language settings,"
-                "Brave VPN connection status, user-provided additional details,"
+                "user-provided additional details,"
                 "optional screenshot and contact information."
           destination: OTHER
           destination_other: "Brave developers"

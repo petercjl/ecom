@@ -259,14 +259,9 @@ interface NewTabPageHandler {
   GetShowRewardsWidget() => (bool show_rewards_widget);
   SetShowRewardsWidget(bool show_rewards_widget) => ();
 
-  // Gets or sets whether the Brave VPN widget is displayed.
 
-  // Reloads the user's VPN purchase state.
 
-  // Opens the VPN panel.
 
-  // Opens the specified VPN account page.
 
-  // Records VPN widget usage metrics.
 
 };

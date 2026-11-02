@@ -74,8 +74,6 @@ inline constexpr auto kCollectedTypicalHistograms =
     {"Brave.Core.FailedHTTPSUpgrades.2", MetricConfig{.ephemeral = true}},
     {"Brave.Core.FirstPageLoadTime", MetricConfig{.ephemeral = true}},
     {"Brave.Core.IsDefault", MetricConfig{
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kGeneralPlatform, MetricAttribute::kYoi, MetricAttribute::kSubregion, MetricAttribute::kVersion, MetricAttribute::kWoi},
-    }},
     {"Brave.Core.MediaSessionUsage.2", MetricConfig{.ephemeral = true, .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi}}},
     {"Brave.Core.NumberOfExtensions", {}},
     {"Brave.Core.PagesLoaded.NonRewards", {}},
@@ -154,64 +152,34 @@ inline constexpr auto kCollectedTypicalHistograms =
     {"Brave.Shields.DomainAdsSettingsBelowGlobal", {}},
     {"Brave.Shields.FPInput.Canvas", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.DeviceMemory", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.DevicePixelRatio", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.Fonts", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.HardwareConcurrency", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.Languages", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.ScreenAvailSize", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.ScreenPixelDepth", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.ScreenSize", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.Timezone", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.UserAgent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.WebAudio", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.WebGLExtensions", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.WebGLRenderer", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FPInput.WebGLVendor", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform},
-    }},
     {"Brave.Shields.FilterLists.2", {}},
     {"Brave.Shields.FingerprintBlockSetting", {}},
     {"Brave.Shields.ManualShred", {}},
@@ -229,15 +197,9 @@ inline constexpr auto kCollectedTypicalHistograms =
     {"Brave.Today.WeeklyTotalCardClicks", MetricConfig{.ephemeral = true}},
     {"Brave.Today.WeeklyTotalCardViews", {}},
     {"Brave.Update.Status", {}},
-    {"Brave.VPN.ConnectedDuration", MetricConfig{.ephemeral = true}},
-    {"Brave.VPN.HideWidget", MetricConfig{.ephemeral = true}},
-    {"Brave.VPN.LastUsageTime", MetricConfig{.record_activation_date = true}},
-    {"Brave.VPN.NewUserReturning", MetricConfig{
       .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kDateOfActivation, MetricAttribute::kDateOfInstall, MetricAttribute::kVersion, MetricAttribute::kChannel, MetricAttribute::kPlatform, MetricAttribute::kCountryCode},
       .activation_metric_name = "Brave.VPN.LastUsageTime"
     }},
-    {"Brave.VPN.WidgetUsage", MetricConfig{.ephemeral = true}},
-    {"Brave.VPN.SystemServicesInstalled", MetricConfig{.ephemeral = true}},
     {"Brave.VerticalTabs.GroupTabs", MetricConfig{.ephemeral = true}},
     {"Brave.VerticalTabs.OpenTabs", MetricConfig{.ephemeral = true}},
     {"Brave.VerticalTabs.PinnedTabs", MetricConfig{.ephemeral = true}},
@@ -297,8 +259,6 @@ inline constexpr auto kCollectedExpressHistograms =
     }},
     {"Brave.Core.BookmarksSourcePercent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Core.CombinedSearchStudy", MetricConfig{
       .ephemeral = true,
       .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kIsBrowserDefault, MetricAttribute::kCustomAttribute, MetricAttribute::kCustomAttribute, MetricAttribute::kCustomAttribute, MetricAttribute::kCustomAttribute, MetricAttribute::kCountryCode, MetricAttribute::kPlatform},
@@ -306,46 +266,28 @@ inline constexpr auto kCollectedExpressHistograms =
     }},
     {"Brave.Core.CustomTopSitesSourcePercent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Core.DirectURLSourcePercent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Core.ExternalNavigationSourcePercent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Core.FrequentTopSitesSourcePercent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Core.HistorySourcePercent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Core.Navigated", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Core.PWASourcePercent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Core.PrivateWindowUsed", MetricConfig{.ephemeral = true}},
     {"Brave.Core.TorWindowUsed", MetricConfig{.ephemeral = true}},
     {"Brave.Core.UsageDaily", {}},
     {"Brave.DayZero.Variant", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kDateOfInstall, MetricAttribute::kVersion, MetricAttribute::kChannel, MetricAttribute::kPlatform, MetricAttribute::kCountryCode, MetricAttribute::kRef}
-    }},
     {"Brave.NTP.NewTabsCreatedDaily", MetricConfig{.ephemeral = true}},
     {"Brave.PermissionLifetime.24Hours", MetricConfig{.ephemeral = true}},
     {"Brave.Rewards.EnabledInstallationTime", MetricConfig{.ephemeral = true}},
     {"Brave.Search.BackupResultsFailures.2", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kVersion, MetricAttribute::kChannel, MetricAttribute::kPlatform, MetricAttribute::kCountryCode},
-    }},
     {"Brave.Search.DailyQueries.BraveDefault.2", MetricConfig{
       .ephemeral = true,
       .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCustomAttribute, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
@@ -372,24 +314,14 @@ inline constexpr auto kCollectedExpressHistograms =
       .custom_attributes = {"media_session_usage"},
     }},
     {"Brave.Search.DefaultEngine.4", MetricConfig{
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform, MetricAttribute::kDateOfInstall, MetricAttribute::kVersion, MetricAttribute::kLocaleCountryCode},
-    }},
     {"Brave.Search.NTPSearchPercent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Search.OmniboxTypedPercent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Search.OmniboxSuggestionPercent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Search.QuickSearchPercent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Search.SERPBrave", MetricConfig{
       .ephemeral = true,
       .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kPlatform},
@@ -411,13 +343,9 @@ inline constexpr auto kCollectedExpressHistograms =
       .priority = true,
     }},
     {"Brave.Search.SwitchEngine.2", MetricConfig{
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform, MetricAttribute::kDateOfInstall, MetricAttribute::kVersion, MetricAttribute::kLocaleCountryCode},
-    }},
     {"Brave.Search.WebDiscoveryEnabled", {}},
     {"Brave.Search.WidgetSearchPercent", MetricConfig{
       .ephemeral = true,
-      .attributes = MetricAttributes{MetricAttribute::kIsBrowserDefault, MetricAttribute::kAnswerIndex, MetricAttribute::kCountryCode, MetricAttribute::kPlatform, MetricAttribute::kYoi},
-    }},
     {"Brave.Shields.AdBlockOnlyModeEnabled", MetricConfig{
       .ephemeral = true,
       .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform, MetricAttribute::kCountryCode, MetricAttribute::kDateOfActivation},
@@ -437,8 +365,6 @@ inline constexpr auto kCollectedExpressHistograms =
     {"Brave.Uptime.BrowserOpenTime.2", MetricConfig{.ephemeral = true}},
     {"Brave.Wallet.UsageDaily", MetricConfig{.ephemeral = true}},
     {"Brave.Welcome.InteractionStatus.2", MetricConfig{
-      .attributes = MetricAttributes{MetricAttribute::kAnswerIndex, MetricAttribute::kChannel, MetricAttribute::kPlatform, MetricAttribute::kDateOfInstall, MetricAttribute::kSubregion, MetricAttribute::kVersion},
-    }},
     {"creativeInstanceId.total.count", {}},
 });
 
