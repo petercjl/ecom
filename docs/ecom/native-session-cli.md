@@ -21,6 +21,14 @@ node ecom/cli.mjs capabilities
 
 ## 职责与协议
 
+### npm 产品入口
+
+公开能力包的当前新增命令为 `ecom-cli containers inspect --container <ID或唯一名称> --json` 与 `ecom-cli session request --container <ID或唯一名称> --url <已授权只读HTTPS地址> --method GET --json`。实现复用下述原生信箱；`--instance`／`--profile` 可明确连接目标。
+
+详情输出投影平台、首页、外观、服务登录检查时间及 Cookie 期限参考，并区分已保存身份 `identityBound` 与当前已核实身份 `identityConfirmed`。请求禁止凭证参数、请求体及自选请求头，来源必须与实例启用的 HTTPS 来源完全一致；选定实例和容器后，端点变更在提交前拒绝。客户端为原生身份核验及 20 秒网络请求保留最长 60 秒等待，超时结果未知时保留操作 ID。
+
+成功响应的 `data` 是脱敏的平台 JSON；`businessStatus=not-evaluated` 表示调用应用仍需检查平台业务码、数据结构与授权。格式和验收见 [CLI 前两项验收](cli-inspect-session-test-2026-11-02.md)。
+
 - Ecom：认证本地调用、校验容器与来源、通过原生网络服务附带该容器适用 Cookie、返回脱敏 JSON。网站凭证留在浏览器中，HTTP Set-Cookie 的正常会话变动由浏览器管理。
 - sycmcli：注册业务接口、校验参数、固定容器 ID、核对实例与业务返回状态。
 - 调用应用：选择业务目标、日期、店铺及解释数据；用户手动完成登录和验证。
@@ -37,7 +45,9 @@ node ecom/cli.mjs capabilities
 
 `shops create --platform taobao --name '<店铺名>'` 创建待登录容器；`shops configure --container '<ID>' --platform taobao` 为现有容器补充平台信息，保留 ID 与会话。`shops open --container '<ID>' --service sycm|qianniu|alimama` 在该容器中打开对应服务。管理页使用相同命令，创建后进入网页登录；关闭登录页后，待配置记录仍可恢复。
 
-`shops verify --container '<ID>'` 请求平台身份。成功解析后返回候选身份及五分钟有效的 candidateId，待用户核对名称和账号；`shops confirm --container '<ID>' --shop-id '<候选店铺ID>' --candidate-id '<候选ID>'` 完成绑定。已绑定店铺的 `session.get` 在业务请求前重新核验，身份不符停止请求。普通容器保持原有行为；一个服务的身份核验不表示其他服务已经登录或获授权。
+`shops verify --container '<ID>'` 请求平台身份。取得平台店铺 ID、账号 ID 和名称后，名称与容器名称一致时记录绑定；名称不同则返回候选身份及五分钟有效的 candidateId，待用户核对名称和账号，并通过 `shops confirm --container '<ID>' --shop-id '<候选店铺ID>' --candidate-id '<候选ID>'` 完成绑定。已绑定店铺的 `session.get` 在业务请求前重新核验，身份不符停止请求。未配置平台的既有容器保持原有行为；一个服务的身份核验不表示其他服务已经登录或获授权。
+
+生意参谋优先兼容旧嵌入式身份格式，并支持当前固定 `/custom/menu/getPersonalView.json` 身份接口。浏览器在目标容器内取得可信同源首页的 microdata，内部处理平台所需的 CSRF 参数；该参数留在原生请求内。HTTP 200、业务码 0 和完整有效的店铺／账号／名称字段才构成身份结果。原生请求使用 Chromium 的专用 `referrer` 字段与同源 fetch 上下文；此通路不执行网页脚本、不创建标签，也不向 CLI 开放凭证输入。身份接口失败时可独立检查服务登录，保持登录状态与店铺绑定分离。
 
 服务登录和店铺身份绑定分别核验。生意参谋固定 JSON 检查通过时显示登录已核验；具体店铺身份仍以平台身份字段核对结果为准。当前持久 Cookie 修复及真实重启验收见 [会话 Cookie 保存](cookie-persistence-2026-11-02.md)。
 
