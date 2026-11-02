@@ -1,0 +1,12 @@
+{
+  "package": "@petercjl/sycmcli",
+  "version": "0.4.0",
+  "license": "MIT",
+  "repository": "https://github.com/petercjl/sycmcli",
+  "files": {
+    "operation-registry.mjs": "bd41f205b22e1f6c02661defa61b39523f4714d839510ba61991575d2a34ff00",
+    "business-capabilities.mjs": "e3b1fec7152f5cc8f1f1aef7c36ebce42e5a0cb620e217c074b32921b0a15d2e",
+    "errors.mjs": "098faaf49430f93acdfc6601920a7e3a6e6baa6f978dbcc1b81b7d87ee1d6974",
+    "LICENSE": "cb0b6cc0ee0a14ca9f59f841b3743b9974968009ae536a7d27d6457f54e9ff39"
+  }
+}

@@ -33,3 +33,17 @@ Task entry checks stable `latest` at most daily, with a 1.5 second bound. Detect
 `ecom-cli help --json`, `version --json`, `capabilities --json`, `schema --json`, and `doctor --json` expose supported commands and versioned results. Errors use JSON with stable codes; exit code 2 means invalid arguments, 1 means operational failure. stdout contains results; stderr contains diagnostics. Multiple Ecom instances require explicit `--profile` or `--instance` selection. Connection authenticates through owner-only local mailbox files, verifies the live Ecom executable, and uses no remote debugging port.
 
 The browser owns sessions, containers and authorization. This package owns discovery, read-only transport and managed installation. The Skill documents invocation, diagnosis and recovery. Additional browser capabilities will extend this same command/Skill contract.
+
+## 业务能力迁移（开发中）
+
+内置 sycmcli 0.4.0 的取数目录和 7 类填数计划。135 个取数入口统一使用固定原生目录，覆盖生意参谋、万相台、达摩盘与消费券。原生层在指定持久容器中准备服务认证并发送已登记的 GET／POST 读取，要求浏览器与 CLI 目录哈希一致。目录接入与逐项真实验收分别记录；旧浏览器兼容 88 个生意参谋 GET 入口，其余提示升级。填数支持计划、审查与确认，实际提交和回读由独立执行能力承担。
+
+发给当前 Agent：
+
+> 使用 Ecom CLI，查看指定账号可以查询哪些生意参谋数据。
+
+> 使用 Ecom CLI，获取指定账号昨天的交易概况。
+
+> 使用 Ecom CLI，为指定账号生成商品草稿的操作计划，供我审查。
+
+开发者通过 `sycm operations`、`sycm schema --operation ID`、`sycm run --operation ID --container VALUE --params-json JSON` 发现和调用原子取数能力；`sycm mutation plan/show/apply` 承接计划与确认。所有命令均支持结构化 JSON。

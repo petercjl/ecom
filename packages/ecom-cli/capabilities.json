@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@petercjl/ecom-cli",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "skills": [
     "ecom-cli"
   ],
@@ -251,6 +251,161 @@
         "PROTOCOL_MISMATCH",
         "OPERATION_TIMEOUT"
       ]
+    },
+    "sycm operations": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "none",
+      "authorization": "Registered reads only, or local mutation-plan/confirmation records; no automatic platform writes. Credentials stay native."
+    },
+    "sycm capabilities": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "none",
+      "authorization": "Registered reads only, or local mutation-plan/confirmation records; no automatic platform writes. Credentials stay native."
+    },
+    "sycm schema": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--operation": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "none",
+      "authorization": "Registered reads only, or local mutation-plan/confirmation records; no automatic platform writes. Credentials stay native."
+    },
+    "sycm run": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--operation": {
+          "type": "string",
+          "required": true
+        },
+        "--params-json": {
+          "type": "string"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Registered reads only, or local mutation-plan/confirmation records; no automatic platform writes. Credentials stay native.",
+      "output": {
+        "operation": "registered ID",
+        "service": "sycm, sycm-trade, alimama, dmp or coupon",
+        "instance": "pinned native instance",
+        "container": "stable id and current label",
+        "httpStatus": 200,
+        "businessStatus": "success after business-envelope checks",
+        "data": "native-redacted source response",
+        "registryHash": "compiled browser/CLI catalog identity"
+      },
+      "limits": {
+        "paramsBytes": 24576,
+        "nativeResponseBytes": 2097152,
+        "nativeOperationTimeoutMs": 50000,
+        "clientTimeoutMs": 75000,
+        "automaticRetries": false,
+        "methods": "Fixed catalog GET/POST reads; arbitrary method/path/body forbidden",
+        "accountBinding": "Current Ecom persistent container, no separate CLI store configuration"
+      },
+      "errors": [
+        "BROWSER_UPGRADE_REQUIRED",
+        "AUTH_CONTEXT_REQUIRED",
+        "AUTH_REQUIRED",
+        "AUTH_OR_RISK_CHALLENGE",
+        "PERMISSION_REQUIRED",
+        "RISK_VERIFICATION_REQUIRED",
+        "SHOP_VERIFICATION_FAILED",
+        "BUSINESS_READ_TIMEOUT",
+        "BUSINESS_RESPONSE_INVALID",
+        "PROTOCOL_MISMATCH"
+      ]
+    },
+    "sycm mutation plan": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--operation": {
+          "type": "string",
+          "required": true
+        },
+        "--params-json": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Registered reads only, or local mutation-plan/confirmation records; no automatic platform writes. Credentials stay native."
+    },
+    "sycm mutation show": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--plan": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "none",
+      "authorization": "Registered reads only, or local mutation-plan/confirmation records; no automatic platform writes. Credentials stay native."
+    },
+    "sycm mutation apply": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--plan": {
+          "type": "string",
+          "required": true
+        },
+        "--confirm": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Registered reads only, or local mutation-plan/confirmation records; no automatic platform writes. Credentials stay native."
     }
   },
   "transport": {
@@ -409,7 +564,7 @@
     "enabledByDefault": true,
     "intervalHours": 24,
     "timeoutMs": 1500,
-    "trigger": "containers list, containers inspect and session request task entry",
+    "trigger": "containers list, containers inspect and session request task entry, sycm run, sycm mutation plan/apply",
     "configuration": "Stable latest channel; detection only. Explicit update activates only the selected target runtime and Skill together.",
     "disable": "ECOM_CLI_UPDATE_CHECK=0",
     "recovery": "Offline checks retain installed runtime; local edit/ownership conflicts stop replacement; prior target kept as backup. Use recorded candidate and inspect target status before retrying.",
@@ -444,5 +599,26 @@
     "BUSY",
     "REQUEST_FAILED",
     "NON_JSON_RESPONSE"
-  ]
+  ],
+  "businessIntegration": {
+    "sourcePackage": "@petercjl/sycmcli",
+    "sourceVersion": "0.4.0",
+    "registeredReads": 135,
+    "nativeGetCandidates": 88,
+    "serviceAdaptersRequired": 0,
+    "mutationWorkflows": 7,
+    "automaticMutation": false,
+    "inventoryCommand": "sycm capabilities",
+    "schemaCommand": "sycm schema --operation ID",
+    "readCommand": "sycm run --operation ID --container VALUE --params-json JSON",
+    "verification": "Transport availability is separate from per-endpoint live acceptance; inspect each operation schema. Plans authorize a workflow, not an executed submission.",
+    "sourceRegistryReads": 124,
+    "sourceFirstClassReadEndpoints": 11,
+    "nativeBusinessReadDefinitions": 135,
+    "serviceRuntimeAcceptance": "pending native build and per-service live checks",
+    "requiredNativeProtocol": 1,
+    "registryHashAgreementRequired": true,
+    "containerBinding": "Stable Ecom container ID, browser-owned session and native account verification; no separate Chrome store profile",
+    "nativeRegistryHash": "26d302541c1641b00ce45c6df4ae32bbb90e2b21352fe5f91e3cfedb21e35d5e"
+  }
 }

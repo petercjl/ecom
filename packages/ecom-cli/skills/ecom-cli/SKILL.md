@@ -1,6 +1,6 @@
 ---
 name: ecom-cli
-description: List and inspect account containers in the running Ecom browser, send explicitly authorized read-only HTTPS JSON requests using a selected container session, diagnose connections, or install/update the Ecom CLI and companion Skill. Use for Ecom account metadata and native-session API access; application business logic stays with the calling workflow.
+description: Use Ecom account containers for registered Shengyicanmou data reads, local mutation planning and confirmation, account inspection, native-session requests, or CLI and companion Skill maintenance. Business analysis and operating decisions belong to the caller.
 ---
 
 # Ecom CLI
@@ -18,8 +18,20 @@ Input is an Ecom container listing/detail request, an authorized read-only endpo
 5. For a session request, require an explicit authorized read-only endpoint from the user or a trusted business capability’s registered operation. Business selection, endpoint semantics, date/metrics and interpretation belong to that caller. Run `session request --container VALUE --url HTTPS_URL --method GET --json`. GET alone does not prove an endpoint has no side effects; resolve unclear endpoint intent before submission. The CLI pins one instance and container across discovery and execution. Credentials remain native; header/body/credential inputs, redirects and HTML are unsupported. The enabled origin is controlled by Ecom, not expanded by the CLI.
 6. Require `ok=true`, protocol version 1, operation ID and matching instance/container IDs. For requests, require the JSON response contract and distinguish HTTP success from business success: `businessStatus=not-evaluated` requires the caller’s platform-specific check. Preserve structured errors and executed status. These operations do not navigate or activate tabs.
 
+## Registered business operations
+
+For business data or mutation-planning requests, read [the business contract](references/sycm.md), then return to main-line target selection. The business registry is bundled with this runtime; no external sycmcli installation, Skill or browser is required. `sycm capabilities --json` exposes the complete imported catalog and native/legacy transport requirements. A registered endpoint is not proof that the current Ecom build can execute it or that its date and permission semantics have been verified. Use `sycm schema --operation ID --json` before execution. Never substitute another date to make a request succeed.
+
+`sycm run --operation ID --container VALUE --params-json JSON --json` fixes the native instance and container and validates the business envelope. Verify the returned period, platform update time and requested account before reporting metrics. A successful all-zero response is not by itself proof of zero business activity.
+
+Mutation plan/apply commands create local records and return reviewed workflow instructions. They perform no website submission. Report `executed=false` and require actual executor and readback evidence before describing a platform change as completed. Existing authorization can cover the reviewed plan; a development request itself grants no real store mutation authority.
+
 ## Diagnosis and recovery
 
+- BROWSER_UPGRADE_REQUIRED: update the Ecom browser and CLI together; native business protocol 1 requires matching compiled registry hashes. Preserve the account session.
+- AUTH_CONTEXT_REQUIRED: keep the existing login; native service context may need adapter diagnosis even when the page is logged in. Report the gap rather than repeatedly requesting login.
+- SERVICE_ADAPTER_REQUIRED: report the missing native adapter and preserve the selected container. Do not switch to CDP or another browser.
+- AUTH_REQUIRED, PERMISSION_REQUIRED or RISK_VERIFICATION_REQUIRED: complete the required first-party action in this original container, then explicitly resume.
 - SHOP_NOT_READY: inspect this exact account. Complete login and platform-identity verification through its Ecom account management page; a cookie expiry or account name does not satisfy readiness. If the native adapter cannot verify identity, report that gap and stop the data request. Return to step 5 only after readiness is established.
 - SHOP_VERIFICATION_FAILED: stop; the browser’s pre-request identity check failed. Preserve the selected target and report the failure.
 - ORIGIN_NOT_ALLOWED, CREDENTIAL_INPUT_REJECTED, METHOD_UNSUPPORTED or INVALID_URL: correct the intended input within the declared contract; do not broaden browser permissions.

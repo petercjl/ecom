@@ -29,7 +29,9 @@
 #include "base/time/time.h"
 #include "base/uuid.h"
 #include "base/values.h"
+#include "brave/browser/ecom/business_read_service.h"
 #include "brave/browser/ecom/shop_container_service.h"
+#include "brave/browser/ecom/sycm_read_registry.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "brave/components/containers/core/browser/pref_names.h"
 #include "brave/components/containers/core/browser/prefs.h"
@@ -135,6 +137,7 @@ class NativeSessionService final : public ProfileObserver {
   void OnProfileWillBeDestroyed(Profile* profile) override {
     weak_.InvalidateWeakPtrs();
     requests_.clear();
+    business_reads_.clear();
     profile_->RemoveObserver(this);
     profile_ = nullptr;
     if (io_.IsRunning()) {
@@ -180,6 +183,10 @@ class NativeSessionService final : public ProfileObserver {
                  base::CommandLine::ForCurrentProcess()->GetProgram().value());
     metadata.Set("userDataDir", folder_.DirName().DirName().value());
     metadata.Set("allowedOrigin", origin_.Serialize());
+    if (origin_.Serialize() == "https://sycm.taobao.com") {
+      metadata.Set("businessReadProtocol", 1);
+      metadata.Set("businessReadRegistryHash", kSycmReadRegistryHash);
+    }
     auto json = base::WriteJson(metadata);
     if (json) {
       WriteExclusive(endpoint, *json);
@@ -303,6 +310,10 @@ class NativeSessionService final : public ProfileObserver {
       return;
     }
     const auto* container_id = request.FindString("containerId");
+    if (method && *method == "business.read") {
+      Business(id, std::move(request));
+      return;
+    }
     const auto* url_text = request.FindString("url");
     if (!method || *method != "session.get" || !container_id || !url_text) {
       Fail(id, "UNSUPPORTED_COMMAND");
@@ -360,6 +371,60 @@ class NativeSessionService final : public ProfileObserver {
     Fetch(id, *container_id, url);
   }
 
+  void Business(const std::string& id, base::DictValue request) {
+    const auto* container = request.FindString("containerId");
+    const auto* operation = request.FindString("operation");
+    const auto* params = request.FindDict("params");
+    if (origin_.Serialize() != "https://sycm.taobao.com" || !container ||
+        !operation || !params) {
+      Fail(id, "INVALID_ARGUMENT");
+      return;
+    }
+    if (requests_.size() + business_reads_.size() >= 2) {
+      Fail(id, "BUSY");
+      return;
+    }
+    const auto* shop = profile_->GetPrefs()
+                           ->GetDict(containers::prefs::kShopContainers)
+                           .FindDict(*container);
+    if (!shop || !shop->FindDict("identity")) {
+      Fail(id, "SHOP_NOT_READY");
+      return;
+    }
+    auto verify = base::DictValue()
+                      .Set("method", "shops.verify")
+                      .Set("containerId", *container);
+    business_reads_[id] = nullptr;
+    RunShopCommand(profile_, base::WriteJson(verify).value_or("{}"),
+                   base::BindOnce(&NativeSessionService::BusinessVerified,
+                                  weak_.GetWeakPtr(), id, *container,
+                                  *operation, params->Clone()));
+  }
+  void BusinessVerified(std::string id,
+                        std::string container,
+                        std::string operation,
+                        base::DictValue params,
+                        std::string verification) {
+    auto result = base::JSONReader::Read(verification, base::JSON_PARSE_RFC);
+    if (!result || !result->is_dict() ||
+        !result->GetDict().FindBool("ok").value_or(false)) {
+      business_reads_.erase(id);
+      Fail(id, "SHOP_VERIFICATION_FAILED");
+      return;
+    }
+    business_reads_[id] = CreateBusinessRead(
+        profile_, std::move(container), std::move(operation), std::move(params),
+        base::BindOnce(&NativeSessionService::BusinessFinished,
+                       weak_.GetWeakPtr(), id));
+    business_reads_.at(id)->Start();
+  }
+  void BusinessFinished(std::string id, base::DictValue result) {
+    auto wrapped = base::Value(std::move(result));
+    Redact(wrapped);
+    Respond(id, std::move(wrapped.GetDict()));
+    business_reads_.erase(id);
+  }
+
   void Fetch(const std::string& id,
              const std::string& container_id,
              const GURL& url) {
@@ -368,7 +433,7 @@ class NativeSessionService final : public ProfileObserver {
       Fail(id, "CONTAINER_NOT_FOUND");
       return;
     }
-    if (requests_.size() >= 2) {
+    if (requests_.size() + business_reads_.size() >= 2) {
       Fail(id, "BUSY");
       return;
     }
@@ -448,6 +513,7 @@ class NativeSessionService final : public ProfileObserver {
   base::Thread io_;
   std::unique_ptr<base::FilePathWatcher> watcher_;  // Accessed on io_ only.
   std::map<std::string, std::unique_ptr<network::SimpleURLLoader>> requests_;
+  std::map<std::string, std::unique_ptr<BusinessRead>> business_reads_;
   base::WeakPtr<NativeSessionService> ui_weak_;
   base::WeakPtrFactory<NativeSessionService> weak_{this};
 };

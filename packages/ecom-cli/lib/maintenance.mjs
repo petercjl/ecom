@@ -92,6 +92,11 @@ export function installSkill(options,base=root) {
   } finally {fs.closeSync(fd);fs.unlinkSync(lock);}
 }
 const cacheRoot=()=>path.join(os.homedir(),'.cache','ecom-cli');
+export function newerStableVersion(candidate,current) {
+  const a=candidate.split('.').map(Number),b=current.split('-')[0].split('.').map(Number);
+  for(let i=0;i<3;i++){if(a[i]!==b[i])return a[i]>b[i];}
+  return current.includes('-');
+}
 export async function checkUpdate({automatic=false}={}) {
   if(automatic&&process.env.ECOM_CLI_UPDATE_CHECK==='0') return {ok:true,disabled:true};
   const cache=path.join(cacheRoot(),'update.json');
@@ -102,7 +107,7 @@ export async function checkUpdate({automatic=false}={}) {
     const response=await fetch('https://registry.npmjs.org/@petercjl%2fecom-cli/latest',{signal:AbortSignal.timeout(1500)});
     if(!response.ok) throw Error('registry');
     const data=await response.json();if(data.name!==pkg.name||!/^\d+\.\d+\.\d+$/.test(data.version))throw Error('shape');
-    result={ok:true,version:pkg.version,latest:data.version,available:data.version!==pkg.version,checkedAt:Date.now(),channel:'latest'};
+    result={ok:true,version:pkg.version,latest:data.version,available:newerStableVersion(data.version,pkg.version),checkedAt:Date.now(),channel:'latest'};
   }catch{result={ok:false,code:'REGISTRY_UNAVAILABLE',version:pkg.version,checkedAt:Date.now(),retained:true};}
   if(automatic) {
     try {fs.mkdirSync(cacheRoot(),{recursive:true,mode:0o700});if(!exists(cache))writeNew(cache,result);else {const archive=cache+'.previous-'+crypto.randomUUID();fs.renameSync(cache,archive);writeNew(cache,result);}}catch{/* Detection must not block read-only work. */}

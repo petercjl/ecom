@@ -83,6 +83,14 @@ export async function requestInConnection(connection,options) {
   if(body.containerId!==container.id||body.httpStatus!==200||!Object.hasOwn(body,'data'))throw fail('PROTOCOL_MISMATCH','Session response does not match selected container or JSON response contract',{operationId:body.operationId,executed:'unknown'});
   return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,request:{method:'GET',url},httpStatus:body.httpStatus,data:body.data,businessStatus:'not-evaluated'};
 }
+export async function registeredReadInConnection(connection,options,operation,params,registryHash) {
+  if(connection.endpoint.businessReadProtocol!==1)throw fail('BROWSER_UPGRADE_REQUIRED','This operation needs an Ecom build with native business read protocol 1');
+  if(connection.endpoint.businessReadRegistryHash!==registryHash)throw fail('BROWSER_UPGRADE_REQUIRED','Browser and CLI business catalogs differ; update them together');
+  const listed=await readMailbox(connection),container=resolveContainer(listed.containers,options.container);
+  const body=await callMailbox(connection,{method:'business.read',containerId:container.id,operation,params},75000);
+  if(body.containerId!==container.id||body.businessOperation!==operation||body.httpStatus!==200||!Object.hasOwn(body,'data'))throw fail('PROTOCOL_MISMATCH','Registered response differs from the pinned container or operation',{operationId:body.operationId,executed:'unknown'});
+  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,httpStatus:body.httpStatus,data:body.data,transport:'native-business-read',identityBinding:'container-bound-account',registryHash};
+}
 export async function callMailbox({folder,endpoint},payload,timeoutMs=10000) {
   privatePath(folder,true);privatePath(path.join(folder,'endpoint.json'));
   const current=JSON.parse(fs.readFileSync(path.join(folder,'endpoint.json'),'utf8'));
@@ -96,7 +104,7 @@ export async function callMailbox({folder,endpoint},payload,timeoutMs=10000) {
     if(exists(response)) {
       privatePath(response);
       const raw=fs.readFileSync(response,'utf8');
-      if(Buffer.byteLength(raw)>(payload.method==='session.get'?2*1024*1024+65536:1024*1024)) throw fail('PROTOCOL_MISMATCH','Oversized response',{operationId:id,executed:'unknown'});
+      if(Buffer.byteLength(raw)>(['session.get','business.read'].includes(payload.method)?2*1024*1024+65536:1024*1024)) throw fail('PROTOCOL_MISMATCH','Oversized response',{operationId:id,executed:'unknown'});
       let body;try{body=JSON.parse(raw);}catch{await pause(25);continue;}
       if(body.schemaVersion!==1 || body.instanceId!==endpoint.instanceId || body.operationId!==id) throw fail('PROTOCOL_MISMATCH','Response does not match this operation',{operationId:id,executed:'unknown'});
       fs.unlinkSync(response);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {inspectInConnection,requestInConnection,validateReadUrl,resolveContainer} from '../lib/browser.mjs';
+import {inspectInConnection,requestInConnection,registeredReadInConnection,validateReadUrl,resolveContainer} from '../lib/browser.mjs';
 import {parse} from '../lib/cli.mjs';
 const origin='https://example.com';
 const accounts=[{id:'account-a',name:'示例甲'},{id:'account-b',name:'示例乙'}];
@@ -75,5 +75,22 @@ test('restart between container selection and submission refuses without a sessi
   try {
     await assert.rejects(requestInConnection(f.connection,{container:'account-a',url:origin+'/data'}),e=>e.code==='INSTANCE_CHANGED');
     assert.equal(f.calls.length,1);
+  }finally{f.close();}
+});
+
+test('registered reads require a matching browser catalog and freeze account and operation',{skip:process.platform==='win32'},async()=>{
+  const hash='a'.repeat(64);let mismatch=false;
+  const f=fixture(message=>message.method==='containers.list'?{ok:true,containers:accounts}:{ok:true,containerId:message.containerId,businessOperation:mismatch?'other-operation':message.operation,httpStatus:200,data:{code:0,data:{value:11}}});
+  try {
+    await assert.rejects(registeredReadInConnection(f.connection,{container:'account-a'},'alimama.report',{},hash),e=>e.code==='BROWSER_UPGRADE_REQUIRED');
+    Object.assign(f.connection.endpoint,{businessReadProtocol:1,businessReadRegistryHash:hash});
+    fs.writeFileSync(path.join(f.connection.folder,'endpoint.json'),JSON.stringify(f.connection.endpoint),{mode:0o600});
+    await assert.rejects(registeredReadInConnection(f.connection,{container:'account-a'},'alimama.report',{},'b'.repeat(64)),e=>e.code==='BROWSER_UPGRADE_REQUIRED');
+    assert.equal(f.calls.length,0);
+    const result=await registeredReadInConnection(f.connection,{container:'示例甲'},'alimama.report',{page:1},hash);
+    assert.equal(result.container.id,'account-a');assert.equal(result.operation,'alimama.report');assert.equal(result.transport,'native-business-read');
+    assert.equal(f.calls[1].method,'business.read');
+    mismatch=true;
+    await assert.rejects(registeredReadInConnection(f.connection,{container:'account-a'},'alimama.report',{},hash),e=>e.code==='PROTOCOL_MISMATCH'&&e.executed==='unknown');
   }finally{f.close();}
 });

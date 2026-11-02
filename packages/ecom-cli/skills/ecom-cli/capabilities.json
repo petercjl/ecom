@@ -29,7 +29,11 @@
         "httpStatus",
         "data",
         "businessStatus",
-        "error"
+        "error",
+        "operations",
+        "plan",
+        "workflow",
+        "executed"
       ],
       "side_effects": {
         "external_mutation": false,

@@ -68,6 +68,8 @@ test('actual npm packed install, update repair, isolation, local-edits and docto
     fs.rmSync(bootstrap,{recursive:true});fs.rmSync(a,{recursive:true});
     const survivor=path.join(b,'.runtime/bin/ecom-cli.mjs');
     assert.equal(invoke(survivor,['version','--json']).version,pkg.version);
+    assert.equal(invoke(survivor,['sycm','operations','--json']).count,135);
+    assert.equal(invoke(survivor,['sycm','schema','--operation','shop.trade-summary','--json']).operation.path,'/bda/tradinganaly/overview/get_summary.json');
     assert.equal(invoke(survivor,args('status',b,'custom-agent')).current,true);
     const doctor=invoke(survivor,['doctor','--json']);assert.ok(doctor.node);assert.equal(doctor.debuggingRequired,false);
     // Ensure no symlink or shared hardlink survived bootstrap removal.
