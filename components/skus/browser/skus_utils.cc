@@ -23,7 +23,6 @@ namespace skus {
 // - `credential_summary`
 // - `prepare_credentials_presentation`
 constexpr char kProductTalk[] = "talk";
-constexpr char kProductVPN[] = "vpn";
 
 std::string GetDefaultEnvironment() {
 #if defined(OFFICIAL_BUILD)
@@ -33,13 +32,10 @@ std::string GetDefaultEnvironment() {
 #endif
 }
 
-std::string GetVpnProductPrefix() {
-  return kProductVPN;
-}
 
 std::string GetDomain(const std::string& prefix,
                       const std::string& environment) {
-  DCHECK(prefix == kProductTalk || prefix == kProductVPN);
+  DCHECK(prefix == kProductTalk);
 
   if (environment == kEnvProduction) {
     return prefix + ".brave.com";

@@ -32,18 +32,12 @@ TEST(SkusUtilsUnittest, GetEnvironmentForDomain) {
 }
 
 TEST(SkusUtilsUnittest, GetDomain) {
-  EXPECT_EQ(GetEnvironmentForDomain(GetDomain("vpn", kEnvDevelopment)),
-            kEnvDevelopment);
   EXPECT_EQ(GetEnvironmentForDomain(GetDomain("talk", kEnvDevelopment)),
             kEnvDevelopment);
 
-  EXPECT_EQ(GetEnvironmentForDomain(GetDomain("vpn", kEnvStaging)),
-            kEnvStaging);
   EXPECT_EQ(GetEnvironmentForDomain(GetDomain("talk", kEnvStaging)),
             kEnvStaging);
 
-  EXPECT_EQ(GetEnvironmentForDomain(GetDomain("vpn", kEnvProduction)),
-            kEnvProduction);
   EXPECT_EQ(GetEnvironmentForDomain(GetDomain("talk", kEnvProduction)),
             kEnvProduction);
 }

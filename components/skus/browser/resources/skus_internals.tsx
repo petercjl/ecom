@@ -37,7 +37,7 @@ interface CreateOrderFromReceiptInputFields {
 }
 
 const defaultState: CreateOrderFromReceiptInputFields = {
-  domain: 'vpn.brave.com',
+  domain: '',
   receipt: '',
   order_id: ''
 }
