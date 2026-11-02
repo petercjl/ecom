@@ -9,7 +9,7 @@
       },
       "status": "implemented",
       "discovery": "Current host resolves exact Skill directory and Node.js runtime; probe CLI version and capabilities",
-      "normalization": "Preserve ok, containers, instance and error from JSON; attach exit status to metadata",
+      "normalization": "Preserve the complete structured result, including container metadata, instance and operation identity, HTTP status, platform JSON and errors; attach process exit status separately",
       "permissions": "Local execution; explicit selected-target maintenance authorization",
       "limitations": "Browser transport currently macOS only; host discovery evidence is separate",
       "capability_id": "command.execute",

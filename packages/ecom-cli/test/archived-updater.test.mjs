@@ -34,7 +34,10 @@ for(const archive of archives.versions)test(`published ${archive.version} update
     assert.equal('sha512-'+crypto.createHash('sha512').update(bytes).digest('base64'),archive.integrity);
     const candidate=path.join(tmp,'source');fs.mkdirSync(candidate);
     for(const name of ['package.json','capabilities.json','bin','lib','scripts','skills','README.md','INSTALL.md','UPDATE.md','LICENSE'])fs.cpSync(path.join(root,name),path.join(candidate,name),{recursive:true});
-    const [major,minor]=pkg.version.split('.').map(Number),version=`${major}.${minor+1}.0`;
+    const [major,minor,patch]=pkg.version.split('.').map(Number);
+    const difference=pkg.version.split('.').map((n,i)=>Number(n)-Number(archive.version.split('.')[i])).find(n=>n!==0)??0;
+    assert.ok(difference>=0,'Archive is newer than the candidate source');
+    const version=difference===0?`${major}.${minor}.${patch+1}`:pkg.version;
     for(const name of ['package.json','capabilities.json','skills/ecom-cli/package.json']) {
       const file=path.join(candidate,name),data=JSON.parse(fs.readFileSync(file));data.version=version;fs.writeFileSync(file,JSON.stringify(data));
     }
@@ -64,7 +67,8 @@ for(const archive of archives.versions)test(`published ${archive.version} update
     fs.writeFileSync(target+'.ecom-lock','fixture lock',{flag:'wx'});
     const failed=await invoke(old,['update','install',...options(target),'--yes','--version',version]);
     assert.equal(failed.ok,false);
-    assert.equal(failed.error.code,archive.version==='0.1.3'?'CANDIDATE_ACTIVATION_FAILED':'TARGET_LOCKED');
+    const directLegacyInstaller=['0.1.1','0.1.2'].includes(archive.version);
+    assert.equal(failed.error.code,directLegacyInstaller?'TARGET_LOCKED':'CANDIDATE_ACTIVATION_FAILED');
     assert.equal((await invoke(path.join(target,'.runtime/bin/ecom-cli.mjs'),['version','--json'])).version,archive.version);
     const journals=fs.readdirSync(path.dirname(target)).filter(name=>name.startsWith(path.basename(target)+'.ecom-update-'));
     assert.equal(journals.length,1);
@@ -103,7 +107,7 @@ for(const archive of archives.versions)test(`published ${archive.version} update
     assert.equal(protectedResult.ok,false);assert.equal(protectedResult.error.code,'LOCAL_EDITS');
     assert.match(fs.readFileSync(path.join(other,'SKILL.md'),'utf8'),/fixture local edit/);
 
-    if(archive.version==='0.1.3') {
+    if(!directLegacyInstaller) {
       const unknown=path.join(tmp,'host-unknown/ecom-cli');
       assert.equal((await invoke(old,['skill','install',...options(unknown)])).current,true);
       // Simulate losing the immutable old parent after its real installer

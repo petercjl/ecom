@@ -417,9 +417,9 @@
   },
   "compatibility": {
     "agents": "Any Agent with terminal, Node.js and Skill discovery capabilities; generic adapter",
-    "macos": "Runtime validation pending",
+    "macos": "Native container list, account inspection and authorized session GET verified on macOS arm64 Ecom Dev; host discovery is checked separately",
     "windows": "Package mechanics only; browser transport unsupported",
-    "historicalUpdater": "First release; registry package absent; no prior updater exists"
+    "historicalUpdater": "Actual published 0.1.1, 0.1.2, 0.1.3 and 0.2.0 updater entries verified with real npm, preserved prior versions, isolated targets and failure recovery"
   },
   "errors": [
     "INSTANCE_NOT_RUNNING",

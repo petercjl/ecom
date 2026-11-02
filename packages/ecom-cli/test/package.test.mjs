@@ -74,6 +74,21 @@ test('actual npm packed install, update repair, isolation, local-edits and docto
     const visit=dir=>{for(const name of fs.readdirSync(dir)){const f=path.join(dir,name),st=fs.lstatSync(f);assert.equal(st.isSymbolicLink(),false);if(st.isDirectory())visit(f);else assert.equal(st.nlink,1);}};visit(b);
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
+test('npm prepack rejects mismatched published capability and Skill versions',{timeout:60000},()=>{
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'ecom-version-drift-'));
+  try {
+    const candidate=path.join(tmp,'source');fs.mkdirSync(candidate);
+    for(const name of ['package.json','capabilities.json','bin','lib','scripts','skills','README.md','INSTALL.md','UPDATE.md','LICENSE'])fs.cpSync(path.join(root,name),path.join(candidate,name),{recursive:true});
+    for(const relative of ['capabilities.json','skills/ecom-cli/package.json']) {
+      const file=path.join(candidate,relative),original=fs.readFileSync(file),value=JSON.parse(original);
+      value.version='0.0.0-drift';fs.writeFileSync(file,JSON.stringify(value));
+      const packed=spawnSync(npm,['pack','--json','--pack-destination',tmp],{cwd:candidate,encoding:'utf8',timeout:30000,shell:process.platform==='win32',env:{...process.env,npm_config_ignore_scripts:'false',npm_config_dry_run:'false'}});
+      assert.notEqual(packed.status,0,'Version drift must fail the real packaging entry');
+      assert.equal(fs.readdirSync(tmp).some(name=>name.endsWith('.tgz')),false);
+      fs.writeFileSync(file,original);
+    }
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
 test('real npm candidate update activates both runtime and Skill and preserves recovery',{timeout:120000},async()=>{
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'ecom-update-test-'));
   const [major,minor,patch]=pkg.version.split('.').map(Number);
