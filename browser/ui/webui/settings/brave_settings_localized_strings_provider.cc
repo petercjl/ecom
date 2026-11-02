@@ -6,6 +6,7 @@
 #include "brave/browser/ui/webui/settings/brave_settings_localized_strings_provider.h"
 
 #include <string_view>
+#include "brave/browser/ecom/shop_container_strings.h"
 
 #include "base/feature_list.h"
 #include "base/strings/string_number_conversions.h"
@@ -1269,6 +1270,7 @@ void BraveAddCommonStrings(content::WebUIDataSource* html_source,
 
 #if BUILDFLAG(ENABLE_CONTAINERS)
   html_source->AddLocalizedStrings(webui::kContainersStrings);
+  ecom::AddShopContainerStrings(html_source, g_browser_process->GetApplicationLocale());
   html_source->AddString("containersLearnMoreURL", kContainersLearnMoreURL);
 #endif  // BUILDFLAG(ENABLE_CONTAINERS)
 #if BUILDFLAG(ENABLE_TRAFFIC_CONTROL)

@@ -11,6 +11,7 @@ import '../controls/settings_toggle_button.js'
 import { I18nMixinLit } from '//resources/cr_elements/i18n_mixin_lit.js'
 import { assert } from '//resources/js/assert.js'
 import { sendWithPromise } from 'chrome://resources/js/cr.js'
+import { loadTimeData } from 'chrome://resources/js/load_time_data.js'
 import { CrInputElement } from 'chrome://resources/cr_elements/cr_input/cr_input.js'
 import {
   CrLitElement,
@@ -34,36 +35,33 @@ import type { IconSelectedEvent } from './containers_icon.js'
 import { DragReorderMixin, getDragReorderCss } from './drag_reorder_mixin.js'
 
 const shopStrings: Record<string, string> = {
-  TITLE: ContainersStrings.SETTINGS_CONTAINERS_SHOP_TITLE,
-  INTRO: ContainersStrings.SETTINGS_CONTAINERS_SHOP_INTRO,
-  PLATFORM: ContainersStrings.SETTINGS_CONTAINERS_SHOP_PLATFORM,
-  SELECT: ContainersStrings.SETTINGS_CONTAINERS_SHOP_SELECT,
-  TAOBAO: ContainersStrings.SETTINGS_CONTAINERS_SHOP_TAOBAO,
-  NAME: ContainersStrings.SETTINGS_CONTAINERS_SHOP_NAME,
-  CREATE: ContainersStrings.SETTINGS_CONTAINERS_SHOP_CREATE,
-  REFRESH: ContainersStrings.SETTINGS_CONTAINERS_SHOP_REFRESH,
-  CONFIGURE: ContainersStrings.SETTINGS_CONTAINERS_SHOP_CONFIGURE,
-  LOGIN: ContainersStrings.SETTINGS_CONTAINERS_SHOP_LOGIN,
-  QIANNIU: ContainersStrings.SETTINGS_CONTAINERS_SHOP_QIANNIU,
-  ALIMAMA: ContainersStrings.SETTINGS_CONTAINERS_SHOP_ALIMAMA,
-  VERIFY: ContainersStrings.SETTINGS_CONTAINERS_SHOP_VERIFY,
-  CONFIRM: ContainersStrings.SETTINGS_CONTAINERS_SHOP_CONFIRM,
-  UNCONFIGURED: ContainersStrings.SETTINGS_CONTAINERS_SHOP_UNCONFIGURED,
-  AWAITING_LOGIN: ContainersStrings.SETTINGS_CONTAINERS_SHOP_AWAITING_LOGIN,
-  VERIFICATION_REQUIRED:
-    ContainersStrings.SETTINGS_CONTAINERS_SHOP_VERIFICATION_REQUIRED,
-  AWAITING_CONFIRMATION:
-    ContainersStrings.SETTINGS_CONTAINERS_SHOP_AWAITING_CONFIRMATION,
-  READY: ContainersStrings.SETTINGS_CONTAINERS_SHOP_READY,
-  IDENTITY_MISMATCH:
-    ContainersStrings.SETTINGS_CONTAINERS_SHOP_IDENTITY_MISMATCH,
-  BUSY: ContainersStrings.SETTINGS_CONTAINERS_SHOP_BUSY,
-  ERROR: ContainersStrings.SETTINGS_CONTAINERS_SHOP_ERROR,
-  LAST_CHECKED: ContainersStrings.SETTINGS_CONTAINERS_SHOP_LAST_CHECKED,
-  IDENTITY: ContainersStrings.SETTINGS_CONTAINERS_SHOP_IDENTITY,
-  SERVICE_NOTE: ContainersStrings.SETTINGS_CONTAINERS_SHOP_SERVICE_NOTE,
-  GENERAL: ContainersStrings.SETTINGS_CONTAINERS_SHOP_GENERAL,
-  NAME_EXISTS: ContainersStrings.SETTINGS_CONTAINERS_SHOP_NAME_EXISTS,
+  TITLE: 'ecomShopTITLE',
+  INTRO: 'ecomShopINTRO',
+  PLATFORM: 'ecomShopPLATFORM',
+  SELECT: 'ecomShopSELECT',
+  TAOBAO: 'ecomShopTAOBAO',
+  NAME: 'ecomShopNAME',
+  CREATE: 'ecomShopCREATE',
+  REFRESH: 'ecomShopREFRESH',
+  CONFIGURE: 'ecomShopCONFIGURE',
+  LOGIN: 'ecomShopLOGIN',
+  QIANNIU: 'ecomShopQIANNIU',
+  ALIMAMA: 'ecomShopALIMAMA',
+  VERIFY: 'ecomShopVERIFY',
+  CONFIRM: 'ecomShopCONFIRM',
+  UNCONFIGURED: 'ecomShopUNCONFIGURED',
+  AWAITING_LOGIN: 'ecomShopAWAITING_LOGIN',
+  VERIFICATION_REQUIRED: 'ecomShopVERIFICATION_REQUIRED',
+  AWAITING_CONFIRMATION: 'ecomShopAWAITING_CONFIRMATION',
+  READY: 'ecomShopREADY',
+  IDENTITY_MISMATCH: 'ecomShopIDENTITY_MISMATCH',
+  BUSY: 'ecomShopBUSY',
+  ERROR: 'ecomShopERROR',
+  LAST_CHECKED: 'ecomShopLAST_CHECKED',
+  IDENTITY: 'ecomShopIDENTITY',
+  SERVICE_NOTE: 'ecomShopSERVICE_NOTE',
+  GENERAL: 'ecomShopGENERAL',
+  NAME_EXISTS: 'ecomShopNAME_EXISTS',
 }
 
 interface ShopIdentity {
@@ -133,6 +131,9 @@ export class SettingsBraveContentContainersElement extends SettingsBraveContentC
     }
   }
 
+  readonly shopSupported_ = loadTimeData.getBoolean(
+    'ecomShopContainersSupported',
+  )
   accessor shopRows_: ShopRow[] = []
   accessor shopPlatform_ = ''
   accessor shopName_ = ''
@@ -249,7 +250,7 @@ export class SettingsBraveContentContainersElement extends SettingsBraveContentC
     this.browserProxy.handler.getContainers().then(({ containers }) => {
       this.onContainersListUpdated_(containers)
     })
-    void this.refreshShops_()
+    if (this.shopSupported_) void this.refreshShops_()
     this.mirrorPref('brave.containers.enabled', 'containersEnabledPref_')
     this.browserProxy.callbackRouter.onContainersChanged.addListener(
       this.onContainersListUpdated_.bind(this),

@@ -45,147 +45,156 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
 
       ${this.containersEnabledPref_?.value
         ? html`
-            <div class="shop-panel">
-              <h2>${this.shopText_('TITLE')}</h2>
-              <p class="shop-intro">${this.shopText_('INTRO')}</p>
-              <div class="shop-create">
-                <label
-                  >${this.shopText_('PLATFORM')}
-                  <select
-                    .value="${this.shopPlatform_}"
-                    @change="${this.onShopPlatformChange_}"
-                    ?disabled="${this.shopBusy_}"
-                  >
-                    <option value="">${this.shopText_('SELECT')}</option>
-                    <option value="taobao">${this.shopText_('TAOBAO')}</option>
-                  </select>
-                </label>
-                <cr-input
-                  label="${this.shopText_('NAME')}"
-                  .value="${this.shopName_}"
-                  @input="${this.onShopNameInput_}"
-                  ?disabled="${this.shopBusy_}"
-                  maxlength="60"
-                ></cr-input>
-                <cr-button
-                  class="action-button"
-                  @click="${this.onCreateShop_}"
-                  ?disabled="${this.shopBusy_
-                  || !this.shopName_.trim()
-                  || !this.shopPlatform_}"
-                  >${this.shopText_('CREATE')}</cr-button
-                >
-              </div>
-              <div
-                class="shop-message"
-                role="status"
-                aria-live="polite"
-              >
-                ${this.shopBusy_ ? this.shopText_('BUSY') : this.shopError_}
-              </div>
-              ${repeat(
-                this.shopRows_,
-                (row) => row.id,
-                (row) =>
-                  html` <div class="shop-card">
-                    <div class="shop-card-header">
-                      <strong>${row.name}</strong>
-                      <span
-                        class="shop-state ${row.state === 'ready'
-                          ? 'ready'
-                          : ''}"
-                        >${this.shopState_(row)}</span
+            ${this.shopSupported_
+              ? html`
+                  <div class="shop-panel">
+                    <h2>${this.shopText_('TITLE')}</h2>
+                    <p class="shop-intro">${this.shopText_('INTRO')}</p>
+                    <div class="shop-create">
+                      <label
+                        >${this.shopText_('PLATFORM')}
+                        <select
+                          .value="${this.shopPlatform_}"
+                          @change="${this.onShopPlatformChange_}"
+                          ?disabled="${this.shopBusy_}"
+                        >
+                          <option value="">${this.shopText_('SELECT')}</option>
+                          <option value="taobao">
+                            ${this.shopText_('TAOBAO')}
+                          </option>
+                        </select>
+                      </label>
+                      <cr-input
+                        label="${this.shopText_('NAME')}"
+                        .value="${this.shopName_}"
+                        @input="${this.onShopNameInput_}"
+                        ?disabled="${this.shopBusy_}"
+                        maxlength="60"
+                      ></cr-input>
+                      <cr-button
+                        class="action-button"
+                        @click="${this.onCreateShop_}"
+                        ?disabled="${this.shopBusy_
+                        || !this.shopName_.trim()
+                        || !this.shopPlatform_}"
+                        >${this.shopText_('CREATE')}</cr-button
                       >
                     </div>
-                    ${row.platform
-                      ? html`<div class="shop-platform">
-                          ${this.shopText_('TAOBAO')}
-                        </div>`
-                      : nothing}
-                    ${row.identity || row.candidate
-                      ? html` <div class="shop-identity">
-                          ${this.shopText_('IDENTITY')}：${(row.identity
-                            || row.candidate)!.platformName}
-                          <div>
-                            Shop ID: ${(row.identity || row.candidate)!.shopId}
-                            · Account ID:
-                            ${(row.identity || row.candidate)!.accountId}
-                          </div>
-                          <div>
-                            ${this.shopText_(
-                              'LAST_CHECKED',
-                            )}：${this.shopChecked_(
-                              (row.identity || row.candidate)!,
-                            )}
-                          </div>
-                        </div>`
-                      : nothing}
-                    <div class="shop-actions">
-                      ${!row.platform
-                        ? html`
-                            <cr-button
-                              data-id="${row.id}"
-                              data-action="configure"
-                              @click="${this.onShopAction_}"
-                              ?disabled="${this.shopBusy_}"
-                              >${this.shopText_('CONFIGURE')}</cr-button
-                            >
-                          `
-                        : html`
-                            <cr-button
-                              data-id="${row.id}"
-                              data-action="open"
-                              data-service="sycm"
-                              @click="${this.onShopAction_}"
-                              ?disabled="${this.shopBusy_}"
-                              >${this.shopText_('LOGIN')}</cr-button
-                            >
-                            <cr-button
-                              data-id="${row.id}"
-                              data-action="open"
-                              data-service="qianniu"
-                              @click="${this.onShopAction_}"
-                              ?disabled="${this.shopBusy_}"
-                              >${this.shopText_('QIANNIU')}</cr-button
-                            >
-                            <cr-button
-                              data-id="${row.id}"
-                              data-action="open"
-                              data-service="alimama"
-                              @click="${this.onShopAction_}"
-                              ?disabled="${this.shopBusy_}"
-                              >${this.shopText_('ALIMAMA')}</cr-button
-                            >
-                            <cr-button
-                              data-id="${row.id}"
-                              data-action="verify"
-                              @click="${this.onShopAction_}"
-                              ?disabled="${this.shopBusy_}"
-                              >${this.shopText_('VERIFY')}</cr-button
-                            >
-                            ${row.candidate
-                            && row.state === 'awaiting-confirmation'
-                              ? html` <cr-button
-                                  class="action-button"
-                                  data-id="${row.id}"
-                                  data-action="confirm"
-                                  @click="${this.onShopAction_}"
-                                  ?disabled="${this.shopBusy_}"
-                                  >${this.shopText_('CONFIRM')}</cr-button
-                                >`
-                              : nothing}
-                          `}
+                    <div
+                      class="shop-message"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      ${this.shopBusy_
+                        ? this.shopText_('BUSY')
+                        : this.shopError_}
                     </div>
-                  </div>`,
-              )}
-              <p class="shop-intro">${this.shopText_('SERVICE_NOTE')}</p>
-              <cr-button
-                @click="${this.refreshShops_}"
-                ?disabled="${this.shopBusy_}"
-                >${this.shopText_('REFRESH')}</cr-button
-              >
-              <h3>${this.shopText_('GENERAL')}</h3>
-            </div>
+                    ${repeat(
+                      this.shopRows_,
+                      (row) => row.id,
+                      (row) =>
+                        html` <div class="shop-card">
+                          <div class="shop-card-header">
+                            <strong>${row.name}</strong>
+                            <span
+                              class="shop-state ${row.state === 'ready'
+                                ? 'ready'
+                                : ''}"
+                              >${this.shopState_(row)}</span
+                            >
+                          </div>
+                          ${row.platform
+                            ? html`<div class="shop-platform">
+                                ${this.shopText_('TAOBAO')}
+                              </div>`
+                            : nothing}
+                          ${row.identity || row.candidate
+                            ? html` <div class="shop-identity">
+                                ${this.shopText_('IDENTITY')}：${(row.identity
+                                  || row.candidate)!.platformName}
+                                <div>
+                                  Shop ID:
+                                  ${(row.identity || row.candidate)!.shopId} ·
+                                  Account ID:
+                                  ${(row.identity || row.candidate)!.accountId}
+                                </div>
+                                <div>
+                                  ${this.shopText_(
+                                    'LAST_CHECKED',
+                                  )}：${this.shopChecked_(
+                                    (row.identity || row.candidate)!,
+                                  )}
+                                </div>
+                              </div>`
+                            : nothing}
+                          <div class="shop-actions">
+                            ${!row.platform
+                              ? html`
+                                  <cr-button
+                                    data-id="${row.id}"
+                                    data-action="configure"
+                                    @click="${this.onShopAction_}"
+                                    ?disabled="${this.shopBusy_}"
+                                    >${this.shopText_('CONFIGURE')}</cr-button
+                                  >
+                                `
+                              : html`
+                                  <cr-button
+                                    data-id="${row.id}"
+                                    data-action="open"
+                                    data-service="sycm"
+                                    @click="${this.onShopAction_}"
+                                    ?disabled="${this.shopBusy_}"
+                                    >${this.shopText_('LOGIN')}</cr-button
+                                  >
+                                  <cr-button
+                                    data-id="${row.id}"
+                                    data-action="open"
+                                    data-service="qianniu"
+                                    @click="${this.onShopAction_}"
+                                    ?disabled="${this.shopBusy_}"
+                                    >${this.shopText_('QIANNIU')}</cr-button
+                                  >
+                                  <cr-button
+                                    data-id="${row.id}"
+                                    data-action="open"
+                                    data-service="alimama"
+                                    @click="${this.onShopAction_}"
+                                    ?disabled="${this.shopBusy_}"
+                                    >${this.shopText_('ALIMAMA')}</cr-button
+                                  >
+                                  <cr-button
+                                    data-id="${row.id}"
+                                    data-action="verify"
+                                    @click="${this.onShopAction_}"
+                                    ?disabled="${this.shopBusy_}"
+                                    >${this.shopText_('VERIFY')}</cr-button
+                                  >
+                                  ${row.candidate
+                                  && row.state === 'awaiting-confirmation'
+                                    ? html` <cr-button
+                                        class="action-button"
+                                        data-id="${row.id}"
+                                        data-action="confirm"
+                                        @click="${this.onShopAction_}"
+                                        ?disabled="${this.shopBusy_}"
+                                        >${this.shopText_('CONFIRM')}</cr-button
+                                      >`
+                                    : nothing}
+                                `}
+                          </div>
+                        </div>`,
+                    )}
+                    <p class="shop-intro">${this.shopText_('SERVICE_NOTE')}</p>
+                    <cr-button
+                      @click="${this.refreshShops_}"
+                      ?disabled="${this.shopBusy_}"
+                      >${this.shopText_('REFRESH')}</cr-button
+                    >
+                    <h3>${this.shopText_('GENERAL')}</h3>
+                  </div>
+                `
+              : nothing}
             <settings-toggle-button
               pref-key="brave.tabs.always_use_mini_accent_icon"
               icon="container-on"

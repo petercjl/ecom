@@ -1657,9 +1657,6 @@ Or change later at <ph name="SETTINGS_EXTENIONS_LINK">$2<ex>brave://settings/ext
         Your searches and page contents are processed on this device. Nothing is sent to Brave or seen by human reviewers.
       </message>
       <!--Add new items to the appropriate sections above -->
-      <if expr="enable_containers">
-        <part file="ecom_shop_strings.grdp" />
-      </if>
     </messages>
   </release>
 </grit>

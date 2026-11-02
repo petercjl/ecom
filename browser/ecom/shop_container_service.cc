@@ -251,6 +251,12 @@ class ShopService final : public base::SupportsUserData::Data,
         Send(std::move(callback), Error("STALE_IDENTITY_CANDIDATE"));
         return;
       }
+      int64_t verified_at = 0;
+      if (!base::StringToInt64(Field(*candidate, "verifiedAt"), &verified_at) ||
+          base::Time::Now().ToTimeT() - verified_at > 300) {
+        Send(std::move(callback), Error("STALE_IDENTITY_CANDIDATE"));
+        return;
+      }
       auto updated = old->Clone();
       auto identity = candidate->Clone();
       identity.Remove("candidateId");
@@ -315,7 +321,7 @@ class ShopService final : public base::SupportsUserData::Data,
         policy_exception_justification: "User managed local shop containers." })");
     auto loader =
         network::SimpleURLLoader::Create(std::move(resource), annotation);
-    loader->SetTimeoutDuration(base::Seconds(20));
+    loader->SetTimeoutDuration(base::Seconds(8));
     auto* pending = loader.get();
     loaders_[id] = std::move(loader);
     const auto config = content::StoragePartitionConfig::Create(
@@ -408,6 +414,10 @@ class ShopSettingsHandler final : public content::WebUIMessageHandler {
 };
 }  // namespace
 void RunShopCommand(Profile* profile, std::string request, Reply callback) {
+  if (request.size() > 32768) {
+    Send(std::move(callback), Error("INVALID_ARGUMENT"));
+    return;
+  }
   auto parsed = base::JSONReader::Read(request, base::JSON_PARSE_RFC);
   if (!parsed || !parsed->is_dict() || request.size() > 32768) {
     Send(std::move(callback), Error("INVALID_ARGUMENT"));

@@ -83,7 +83,7 @@ source_set("core") {
     "//build/config:precompiled_headers",
   ]
 
-  sources = brave_chrome_browser_sources
+  sources = brave_chrome_browser_sources + [ "ecom/shop_container_strings.h" ]
   if (is_mac) {
     sources += [ "ecom/native_session_service.cc", "ecom/native_session_service.h", "ecom/shop_container_service.cc", "ecom/shop_container_service.h" ]
   }
