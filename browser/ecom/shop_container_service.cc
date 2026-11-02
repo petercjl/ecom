@@ -883,8 +883,8 @@ class ShopService final : public base::SupportsUserData::Data,
                re2::RE2::FindAndConsume(&script_input, script_pattern, &script)) {
           const GURL source = GURL(kHome).Resolve(script);
           if (source.SchemeIs("https") && source.host() == "g.alicdn.com") {
-            script_paths.Append(source.DeprecatedGetOriginAsURL().spec() +
-                                source.path());
+            script_paths.Append(url::Origin::Create(source).Serialize() +
+                                std::string(source.path()));
           }
         }
         diagnostics.Set("identityScriptPaths", std::move(script_paths));
