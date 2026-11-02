@@ -856,7 +856,8 @@ class ShopService final : public base::SupportsUserData::Data,
         base::DictValue field_shapes;
         for (const auto* key : {"runAsShopId", "loginUserId", "mainUserId",
                                 "runAsUserId", "runAsShopTitle",
-                                "runAsUserName", "mainUserName"}) {
+                                "runAsUserName", "mainUserName",
+                                "loginUserName", "loginNick", "shopName"}) {
           std::string first;
           const std::string pattern =
               std::string(R"re(["']?)re") + key +
@@ -873,6 +874,20 @@ class ShopService final : public base::SupportsUserData::Data,
         }
         // Fixed field names and syntax classes only; values remain native.
         diagnostics.Set("identityFieldShapes", std::move(field_shapes));
+        base::ListValue script_paths;
+        re2::StringPiece script_input(*body);
+        const re2::RE2 script_pattern(
+            R"re(<script[^>]+src\s*=\s*["']([^"']+)["'])re");
+        std::string script;
+        while (script_paths.size() < 20 &&
+               re2::RE2::FindAndConsume(&script_input, script_pattern, &script)) {
+          const GURL source = GURL(kHome).Resolve(script);
+          if (source.SchemeIs("https") && source.host() == "g.alicdn.com") {
+            script_paths.Append(source.DeprecatedGetOriginAsURL().spec() +
+                                source.path());
+          }
+        }
+        diagnostics.Set("identityScriptPaths", std::move(script_paths));
         std::string block;
         bool object = re2::RE2::PartialMatch(
             *body,
