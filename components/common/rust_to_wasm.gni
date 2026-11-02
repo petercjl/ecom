@@ -62,6 +62,13 @@ template("rust_to_wasm") {
 
     response_file_contents += rust_host_response_file_contents
 
+    # Cargo's encoded form preserves a source path containing spaces as one
+    # rustc argument. Keep diagnostics useful without embedding build-machine
+    # directories in distributed WASM panic strings.
+    response_file_contents += [
+      "CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=" + rebase_path("//.") + "=.",
+    ]
+
     response_file_contents += [
       "abs@./wasm-pack$host_exe_suffix",
       "--log-level",
