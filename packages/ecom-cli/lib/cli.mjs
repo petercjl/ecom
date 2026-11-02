@@ -29,7 +29,7 @@ export async function main(argv) {
   if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli containers list --json | skill source|status|install|update | update check|install | doctor',...capabilities(),...(capabilities().commandContracts[requested]??{})};
   if(command==='version')return {ok:true,package:pkg.name,version:pkg.version,protocolVersion:1};
   if(command==='capabilities'||command==='schema')return {ok:true,...capabilities()};
-  if(command==='skill source') {const item=source();return {...item,complete:true,items:[item]};}
+  if(command==='skill source') {const item=source();return {...capabilities(),...item,complete:true,items:[item]};}
   if(command==='skill status')return status(options);
   if(command==='skill install'||command==='skill update')return installSkill(options);
   if(command==='update check')return checkUpdate();
