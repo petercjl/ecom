@@ -32,6 +32,7 @@
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/storage_partition_config.h"
 #include "content/public/browser/web_contents.h"
+#include "net/base/isolation_info.h"
 #include "net/base/load_flags.h"
 #include "net/base/net_errors.h"
 #include "net/base/url_util.h"
@@ -176,15 +177,23 @@ class Read final : public BusinessRead {
   void Fail(std::string code) {
     timer_.Stop();
     loader_.reset();
+    auto diagnostics = base::DictValue()
+                           .Set("phase", phase_)
+                           .Set("netError", net_error_)
+                           .Set("bodyKind", body_kind_)
+                           .Set("matchingTabFound", matching_tab_found_)
+                           .Set("publicScripts", public_scripts_.Clone());
     std::move(callback_).Run(
         base::DictValue()
             .Set("ok", false)
             .Set("error", base::DictValue()
                               .Set("code", std::move(code))
                               .Set("executed", submitted_)
-                              .Set("httpStatus", last_status_)));
+                              .Set("httpStatus", last_status_)
+                              .Set("diagnostics", std::move(diagnostics))));
   }
   void ReadCookie() {
+    phase_ = "auth-cookie";
     auto* partition = Partition();
     if (!partition) {
       Fail("CONTAINER_NOT_FOUND");
@@ -215,6 +224,15 @@ class Read final : public BusinessRead {
     }
   }
   void DmpContext(std::string html) {
+    phase_ = "auth-dmp-context";
+    re2::StringPiece scripts(html);
+    const re2::RE2 script_pattern(
+        R"re((?i)<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'])re");
+    std::string src;
+    while (public_scripts_.size() < 20 &&
+           re2::RE2::FindAndConsume(&scripts, script_pattern, &src)) {
+      AddPublicScript(src);
+    }
     std::string csrf;
     if (re2::RE2::PartialMatch(
             html, R"re(["']csrfId["']\s*:\s*["']([^"']+)["'])re", &csrf)) {
@@ -249,24 +267,38 @@ class Read final : public BusinessRead {
       Fail("AUTH_CONTEXT_REQUIRED");
       return;
     }
+    matching_tab_found_ = true;
     frame->ExecuteJavaScriptInIsolatedWorld(
         uR"js((()=>{if(location.origin!=='https://dmp.taobao.com')return null;
           const s=Array.from(document.scripts).slice(0,100)
             .map(x=>(x.textContent||'').slice(0,131072)).join('\n').slice(0,2097152);
           const m=s.match(/["']csrfId["']\s*:\s*["']([^"']+)["']/);
-          return m?m[1]:null;})())js",
+          return {context:m?m[1]:'',scripts:Array.from(document.scripts)
+            .slice(0,100).map(x=>x.src).filter(Boolean)};})())js",
         base::BindOnce(&Read::DmpDomContext, weak_.GetWeakPtr()),
         ISOLATED_WORLD_ID_BRAVE_INTERNAL);
   }
   void DmpDomContext(base::Value value) {
-    if (!value.is_string() || value.GetString().empty() ||
-        value.GetString().size() > 4096) {
+    phase_ = "auth-dmp-dom";
+    if (!value.is_dict()) {
+      Fail("AUTH_CONTEXT_REQUIRED");
+      return;
+    }
+    if (const auto* scripts = value.GetDict().FindList("scripts")) {
+      for (const auto& src : *scripts) {
+        if (src.is_string()) {
+          AddPublicScript(src.GetString());
+        }
+      }
+    }
+    const auto context = Field(value.GetDict(), "context");
+    if (context.empty() || context.size() > 4096) {
       Fail("AUTH_CONTEXT_REQUIRED");
       return;
     }
     params_.Set("bizCode", "dmp");
-    params_.Set("_csrf", value.GetString());
-    params_.Set("csrfId", value.GetString());
+    params_.Set("_csrf", context);
+    params_.Set("csrfId", context);
     Submit();
   }
   void Network(const GURL& url,
@@ -279,6 +311,13 @@ class Read final : public BusinessRead {
       return;
     }
     const GURL entry(Field(*spec_, "entryUrl"));
+    phase_ = stage == Stage::kSycm     ? "auth-sycm-home"
+             : stage == Stage::kAccess ? "auth-alimama-access"
+             : stage == Stage::kDmp    ? "auth-dmp-portal"
+                                       : "business-read";
+    last_status_ = 0;
+    net_error_ = 0;
+    body_kind_ = "none";
     auto request = std::make_unique<network::ResourceRequest>();
     request->url = url;
     request->method = method;
@@ -287,6 +326,10 @@ class Read final : public BusinessRead {
     request->mode = network::mojom::RequestMode::kCors;
     request->site_for_cookies = net::SiteForCookies::FromUrl(entry);
     request->request_initiator = url::Origin::Create(entry);
+    request->trusted_params = network::ResourceRequest::TrustedParams();
+    request->trusted_params->isolation_info =
+        net::IsolationInfo::CreateForInternalRequest(
+            url::Origin::Create(entry));
     request->referrer = Field(*spec_, "service").starts_with("sycm")
                             ? GURL("https://sycm.taobao.com/portal/home.htm")
                             : entry;
@@ -323,6 +366,16 @@ class Read final : public BusinessRead {
             ? loader_->ResponseInfo()->headers->response_code()
             : 0;
     last_status_ = status;
+    net_error_ = loader_->NetError();
+    if (body) {
+      std::string prefix = base::ToLowerASCII(body->substr(0, 256));
+      base::TrimWhitespaceASCII(prefix, base::TRIM_ALL, &prefix);
+      body_kind_ = prefix.starts_with("{") || prefix.starts_with("[") ? "json"
+                   : prefix.find("<html") != std::string::npos ||
+                           prefix.starts_with("<!doctype")
+                       ? "html"
+                       : "text";
+    }
     const bool success =
         loader_->NetError() == net::OK && status == 200 && body;
     loader_.reset();
@@ -423,6 +476,19 @@ class Read final : public BusinessRead {
             Stage::kResult);
   }
 
+  void AddPublicScript(const std::string& value) {
+    const GURL url = GURL(Field(*spec_, "entryUrl")).Resolve(value);
+    if (public_scripts_.size() >= 20 || !url.SchemeIs("https") ||
+        url.host() != "g.alicdn.com" || !url.path().ends_with(".js") ||
+        url.has_username() || url.has_password()) {
+      return;
+    }
+    GURL::Replacements clean;
+    clean.ClearQuery();
+    clean.ClearRef();
+    public_scripts_.Append(url.ReplaceComponents(clean).spec());
+  }
+
   const raw_ptr<Profile> profile_;
   const std::string container_;
   const std::string operation_;
@@ -431,6 +497,11 @@ class Read final : public BusinessRead {
   std::string sycm_token_;
   bool submitted_ = false;
   int last_status_ = 0;
+  int net_error_ = 0;
+  std::string phase_ = "validation";
+  std::string body_kind_ = "none";
+  bool matching_tab_found_ = false;
+  base::ListValue public_scripts_;
   base::OnceCallback<void(base::DictValue)> callback_;
   std::unique_ptr<network::SimpleURLLoader> loader_;
   base::OneShotTimer timer_;

@@ -91,6 +91,18 @@ export async function registeredReadInConnection(connection,options,operation,pa
   if(body.containerId!==container.id||body.businessOperation!==operation||body.httpStatus!==200||!Object.hasOwn(body,'data'))throw fail('PROTOCOL_MISMATCH','Registered response differs from the pinned container or operation',{operationId:body.operationId,executed:'unknown'});
   return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,httpStatus:body.httpStatus,data:body.data,transport:'native-business-read',identityBinding:'container-bound-account',registryHash};
 }
+function safeDiagnostics(value) {
+  if(!value||typeof value!=='object')return undefined;
+  const result={};
+  if(typeof value.phase==='string'&&/^[a-z-]{1,32}$/.test(value.phase))result.phase=value.phase;
+  if(Number.isInteger(value.netError)&&value.netError<=0&&value.netError>=-9999)result.netError=value.netError;
+  if(['json','html','text','none'].includes(value.bodyKind))result.bodyKind=value.bodyKind;
+  if(typeof value.matchingTabFound==='boolean')result.matchingTabFound=value.matchingTabFound;
+  if(Array.isArray(value.publicScripts))result.publicScripts=value.publicScripts.slice(0,20).filter(url=>{
+    try{const item=new URL(url);return item.protocol==='https:'&&item.hostname==='g.alicdn.com'&&!item.username&&!item.password&&!item.search&&!item.hash&&item.pathname.endsWith('.js')&&url.length<2048;}catch{return false;}
+  });
+  return Object.keys(result).length?result:undefined;
+}
 export async function callMailbox({folder,endpoint},payload,timeoutMs=10000) {
   privatePath(folder,true);privatePath(path.join(folder,'endpoint.json'));
   const current=JSON.parse(fs.readFileSync(path.join(folder,'endpoint.json'),'utf8'));
@@ -110,7 +122,8 @@ export async function callMailbox({folder,endpoint},payload,timeoutMs=10000) {
       fs.unlinkSync(response);
       if(body.ok!==true) {
         const code=/^[A-Z][A-Z0-9_]{0,63}$/.test(body.error?.code??'')?body.error.code:'BROWSER_ERROR';
-        throw fail(code,'Ecom refused the request: '+code,{operationId:id,executed:body.error?.executed??'unknown',...(Number.isInteger(body.error?.httpStatus)?{httpStatus:body.error.httpStatus}:{})});
+        const diagnostics=safeDiagnostics(body.error?.diagnostics);
+        throw fail(code,'Ecom refused the request: '+code,{operationId:id,executed:body.error?.executed??'unknown',...(Number.isInteger(body.error?.httpStatus)?{httpStatus:body.error.httpStatus}:{}),...(diagnostics?{diagnostics}:{})});
       }
       return body;
     }

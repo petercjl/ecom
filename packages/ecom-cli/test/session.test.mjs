@@ -94,3 +94,13 @@ test('registered reads require a matching browser catalog and freeze account and
     await assert.rejects(registeredReadInConnection(f.connection,{container:'account-a'},'alimama.report',{},hash),e=>e.code==='PROTOCOL_MISMATCH'&&e.executed==='unknown');
   }finally{f.close();}
 });
+
+test('native auth diagnostics expose bounded context and public assets without secrets',{skip:process.platform==='win32'},async()=>{
+  const f=fixture(message=>message.method==='containers.list'?{ok:true,containers:accounts}:{ok:false,error:{code:'AUTH_CONTEXT_REQUIRED',executed:false,httpStatus:200,diagnostics:{phase:'auth-dmp-context',netError:-2,bodyKind:'html',matchingTabFound:false,token:'private',publicScripts:['https://g.alicdn.com/dmp/app.js','https://g.alicdn.com/dmp/app.js?token=private','https://other.example/app.js']}}});
+  try {
+    await assert.rejects(requestInConnection(f.connection,{container:'account-a',url:origin+'/data'}),error=>{
+      assert.deepEqual(error.diagnostics,{phase:'auth-dmp-context',netError:-2,bodyKind:'html',matchingTabFound:false,publicScripts:['https://g.alicdn.com/dmp/app.js']});
+      assert.ok(!JSON.stringify(error.diagnostics).includes('private'));return error.code==='AUTH_CONTEXT_REQUIRED';
+    });
+  }finally{f.close();}
+});
