@@ -11,7 +11,7 @@ def main():
     parser.add_argument('--source', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    parts = ['// Generated Ecom shop WebUI resources.\n#pragma once\nnamespace ecom {\n']
+    parts = ['// Generated Ecom shop WebUI resources.\n#pragma once\n#include <array>\nnamespace ecom {\n']
     for filename, name in [('index.html', 'Html'), ('manager.css', 'Css'),
                            ('manager.js', 'Js'), ('model.js', 'Model')]:
         text = (args.source / filename).read_text()
@@ -23,7 +23,7 @@ def main():
         text = re.sub(r'fill="#[0-9a-fA-F]+"', 'fill="#ffffff"', text)
         assert ')ECOMRESOURCE"' not in text
         parts.append(f'inline constexpr char kShopIcon{index}[] = R"ECOMRESOURCE({text})ECOMRESOURCE";\n')
-    parts.append('inline constexpr const char* kShopIcons[] = {' + ','.join(f'kShopIcon{i}' for i in range(len(icons))) + '};\n')
+    parts.append('inline constexpr std::array<const char*,11> kShopIcons = {' + ','.join(f'kShopIcon{i}' for i in range(len(icons))) + '};\n')
     parts.append('}\n')
     output = ''.join(parts)
     args.output.parent.mkdir(parents=True, exist_ok=True)
