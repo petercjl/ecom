@@ -7,14 +7,18 @@ import { artifactManifest, payloadPackage, sha256, validateRelease } from './rel
 import { git } from './workspace.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-function run(command, args) {
-  const result = spawnSync(command, args, { encoding: 'utf8' });
+function run(command, args, options = {}) {
+  const result = spawnSync(command, args, { encoding: 'utf8', ...options });
   if (result.error || result.status !== 0) throw new Error(result.stderr || result.error?.message || command + ' failed');
   return result.stdout.trim();
 }
 function writeNew(file, contents) {
   if (fs.existsSync(file)) throw new Error('Output already exists: ' + file);
   fs.writeFileSync(file, contents, { flag: 'wx' });
+}
+export function packNativePayload(payload, output) {
+  const npm = fs.realpathSync(run('/usr/bin/which', ['npm']));
+  run(process.execPath, [npm, 'pack', '--ignore-scripts', '--json', '--pack-destination', output], { cwd: payload });
 }
 export function verifyMacArchitecture(executable) {
   run('/usr/bin/lipo', [executable, '-verify_arch', 'arm64']);
@@ -113,8 +117,7 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   run('/usr/bin/hdiutil', ['create', '-volname', 'Ecom', '-srcfolder', stage, '-format', 'UDZO', dmg]);
   const tarball = path.join(output, `petercjl-ecom-macos-arm64-${config.version}.tgz`);
   if (fs.existsSync(tarball)) throw new Error('Native npm payload already exists');
-  const npm = fs.realpathSync(run('/usr/bin/which', ['npm']));
-  run(process.execPath, [npm, 'pack', payload, '--json', '--pack-destination', output]);
+  packNativePayload(payload, output);
   if (!fs.statSync(tarball).isFile()) throw new Error('npm pack did not produce the expected payload');
   const receipt = { ...manifest, dmg: path.basename(dmg), dmgSha256: await sha256(dmg), tarball: path.basename(tarball), tarballSha256: await sha256(tarball), buildEnvironment: { node: process.version, xcode: run('/usr/bin/xcodebuild', ['-version']).split('\n')[0], sdk: run('/usr/bin/xcrun', ['--sdk', 'macosx', '--show-sdk-version']), argsSha256: await sha256(path.resolve(sourceRoot, '../out/Release_arm64/args_generated.gni')) }, updaterSelfTest: true, localUpdateRecoveryVerified: true, codesignVerified: true, nativeSmokeTest: false, updateRoundTripVerified: false, published: false };
   writeNew(path.join(output, 'release-receipt.json'), JSON.stringify(receipt, null, 2) + '\n');

@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { prepareReleaseSource } from '../build-macos.mjs';
 import { validatePublication, verifyPayload } from '../verify-release-payload.mjs';
-import { auditMacBundle, verifyMacArchitecture } from '../package-macos.mjs';
+import { auditMacBundle, verifyMacArchitecture, packNativePayload } from '../package-macos.mjs';
 import { registryPayloadStatus } from '../registry-payload-status.mjs';
 import crypto from 'node:crypto';
 import { artifactManifest, payloadPackage, validateRelease, sha256 } from '../release-contract.mjs';
@@ -117,5 +117,19 @@ test('macOS architecture gate invokes real lipo on Mach-O input', { skip: proces
   try {
     const invalid = path.join(dir, 'not-macho'); fs.writeFileSync(invalid, 'invalid', { flag: 'wx' });
     assert.throws(() => verifyMacArchitecture(invalid));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('native npm payload packs in its own package context', { skip: process.platform !== 'darwin' }, () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecom-native-pack-'));
+  try {
+    const payload = path.join(dir, 'payload'); fs.mkdirSync(payload);
+    fs.writeFileSync(path.join(payload, 'package.json'), JSON.stringify(payloadPackage(config)), { flag: 'wx' });
+    for (const name of ['Ecom.zip', 'artifact.json', 'LICENSE']) fs.writeFileSync(path.join(payload, name), 'fixture', { flag: 'wx' });
+    packNativePayload(payload, dir);
+    const tarball = path.join(dir, 'petercjl-ecom-macos-arm64-' + config.version + '.tgz');
+    const result = spawnSync('/usr/bin/tar', ['-tzf', tarball], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(result.stdout.trim().split('\n').sort(), ['package/Ecom.zip', 'package/LICENSE', 'package/artifact.json', 'package/package.json'].sort());
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
