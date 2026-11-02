@@ -252,7 +252,7 @@ void BraveToolbarView::Init() {
                            &ecom::OpenShopManager, base::Unretained(profile))),
                        *GetIndexOf(app_menu_button_));
     shops->SetVectorIcon(kLeoGrid04Icon);
-    const auto label =
+    const char16_t* label =
         g_browser_process->GetApplicationLocale().starts_with("zh")
             ? u"店铺管理"
             : u"Shop manager";
