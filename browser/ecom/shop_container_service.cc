@@ -372,10 +372,45 @@ class ShopService final : public base::SupportsUserData::Data,
                               ? ParseIdentity(*body)
                               : std::nullopt;
     if (!identity) {
+      base::DictValue diagnostics;
+      diagnostics.Set("networkError", loader->NetError());
+      diagnostics.Set("httpStatus",
+                      loader->ResponseInfo() && loader->ResponseInfo()->headers
+                          ? loader->ResponseInfo()->headers->response_code()
+                          : 0);
+      diagnostics.Set("hasBody", body.has_value());
+      if (body) {
+        diagnostics.Set("metadataMarker",
+                        body->find("metaCacheData") != std::string::npos);
+        diagnostics.Set("shopIdField",
+                        body->find("runAsShopId") != std::string::npos);
+        diagnostics.Set("accountIdField",
+                        body->find("loginUserId") != std::string::npos);
+        diagnostics.Set("userIdField",
+                        body->find("runAsUserId") != std::string::npos);
+        std::string block;
+        bool object = re2::RE2::PartialMatch(
+            *body,
+            re2::RE2(
+                R"re((?s)(?:window\.)?metaCacheData\s*=\s*(\{.+?\})\s*;)re"),
+            &block);
+        diagnostics.Set("objectAssignment", object);
+        diagnostics.Set(
+            "validJson",
+            object && base::JSONReader::Read(
+                          block, base::JSON_PARSE_CHROMIUM_EXTENSIONS)
+                          .has_value());
+        diagnostics.Set("jsonParseAssignment",
+                        re2::RE2::PartialMatch(
+                            *body, R"(metaCacheData\s*=\s*JSON\.parse)"));
+      }
       item.Set("state", "verification-required");
       item.Set("lastError", "IDENTITY_UNAVAILABLE");
+      item.Set("diagnostics", diagnostics.Clone());
       Store(id, std::move(item));
-      Send(std::move(callback), Error("IDENTITY_UNAVAILABLE"));
+      auto error = Error("IDENTITY_UNAVAILABLE");
+      error.FindDict("error")->Set("details", std::move(diagnostics));
+      Send(std::move(callback), std::move(error));
       return;
     }
     auto candidate = identity->Clone();
