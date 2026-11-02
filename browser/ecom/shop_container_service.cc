@@ -963,6 +963,25 @@ class ShopService final : public base::SupportsUserData::Data,
     diagnostics.Set("identityProbeHttpStatus", status);
     diagnostics.Set("identityProbeNetworkError", pending.loader->NetError());
     diagnostics.Set("identityProbeValidIdentity", false);
+    if (body) {
+      const auto payload = base::JSONReader::Read(*body, base::JSON_PARSE_RFC);
+      if (payload && payload->is_dict()) {
+        if (const auto code = payload->GetDict().FindInt("code")) {
+          diagnostics.Set("identityProbeCode", *code);
+        }
+        if (const auto* data = payload->GetDict().FindDict("data")) {
+          base::DictValue types;
+          for (const auto* key : {"runAsShopId", "loginUserId", "mainUserId",
+                                  "runAsShopTitle", "runAsUserName",
+                                  "mainUserName"}) {
+            const auto* value = data->Find(key);
+            types.Set(key, value ? base::Value::GetTypeName(value->type())
+                                 : "missing");
+          }
+          diagnostics.Set("identityProbeFieldTypes", std::move(types));
+        }
+      }
+    }
     item.Set("diagnostics", std::move(diagnostics));
     Store(id, std::move(item));
     ProbeLogin(id, std::move(pending.callback));
