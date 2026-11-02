@@ -29,6 +29,7 @@ async function main() {
     const child = spawnSync(node, [fileURLToPath(import.meta.url), ...args], { stdio: 'inherit' }); process.exitCode = child.status ?? 1; return;
   }
   if (git(root, ['branch', '--show-current']) !== 'main') throw new Error('Integrate release source on main before building');
+  if (git(root, ['diff', '--name-only', 'HEAD', '--', 'ecom/build-macos.mjs', 'ecom/workspace.mjs', 'ecom/package-macos.mjs', 'ecom/release-contract.mjs'])) throw new Error('Commit release build entry changes before execution');
   const revision = git(root, ['rev-parse', 'HEAD']);
   const env = { ...process.env, PATH: [path.dirname(node), path.join(os.homedir(), '.local/share/ecom-toolchain/node_modules/.bin'), process.env.PATH].join(path.delimiter) };
   const selected = spawnSync('xcode-select', ['-p'], { encoding: 'utf8' }).stdout?.trim();

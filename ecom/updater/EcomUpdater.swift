@@ -32,6 +32,36 @@ func validateBundleLinks(_ candidate: URL) throws {
         try require(item.resolvingSymlinksInPath().path.hasPrefix(candidate.path + "/"), "external bundle symlink")
     }
 }
+func activateBundle(app: URL, candidate: URL, backup: URL) throws {
+    let fm = FileManager.default
+    try require(fm.fileExists(atPath: app.path) && !fm.fileExists(atPath: backup.path), "replacement preflight")
+    try fm.moveItem(at: app, to: backup)
+    do { try fm.moveItem(at: candidate, to: app) }
+    catch { try fm.moveItem(at: backup, to: app); throw error }
+}
+func restoreBundle(app: URL, backup: URL, failed: URL) throws {
+    let fm = FileManager.default
+    try require(fm.fileExists(atPath: backup.path) && !fm.fileExists(atPath: failed.path), "recovery preflight")
+    if fm.fileExists(atPath: app.path) { try fm.moveItem(at: app, to: failed) }
+    try fm.moveItem(at: backup, to: app)
+}
+func transactionSelfTest() throws {
+    let fm = FileManager.default
+    let dir = fm.temporaryDirectory.appendingPathComponent("ecom-transaction-test-" + UUID().uuidString)
+    try fm.createDirectory(at: dir, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+    defer { try? fm.removeItem(at: dir) }
+    let app = dir.appendingPathComponent("Ecom.app"), candidate = dir.appendingPathComponent("candidate.app")
+    let backup = dir.appendingPathComponent("previous.app"), failed = dir.appendingPathComponent("failed.app")
+    try Data("old".utf8).write(to: app, options: .withoutOverwriting)
+    try Data("new".utf8).write(to: candidate, options: .withoutOverwriting)
+    try activateBundle(app: app, candidate: candidate, backup: backup)
+    try require(try Data(contentsOf: app) == Data("new".utf8) && Data(contentsOf: backup) == Data("old".utf8), "activation")
+    try restoreBundle(app: app, backup: backup, failed: failed)
+    try require(try Data(contentsOf: app) == Data("old".utf8) && Data(contentsOf: failed) == Data("new".utf8), "rollback")
+    do { try activateBundle(app: app, candidate: candidate, backup: backup); throw UpdateFailure.invalid("missing candidate accepted") }
+    catch { try require(try Data(contentsOf: app) == Data("old".utf8) && !fm.fileExists(atPath: backup.path), "failed replacement preserved original") }
+    try require(try digest(app) == "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4", "sha256")
+}
 func digest(_ url: URL, sha512: Bool = false) throws -> String {
     let handle = try FileHandle(forReadingFrom: url)
     defer { try? handle.close() }
@@ -169,9 +199,8 @@ final class Updater {
         try require(installed?["EcomReleaseVersion"] as? String == current && installed?["EcomSourceRevision"] as? String == currentSource, "installed application changed")
         try require(!NSRunningApplication.runningApplications(withBundleIdentifier: "app.ecom.browser").contains { $0.bundleURL?.resolvingSymlinksInPath() == app && !$0.isTerminated }, "application reopened")
         let backup = parent.appendingPathComponent("Ecom.previous-" + current + "-" + UUID().uuidString + ".app")
-        try fm.moveItem(at: app, to: backup)
+        try activateBundle(app: app, candidate: candidate, backup: backup)
         do {
-            try fm.moveItem(at: candidate, to: app)
             try run("/usr/bin/open", ["-n", app.path, "--args", "--restore-last-session"])
             try await Task.sleep(nanoseconds: 8_000_000_000)
             try require(NSRunningApplication.runningApplications(withBundleIdentifier: "app.ecom.browser").contains { $0.bundleURL?.resolvingSymlinksInPath() == app && !$0.isTerminated }, "updated application failed to start")
@@ -184,8 +213,7 @@ final class Updater {
                 try await Task.sleep(nanoseconds: 500_000_000)
             }
             try require(started.allSatisfy { $0.isTerminated }, "recovery awaits normal quit; previous application retained")
-            if fm.fileExists(atPath: app.path) { try fm.moveItem(at: app, to: parent.appendingPathComponent("Ecom.failed-" + UUID().uuidString + ".app")) }
-            try fm.moveItem(at: backup, to: app)
+            try restoreBundle(app: app, backup: backup, failed: parent.appendingPathComponent("Ecom.failed-" + UUID().uuidString + ".app"))
             _ = try? run("/usr/bin/open", ["-n", app.path, "--args", "--restore-last-session"])
             throw error
         }
@@ -208,6 +236,7 @@ struct Main {
                     do { try safeArchivePaths(invalid, prefix: "Ecom.app/"); fatalError("accepted unsafe archive") } catch {}
                 }
                 try require(!RegistrySession.allowed(URL(string: "https://registry.npmjs.org.evil.test/x")), "host check")
+                try transactionSelfTest()
                 print("Ecom updater contract self-test passed")
             } catch { fputs("Updater self-test failed\n", stderr); exit(1) }
             return

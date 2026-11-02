@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { artifactManifest, payloadPackage, sha256, validateRelease } from './release-contract.mjs';
@@ -14,6 +15,29 @@ function run(command, args) {
 function writeNew(file, contents) {
   if (fs.existsSync(file)) throw new Error('Output already exists: ' + file);
   fs.writeFileSync(file, contents, { flag: 'wx' });
+}
+export async function auditMacBundle(app) {
+  const forbidden = new Set(['.git', '.npmrc', '.env', 'Cookies', 'Login Data', 'Local State', 'Preferences', 'History', 'DevToolsActivePort']);
+  const privatePaths = [...new Set([os.homedir() + '/', root + '/'])].map(value => Buffer.from(value));
+  const overlap = Math.max(...privatePaths.map(value => value.length)) - 1;
+  async function visit(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const file = path.join(dir, entry.name);
+      if (forbidden.has(entry.name)) throw new Error('Runtime/private file in application: ' + path.relative(app, file));
+      if (entry.isSymbolicLink()) {
+        if (!fs.realpathSync(file).startsWith(app + path.sep)) throw new Error('External application symlink');
+      } else if (entry.isDirectory()) await visit(file);
+      else if (entry.isFile()) {
+        let tail = Buffer.alloc(0);
+        for await (const chunk of fs.createReadStream(file)) {
+          const data = Buffer.concat([tail, chunk]);
+          if (privatePaths.some(value => data.includes(value))) throw new Error('Private build path embedded in application: ' + path.relative(app, file));
+          tail = data.subarray(Math.max(0, data.length - overlap));
+        }
+      } else throw new Error('Unsupported application file type');
+    }
+  }
+  await visit(app);
 }
 export function signMacBundle(app, sourceRoot = root) {
   const chromiumApp = fs.existsSync(path.join(sourceRoot, '../chrome/app/app-entitlements.plist')) ? path.resolve(sourceRoot, '../chrome/app') : path.join(sourceRoot, '.brave-build/src/chrome/app');
@@ -73,6 +97,7 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   // Seal Mach-O files and nested bundles from the inside out. Chromium's
   // build output may carry linker signatures without sealed bundle resources.
   signMacBundle(app, sourceRoot);
+  await auditMacBundle(app);
   const payload = path.join(output, 'npm'); fs.mkdirSync(payload);
   const zip = path.join(payload, 'Ecom.zip');
   run('/usr/bin/ditto', ['-c', '-k', '--keepParent', app, zip]);
@@ -83,7 +108,12 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   fs.symlinkSync('/Applications', path.join(stage, 'Applications'));
   const dmg = path.join(output, `Ecom-${config.version}-macos-arm64.dmg`);
   run('/usr/bin/hdiutil', ['create', '-volname', 'Ecom', '-srcfolder', stage, '-format', 'UDZO', dmg]);
-  const receipt = { ...manifest, dmg: path.basename(dmg), dmgSha256: await sha256(dmg), updaterSelfTest: true, codesignVerified: true, nativeSmokeTest: false, updateRoundTripVerified: false, published: false };
+  const tarball = path.join(output, `petercjl-ecom-macos-arm64-${config.version}.tgz`);
+  if (fs.existsSync(tarball)) throw new Error('Native npm payload already exists');
+  const npm = fs.realpathSync(run('/usr/bin/which', ['npm']));
+  run(process.execPath, [npm, 'pack', payload, '--json', '--pack-destination', output]);
+  if (!fs.statSync(tarball).isFile()) throw new Error('npm pack did not produce the expected payload');
+  const receipt = { ...manifest, dmg: path.basename(dmg), dmgSha256: await sha256(dmg), tarball: path.basename(tarball), tarballSha256: await sha256(tarball), buildEnvironment: { node: process.version, xcode: run('/usr/bin/xcodebuild', ['-version']).split('\n')[0], sdk: run('/usr/bin/xcrun', ['--sdk', 'macosx', '--show-sdk-version']), argsSha256: await sha256(path.resolve(sourceRoot, '../out/Release_arm64/args_generated.gni')) }, updaterSelfTest: true, codesignVerified: true, nativeSmokeTest: false, updateRoundTripVerified: false, published: false };
   writeNew(path.join(output, 'release-receipt.json'), JSON.stringify(receipt, null, 2) + '\n');
-  return { output, payload, dmg, receipt };
+  return { output, payload, dmg, tarball, receipt };
 }

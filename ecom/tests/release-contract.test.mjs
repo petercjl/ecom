@@ -5,7 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { prepareReleaseSource } from '../build-macos.mjs';
-import { artifactManifest, payloadPackage, validateRelease } from '../release-contract.mjs';
+import { validatePublication, verifyPayload } from '../verify-release-payload.mjs';
+import { auditMacBundle } from '../package-macos.mjs';
+import { artifactManifest, payloadPackage, validateRelease, sha256 } from '../release-contract.mjs';
 const config = JSON.parse(fs.readFileSync(new URL('../release-config.json', import.meta.url)));
 test('release artifact pins native source, payload hash and supported target', () => {
   const result = artifactManifest(config, 'a'.repeat(40), 'b'.repeat(64), 1234);
@@ -20,6 +22,55 @@ test('binary payload has an explicit allowlist and no install scripts or runtime
   assert.equal(pkg.scripts, undefined); assert.equal(pkg.dependencies, undefined);
   assert.deepEqual(pkg.os, ['darwin']); assert.deepEqual(pkg.cpu, ['arm64']);
   assert.equal(pkg.publishConfig.access, 'public');
+  assert.deepEqual(JSON.parse(fs.readFileSync(new URL('../distribution/package.json', import.meta.url))), pkg);
+});
+test('publication requires exact native identity and explicit installation/update evidence', () => {
+  const record = { version: config.version, packageName: config.packageName, platform: 'darwin', arch: 'arm64', sourceRevision: 'a'.repeat(40), tarballSha256: 'b'.repeat(64), nativeSmokeTest: true, updateRoundTripVerified: true, evidencePath: 'docs/ecom/release-evidence/macos-0.1.0.md' };
+  assert.equal(validatePublication(record, config), record);
+  for (const patch of [{ nativeSmokeTest: false }, { updateRoundTripVerified: false }, { sourceRevision: 'HEAD' }, { evidencePath: '/tmp/uncommitted.md' }, { tarballSha256: '' }, { packageName: '@petercjl/ecom-cli' }]) assert.throws(() => validatePublication({ ...record, ...patch }, config));
+});
+test('application audit refuses profile files, external links and private build paths', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecom-app-audit-'));
+  const app = path.join(dir, 'Ecom.app'); fs.mkdirSync(app);
+  try {
+    fs.writeFileSync(path.join(app, 'resource'), 'public resource', { flag: 'wx' });
+    await auditMacBundle(app);
+    fs.writeFileSync(path.join(app, 'Cookies'), 'fixture', { flag: 'wx' });
+    await assert.rejects(auditMacBundle(app), /Runtime\/private file/); fs.unlinkSync(path.join(app, 'Cookies'));
+    fs.writeFileSync(path.join(app, 'private-path'), os.homedir() + '/fixture', { flag: 'wx' });
+    await assert.rejects(auditMacBundle(app), /Private build path/); fs.unlinkSync(path.join(app, 'private-path'));
+    fs.symlinkSync(dir, path.join(app, 'external'));
+    await assert.rejects(auditMacBundle(app), /External application symlink/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+test('publication verifies an actual tarball and rejects changed transport bytes', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecom-payload-'));
+  const repo = path.join(dir, 'repo'); fs.mkdirSync(repo);
+  const run = (file, args, cwd = repo) => {
+    const result = spawnSync(file, args, { cwd, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr); return result.stdout.trim();
+  };
+  const write = (name, data) => { const target = path.join(repo, name); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.writeFileSync(target, data, { flag: 'wx' }); };
+  try {
+    run('git', ['init', '-b', 'main']); run('git', ['config', 'user.name', 'Test']); run('git', ['config', 'user.email', 'test@example.invalid']);
+    write('ecom/release-config.json', JSON.stringify(config)); write('ecom/distribution/package.json', JSON.stringify(payloadPackage(config)));
+    run('git', ['add', '.']); run('git', ['commit', '-m', 'Fixture source']);
+    const sourceRevision = run('git', ['rev-parse', 'HEAD']);
+    const stage = path.join(dir, 'stage'), pkg = path.join(stage, 'package'); fs.mkdirSync(pkg, { recursive: true });
+    // Transport-only fixture: these bytes are not a native application.
+    const zip = path.join(pkg, 'Ecom.zip'); fs.writeFileSync(zip, 'archive fixture', { flag: 'wx' });
+    fs.writeFileSync(path.join(pkg, 'package.json'), JSON.stringify(payloadPackage(config)), { flag: 'wx' });
+    fs.writeFileSync(path.join(pkg, 'artifact.json'), JSON.stringify(artifactManifest(config, sourceRevision, await sha256(zip), fs.statSync(zip).size)), { flag: 'wx' });
+    fs.writeFileSync(path.join(pkg, 'LICENSE'), 'fixture', { flag: 'wx' });
+    const tgz = path.join(dir, 'payload.tgz');
+    run('/usr/bin/tar', ['-czf', tgz, '-C', stage, 'package/Ecom.zip', 'package/LICENSE', 'package/artifact.json', 'package/package.json']);
+    const evidencePath = 'docs/ecom/release-evidence/fixture.md'; write(evidencePath, 'Transport fixture source: ' + sourceRevision);
+    write('ecom/releases/macos-arm64/' + config.version + '.json', JSON.stringify({ version: config.version, packageName: config.packageName, platform: 'darwin', arch: 'arm64', sourceRevision, tarballSha256: await sha256(tgz), nativeSmokeTest: true, updateRoundTripVerified: true, evidencePath }));
+    run('git', ['add', '.']); run('git', ['commit', '-m', 'Fixture evidence']);
+    assert.equal((await verifyPayload(repo, config.version, tgz)).artifactVerified, true);
+    fs.appendFileSync(tgz, 'changed transport bytes');
+    await assert.rejects(verifyPayload(repo, config.version, tgz), /differs from the committed artifact/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 test('release source excludes concurrent edits and refuses modified managed source', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecom-release-source-'));

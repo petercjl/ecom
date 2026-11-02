@@ -1,0 +1,54 @@
+name: Publish verified Ecom macOS payload
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Exact verified native version
+        required: true
+        type: string
+      tag:
+        description: npm channel
+        required: true
+        default: latest
+        type: choice
+        options: [latest]
+      validate_only:
+        description: Validate without publication
+        required: false
+        default: true
+        type: boolean
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: ecom-macos-payload-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      RELEASE: ${{ inputs.release }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.2'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Pin npm with Trusted Publishing support
+        run: npm install --global npm@11.18.0
+      - name: Validate committed native evidence before downloading
+        run: node ecom/verify-release-payload.mjs "$RELEASE"
+      - name: Download immutable native payload
+        run: |
+          mkdir payload-download
+          gh release download "ecom-macos-v$RELEASE" --pattern "petercjl-ecom-macos-arm64-$RELEASE.tgz" --dir payload-download
+      - name: Verify native payload identity and checksums
+        run: node ecom/verify-release-payload.mjs "$RELEASE" "payload-download/petercjl-ecom-macos-arm64-$RELEASE.tgz"
+      - name: Publish the exact prebuilt payload through OIDC
+        if: ${{ !inputs.validate_only }}
+        run: npm publish "payload-download/petercjl-ecom-macos-arm64-$RELEASE.tgz" --access public --tag latest

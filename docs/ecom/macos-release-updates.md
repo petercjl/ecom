@@ -16,11 +16,11 @@ npm 提供版本元数据、tarball URL 和 SHA-512 integrity；助手仅访问 
 
 在集成后的 `main` 运行 `node ecom/build-macos.mjs`。入口固定当前已提交的 main 版本，在构建锁内准备干净的受管理源码工作树；根目录中其他任务尚未提交的修改保留在原处，编译与打包仅读取已提交快照。若 main 在编译期间推进，入口停止打包，重新调用后增量构建最新集成版本。入口选择固定 Node 24 和本机 Xcode，与 Dev 共享构建锁，使用独立 `Release_arm64` 输出目录；固定依赖和已有缓存保留。正式版禁用 Brave 更新组件，采用优化的独立整包构建，本机配方关闭 PGO 和 ThinLTO，保持单链接并发以控制内存；不申请开发者证书。`--prepare-only` 仅执行构建前品牌准备，不代表 GN、编译或运行验证。
 
-成功编译后在唯一的 `.brave-build/mac-release-*/artifacts/` 中生成 DMG、npm 载荷目录及 `release-receipt.json`。DMG 与 npm ZIP 来自同一份应用包。原始构建输出保持完整。打包后执行原生助手自检、架构和嵌套签名校验，记录归档与 DMG 校验和、源码提交和验证状态。
+成功编译后在唯一的 `.brave-build/mac-release-*/artifacts/` 中生成 DMG、npm 载荷目录、可直接发布的 `.tgz` 及 `release-receipt.json`。DMG 与 npm ZIP 来自同一份应用包。原始构建输出保持完整。打包后执行原生助手自检、架构和嵌套签名校验，记录归档、tarball 与 DMG 校验和、源码提交、Node/Xcode/SDK 版本、GN 参数指纹和验证状态。
 
 本地 ad-hoc 签名用于代码封装与完整性检查，不属于 Apple 开发者身份签名或公证。首次安装的系统提示、从下载产物启动及后续更新需要真实验收；用户按系统正常授权流程操作。
 
-公开载荷仅包含原生应用、发布契约和许可证。发布前检查应用资源、隐私内容及真实打包清单；构建日志、工作区和账号数据不进入包。
+公开载荷仅包含原生应用、发布契约和许可证。打包检查应用资源中的账号数据文件名、外部符号链接及当前用户私有绝对路径，检测到时停止；发布前复核真实打包清单。构建日志、工作区和账号数据不进入包。
 
 Ecom 的正式产品渠道由品牌、应用标识、数据目录和发布契约定义。构建设置 `is_debug=false`、`is_component_build=false` 和 `brave_channel=""`；GN 的 `is_official_build=false` 用于避开基线中 Brave 官方服务密钥与发行基础设施要求，不影响独立应用打包。构建不使用占位服务密钥。性能及与 Dev 的体积差异以完整产物实测为准。
 
@@ -28,7 +28,9 @@ Ecom 的正式产品渠道由品牌、应用标识、数据目录和发布契约
 
 本体包与公开的 `@petercjl/ecom-cli` 独立。当前本体包尚未建立；首次创建须单独批准最小 prerelease bootstrap 和一次性 Trusted Publisher 设置。常规正式发布通过 GitHub 托管 Actions 与 OIDC，由 `npm-release-kit` 调度；不从本机直接发布正式载荷。稳定渠道为 `latest`，发布动作另行确认。
 
-发布流水线需以已验证的不可变原生产物为输入，检查 receipt、源码及版本对应关系、两次确认流程、取消、正常退出、重启和回滚验收。缺少原生验证的 receipt 不满足发布条件。尚未配置或运行本体发布 workflow，不能把 CLI 的既有 workflow 当作本体发布证据。
+本体流水线为 `.github/workflows/ecom-macos-publish.yml`，使用 GitHub 托管 runner 与 OIDC，默认仅验证。`npm-release-kit doctor/publish` 的 package-dir 指向 `ecom/distribution`，workflow 指向本体流水线；执行真实发布时需显式传入 `validate_only=false`，发布动作另行授权。此流水线发布已固定版本和哈希的 tarball，不对原生程序执行自动版本递增或 CI 重编译。
+
+完成两次确认、取消、正常退出、首次安装、重启及真实更新往返验收后，将证据保存至 `docs/ecom/release-evidence/`，提交 `ecom/releases/macos-arm64/<版本>.json`，记录确切版本、包名、平台、架构、源码提交、tarball SHA-256、`nativeSmokeTest=true`、`updateRoundTripVerified=true` 与 `evidencePath`。原生构建 receipt 的这两项默认 false，不能直接作为发布批准。流水线在下载前检查已提交证据；源码或构建配方变化要求重新构建。产物来自同仓库 `ecom-macos-v<版本>` 的不可变 Release 附件，下载后再次核对完整包及内部 ZIP 哈希。当前尚无满足条件的本体发布记录，未运行本体发布。
 
 当前 GUI 更新入口为原生助手的两个确认对话框；设置页的手动检查、进度展示及产品 CLI 的 update status/check/download/apply 尚未开放，列为能力缺口。Windows 与 Intel Mac 待分别实现和验证。原生助手契约自检和 Node 单元测试不能替代正式浏览器、首次安装或真实 npm 更新往返验收。
 
