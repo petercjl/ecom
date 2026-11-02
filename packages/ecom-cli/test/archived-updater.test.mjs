@@ -72,6 +72,14 @@ for(const archive of archives.versions)test(`published ${archive.version} update
     const acquiredEntry=path.join(journal.candidate,'node_modules/@petercjl/ecom-cli/bin/ecom-cli.mjs');
     assert.equal((await invoke(acquiredEntry,['version','--json'])).version,version);
     fs.unlinkSync(target+'.ecom-lock');
+    // A host may deny directory rename even after the maintenance lock clears.
+    const renameInjector=path.join(tmp,'locked-directory.mjs');
+    fs.writeFileSync(renameInjector,`import fs from 'node:fs';const original=fs.renameSync;fs.renameSync=function(from,to){if(from===process.env.ECOM_TEST_LOCK_TARGET){const error=new Error('fixture locked directory');error.code='EBUSY';throw error;}return original(from,to);};`,{flag:'wx'});
+    const lockedDirectory=await invoke(acquiredEntry,['skill','update',...options(target)],{NODE_OPTIONS:`--import ${pathToFileURL(renameInjector).href}`,ECOM_TEST_LOCK_TARGET:target});
+    assert.equal(lockedDirectory.ok,false);assert.equal(lockedDirectory.error.code,'EBUSY');
+    assert.equal(lockedDirectory.error.recovery.activated,false);
+    assert.deepEqual(fs.readFileSync(path.join(target,'SKILL.md')),priorSkill);
+    assert.equal((await invoke(path.join(target,'.runtime/bin/ecom-cli.mjs'),['version','--json'])).version,archive.version);
     const repaired=await invoke(acquiredEntry,['skill','update',...options(target)]);
     assert.equal(repaired.current,true);
     assert.deepEqual(fs.readFileSync(path.join(repaired.backup,'SKILL.md')),priorSkill);

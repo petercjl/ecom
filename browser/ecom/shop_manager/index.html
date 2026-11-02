@@ -147,13 +147,13 @@
         <h2 id="plugin-guide-title">Ecom Agent 插件</h2>
         <button class="close" data-close="plugin-guide" aria-label="关闭">×</button>
       </div>
-      <p class="dialog-intro">让当前使用的 Agent 通过 CLI 读取 Ecom 容器。插件包含命令行工具和配套 Skill，由 Agent 完成安装与更新。</p>
-      <p>首版功能：列出容器名称与 ID。请保持 Ecom 运行；当前浏览器连接支持 macOS。</p>
+      <p class="dialog-intro">让当前使用的 Agent 读取 Ecom 账号信息，并按授权使用指定账号的会话请求后台数据。插件包含命令行工具和配套 Skill，由 Agent 完成安装与更新。</p>
+      <p>支持列出账号、查看登录状态与已保存首页，以及读取已启用来源的 HTTPS JSON 接口。请保持 Ecom 运行；当前浏览器连接支持 macOS。后台取数需先核验对应店铺身份。</p>
       <h3>安装</h3>
       <p>复制下面的提示词，发送给当前使用的 Agent：</p>
       <textarea class="plugin-prompt" readonly aria-label="安装提示词">帮我安装 @petercjl/ecom-cli，并安装它的配套 Skill。</textarea>
       <h3>使用</h3>
-      <textarea class="plugin-prompt" readonly aria-label="使用提示词">用 Ecom CLI 列出我当前的浏览器容器。</textarea>
+      <textarea class="plugin-prompt" readonly aria-label="使用提示词">用 Ecom CLI 查看我当前的账号列表和登录状态。</textarea>
       <h3>更新</h3>
       <textarea class="plugin-prompt" readonly aria-label="更新提示词">帮我更新 @petercjl/ecom-cli 和它的配套 Skill。</textarea>
       <p class="dialog-intro">安装范围为当前 Agent。容器列表包含账号名称，请仅在可信的 Agent 中使用。插件安装不会授予网站访问或账号数据导出权限。</p>
