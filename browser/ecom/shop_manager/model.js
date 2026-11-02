@@ -47,6 +47,49 @@ export function shopRequest(action, row, service) {
       throw new Error('STALE_IDENTITY_CANDIDATE')
     request.shopId = row.candidate.shopId
     request.candidateId = row.candidate.candidateId
-  } else if (action !== 'verify') throw new Error('UNSUPPORTED_COMMAND')
+  } else if (!['verify', 'delete-preview'].includes(action))
+    throw new Error('UNSUPPORTED_COMMAND')
   return request
+}
+
+export const iconNames = [
+  ['个人', 'Personal'],
+  ['工作', 'Work'],
+  ['购物车', 'Shopping'],
+  ['社交', 'Social'],
+  ['活动', 'Events'],
+  ['金融', 'Banking'],
+  ['星标', 'Star'],
+  ['旅行', 'Travel'],
+  ['学校', 'School'],
+  ['隐私', 'Private'],
+  ['消息', 'Messaging'],
+]
+export function appearanceRequest(id, name, icon, color) {
+  if (
+    !id
+    || !name.trim()
+    || !Number.isInteger(icon)
+    || icon < 0
+    || icon > 10
+    || !/^#[0-9a-fA-F]{6}$/.test(color)
+  )
+    throw new Error('INVALID_CONTAINER_APPEARANCE')
+  return {
+    method: 'shops.update',
+    containerId: id,
+    name: name.trim(),
+    icon,
+    color,
+  }
+}
+export function deletionRequest(plan) {
+  if (!plan?.containerId || !plan.confirmationId)
+    throw new Error('DELETE_CONFIRMATION_REQUIRED')
+  if (plan.openTabs > 0) throw new Error('CONTAINER_IN_USE')
+  return {
+    method: 'shops.delete',
+    containerId: plan.containerId,
+    confirmationId: plan.confirmationId,
+  }
 }

@@ -37,6 +37,7 @@
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "components/embedder_support/user_agent_utils.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "content/public/browser/storage_partition.h"
@@ -244,6 +245,9 @@ class ShopService final : public base::SupportsUserData::Data,
       return;
     }
     if (method == "shops.refresh") {
+      if (request.FindBool("force").value_or(false)) {
+        attempts_.clear();
+      }
       ScheduleChecks();
       Send(std::move(callback), List());
       return;
@@ -459,6 +463,7 @@ class ShopService final : public base::SupportsUserData::Data,
       item.Set("color",
                base::StringPrintf("#%06x", c->background_color & 0xFFFFFF));
       item.Set("openTabs", OpenTabCount(profile_, c->id));
+      item.Set("checking", loaders_.contains(c->id));
       shops.Append(std::move(item));
     }
     return base::DictValue().Set("ok", true).Set("shops", std::move(shops));
@@ -471,6 +476,8 @@ class ShopService final : public base::SupportsUserData::Data,
     for (const auto& container :
          containers::GetContainersFromPrefs(*profile_->GetPrefs())) {
       if (Metadata().FindDict(container->id) &&
+          (!attempts_.contains(container->id) ||
+           base::Time::Now() - attempts_[container->id] >= base::Seconds(30)) &&
           !loaders_.contains(container->id) &&
           std::find(queue_.begin(), queue_.end(), container->id) ==
               queue_.end()) {
@@ -569,6 +576,7 @@ class ShopService final : public base::SupportsUserData::Data,
       Send(std::move(callback), Error("BUSY"));
       return;
     }
+    attempts_[id] = base::Time::Now();
     auto resource = std::make_unique<network::ResourceRequest>();
     resource->url = GURL(kHome);
     resource->load_flags = net::LOAD_BYPASS_CACHE | net::LOAD_DISABLE_CACHE;
@@ -576,7 +584,10 @@ class ShopService final : public base::SupportsUserData::Data,
     resource->redirect_mode = network::mojom::RedirectMode::kFollow;
     resource->site_for_cookies = net::SiteForCookies::FromUrl(resource->url);
     resource->request_initiator = url::Origin::Create(resource->url);
-    resource->headers.SetHeader("Accept", "text/html");
+    resource->headers.SetHeader("Accept", "text/html,application/xhtml+xml");
+    resource->headers.SetHeader("User-Agent", embedder_support::GetUserAgent());
+    resource->mode = network::mojom::RequestMode::kNavigate;
+    resource->destination = network::mojom::RequestDestination::kDocument;
     constexpr auto annotation =
         net::DefineNetworkTrafficAnnotation("ecom_shop_identity", R"(
       semantics { sender: "Ecom shop containers" description: "Checks shop identity in the selected container."
@@ -625,6 +636,15 @@ class ShopService final : public base::SupportsUserData::Data,
                           : 0);
       diagnostics.Set("hasBody", body.has_value());
       if (body) {
+        diagnostics.Set("gConfigMarker",
+                        body->find("g_config") != std::string::npos);
+        diagnostics.Set("userInfoMarker",
+                        body->find("userInfo") != std::string::npos);
+        diagnostics.Set("loginPageMarker",
+                        body->find("login.taobao.com") != std::string::npos);
+        diagnostics.Set("challengeMarker",
+                        body->find("punish") != std::string::npos ||
+                            body->find("baxia") != std::string::npos);
         diagnostics.Set("metadataMarker",
                         body->find("metaCacheData") != std::string::npos);
         diagnostics.Set("shopIdField",
@@ -672,7 +692,11 @@ class ShopService final : public base::SupportsUserData::Data,
       return;
     }
     item.Remove("lastError");
-    if (bound) {
+    item.Remove("diagnostics");
+    const auto container =
+        containers::GetContainerFromPrefs(*profile_->GetPrefs(), id);
+    if (bound ||
+        (container && container->name == Field(candidate, "platformName"))) {
       item.Set("identity", std::move(candidate));
       item.Set("state", "ready");
     } else {
@@ -698,6 +722,7 @@ class ShopService final : public base::SupportsUserData::Data,
   std::map<std::string, PendingCheck> loaders_;
   std::map<std::string, DeletePlan> delete_plans_;
   std::deque<std::string> queue_;
+  std::map<std::string, base::Time> attempts_;
   base::RepeatingTimer timer_;
   base::WeakPtrFactory<ShopService> weak_{this};
 };

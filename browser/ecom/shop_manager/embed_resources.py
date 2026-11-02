@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compile immutable WebUI assets into the native binary (no runtime file I/O)."""
 import argparse
+import re
 from pathlib import Path
 import sys
 
@@ -16,6 +17,13 @@ def main():
         text = (args.source / filename).read_text()
         assert ')ECOMRESOURCE"' not in text
         parts.append(f'inline constexpr char kShopManager{name}[] = R"ECOMRESOURCE({text})ECOMRESOURCE";\n')
+    icons = ['personal','work','shopping','social','events','banking','star','travel','school','private','messaging']
+    for index, name in enumerate(icons):
+        text = (args.source.resolve().parents[2] / 'node_modules/@brave/leo/icons' / f'container-{name}.svg').read_text()
+        text = re.sub(r'fill="#[0-9a-fA-F]+"', 'fill="#ffffff"', text)
+        assert ')ECOMRESOURCE"' not in text
+        parts.append(f'inline constexpr char kShopIcon{index}[] = R"ECOMRESOURCE({text})ECOMRESOURCE";\n')
+    parts.append('inline constexpr const char* kShopIcons[] = {' + ','.join(f'kShopIcon{i}' for i in range(len(icons))) + '};\n')
     parts.append('}\n')
     output = ''.join(parts)
     args.output.parent.mkdir(parents=True, exist_ok=True)

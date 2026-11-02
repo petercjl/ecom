@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterShops, shopRequest} from '../../browser/ecom/shop_manager/model.js';
+import {filterShops, shopRequest, appearanceRequest, deletionRequest} from '../../browser/ecom/shop_manager/model.js';
 
 const rows = [
   {id:'shop-a', name:'旗舰店', platform:'taobao', state:'ready', identity:{shopId:'123', accountId:'456', platformName:'平台店名'}},
@@ -25,4 +25,13 @@ test('identity confirmation uses the current verified candidate, never the displ
   assert.throws(()=>shopRequest('confirm',rows[0]),/STALE_IDENTITY_CANDIDATE/);
   const pending={...rows[1],state:'awaiting-confirmation',candidate:{shopId:'789',candidateId:'nonce'}};
   assert.deepEqual(shopRequest('confirm',pending),{method:'shops.confirm',containerId:'shop-b',shopId:'789',candidateId:'nonce'});
+});
+test('appearance changes preserve the native ID and validate icon and color',()=>{
+  assert.deepEqual(appearanceRequest('shop-a',' New name ',2,'#123abc'),{method:'shops.update',containerId:'shop-a',name:'New name',icon:2,color:'#123abc'});
+  for(const [icon,color] of [[11,'#123abc'],[-1,'#123abc'],[2,'red'],[2,'#123abc00']]) assert.throws(()=>appearanceRequest('shop-a','Name',icon,color),/INVALID_CONTAINER_APPEARANCE/);
+});
+test('deletion requires a reviewed target and no open container tabs',()=>{
+  assert.throws(()=>deletionRequest({containerId:'shop-a'}),/DELETE_CONFIRMATION_REQUIRED/);
+  assert.throws(()=>deletionRequest({containerId:'shop-a',confirmationId:'nonce',openTabs:1}),/CONTAINER_IN_USE/);
+  assert.deepEqual(deletionRequest({containerId:'shop-a',confirmationId:'nonce',openTabs:0}),{method:'shops.delete',containerId:'shop-a',confirmationId:'nonce'});
 });

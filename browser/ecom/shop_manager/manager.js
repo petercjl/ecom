@@ -2,7 +2,13 @@
 import './strings.m.js'
 import { sendWithPromise } from 'chrome://resources/js/cr.js'
 import { loadTimeData } from 'chrome://resources/js/load_time_data.js'
-import { filterShops, shopRequest } from './model.js'
+import {
+  filterShops,
+  shopRequest,
+  iconNames,
+  appearanceRequest,
+  deletionRequest,
+} from './model.js'
 
 const zh = {
   workspace: '我的工作空间',
@@ -152,6 +158,68 @@ const en = {
   CONTAINERS_UNAVAILABLE: 'Enable containers in the appearance settings first.',
   BUSY: 'This container is being verified. Please wait.',
 }
+Object.assign(zh, {
+  checked: '最近检查',
+  icon: '容器图标',
+  themeColor: '主题色',
+  edit: '管理',
+  editTitle: '管理店铺容器',
+  editHint: '修改名称与外观会保留原有容器 ID、登录会话和账号绑定。',
+  save: '保存',
+  delete: '删除',
+  deleteTitle: '删除账号容器',
+  deleteHint:
+    '删除后，此容器及其登录会话将无法继续使用；网站数据由原生容器清理机制处理。其他容器保持不变。此操作不可撤销。',
+  deleteConfirm: '确认删除容器',
+  openTabs: '尚未关闭的标签页',
+  validity: '登录有效期',
+  platformExpiry: '平台未提供准确期限',
+  cookieReference: 'Cookie 到期参考',
+  sessionExpiry: '含会话 Cookie；有效期由平台决定',
+  autoHint:
+    '后台自动检查；返回此页时刷新。Cookie 到期日仅供参考，平台可提前撤销登录。',
+  checking: '正在自动检查…',
+  ready: '已登录 · 已核验',
+  'awaiting-confirmation': '已登录，待确认店铺',
+  'verification-required': '登录状态待确认',
+  'login-required': '生意参谋需登录',
+  CONTAINER_IN_USE: '请先关闭该容器的所有标签页，再重新发起删除。',
+  DELETE_CONFIRMATION_REQUIRED: '删除预览已失效，请重新确认。',
+  INVALID_CONTAINER_APPEARANCE: '请填写有效名称，选择图标及主题色。',
+  LOGIN_REDIRECT: '该服务需要重新登录，请在原容器内完成。',
+})
+Object.assign(en, {
+  checked: 'Last checked',
+  icon: 'Container icon',
+  themeColor: 'Theme color',
+  edit: 'Manage',
+  editTitle: 'Manage container',
+  editHint:
+    'Changing the name or appearance preserves the container ID, session and account binding.',
+  save: 'Save',
+  delete: 'Delete',
+  deleteTitle: 'Delete account container',
+  deleteHint:
+    'The container and its login session will no longer be usable. Native container cleanup handles its site data. Other containers are unaffected. This cannot be undone.',
+  deleteConfirm: 'Confirm deletion',
+  openTabs: 'Open tabs',
+  validity: 'Session validity',
+  platformExpiry: 'Platform expiry not provided',
+  cookieReference: 'Cookie expiry reference',
+  sessionExpiry: 'Includes session cookies; validity is platform-controlled',
+  autoHint:
+    'Checked in the background and when returning here. Cookie expiry is a reference; the platform may revoke login earlier.',
+  checking: 'Checking automatically…',
+  ready: 'Signed in · verified',
+  'awaiting-confirmation': 'Signed in; confirm shop',
+  'verification-required': 'Sign-in status unknown',
+  'login-required': 'SYCM sign-in required',
+  CONTAINER_IN_USE: 'Close this container’s tabs, then start deletion again.',
+  DELETE_CONFIRMATION_REQUIRED:
+    'The deletion preview expired. Review it again.',
+  INVALID_CONTAINER_APPEARANCE: 'Enter a valid name, icon and theme color.',
+  LOGIN_REDIRECT: 'Sign in to this service again in its original container.',
+})
 const copy = loadTimeData.getString('locale').startsWith('zh') ? zh : en
 const $ = (id) => document.getElementById(id)
 const text = (key) => copy[key] || key
@@ -170,6 +238,28 @@ let rows = [],
   busy = false,
   confirmationId
 const services = new Map()
+let editId, deletionPlan
+function previewAppearance(prefix) {
+  $(prefix + '-preview').style.backgroundColor = $(prefix + '-color').value
+  $(prefix + '-preview-icon').src =
+    'icons/' + $(prefix + '-icon').value + '.svg'
+}
+for (const prefix of ['create', 'edit']) {
+  iconNames.forEach((names, index) => {
+    const option = document.createElement('option')
+    option.value = index
+    option.textContent = names[copy === zh ? 0 : 1]
+    $(prefix + '-icon').append(option)
+  })
+  $(prefix + '-icon').value = '2'
+  $(prefix + '-icon').addEventListener('change', () =>
+    previewAppearance(prefix),
+  )
+  $(prefix + '-color').addEventListener('input', () =>
+    previewAppearance(prefix),
+  )
+}
+previewAppearance('create')
 
 function node(tag, value, className) {
   const result = document.createElement(tag)
@@ -196,6 +286,8 @@ function setBusy(value) {
     .forEach((control) => (control.disabled = value))
   $('message').classList.toggle('busy', value)
   $('message').textContent = value ? text('busy') : ''
+  $('delete-confirm').disabled =
+    value || !deletionPlan || deletionPlan.openTabs > 0
 }
 function button(label, action, row, className) {
   const result = node('button', text(label), className)
@@ -217,7 +309,19 @@ function render() {
     const tr = node('tr')
     const first = node('td'),
       shop = node('div', undefined, 'shop-cell')
-    shop.append(node('span', row.name.slice(0, 1), 'shop-avatar'))
+    const avatar = node('span', undefined, 'shop-avatar')
+    const image = node('img')
+    image.src =
+      'icons/'
+      + (Number.isInteger(row.icon) && row.icon >= 0 && row.icon <= 10
+        ? row.icon
+        : 2)
+      + '.svg'
+    image.alt = ''
+    avatar.append(image)
+    if (/^#[0-9a-fA-F]{6}$/.test(row.color || ''))
+      avatar.style.backgroundColor = row.color
+    shop.append(avatar)
     const title = node('div')
     title.append(node('div', row.name, 'shop-name'))
     shop.append(title)
@@ -238,11 +342,33 @@ function render() {
     tr.append(account)
     const status = node('td')
     status.append(node('span', text(row.state), 'badge ' + row.state))
+    if (row.checking) status.append(node('div', text('checking'), 'secondary'))
     tr.append(status)
-    const checked = identity
-      ? new Date(Number(identity.verifiedAt) * 1000).toLocaleString()
+    const checkedAt = row.checkedAt || identity?.verifiedAt
+    const checked = checkedAt
+      ? new Date(Number(checkedAt) * 1000).toLocaleString()
       : text('never')
     tr.append(node('td', checked))
+    const validity = node(
+      'td',
+      row.expiry?.kind === 'session'
+        ? text('sessionExpiry')
+        : text('platformExpiry'),
+      'validity-cell',
+    )
+    if (row.expiry?.cookieExpiresAt)
+      validity.append(
+        node(
+          'div',
+          text('cookieReference')
+            + ': '
+            + new Date(
+              Number(row.expiry.cookieExpiresAt) * 1000,
+            ).toLocaleString(),
+          'secondary',
+        ),
+      )
+    tr.append(validity)
     const actions = node('td'),
       group = node('div', undefined, 'row-actions')
     if (row.platform) {
@@ -266,6 +392,10 @@ function render() {
       if (row.state === 'awaiting-confirmation' && row.candidate)
         group.append(button('finish', 'candidate', row))
     } else group.append(button('configure', 'configure', row))
+    group.append(
+      button('edit', 'edit', row),
+      button('delete', 'delete', row, 'delete-action'),
+    )
     actions.append(group)
     tr.append(actions)
     fragment.append(tr)
@@ -293,6 +423,37 @@ function showCandidate(row) {
 }
 async function runAction(action, row) {
   if (busy) return
+  if (action === 'edit') {
+    editId = row.id
+    $('edit-name').value = row.name
+    $('edit-icon').value = String(row.icon ?? 2)
+    $('edit-color').value = row.color || '#007f83'
+    previewAppearance('edit')
+    $('edit-error').textContent = ''
+    $('edit-dialog').showModal()
+    return
+  }
+  if (action === 'delete') {
+    setBusy(true)
+    try {
+      const result = await command(shopRequest('delete-preview', row))
+      deletionPlan = result.deletion
+      $('delete-details').replaceChildren()
+      for (const [key, value] of [
+        ['displayName', deletionPlan.name],
+        ['openTabs', String(deletionPlan.openTabs)],
+      ])
+        $('delete-details').append(node('dt', text(key)), node('dd', value))
+      $('delete-error').textContent =
+        deletionPlan.openTabs > 0 ? text('CONTAINER_IN_USE') : ''
+      setBusy(false)
+      $('delete-dialog').showModal()
+    } catch (error) {
+      setBusy(false)
+      showError(error)
+    }
+    return
+  }
   if (action === 'candidate') {
     showCandidate(row)
     return
@@ -346,6 +507,7 @@ $('refresh').addEventListener('click', async () => {
   if (busy) return
   setBusy(true)
   try {
+    await command({ method: 'shops.refresh', force: true })
     await refresh()
     setBusy(false)
   } catch (error) {
@@ -383,6 +545,8 @@ $('create-form').addEventListener('submit', async (event) => {
       method: 'shops.create',
       platform: $('platform').value,
       name,
+      icon: Number($('create-icon').value),
+      color: $('create-color').value,
     })
     created = result.shops.find((row) => row.name === name)
     if (!created) throw new Error('CONTAINER_NOT_FOUND')
@@ -407,16 +571,72 @@ document.addEventListener('visibilitychange', async () => {
     || busy
     || $('create-dialog').open
     || $('identity-dialog').open
+    || $('edit-dialog').open
+    || $('delete-dialog').open
   )
     return
   try {
+    await command({ method: 'shops.refresh' })
     await refresh()
   } catch (error) {
     showError(error)
   }
 })
 try {
+  await command({ method: 'shops.refresh' })
   await refresh()
 } catch (error) {
   showError(error)
 }
+
+$('edit-form').addEventListener('submit', async (event) => {
+  event.preventDefault()
+  if (busy) return
+  setBusy(true)
+  $('edit-error').textContent = ''
+  try {
+    await command(
+      appearanceRequest(
+        editId,
+        $('edit-name').value,
+        Number($('edit-icon').value),
+        $('edit-color').value,
+      ),
+    )
+    setBusy(false)
+    $('edit-dialog').close()
+    render()
+  } catch (error) {
+    setBusy(false)
+    showError(error, 'edit-error')
+  }
+})
+$('delete-confirm').addEventListener('click', async () => {
+  if (busy) return
+  try {
+    const request = deletionRequest(deletionPlan)
+    setBusy(true)
+    await command(request)
+    deletionPlan = undefined
+    setBusy(false)
+    $('delete-dialog').close()
+    render()
+  } catch (error) {
+    setBusy(false)
+    showError(error, 'delete-error')
+  }
+})
+setInterval(async () => {
+  if (
+    document.hidden
+    || busy
+    || document.querySelector('dialog[open]')
+    || document.activeElement?.closest('tbody')
+  )
+    return
+  try {
+    await refresh()
+  } catch {
+    /* Keep the last known state during transient failures. */
+  }
+}, 5000)

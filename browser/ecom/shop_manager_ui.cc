@@ -41,7 +41,8 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
   source->SetRequestFilter(
       base::BindRepeating([](const std::string& path) {
         return path.empty() || path == "index.html" || path == "manager.css" ||
-               path == "manager.js" || path == "model.js";
+               path == "manager.js" || path == "model.js" ||
+               path.starts_with("icons/");
       }),
       base::BindRepeating([](const std::string& path,
                              content::WebUIDataSource::GotDataCallback done) {
@@ -52,6 +53,17 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
           data = kShopManagerJs;
         } else if (path == "model.js") {
           data = kShopManagerModel;
+        } else if (path.starts_with("icons/")) {
+          data = nullptr;
+          for (int i = 0; i < 11; ++i) {
+            if (path == "icons/" + std::to_string(i) + ".svg") {
+              data = kShopIcons[i];
+            }
+          }
+          if (!data) {
+            std::move(done).Run(nullptr);
+            return;
+          }
         }
         std::move(done).Run(
             base::MakeRefCounted<base::RefCountedString>(std::string(data)));

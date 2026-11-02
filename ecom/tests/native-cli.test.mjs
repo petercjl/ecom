@@ -25,7 +25,7 @@ test('actual native CLI exposes dev capabilities and structured failure without 
 
 test('shop CLI rejects incomplete creation and confirmation before native calls',()=>{
  const script=new URL('../cli.mjs',import.meta.url).pathname;
- for(const args of [['shops','create','--name','Example'],['shops','confirm','--container','unknown'],['shops','configure','--container','unknown']]) {
+ for(const args of [['shops','create','--name','Example'],['shops','confirm','--container','unknown'],['shops','configure','--container','unknown'],['shops','delete','--container','unknown'],['shops','update','--container','unknown']]) {
   assert.throws(()=>execFileSync(process.execPath,[script,...args],{encoding:'utf8',stdio:'pipe'}),e=>JSON.parse(e.stderr).error.code==='INVALID_SHOP_COMMAND');
  }
 });

@@ -9,6 +9,17 @@ action("resources") {
     "manager.js",
     "model.js",
   ]
+  inputs += [ "//brave/node_modules/@brave/leo/icons/container-personal.svg" ]
+  inputs += [ "//brave/node_modules/@brave/leo/icons/container-work.svg" ]
+  inputs += [ "//brave/node_modules/@brave/leo/icons/container-shopping.svg" ]
+  inputs += [ "//brave/node_modules/@brave/leo/icons/container-social.svg" ]
+  inputs += [ "//brave/node_modules/@brave/leo/icons/container-events.svg" ]
+  inputs += [ "//brave/node_modules/@brave/leo/icons/container-banking.svg" ]
+  inputs += [ "//brave/node_modules/@brave/leo/icons/container-star.svg" ]
+  inputs += [ "//brave/node_modules/@brave/leo/icons/container-travel.svg" ]
+  inputs += [ "//brave/node_modules/@brave/leo/icons/container-school.svg" ]
+  inputs += [ "//brave/node_modules/@brave/leo/icons/container-private.svg" ]
+  inputs += [ "//brave/node_modules/@brave/leo/icons/container-messaging.svg" ]
   outputs = [ "$target_gen_dir/shop_manager_resources.h" ]
   args = [
     "--output",
