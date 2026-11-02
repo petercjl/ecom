@@ -42,6 +42,7 @@
         </button>
       </nav>
       <div class="sidebar-bottom">
+        <button id="plugin-guide-open" type="button">Agent 插件 · 安装说明</button>
         <span class="connection-dot"></span><span data-text="local"></span>
       </div>
     </aside>
@@ -141,6 +142,23 @@
         ></a>
       </div>
     </main>
+    <dialog id="plugin-guide" aria-labelledby="plugin-guide-title">
+      <div class="dialog-heading">
+        <h2 id="plugin-guide-title">Ecom Agent 插件</h2>
+        <button class="close" data-close="plugin-guide" aria-label="关闭">×</button>
+      </div>
+      <p class="dialog-intro">让当前使用的 Agent 通过 CLI 读取 Ecom 容器。插件包含命令行工具和配套 Skill，由 Agent 完成安装与更新。</p>
+      <p>首版功能：列出容器名称与 ID。请保持 Ecom 运行；当前浏览器连接支持 macOS。</p>
+      <h3>安装</h3>
+      <p>复制下面的提示词，发送给当前使用的 Agent：</p>
+      <textarea class="plugin-prompt" readonly aria-label="安装提示词">帮我安装 @petercjl/ecom-cli，并安装它的配套 Skill。</textarea>
+      <h3>使用</h3>
+      <textarea class="plugin-prompt" readonly aria-label="使用提示词">用 Ecom CLI 列出我当前的浏览器容器。</textarea>
+      <h3>更新</h3>
+      <textarea class="plugin-prompt" readonly aria-label="更新提示词">帮我更新 @petercjl/ecom-cli 和它的配套 Skill。</textarea>
+      <p class="dialog-intro">安装范围为当前 Agent。容器列表包含账号名称，请仅在可信的 Agent 中使用。插件安装不会授予网站访问或账号数据导出权限。</p>
+      <div class="dialog-actions"><button data-close="plugin-guide">关闭</button></div>
+    </dialog>
     <dialog
       id="create-dialog"
       aria-labelledby="create-title"

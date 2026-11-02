@@ -175,6 +175,10 @@ class NativeSessionService final : public ProfileObserver {
     metadata.Set("instanceId", instance_);
     metadata.Set("authToken", auth_);
     metadata.Set("pid", static_cast<int>(getpid()));
+    metadata.Set("product", "Ecom");
+    metadata.Set("executable",
+                 base::CommandLine::ForCurrentProcess()->GetProgram().value());
+    metadata.Set("userDataDir", folder_.DirName().DirName().value());
     metadata.Set("allowedOrigin", origin_.Serialize());
     auto json = base::WriteJson(metadata);
     if (json) {

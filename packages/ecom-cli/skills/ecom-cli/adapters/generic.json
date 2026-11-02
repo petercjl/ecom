@@ -1,0 +1,25 @@
+{
+  "platform": "generic",
+  "status": "implemented",
+  "mappings": [
+    {
+      "implementation": {
+        "kind": "cli",
+        "contract": "Current host terminal executes available Node.js with the discovered Skill-root .runtime/bin/ecom-cli.mjs"
+      },
+      "status": "implemented",
+      "discovery": "Current host resolves exact Skill directory and Node.js runtime; probe CLI version and capabilities",
+      "normalization": "Preserve ok, containers, instance and error from JSON; attach exit status to metadata",
+      "permissions": "Local execution; explicit selected-target maintenance authorization",
+      "limitations": "Browser transport currently macOS only; host discovery evidence is separate",
+      "capability_id": "command.execute",
+      "features": [
+        "local-node-runtime",
+        "structured-stdout",
+        "exit-code"
+      ]
+    }
+  ],
+  "schema": "portable-skill-adapter",
+  "schema_version": "1.0.0"
+}

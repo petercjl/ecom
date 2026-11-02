@@ -1,0 +1,1 @@
+process.stderr.write('Ecom CLI bootstrap installed. Complete CLI + Skill installation for your current Agent: discover ecom-cli skill source --json, resolve the exact Skill directory, run skill install --agent NAME --target PATH, then verify host discovery. See INSTALL.md.\n');

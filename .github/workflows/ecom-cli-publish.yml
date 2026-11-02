@@ -1,0 +1,69 @@
+name: Publish Ecom CLI
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Release increment or exact semver
+        required: true
+        default: patch
+        type: string
+      tag:
+        description: npm dist-tag
+        required: true
+        default: latest
+        type: choice
+        options: [latest, next]
+      validate_only:
+        description: Run QA without publishing
+        required: false
+        default: false
+        type: boolean
+permissions:
+  contents: write
+  id-token: write
+concurrency:
+  group: ecom-cli-release
+  cancel-in-progress: false
+jobs:
+  qa:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.2'
+      - name: Pin npm
+        run: npm install --global npm@11.18.0
+      - name: Package and lifecycle tests
+        working-directory: packages/ecom-cli
+        run: npm test
+  publish:
+    needs: qa
+    if: ${{ !inputs.validate_only }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.2'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Pin npm for OIDC
+        run: npm install --global npm@11.18.0
+      - name: Configure release author
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Release selected CLI package
+        working-directory: packages/ecom-cli
+        run: npx --yes --package @petercjl/npm-release-kit@0.1.4 npm-release-kit ci publish --release "$RELEASE" --tag "$DIST_TAG"
+        env:
+          RELEASE: ${{ inputs.release }}
+          DIST_TAG: ${{ inputs.tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

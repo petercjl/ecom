@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ecom CLI"
+  short_description: "List isolated Ecom browser account containers"
+  default_prompt: "List my Ecom browser containers."

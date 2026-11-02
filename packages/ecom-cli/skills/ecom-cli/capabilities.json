@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0.0",
+  "target_platforms": [
+    "generic"
+  ],
+  "host_resolution": {
+    "fallback_adapter": "generic",
+    "authority": "host"
+  },
+  "capabilities": [
+    {
+      "id": "command.execute",
+      "purpose": "Run the isolated Ecom CLI",
+      "required": true,
+      "required_features": [
+        "local-node-runtime",
+        "structured-stdout",
+        "exit-code"
+      ],
+      "input_fields": [
+        "argv",
+        "skill_root"
+      ],
+      "output_fields": [
+        "ok",
+        "containers",
+        "instance",
+        "error"
+      ],
+      "side_effects": {
+        "external_mutation": false,
+        "may_cost_money": false,
+        "authorization": "Read-only browser request authorized by user; selected-target writes require installation/update intent"
+      },
+      "errors": [
+        "CAPABILITY_UNAVAILABLE",
+        "PLATFORM_UNSUPPORTED",
+        "INSTANCE_NOT_RUNNING"
+      ]
+    }
+  ],
+  "schema": "portable-skill-capabilities",
+  "skill": "ecom-cli"
+}

@@ -675,3 +675,7 @@ button.danger {
   padding-top: 4px;
   border-top: 1px solid var(--line);
 }
+/* Agent bootstrap prompts remain selectable without granting clipboard access. */
+.sidebar-bottom { flex-wrap: wrap; }
+#plugin-guide-open { width: 100%; margin-bottom: 12px; }
+.plugin-prompt { width: 100%; min-height: 66px; resize: vertical; padding: 12px; box-sizing: border-box; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 8px; font: inherit; }

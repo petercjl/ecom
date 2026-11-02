@@ -24,6 +24,8 @@ Ecom 首先采用与 Chrome 几乎一致的桌面浏览器外观和基础交互�
 
 ## Agent CLI：核心开发约束
 
+CLI 与配套 portable Skill 通过公开 npm 包 `@petercjl/ecom-cli` 统一分发，稳定版使用 `latest`。源码位于 `packages/ecom-cli`。浏览器内账号管理页提供面向当前 Agent 的安装、使用与更新提示词。首版产品命令为只读 `containers list`，复用普通 Ecom 的受限本地通信；功能扩展同步维护能力清单、参数与输出契约、测试及 canonical Skill。安装和更新覆盖当前 Agent 的 CLI 与物理隔离 Skill 运行时，完成状态分别核对包完整性和宿主发现；本机同步范围为 Codex。
+
 Ecom 的核心目标之一是让 Agent 通过稳定 CLI 调用浏览器的各类功能。CLI 是一等产品入口，与 Chrome 式桌面界面并行设计。此约束适用于 Ecom 原生浏览器的全部开发。
 
 **开发 PRD**：[Ecom CLI 产品需求与调研依据](docs/ecom/cli-research-2026-11-01.md) 是 CLI 开发的需求基线。实施前读取其中的能力表、分期、共同契约与验收顺序；实现进度及尚未覆盖能力明确记录，第三方后端选型与兼容性结论以实际验证为准。

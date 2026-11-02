@@ -879,6 +879,7 @@ $('delete-confirm').addEventListener('click', async () => {
     showError(error, 'delete-error')
   }
 })
+$('plugin-guide-open').addEventListener('click', () => $('plugin-guide').showModal())
 setInterval(async () => {
   if (
     document.hidden
