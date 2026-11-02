@@ -3,10 +3,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {inspectInConnection,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,validateReadUrl,resolveContainer} from '../lib/browser.mjs';
+import {inspectInConnection,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,validateReadUrl,resolveContainer,processProfile} from '../lib/browser.mjs';
 import {parse} from '../lib/cli.mjs';
 const origin='https://example.com';
 const accounts=[{id:'account-a',name:'示例甲'},{id:'account-b',name:'示例乙'}];
+test('formal process discovery uses the native default and preserves explicit profile selection',()=>{
+  const app='/Applications/Ecom.app/Contents/MacOS/Ecom';
+  assert.equal(processProfile(app,app),path.join(os.homedir(),'Library','Application Support','Ecom','Ecom'));
+  assert.equal(processProfile(app,app+' --user-data-dir=/tmp/独立 Profile --restore-last-session'),'/tmp/独立 Profile');
+  assert.equal(processProfile('/Applications/Ecom Dev.app/Contents/MacOS/Ecom Dev','Ecom Dev'),null);
+});
 function fixture(handler) {
   const folder=fs.mkdtempSync(path.join(os.tmpdir(),'ecom-session-test-'));fs.chmodSync(folder,0o700);
   const endpoint={instanceId:'fixture-instance',pid:process.pid,authToken:'fixture-only',allowedOrigin:origin};

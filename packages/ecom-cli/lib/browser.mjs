@@ -1,10 +1,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {setTimeout as pause} from 'node:timers/promises';
 import {fail,privatePath,writeNew,exists} from './common.mjs';
 const ps=(args)=>execFileSync('/bin/ps',args,{encoding:'utf8',timeout:3000,maxBuffer:4*1024*1024});
+export function processProfile(executable,command) {
+  const explicit=command.match(/(?:^| )--user-data-dir=(.*?)(?= --|$)/)?.[1];
+  if(explicit)return explicit;
+  if(executable.endsWith('/Ecom.app/Contents/MacOS/Ecom'))return path.join(os.homedir(),'Library','Application Support','Ecom','Ecom');
+  return null;
+}
 export function discover({profile,instance}={}) {
   if(process.platform!=='darwin') throw fail('PLATFORM_UNSUPPORTED','Browser transport currently supports macOS; no debugging fallback is available');
   const candidates=[];
@@ -13,7 +20,7 @@ export function discover({profile,instance}={}) {
     if(!m || Number(m[2])!==process.getuid() || !/\/(Ecom Dev|Ecom)\.app\/Contents\/MacOS\/\1$/.test(m[3])) continue;
     let command; try {command=ps(['-ww','-p',m[1],'-o','command=']).trim();}catch{continue;}
     if(/--(?:remote-debugging|headless|enable-automation)/.test(command)) continue;
-    const selected=command.match(/(?:^| )--user-data-dir=(.*?)(?= --|$)/)?.[1];
+    const selected=processProfile(m[3],command);
     if(!selected || !path.isAbsolute(selected) || (profile && path.resolve(profile)!==path.resolve(selected))) continue;
     const folder=path.join(selected,'Default','.ecom-native-cli'), file=path.join(folder,'endpoint.json');
     if(!exists(file)) continue;

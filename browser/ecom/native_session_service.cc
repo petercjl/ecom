@@ -531,8 +531,13 @@ void StartNativeSessionService(Profile* profile) {
   if (profile->IsOffTheRecord()) {
     return;
   }
-  const GURL origin(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
-      "ecom-native-cli-origin"));
+  const auto configured_origin =
+      base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+          "ecom-native-cli-origin");
+  // Normal desktop launches expose the same fixed origin used by the verified
+  // Dev configuration. Explicit overrides retain the existing validation.
+  const GURL origin(configured_origin.empty() ? "https://sycm.taobao.com/"
+                                               : configured_origin);
   if (!origin.is_valid() || !origin.SchemeIs("https") ||
       origin.has_username() || origin.has_password() || origin.path() != "/" ||
       origin.has_query() || origin.has_ref()) {

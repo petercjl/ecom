@@ -38,6 +38,6 @@ Ecom 的正式产品渠道由品牌、应用标识、数据目录和发布契约
 
 当前 GUI 更新入口为原生助手的两个确认对话框；设置页的手动检查、进度展示及产品 CLI 的 update status/check/download/apply 尚未开放，列为能力缺口。Windows 与 Intel Mac 待分别实现和验证。原生助手契约自检和 Node 单元测试不能替代正式浏览器、首次安装或真实 npm 更新往返验收。
 
-已有实例通过启动参数显式启用的受限 HTTPS CLI 来源随更新和恢复启动保留，不增添新的来源权限。正式版的原生 CLI 默认启用及自动发现尚需单独验收；当前原生服务仍要求显式启用来源，现有 npm CLI 的发现逻辑还依赖进程中的数据目录参数。此边界不影响 GUI 构建，但正式渠道的 CLI 支持不能以 Dev 验收记录替代。
+普通桌面启动默认启用与 Dev 已验收配置相同的固定 HTTPS 生意参谋来源；显式来源覆盖继续接受原生校验，并随更新和恢复启动保留。CLI 从正式版默认数据目录发现通信端点，也保留显式 Profile 选择；连接前继续核对进程所有者、可执行文件、PID、实例及私有文件权限。正式版 CLI 和编译目录哈希需在实际产物上验收，Dev 的真实店铺记录单独保留。
 
 元数据协议依据：[npm registry package metadata](https://github.com/npm/registry/blob/main/docs/responses/package-metadata.md)。

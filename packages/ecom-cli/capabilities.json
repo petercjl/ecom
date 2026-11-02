@@ -440,7 +440,7 @@
           "default": false
         }
       },
-      "sideEffects": "browser-navigation",
+      "sideEffects": "local-write",
       "authorization": "Explicit page navigation or an authorized recovery fallback; fixed registered entry in the selected container. Background/reuse by default, foreground only when selected.",
       "output": {
         "navigation": "started or reused, not login success",
@@ -455,7 +455,8 @@
         "CONTAINER_NOT_FOUND",
         "CONTAINER_AMBIGUOUS",
         "PROTOCOL_MISMATCH"
-      ]
+      ],
+      "sideEffectDetails": "Registered browser navigation in the selected container; no website submission."
     }
   },
   "transport": {
