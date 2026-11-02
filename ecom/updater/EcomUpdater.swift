@@ -5,8 +5,16 @@ import CryptoKit
 import Darwin
 
 enum UpdateFailure: Error { case invalid(String) }
-func relaunchArguments(profile: String) -> [String] {
-    ["--user-data-dir=" + profile, "--restore-last-session"]
+func allowedOrigin(_ value: String?) -> String? {
+    guard let value, let url = URLComponents(string: value), url.scheme == "https", url.host != nil,
+          url.user == nil, url.password == nil, url.query == nil, url.fragment == nil,
+          url.path.isEmpty || url.path == "/" else { return nil }
+    return url.url?.absoluteString
+}
+func relaunchArguments(profile: String, origin: String? = nil) -> [String] {
+    var arguments = ["--user-data-dir=" + profile, "--restore-last-session"]
+    if let origin = allowedOrigin(origin) { arguments.append("--ecom-native-cli-origin=" + origin) }
+    return arguments
 }
 func require(_ condition: Bool, _ reason: String) throws {
     if !condition { throw UpdateFailure.invalid(reason) }
@@ -111,7 +119,7 @@ final class RegistrySession: NSObject, URLSessionTaskDelegate {
 }
 @MainActor
 final class Updater {
-    let app: URL, owner: NSRunningApplication, current: String, currentSource: String, profile: String, channel: String
+    let app: URL, owner: NSRunningApplication, current: String, currentSource: String, profile: String, channel: String, origin: String?
     let fm = FileManager.default
     let delegate = RegistrySession()
     var downloadRequested = false
@@ -121,7 +129,7 @@ final class Updater {
         config.timeoutIntervalForRequest = 60; config.timeoutIntervalForResource = 3600
         return URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
     }()
-    init(path: String, pid: pid_t, profilePath: String) throws {
+    init(path: String, pid: pid_t, profilePath: String, cliOrigin: String?) throws {
         app = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath()
         guard let bundle = Bundle(url: app), let process = NSRunningApplication(processIdentifier: pid),
               let version = bundle.object(forInfoDictionaryKey: "EcomReleaseVersion") as? String,
@@ -131,7 +139,7 @@ final class Updater {
         try require(selectedChannel == "latest" || (selectedChannel == "next" && bundle.object(forInfoDictionaryKey: "EcomUpdateTestSeed") as? Bool == true), "update channel")
         try require(profilePath.hasPrefix("/") && !profilePath.contains("\0"), "profile path")
         _ = try stableVersion(version); current = version; currentSource = source; owner = process
-        profile = profilePath; channel = selectedChannel
+        profile = profilePath; channel = selectedChannel; origin = allowedOrigin(cliOrigin)
     }
     func ask(_ title: String, _ message: String, _ action: String) -> Bool {
         let alert = NSAlert(); alert.messageText = title; alert.informativeText = message
@@ -209,7 +217,7 @@ final class Updater {
         let backup = parent.appendingPathComponent("Ecom.previous-" + current + "-" + UUID().uuidString + ".app")
         try activateBundle(app: app, candidate: candidate, backup: backup)
         do {
-            try run("/usr/bin/open", ["-n", app.path, "--args"] + relaunchArguments(profile: profile))
+            try run("/usr/bin/open", ["-n", app.path, "--args"] + relaunchArguments(profile: profile, origin: origin))
             try await Task.sleep(nanoseconds: 8_000_000_000)
             try require(NSRunningApplication.runningApplications(withBundleIdentifier: "app.ecom.browser").contains { $0.bundleURL?.resolvingSymlinksInPath() == app && !$0.isTerminated }, "updated application failed to start")
         } catch {
@@ -222,7 +230,7 @@ final class Updater {
             }
             try require(started.allSatisfy { $0.isTerminated }, "recovery awaits normal quit; previous application retained")
             try restoreBundle(app: app, backup: backup, failed: parent.appendingPathComponent("Ecom.failed-" + UUID().uuidString + ".app"))
-            _ = try? run("/usr/bin/open", ["-n", app.path, "--args"] + relaunchArguments(profile: profile))
+            _ = try? run("/usr/bin/open", ["-n", app.path, "--args"] + relaunchArguments(profile: profile, origin: origin))
             throw error
         }
         return true
@@ -245,15 +253,17 @@ struct Main {
                 }
                 try require(!RegistrySession.allowed(URL(string: "https://registry.npmjs.org.evil.test/x")), "host check")
                 try require(relaunchArguments(profile: "/tmp/Ecom 账号") == ["--user-data-dir=/tmp/Ecom 账号", "--restore-last-session"], "profile restoration")
+                try require(relaunchArguments(profile: "/tmp/profile", origin: "https://sycm.taobao.com/").last == "--ecom-native-cli-origin=https://sycm.taobao.com/", "CLI origin restoration")
+                try require(allowedOrigin("https://user:password@example.com/") == nil && allowedOrigin("http://example.com/") == nil && allowedOrigin("https://example.com/path") == nil, "CLI origin restriction")
                 try transactionSelfTest()
                 print("Ecom updater contract self-test passed")
             } catch { fputs("Updater self-test failed\n", stderr); exit(1) }
             return
         }
-        guard CommandLine.arguments.count == 4, let pid = Int32(CommandLine.arguments[2]) else { exit(2) }
+        guard (4...5).contains(CommandLine.arguments.count), let pid = Int32(CommandLine.arguments[2]) else { exit(2) }
         _ = NSApplication.shared; NSApp.setActivationPolicy(.accessory)
         do {
-            let updater = try Updater(path: CommandLine.arguments[1], pid: pid, profilePath: CommandLine.arguments[3])
+            let updater = try Updater(path: CommandLine.arguments[1], pid: pid, profilePath: CommandLine.arguments[3], cliOrigin: CommandLine.arguments.count == 5 ? CommandLine.arguments[4] : nil)
             NSApp.applicationIconImage = NSWorkspace.shared.icon(forFile: updater.app.path)
             // Process-scoped lock avoids duplicate helpers without persisting a stale PID.
             let lockPath = updater.app.path + ".update-lock"

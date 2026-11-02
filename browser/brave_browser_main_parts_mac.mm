@@ -7,6 +7,7 @@
 
 #include "base/apple/bundle_locations.h"
 #include "base/apple/foundation_util.h"
+#include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/path_service.h"
@@ -20,6 +21,7 @@
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_paths.h"
 #include "components/version_info/channel.h"
+#include "url/gurl.h"
 
 #if BUILDFLAG(ENABLE_SPARKLE)
 #import "brave/browser/mac/sparkle_glue.h"
@@ -77,11 +79,22 @@ int BraveBrowserMainPartsMac::PreMainMessageLoopRun() {
         URLByAppendingPathComponent:@"Contents/Helpers/EcomUpdater"];
     NSTask* task = [[NSTask alloc] init];
     task.executableURL = helper;
-    task.arguments = @[
+    NSMutableArray<NSString*>* arguments = [@[
       bundle.bundlePath,
       [NSString stringWithFormat:@"%d", NSProcessInfo.processInfo.processIdentifier],
       base::apple::FilePathToNSString(user_data_dir)
-    ];
+    ] mutableCopy];
+    const GURL cli_origin(
+        base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+            "ecom-native-cli-origin"));
+    if (cli_origin.is_valid() && cli_origin.SchemeIs("https") &&
+        !cli_origin.has_username() && !cli_origin.has_password() &&
+        cli_origin.path() == "/" && !cli_origin.has_query() &&
+        !cli_origin.has_ref()) {
+      [arguments addObject:[NSString stringWithUTF8String:
+          cli_origin.spec().c_str()]];
+    }
+    task.arguments = arguments;
     NSError* error = nil;
     if (![task launchAndReturnError:&error]) {
       LOG(ERROR) << "Ecom update helper failed to start";
