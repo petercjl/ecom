@@ -160,6 +160,9 @@ const en = {
   BUSY: 'This container is being verified. Please wait.',
 }
 Object.assign(zh, {
+  loggedIn: '已登录',
+  serviceNote:
+    '每个店铺在独立会话中打开标签。登录状态按服务自动检查；店铺身份单独确认，未接入核验的平台请在网页确认登录。',
   platformPending: '此平台暂提供容器与登录入口，自动登录核验待接入。',
   customPlatformName: '其他平台名称',
   entryUrl: '登录网址（HTTPS）',
@@ -208,6 +211,9 @@ Object.assign(zh, {
   LOGIN_REDIRECT: '该服务需要重新登录，请在原容器内完成。',
 })
 Object.assign(en, {
+  loggedIn: 'Signed in',
+  serviceNote:
+    'Shops open in isolated container tabs. Login is checked per service; shop identity is confirmed separately. Use the website where automatic checks are not available.',
   platformPending:
     'Container and sign-in entry available. Automatic login checks are not implemented.',
   customPlatformName: 'Other platform name',
@@ -278,6 +284,7 @@ let rows = [],
   busy = false,
   confirmationId
 const services = new Map()
+let lastRenderedSignature = ''
 let editId, deletionPlan
 let platforms = []
 function syncPlatformFields(edit = false) {
@@ -394,6 +401,15 @@ function button(label, action, row, className) {
   return result
 }
 function render() {
+  const signature = JSON.stringify([
+    rows,
+    scope,
+    state,
+    $('search').value,
+    busy,
+  ])
+  if (signature === lastRenderedSignature) return
+  lastRenderedSignature = signature
   const shown = filterShops(rows, { scope, state, query: $('search').value })
   $('all-count').textContent = rows.length
   for (const platform of platforms)

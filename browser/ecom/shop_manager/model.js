@@ -21,6 +21,7 @@ export function filterShops(
     const identity = row.identity || row.candidate || {}
     return [
       row.name,
+      row.customPlatformName,
       identity.platformName,
       identity.shopId,
       identity.accountId,
