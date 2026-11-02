@@ -1,0 +1,19 @@
+# Copyright 2026 Ecom Authors. All rights reserved.
+# This Source Code Form is subject to the Mozilla Public License, v. 2.0.
+
+action("resources") {
+  script = "embed_resources.py"
+  inputs = [
+    "index.html",
+    "manager.css",
+    "manager.js",
+    "model.mjs",
+  ]
+  outputs = [ "$target_gen_dir/shop_manager_resources.h" ]
+  args = [
+    "--output",
+    rebase_path(outputs[0], root_build_dir),
+    "--source",
+    rebase_path(".", root_build_dir),
+  ]
+}

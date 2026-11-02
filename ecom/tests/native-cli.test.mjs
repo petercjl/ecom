@@ -19,7 +19,7 @@ test('actual native CLI exposes dev capabilities and structured failure without 
   const caps=JSON.parse(execFileSync(process.execPath,[script.pathname,'capabilities'],{encoding:'utf8'}));
   assert.equal(caps.debuggingRequired,false);
   assert.deepEqual(caps.commands.slice(0,2),['containers list','session get']);
-  for(const command of ['shops create','shops configure','shops open','shops verify','shops confirm']) assert.ok(caps.commands.includes(command));
+  for(const command of ['shops manage','shops create','shops configure','shops open','shops verify','shops confirm']) assert.ok(caps.commands.includes(command));
   assert.throws(()=>execFileSync(process.execPath,[script.pathname,'evaluate'],{encoding:'utf8',stdio:'pipe'}),e=>JSON.parse(e.stderr).error.code==='UNSUPPORTED_COMMAND');
 });
 

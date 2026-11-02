@@ -85,13 +85,23 @@ source_set("core") {
 
   sources = brave_chrome_browser_sources + [ "ecom/shop_container_strings.h" ]
   if (is_mac) {
-    sources += [ "ecom/native_session_service.cc", "ecom/native_session_service.h", "ecom/shop_container_service.cc", "ecom/shop_container_service.h" ]
+    sources += [
+      "ecom/native_session_service.cc",
+      "ecom/native_session_service.h",
+      "ecom/shop_container_service.cc",
+      "ecom/shop_container_service.h",
+      "ecom/shop_manager_ui.cc",
+      "ecom/shop_manager_ui.h",
+    ]
   }
   deps = brave_chrome_browser_deps + [
            "//brave/browser/ui/webui:favicon_source_chromium_impl",
            "//brave/browser/ui/window_feature_controller:chromium_impl",
            "//brave/ui/webui/custom_profile_image/buildflags",
          ]
+  if (is_mac) {
+    deps += [ "//brave/browser/ecom/shop_manager:resources" ]
+  }
   if (!is_android) {
     deps += [ "//brave/browser/ui:brave_browser_header" ]
   }

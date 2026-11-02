@@ -19,6 +19,7 @@
 #include "base/time/time.h"
 #include "base/uuid.h"
 #include "base/values.h"
+#include "brave/browser/ecom/shop_manager_ui.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "brave/components/containers/core/browser/containers_settings_handler.h"
 #include "brave/components/containers/core/browser/pref_names.h"
@@ -155,6 +156,12 @@ class ShopService final : public base::SupportsUserData::Data,
       return;
     }
     const auto method = Field(request, "method");
+    if (method == "shops.manage") {
+      OpenShopManager(profile_);
+      Send(std::move(callback),
+           base::DictValue().Set("ok", true).Set("url", kShopManagerURL));
+      return;
+    }
     if (method == "shops.platforms") {
       base::ListValue platforms;
       platforms.Append(

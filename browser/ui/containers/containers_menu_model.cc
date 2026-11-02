@@ -19,6 +19,11 @@
 #include "ui/gfx/image/image_skia.h"
 #endif
 
+#if BUILDFLAG(IS_MAC)
+#include "brave/browser/ecom/shop_manager_ui.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#endif
+
 namespace containers {
 
 ContainersMenuModel::ContainersMenuModel(Delegate& delegate,
@@ -111,8 +116,14 @@ void ContainersMenuModel::ExecuteCommand(int command_id, int event_flags) {
 }
 
 void ContainersMenuModel::OpenContainerSettingsPage() {
+#if BUILDFLAG(IS_MAC)
+  if (auto* browser = delegate_->GetBrowserToOpenSettings()) {
+    ecom::OpenShopManager(browser->GetProfile());
+  }
+#else
   chrome::ShowSettingsSubPage(delegate_->GetBrowserToOpenSettings(),
                               "braveContent");
+#endif
 }
 
 void ContainersMenuModel::ContainerSelected(int command_id) {

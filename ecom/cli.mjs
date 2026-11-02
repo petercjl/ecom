@@ -60,12 +60,12 @@ export async function nativeCall(profile,request) {
 async function main() {
   const {positionals,values}=parseArgs({allowPositionals:true,options:{profile:{type:'string'},container:{type:'string'},url:{type:'string'},name:{type:'string'},platform:{type:'string'},service:{type:'string'},'shop-id':{type:'string'},'candidate-id':{type:'string'},json:{type:'boolean'},help:{type:'boolean'}}});
   const [group,action]=positionals;
-  if(values.help||!group||group==='help') return {ok:true,usage:'node ecom/cli.mjs shops platforms|list|create|configure|open|verify|confirm；containers list | session get --container <ID或名称> --url <HTTPS URL> [--profile <Ecom Dev 数据目录>] [--json]'};
+  if(values.help||!group||group==='help') return {ok:true,usage:'node ecom/cli.mjs shops manage|platforms|list|create|configure|open|verify|confirm；containers list | session get --container <ID或名称> --url <HTTPS URL> [--profile <Ecom Dev 数据目录>] [--json]'};
   if(group==='version') return {ok:true,protocolVersion:1,stage:'native-shop-dev'};
-  if(group==='capabilities') return {ok:true,protocolVersion:1,commands:['containers list','session get','shops platforms','shops list','shops create','shops configure','shops open','shops verify','shops confirm'],methods:['GET'],responseTypes:['JSON'],transport:'private-local-mailbox',debuggingRequired:false,platforms:{macos:'development',windows:'not-implemented'}};
+  if(group==='capabilities') return {ok:true,protocolVersion:1,commands:['containers list','session get','shops manage','shops platforms','shops list','shops create','shops configure','shops open','shops verify','shops confirm'],methods:['GET'],responseTypes:['JSON'],transport:'private-local-mailbox',debuggingRequired:false,platforms:{macos:'development',windows:'not-implemented'}};
   const profile=values.profile||path.join(root,'.brave-build/profiles/Ecom-Dev');
   if(group==='shops') {
-    if(['platforms','list'].includes(action)) return nativeCall(profile,{method:'shops.'+action});
+    if(['manage','platforms','list'].includes(action)) return nativeCall(profile,{method:'shops.'+action});
     if(action==='create'&&values.name&&values.platform) return nativeCall(profile,{method:'shops.create',name:values.name,platform:values.platform});
     if(action==='configure'&&!values.platform || action==='confirm'&&(!values['shop-id']||!values['candidate-id'])) throw error('INVALID_SHOP_COMMAND','配置需指定平台；确认需指定 shop-id 和本次 candidate-id');
     if(['configure','open','verify','confirm'].includes(action)&&values.container) {
@@ -73,7 +73,7 @@ async function main() {
       const container=resolveContainer(listed.containers,values.container);
       return nativeCall(profile,{method:'shops.'+action,containerId:container.id,platform:values.platform,service:values.service,shopId:values['shop-id'],candidateId:values['candidate-id']});
     }
-    throw error('INVALID_SHOP_COMMAND','shops platforms | list | create --platform taobao --name <店铺名> | configure --container <ID> --platform taobao | open --container <ID> --service sycm|qianniu|alimama | verify --container <ID> | confirm --container <ID> --shop-id <ID> --candidate-id <核验候选ID>');
+    throw error('INVALID_SHOP_COMMAND','shops manage | platforms | list | create --platform taobao --name <店铺名> | configure --container <ID> --platform taobao | open --container <ID> --service sycm|qianniu|alimama | verify --container <ID> | confirm --container <ID> --shop-id <ID> --candidate-id <核验候选ID>');
   }
   if(group==='containers'&&action==='list') return nativeCall(profile,{method:'containers.list'});
   if(group==='session'&&action==='get'&&values.container&&values.url) {

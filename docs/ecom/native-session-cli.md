@@ -4,9 +4,14 @@
 
 Ecom 原生进程支持列出既有容器，以及使用指定容器会话发送 HTTPS JSON GET。此阶段用于验证后台取数的最小通路。正常有界面浏览器保持运行，原生请求使用该容器的 `StoragePartition` 与网络服务，不创建 WebContents、导航或激活标签。
 
+店铺管理通过独立内置页 `ecom://shops/` 使用；工具栏和容器菜单均有入口。网页界面与 CLI 共用 `RunShopCommand`，平台凭证留在原生容器中。该管理页当前仅在 macOS Dev 提供。
+
 开发入口：
 
 ```sh
+node ecom/cli.mjs shops manage
+node ecom/cli.mjs shops platforms
+node ecom/cli.mjs shops list
 node ecom/cli.mjs containers list --json
 node ecom/cli.mjs session get --container '<ID或唯一名称>' --url '<允许来源的HTTPS地址>' --json
 node ecom/cli.mjs capabilities
@@ -25,6 +30,14 @@ node ecom/cli.mjs capabilities
 `containers.list` 返回 ID/名称。`session.get` 仅接受已存在容器、配置的同一 HTTPS 来源、GET；禁止重定向，20 秒网络超时，2 MiB 响应上限，最多两笔并发。返回仅包含 JSON，敏感键脱敏；HTML、网络或 HTTP 错误以结构化错误报告。外部页面没有该本地接口权限。
 
 命令行拒绝凭证参数。调用方使用 sycmcli 的注册操作，避免把任意 URL 当业务接口。传输成功不表示业务成功或店铺身份已确认。
+
+## 店铺配置合同
+
+`shops create --platform taobao --name '<店铺名>'` 创建待登录容器；`shops configure --container '<ID>' --platform taobao` 为现有容器补充平台信息，保留 ID 与会话。`shops open --container '<ID>' --service sycm|qianniu|alimama` 在该容器中打开对应服务。管理页使用相同命令，创建后进入网页登录；关闭登录页后，待配置记录仍可恢复。
+
+`shops verify --container '<ID>'` 请求平台身份。成功解析后返回候选身份及五分钟有效的 candidateId，待用户核对名称和账号；`shops confirm --container '<ID>' --shop-id '<候选店铺ID>' --candidate-id '<候选ID>'` 完成绑定。已绑定店铺的 `session.get` 在业务请求前重新核验，身份不符停止请求。普通容器保持原有行为；一个服务的身份核验不表示其他服务已经登录或获授权。
+
+当前真实双店身份解析尚未通过，界面与 CLI 保留“需登录或验证”状态；该状态不能作为店铺数据已验证的证据。后续修复应在原生适配器内进行。
 
 ## sycmcli 本地开发适配
 

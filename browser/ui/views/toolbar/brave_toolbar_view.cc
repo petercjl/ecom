@@ -93,6 +93,10 @@
 #include "brave/components/brave_wallet/common/common_utils.h"
 #endif
 
+#if BUILDFLAG(IS_MAC)
+#include "brave/browser/ecom/shop_manager_ui.h"
+#endif
+
 namespace {
 constexpr int kLocationBarMaxWidth = 1080;
 
@@ -240,6 +244,23 @@ void BraveToolbarView::Init() {
   }
 
   Profile* profile = browser()->GetProfile();
+
+#if BUILDFLAG(IS_MAC)
+  if (!profile->IsOffTheRecord()) {
+    auto* shops =
+        AddChildViewAt(std::make_unique<ToolbarButton>(base::BindRepeating(
+                           &ecom::OpenShopManager, base::Unretained(profile))),
+                       *GetIndexOf(app_menu_button_));
+    shops->SetVectorIcon(kLeoGrid04Icon);
+    const auto label =
+        g_browser_process->GetApplicationLocale().starts_with("zh")
+            ? u"店铺管理"
+            : u"Shop manager";
+    shops->SetTooltipText(label);
+    shops->GetViewAccessibility().SetName(label);
+    SetBraveButtonFlexBehavior(shops);
+  }
+#endif
 
   // We don't use divider between extensions container and other toolbar
   // buttons. Upstream conditionally creates |toolbar_divider_|, they check

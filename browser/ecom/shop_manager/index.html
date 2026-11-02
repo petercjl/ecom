@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <title>Ecom · 店铺管理</title>
+    <link
+      rel="stylesheet"
+      href="manager.css"
+    />
+    <script
+      type="module"
+      src="manager.js"
+    ></script>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a
+        class="brand"
+        href="chrome://shops/"
+        aria-label="Ecom"
+        ><span class="brand-mark">E</span>Ecom<span class="dev">DEV</span></a
+      >
+      <div
+        class="sidebar-caption"
+        data-text="workspace"
+      ></div>
+      <nav
+        aria-label="店铺分类"
+        id="scopes"
+      >
+        <button
+          class="nav-item selected"
+          data-scope="all"
+          aria-current="page"
+        >
+          <span class="nav-icon">▦</span><span data-text="all"></span
+          ><b id="all-count">0</b>
+        </button>
+        <button
+          class="nav-item"
+          data-scope="taobao"
+        >
+          <span class="platform-icon">淘</span><span data-text="taobao"></span
+          ><b id="taobao-count">0</b>
+        </button>
+        <button
+          class="nav-item"
+          data-scope="general"
+        >
+          <span class="nav-icon">◇</span><span data-text="general"></span
+          ><b id="general-count">0</b>
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        <span class="connection-dot"></span><span data-text="local"></span>
+      </div>
+    </aside>
+    <main>
+      <header class="page-header">
+        <div>
+          <div class="eyebrow">ECOM WORKSPACE</div>
+          <h1 data-text="title"></h1>
+          <p data-text="intro"></p>
+        </div>
+        <button
+          class="primary"
+          id="add"
+        >
+          <span aria-hidden="true">＋</span> <span data-text="add"></span>
+        </button>
+      </header>
+      <section
+        class="workspace"
+        aria-label="店铺列表"
+      >
+        <div class="list-toolbar">
+          <div class="search">
+            <span aria-hidden="true">⌕</span
+            ><input
+              id="search"
+              type="search"
+              data-placeholder="search"
+              aria-label="搜索店铺"
+            />
+          </div>
+          <button
+            id="refresh"
+            data-text="refresh"
+          ></button>
+        </div>
+        <div
+          class="state-tabs"
+          id="states"
+        >
+          <button
+            class="active"
+            data-state="all"
+            aria-pressed="true"
+            data-text="allStates"
+          ></button
+          ><button
+            data-state="ready"
+            aria-pressed="false"
+            data-text="ready"
+          ></button
+          ><button
+            data-state="pending"
+            aria-pressed="false"
+            data-text="pending"
+          ></button>
+        </div>
+        <div
+          id="message"
+          role="status"
+          aria-live="polite"
+        ></div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th data-text="shop"></th>
+                <th data-text="platform"></th>
+                <th data-text="account"></th>
+                <th data-text="status"></th>
+                <th data-text="checked"></th>
+                <th data-text="actions"></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div
+          id="empty"
+          hidden
+        >
+          <span class="empty-symbol">◇</span>
+          <h2 data-text="empty"></h2>
+          <p data-text="emptyHint"></p>
+        </div>
+        <footer class="list-footer">
+          <span id="result-count"></span><span data-text="tabHint"></span>
+        </footer>
+      </section>
+      <div class="help-strip">
+        <span class="help-symbol">i</span>
+        <p data-text="serviceNote"></p>
+        <a
+          href="chrome://settings/braveContent"
+          data-text="appearance"
+        ></a>
+      </div>
+    </main>
+    <dialog
+      id="create-dialog"
+      aria-labelledby="create-title"
+    >
+      <form id="create-form">
+        <div class="dialog-heading">
+          <div>
+            <div
+              class="eyebrow"
+              data-text="newAccount"
+            ></div>
+            <h2
+              id="create-title"
+              data-text="add"
+            ></h2>
+          </div>
+          <button
+            type="button"
+            class="close"
+            data-close="create-dialog"
+            aria-label="关闭"
+          >
+            ×
+          </button>
+        </div>
+        <p
+          class="dialog-intro"
+          data-text="createHint"
+        ></p>
+        <label
+          ><span data-text="platform"></span
+          ><select
+            id="platform"
+            required
+          >
+            <option
+              value="taobao"
+              data-text="taobao"
+            ></option></select
+        ></label>
+        <label
+          ><span data-text="shopName"></span
+          ><input
+            id="shop-name"
+            maxlength="60"
+            required
+            autocomplete="off"
+            data-placeholder="namePlaceholder"
+        /></label>
+        <div class="steps">
+          <span>1 <b data-text="stepCreate"></b></span
+          ><span>2 <b data-text="stepLogin"></b></span
+          ><span>3 <b data-text="stepVerify"></b></span>
+        </div>
+        <p
+          id="create-error"
+          class="error"
+          role="alert"
+        ></p>
+        <div class="dialog-actions">
+          <button
+            type="button"
+            data-close="create-dialog"
+            data-text="cancel"
+          ></button
+          ><button
+            type="submit"
+            class="primary"
+            data-text="createLogin"
+          ></button>
+        </div>
+      </form>
+    </dialog>
+    <dialog
+      id="identity-dialog"
+      aria-labelledby="identity-title"
+    >
+      <div class="dialog-heading">
+        <div>
+          <div
+            class="eyebrow"
+            data-text="verification"
+          ></div>
+          <h2
+            id="identity-title"
+            data-text="confirmTitle"
+          ></h2>
+        </div>
+        <button
+          class="close"
+          data-close="identity-dialog"
+          aria-label="关闭"
+        >
+          ×
+        </button>
+      </div>
+      <p
+        class="dialog-intro"
+        data-text="confirmHint"
+      ></p>
+      <dl id="identity-details"></dl>
+      <p
+        id="identity-error"
+        class="error"
+        role="alert"
+      ></p>
+      <div class="dialog-actions">
+        <button
+          data-close="identity-dialog"
+          data-text="later"
+        ></button
+        ><button
+          id="confirm"
+          class="primary"
+          data-text="confirm"
+        ></button>
+      </div>
+    </dialog>
+  </body>
+</html>
