@@ -73,7 +73,7 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
                       ></cr-input>
                       <cr-button
                         class="action-button"
-                        @click="${this.onCreateShop_}"
+                        @click="${this.onCreateShopClick_}"
                         ?disabled="${this.shopBusy_
                         || !this.shopName_.trim()
                         || !this.shopPlatform_}"
@@ -133,7 +133,7 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
                                   <cr-button
                                     data-id="${row.id}"
                                     data-action="configure"
-                                    @click="${this.onShopAction_}"
+                                    @click="${this.onShopActionClick_}"
                                     ?disabled="${this.shopBusy_}"
                                     >${this.shopText_('CONFIGURE')}</cr-button
                                   >
@@ -143,7 +143,7 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
                                     data-id="${row.id}"
                                     data-action="open"
                                     data-service="sycm"
-                                    @click="${this.onShopAction_}"
+                                    @click="${this.onShopActionClick_}"
                                     ?disabled="${this.shopBusy_}"
                                     >${this.shopText_('LOGIN')}</cr-button
                                   >
@@ -151,7 +151,7 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
                                     data-id="${row.id}"
                                     data-action="open"
                                     data-service="qianniu"
-                                    @click="${this.onShopAction_}"
+                                    @click="${this.onShopActionClick_}"
                                     ?disabled="${this.shopBusy_}"
                                     >${this.shopText_('QIANNIU')}</cr-button
                                   >
@@ -159,14 +159,14 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
                                     data-id="${row.id}"
                                     data-action="open"
                                     data-service="alimama"
-                                    @click="${this.onShopAction_}"
+                                    @click="${this.onShopActionClick_}"
                                     ?disabled="${this.shopBusy_}"
                                     >${this.shopText_('ALIMAMA')}</cr-button
                                   >
                                   <cr-button
                                     data-id="${row.id}"
                                     data-action="verify"
-                                    @click="${this.onShopAction_}"
+                                    @click="${this.onShopActionClick_}"
                                     ?disabled="${this.shopBusy_}"
                                     >${this.shopText_('VERIFY')}</cr-button
                                   >
@@ -176,7 +176,7 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
                                         class="action-button"
                                         data-id="${row.id}"
                                         data-action="confirm"
-                                        @click="${this.onShopAction_}"
+                                        @click="${this.onShopActionClick_}"
                                         ?disabled="${this.shopBusy_}"
                                         >${this.shopText_('CONFIRM')}</cr-button
                                       >`
@@ -187,7 +187,7 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
                     )}
                     <p class="shop-intro">${this.shopText_('SERVICE_NOTE')}</p>
                     <cr-button
-                      @click="${this.refreshShops_}"
+                      @click="${this.onRefreshShopsClick_}"
                       ?disabled="${this.shopBusy_}"
                       >${this.shopText_('REFRESH')}</cr-button
                     >

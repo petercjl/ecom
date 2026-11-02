@@ -12,6 +12,7 @@
 #include "brave/components/containers/core/browser/pref_names.h"
 #include "brave/components/containers/core/browser/prefs.h"
 #include "components/prefs/pref_service.h"
+#include "components/prefs/scoped_user_pref_update.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "third_party/re2/src/re2/re2.h"
 
@@ -119,6 +120,10 @@ void ContainersSettingsHandler::RemoveContainer(
 
   containers.erase(it);
   SetContainersToPrefs(std::move(containers), *prefs_);
+  if (prefs_->FindPreference(prefs::kShopContainers)) {
+    ScopedDictPrefUpdate update(prefs_, prefs::kShopContainers);
+    update->Remove(id);
+  }
 
   std::move(callback).Run(std::nullopt);
 }

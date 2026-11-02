@@ -61,7 +61,7 @@ async function main() {
   const {positionals,values}=parseArgs({allowPositionals:true,options:{profile:{type:'string'},container:{type:'string'},url:{type:'string'},name:{type:'string'},platform:{type:'string'},service:{type:'string'},'shop-id':{type:'string'},'candidate-id':{type:'string'},json:{type:'boolean'},help:{type:'boolean'}}});
   const [group,action]=positionals;
   if(values.help||!group||group==='help') return {ok:true,usage:'node ecom/cli.mjs shops platforms|list|create|configure|open|verify|confirm；containers list | session get --container <ID或名称> --url <HTTPS URL> [--profile <Ecom Dev 数据目录>] [--json]'};
-  if(group==='version') return {ok:true,protocolVersion:1,stage:'native-read-dev'};
+  if(group==='version') return {ok:true,protocolVersion:1,stage:'native-shop-dev'};
   if(group==='capabilities') return {ok:true,protocolVersion:1,commands:['containers list','session get','shops platforms','shops list','shops create','shops configure','shops open','shops verify','shops confirm'],methods:['GET'],responseTypes:['JSON'],transport:'private-local-mailbox',debuggingRequired:false,platforms:{macos:'development',windows:'not-implemented'}};
   const profile=values.profile||path.join(root,'.brave-build/profiles/Ecom-Dev');
   if(group==='shops') {

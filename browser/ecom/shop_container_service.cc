@@ -1,5 +1,7 @@
 #include "brave/browser/ecom/shop_container_service.h"
 
+#include <cmath>
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <string>
@@ -18,6 +20,7 @@
 #include "base/uuid.h"
 #include "base/values.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
+#include "brave/components/containers/core/browser/containers_settings_handler.h"
 #include "brave/components/containers/core/browser/pref_names.h"
 #include "brave/components/containers/core/browser/prefs.h"
 #include "brave/components/containers/core/common/features.h"
@@ -32,6 +35,7 @@
 #include "content/public/browser/storage_partition_config.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_message_handler.h"
+#include "net/base/load_flags.h"
 #include "net/base/net_errors.h"
 #include "net/cookies/site_for_cookies.h"
 #include "net/http/http_response_headers.h"
@@ -78,23 +82,28 @@ std::optional<base::DictValue> ParseIdentity(const std::string& html) {
           &block)) {
     return std::nullopt;
   }
-  auto field = [&block](const char* key) {
-    std::string value;
-    const std::string prefix =
-        std::string(R"re((?:["']?)re") + key + R"re(["']?\s*:\s*)re";
-    if (re2::RE2::PartialMatch(
-            block, re2::RE2(prefix + R"re(("(?:[^"\\]|\\.)*"))re"), &value)) {
-      auto parsed = base::JSONReader::Read(value, base::JSON_PARSE_RFC);
-      return parsed && parsed->is_string() ? parsed->GetString()
-                                           : std::string();
+  auto metadata =
+      base::JSONReader::Read(block, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  if (!metadata || !metadata->is_dict()) {
+    return std::nullopt;
+  }
+  auto field = [&metadata](const char* key) {
+    const auto* value = metadata->GetDict().Find(key);
+    if (!value) {
+      return std::string();
     }
-    if (re2::RE2::PartialMatch(block, re2::RE2(prefix + R"re('([^'\\]*)')re"),
-                               &value)) {
-      return value;
+    if (value->is_string()) {
+      return value->GetString();
     }
-    if (re2::RE2::PartialMatch(block, re2::RE2(prefix + R"re(([0-9]+))re"),
-                               &value)) {
-      return value;
+    if (value->is_int()) {
+      return base::NumberToString(value->GetInt());
+    }
+    if (value->is_double()) {
+      const double number = value->GetDouble();
+      if (number > 0 && number <= 9007199254740991.0 &&
+          number == std::floor(number)) {
+        return base::NumberToString(static_cast<int64_t>(number));
+      }
     }
     return std::string();
   };
@@ -184,6 +193,11 @@ class ShopService final : public base::SupportsUserData::Data,
       c->name = name;
       c->icon = containers::mojom::Icon::kShopping;
       c->background_color = 0xFF007F83;
+      if (containers::ContainersSettingsHandler::
+              ValidateEditableContainerProperties(c)) {
+        Send(std::move(callback), Error("INVALID_SHOP_INPUT"));
+        return;
+      }
       const auto id = c->id;
       list.push_back(std::move(c));
       containers::SetContainersToPrefs(list, *profile_->GetPrefs());
@@ -308,6 +322,7 @@ class ShopService final : public base::SupportsUserData::Data,
     }
     auto resource = std::make_unique<network::ResourceRequest>();
     resource->url = GURL(kHome);
+    resource->load_flags = net::LOAD_BYPASS_CACHE | net::LOAD_DISABLE_CACHE;
     resource->credentials_mode = network::mojom::CredentialsMode::kInclude;
     resource->redirect_mode = network::mojom::RedirectMode::kError;
     resource->site_for_cookies = net::SiteForCookies::FromUrl(resource->url);

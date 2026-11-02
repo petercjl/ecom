@@ -102,6 +102,7 @@ export class SettingsBraveContentContainersElement extends SettingsBraveContentC
 
   static override get properties() {
     return {
+      shopSupported_: { type: Boolean },
       shopRows_: { type: Array },
       shopPlatform_: { type: String },
       shopName_: { type: String },
@@ -131,7 +132,7 @@ export class SettingsBraveContentContainersElement extends SettingsBraveContentC
     }
   }
 
-  readonly shopSupported_ = loadTimeData.getBoolean(
+  accessor shopSupported_ = loadTimeData.getBoolean(
     'ecomShopContainersSupported',
   )
   accessor shopRows_: ShopRow[] = []
@@ -164,6 +165,11 @@ export class SettingsBraveContentContainersElement extends SettingsBraveContentC
     return result
   }
 
+  async onRefreshShopsClick_() {
+    this.shopError_ = ''
+    await this.refreshShops_()
+  }
+
   async refreshShops_() {
     try {
       await this.shopCommand_({ method: 'shops.list' })
@@ -179,7 +185,7 @@ export class SettingsBraveContentContainersElement extends SettingsBraveContentC
     this.shopPlatform_ = (e.target as HTMLSelectElement).value
   }
 
-  async onCreateShop_() {
+  async onCreateShopClick_() {
     if (this.shopBusy_ || !this.shopName_.trim() || !this.shopPlatform_) return
     this.shopBusy_ = true
     this.shopError_ = ''
@@ -210,7 +216,7 @@ export class SettingsBraveContentContainersElement extends SettingsBraveContentC
     }
   }
 
-  async onShopAction_(e: Event) {
+  async onShopActionClick_(e: Event) {
     if (this.shopBusy_) return
     const { id, action, service } = (e.currentTarget as HTMLElement).dataset
     const row = this.shopRows_.find((value) => value.id === id)
