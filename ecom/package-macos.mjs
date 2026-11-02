@@ -15,7 +15,8 @@ function writeNew(file, contents) {
   if (fs.existsSync(file)) throw new Error('Output already exists: ' + file);
   fs.writeFileSync(file, contents, { flag: 'wx' });
 }
-export function signMacBundle(app) {
+export function signMacBundle(app, sourceRoot = root) {
+  const chromiumApp = fs.existsSync(path.join(sourceRoot, '../chrome/app/app-entitlements.plist')) ? path.resolve(sourceRoot, '../chrome/app') : path.join(sourceRoot, '.brave-build/src/chrome/app');
   const entries = [];
   function visit(dir) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -38,21 +39,21 @@ export function signMacBundle(app) {
     const args = ['--force', '--sign', '-', '--preserve-metadata=entitlements,flags,runtime'];
     if (entry.directory && entry.file.endsWith('.app')) {
       const template = entry.file.endsWith('(Renderer).app') ? 'helper-renderer-entitlements.plist' : entry.file.endsWith('(GPU).app') ? 'helper-gpu-entitlements.plist' : null;
-      if (template) args.push('--entitlements', path.join(root, '.brave-build/src/chrome/app', template));
+      if (template) args.push('--entitlements', path.join(chromiumApp, template));
     }
     run('/usr/bin/codesign', [...args, entry.file]);
   }
-  run('/usr/bin/codesign', ['--force', '--sign', '-', '--entitlements', path.join(root, '.brave-build/src/chrome/app/app-entitlements.plist'), app]);
+  run('/usr/bin/codesign', ['--force', '--sign', '-', '--entitlements', path.join(chromiumApp, 'app-entitlements.plist'), app]);
   run('/usr/bin/codesign', ['--verify', '--deep', '--strict', app]);
 }
-export async function packageMacos({ sourceApp, output, sourceRevision }) {
+export async function packageMacos({ sourceApp, output, sourceRevision, sourceRoot = root }) {
   if (process.platform !== 'darwin' || process.arch !== 'arm64') throw new Error('Currently verified target: macOS arm64');
-  const config = validateRelease(JSON.parse(fs.readFileSync(path.join(root, 'ecom/release-config.json'), 'utf8')));
+  const config = validateRelease(JSON.parse(fs.readFileSync(path.join(sourceRoot, 'ecom/release-config.json'), 'utf8')));
   if (fs.existsSync(output)) throw new Error('Choose a new output directory; existing artifacts are preserved');
   const infoFile = path.join(sourceApp, 'Contents/Info.plist');
   const metadata = JSON.parse(run('/usr/bin/plutil', ['-convert', 'json', '-o', '-', infoFile]));
   if (metadata.CFBundleIdentifier !== config.bundleId || metadata.CFBundleExecutable !== 'Ecom') throw new Error('Expected a standalone Ecom release bundle, not Dev');
-  if (git(root, ['status', '--porcelain']) || git(root, ['rev-parse', 'HEAD']) !== sourceRevision) throw new Error('Source must remain at the clean build revision');
+  if (git(sourceRoot, ['status', '--porcelain']) || git(sourceRoot, ['rev-parse', 'HEAD']) !== sourceRevision) throw new Error('Source must remain at the clean build revision');
   run('/usr/bin/lipo', ['-verify_arch', 'arm64', path.join(sourceApp, 'Contents/MacOS/Ecom')]);
   fs.mkdirSync(output, { recursive: true, mode: 0o700 });
   const stage = path.join(output, 'dmg-root'); fs.mkdirSync(stage);
@@ -67,18 +68,18 @@ export async function packageMacos({ sourceApp, output, sourceRevision }) {
   const helpers = path.join(app, 'Contents/Helpers'); fs.mkdirSync(helpers, { recursive: true });
   const helper = path.join(helpers, 'EcomUpdater');
   if (fs.existsSync(helper)) throw new Error('Unexpected updater in build output');
-  run('/usr/bin/xcrun', ['swiftc', '-swift-version', '5', '-O', '-parse-as-library', '-target', 'arm64-apple-macos12.0', path.join(root, 'ecom/updater/EcomUpdater.swift'), '-o', helper]);
+  run('/usr/bin/xcrun', ['swiftc', '-swift-version', '5', '-O', '-parse-as-library', '-target', 'arm64-apple-macos13.0', path.join(sourceRoot, 'ecom/updater/EcomUpdater.swift'), '-o', helper]);
   run(helper, ['--self-test']);
   // Seal Mach-O files and nested bundles from the inside out. Chromium's
   // build output may carry linker signatures without sealed bundle resources.
-  signMacBundle(app);
+  signMacBundle(app, sourceRoot);
   const payload = path.join(output, 'npm'); fs.mkdirSync(payload);
   const zip = path.join(payload, 'Ecom.zip');
   run('/usr/bin/ditto', ['-c', '-k', '--keepParent', app, zip]);
   const manifest = artifactManifest(config, sourceRevision, await sha256(zip), fs.statSync(zip).size);
   writeNew(path.join(payload, 'artifact.json'), JSON.stringify(manifest, null, 2) + '\n');
   writeNew(path.join(payload, 'package.json'), JSON.stringify(payloadPackage(config), null, 2) + '\n');
-  fs.copyFileSync(path.join(root, 'LICENSE'), path.join(payload, 'LICENSE'), fs.constants.COPYFILE_EXCL);
+  fs.copyFileSync(path.join(sourceRoot, 'LICENSE'), path.join(payload, 'LICENSE'), fs.constants.COPYFILE_EXCL);
   fs.symlinkSync('/Applications', path.join(stage, 'Applications'));
   const dmg = path.join(output, `Ecom-${config.version}-macos-arm64.dmg`);
   run('/usr/bin/hdiutil', ['create', '-volname', 'Ecom', '-srcfolder', stage, '-format', 'UDZO', dmg]);

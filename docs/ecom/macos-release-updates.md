@@ -14,7 +14,7 @@ npm 提供版本元数据、tarball URL 和 SHA-512 integrity；助手仅访问 
 
 ## 构建及交付
 
-在集成后的洁净 `main` 运行 `node ecom/build-macos.mjs`。入口选择固定 Node 24 和本机 Xcode，与 Dev 共享构建锁和受管理源码工作树，使用独立 `Release_arm64` 输出目录；固定依赖和已有缓存保留。正式版禁用 Brave 更新组件，使用本地非 PGO 构建，不申请开发者证书。`--prepare-only` 仅执行构建前品牌准备，不代表 GN、编译或运行验证。
+在集成后的 `main` 运行 `node ecom/build-macos.mjs`。入口固定当前已提交的 main 版本，在构建锁内准备干净的受管理源码工作树；根目录中其他任务尚未提交的修改保留在原处，编译与打包仅读取已提交快照。若 main 在编译期间推进，入口停止打包，重新调用后增量构建最新集成版本。入口选择固定 Node 24 和本机 Xcode，与 Dev 共享构建锁，使用独立 `Release_arm64` 输出目录；固定依赖和已有缓存保留。正式版禁用 Brave 更新组件，使用本地非 PGO 构建，不申请开发者证书。`--prepare-only` 仅执行构建前品牌准备，不代表 GN、编译或运行验证。
 
 成功编译后在唯一的 `.brave-build/mac-release-*/artifacts/` 中生成 DMG、npm 载荷目录及 `release-receipt.json`。DMG 与 npm ZIP 来自同一份应用包。原始构建输出保持完整。打包后执行原生助手自检、架构和嵌套签名校验，记录归档与 DMG 校验和、源码提交和验证状态。
 
