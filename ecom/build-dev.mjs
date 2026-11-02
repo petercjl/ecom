@@ -71,20 +71,23 @@ function prepareComponentExecutable(runDir) {
 }
 
 async function main() {
-  if (process.argv.includes('--help')) { console.log('用法：node ecom/build-dev.mjs\n本地增量编译成功后，正常退出并重新启动当前工作区的 Ecom Dev。当前验证平台：macOS。'); return; }
-  if (process.argv.length > 2) throw new Error('不支持的参数；使用 --help 查看用法');
+  if (process.argv.includes('--help')) { console.log('用法：node ecom/build-dev.mjs [--source-ref <已提交版本>]\n本地增量编译成功后，正常退出并重新启动当前工作区的 Ecom Dev。当前验证平台：macOS。'); return; }
+  const args = process.argv.slice(2);
+  if (args.length && (args.length !== 2 || args[0] !== '--source-ref' || args[1].startsWith('--'))) throw new Error('支持 --source-ref <已提交版本>；使用 --help 查看用法');
   if (process.platform !== 'darwin') throw new Error('此入口当前用于 macOS Dev；Windows 构建与重启流程待验证');
   const validNode = file => { const version = spawnSync(file, ['--version'], { encoding: 'utf8' }).stdout || ''; const [major, minor] = version.replace(/^v/, '').split('.').map(Number); return major === 24 && minor >= 16; };
   const node = [process.env.ECOM_NODE, process.execPath, path.join(os.homedir(), '.local/share/ecom-toolchain/node_modules/node/bin/node')].filter(Boolean).find(validNode);
   if (!node) throw new Error('需要 Node >=24.16 <25；请安装或通过 ECOM_NODE 指定');
-  if (fs.realpathSync(node) !== fs.realpathSync(process.execPath)) { const result = spawnSync(node, [fileURLToPath(import.meta.url)], { stdio: 'inherit' }); process.exitCode = result.status ?? 1; return; }
+  if (fs.realpathSync(node) !== fs.realpathSync(process.execPath)) { const result = spawnSync(node, [fileURLToPath(import.meta.url), ...args], { stdio: 'inherit' }); process.exitCode = result.status ?? 1; return; }
   const env = { ...process.env, PATH: [path.dirname(node), path.join(os.homedir(), '.local/share/ecom-toolchain/node_modules/.bin'), process.env.PATH].join(path.delimiter) };
   const selected = spawnSync('xcode-select', ['-p'], { encoding: 'utf8' }).stdout?.trim();
   const candidates = env.DEVELOPER_DIR ? [env.DEVELOPER_DIR] : [selected, ...fs.readdirSync('/Applications').filter(name => /^Xcode.*\.app$/.test(name)).sort().reverse().map(name => path.join('/Applications', name, 'Contents/Developer'))];
   env.DEVELOPER_DIR = candidates.find(dir => dir && fs.existsSync(path.join(dir, 'usr/bin/xcodebuild')));
   if (!env.DEVELOPER_DIR) throw new Error('需要完成首次启动的完整 Xcode；可通过 DEVELOPER_DIR 指定');
   if (git(root, ['status', '--porcelain'])) throw new Error('请先按项目工作树规则提交源码改动，再运行构建重启脚本');
-  const base = git(root, ['rev-parse', 'HEAD']);
+  const sourceHead = git(root, ['rev-parse', 'HEAD']);
+  const base = git(root, ['rev-parse', '--verify', '--end-of-options', (args[1] || 'HEAD') + '^{commit}']);
+  const selection = ['--source-ref', base];
   const buildRoot = path.join(root, '.brave-build'); fs.mkdirSync(buildRoot, { recursive: true });
   const runDir = fs.mkdtempSync(path.join(buildRoot, 'dev-restart-'));
   const lock = path.join(buildRoot, 'build-dev.lock');
@@ -99,10 +102,10 @@ async function main() {
   try {
     console.log('开始本地增量编译 Ecom Dev…');
     await new Promise((resolve, reject) => {
-      const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'build', 'Component', '--target_arch', process.arch, '--use_remoteexec', 'false', '--offline'], { cwd: root, env, stdio: 'inherit' });
+      const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'build', 'Component', ...selection, '--target_arch', process.arch, '--use_remoteexec', 'false', '--offline'], { cwd: root, env, stdio: 'inherit' });
       child.once('error', reject); child.once('exit', code => code === 0 ? resolve() : reject(new Error('编译未成功，未执行 Dev 退出或重启动作')));
     });
-    if (git(root, ['rev-parse', 'HEAD']) !== base || git(root, ['status', '--porcelain'])) throw new Error('编译期间源码已变化，保留当前 Dev；提交后重新构建');
+    if (git(root, ['rev-parse', 'HEAD']) !== sourceHead || git(root, ['status', '--porcelain'])) throw new Error('编译期间源码已变化，保留当前 Dev；提交后重新构建');
     const previous = runningDev();
     if (previous) { console.log('编译成功，正在正常退出 Ecom Dev…'); await quitDev(previous); }
     const oldEndpoint = path.join(profile, 'DevToolsActivePort');
@@ -116,7 +119,7 @@ async function main() {
     const log = path.join(runDir, 'start.log');
     if (fs.existsSync(log)) throw new Error('启动日志已存在');
     const fd = fs.openSync(log, 'wx', 0o600);
-    const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'start', 'Component', '--no-first-run', '--no-default-browser-check', '--restore-last-session', '--ecom-native-cli-origin=https://sycm.taobao.com', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone'], { cwd: root, env, stdio: ['ignore', fd, fd], detached: true });
+    const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'start', 'Component', ...selection, '--no-first-run', '--no-default-browser-check', '--restore-last-session', '--ecom-native-cli-origin=https://sycm.taobao.com', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone'], { cwd: root, env, stdio: ['ignore', fd, fd], detached: true });
     child.on('error', () => {}); child.unref(); fs.closeSync(fd);
     for (let n = 0; n < 480; n++) {
       const current = runningDev();

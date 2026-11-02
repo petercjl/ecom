@@ -84,13 +84,19 @@ export function developmentStartArgs(repo, args) {
 }
 async function main() {
   const args = process.argv.slice(2); const command = args.shift() || 'status';
+  let sourceRef = 'HEAD';
+  const refIndex = args.indexOf('--source-ref');
+  if (refIndex !== -1) {
+    if (!args[refIndex + 1] || args[refIndex + 1].startsWith('--') || args.lastIndexOf('--source-ref') !== refIndex) throw failure('INVALID_SOURCE_REF', 'Supply one committed --source-ref');
+    sourceRef = args.splice(refIndex, 2)[1];
+  }
   const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const repo = canonicalRepository(moduleRoot);
   const workspace = path.join(repo, '.brave-build/src/brave');
   if (command === 'status') return workspaceStatus(repo, workspace);
   if (!['prepare', 'bootstrap', 'build', 'start'].includes(command)) throw failure('UNKNOWN_COMMAND', 'Use prepare, status, bootstrap, build or start');
   if (git(repo, ['status', '--porcelain'])) throw failure('SOURCE_MODIFIED', 'Commit source changes before preparing a reproducible build worktree');
-  const result = prepareWorkspace(repo, workspace);
+  const result = prepareWorkspace(repo, workspace, sourceRef);
   if (command === 'prepare') return result;
   if (command === 'bootstrap') bootstrapDependencies(workspace);
   else if (command === 'build') run(process.execPath, [path.join(workspace, 'build/commands/scripts/build.ts'), ...args], workspace);
