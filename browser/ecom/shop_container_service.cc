@@ -292,7 +292,9 @@ class ShopService final : public base::SupportsUserData::Data,
       for (const auto& platform : kPlatforms) {
         auto services = base::ListValue();
         if (std::string_view(platform.id) == "taobao") {
-          services.Append("qianniu").Append("sycm").Append("alimama");
+          services.Append("qianniu");
+          services.Append("sycm");
+          services.Append("alimama");
         } else {
           services.Append("home");
         }
@@ -324,8 +326,12 @@ class ShopService final : public base::SupportsUserData::Data,
     if (method == "shops.create") {
       auto name = Field(request, "name");
       base::TrimWhitespaceASCII(name, base::TRIM_ALL, &name);
-      if (name.empty() || name.size() > 200 || !ValidPlatform(request)) {
+      if (name.empty() || name.size() > 200) {
         Send(std::move(callback), Error("INVALID_SHOP_INPUT"));
+        return;
+      }
+      if (!ValidPlatform(request)) {
+        Send(std::move(callback), Error("INVALID_PLATFORM_INPUT"));
         return;
       }
       auto list = containers::GetContainersFromPrefs(*profile_->GetPrefs());
