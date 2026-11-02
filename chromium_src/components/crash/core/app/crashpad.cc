@@ -5,4 +5,6 @@
 
 #include "components/crash/core/app/crashpad.h"
 
+#define BRAVE_INITIALIZE_CRASHPAD_IMPL_PROCESS_TYPE
 #include <components/crash/core/app/crashpad.cc>
+#undef BRAVE_INITIALIZE_CRASHPAD_IMPL_PROCESS_TYPE
