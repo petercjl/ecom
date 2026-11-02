@@ -9,8 +9,10 @@ import {
   appearanceRequest,
   deletionRequest,
   displayPlatform,
-  shopServices,
   isTaobaoBuyer,
+  homePresets,
+  normalizeHomeUrl,
+  homeLabel,
 } from './model.js'
 
 const zh = {
@@ -162,6 +164,18 @@ const en = {
   BUSY: 'This container is being verified. Please wait.',
 }
 Object.assign(zh, {
+  title: '账号管理',
+  add: '添加账号',
+  shop: '账号名称',
+  shopName: '账号名称',
+  editTitle: '管理账号容器',
+  newAccount: '新建账号',
+  search: '搜索账号名称、平台账号或店铺 ID',
+  homePreset: '常用首页',
+  homeUrl: '登录首页 URL',
+  homeHint: '选择常用入口或填写自己的页面网址，打开时使用这个账号的容器。',
+  customUrl: '自定义 URL',
+  INVALID_HOME_URL: '请填写不含账号密码的有效 HTTPS 页面网址。',
   buyerPurposeNote: '买家账号使用淘宝首页；买家登录状态以淘宝网页为准。',
   accountType: '账号用途',
   merchant: '商家账号',
@@ -222,6 +236,20 @@ Object.assign(zh, {
   LOGIN_REDIRECT: '该服务需要重新登录，请在原容器内完成。',
 })
 Object.assign(en, {
+  title: 'Account manager',
+  add: 'Add account',
+  shop: 'Account name',
+  shopName: 'Account name',
+  editTitle: 'Manage account container',
+  newAccount: 'NEW ACCOUNT',
+  search: 'Search account or shop ID',
+  homePreset: 'Common homepages',
+  homeUrl: 'Login homepage URL',
+  homeHint:
+    'Choose an entry or enter your own URL. It opens in this account’s container.',
+  customUrl: 'Custom URL',
+  INVALID_HOME_URL:
+    'Enter a valid HTTPS page URL without embedded credentials.',
   buyerPurposeNote:
     'Buyer accounts open Taobao. Check buyer sign-in on the Taobao page.',
   accountType: 'Account purpose',
@@ -304,7 +332,7 @@ let rows = [],
   state = 'all',
   busy = false,
   confirmationId
-const services = new Map()
+const homeDirty = { create: false, edit: false }
 let lastRenderedSignature = ''
 let editId, deletionPlan
 let platforms = []
@@ -316,7 +344,11 @@ function syncPlatformFields(edit = false) {
   $(prefix + 'account-type').disabled =
     busy
     || selector.value !== 'taobao'
-    || (edit && Boolean(rows.find((row) => row.id === editId)?.platform))
+    || (edit
+      && Boolean(
+        rows.find((row) => row.id === editId)?.identity
+          || rows.find((row) => row.id === editId)?.candidate,
+      ))
   if (!edit)
     $('platform-support-note').textContent =
       selector.value === 'taobao'
@@ -325,13 +357,57 @@ function syncPlatformFields(edit = false) {
           : ''
         : text('platformPending')
   $(prefix + 'custom-platform-fields').hidden = !custom
-  for (const id of ['custom-platform-name', 'entry-url']) {
+  for (const id of ['custom-platform-name']) {
     $(prefix + id).required = custom
     $(prefix + id).disabled = busy || !custom
+  }
+  if (!homeDirty[edit ? 'edit' : 'create']) {
+    const base =
+      platforms.find((item) => item.id === selector.value)?.entryUrl || ''
+    const url =
+      selector.value === 'taobao'
+      && $(prefix + 'account-type').value === 'buyer'
+        ? 'https://www.taobao.com/'
+        : base
+    setHomeField(prefix, url)
   }
   if (edit)
     selector.disabled =
       busy || Boolean(rows.find((row) => row.id === editId)?.platform)
+}
+function setHomeField(prefix, url) {
+  $(prefix + 'home-url').value = url || ''
+  const match = homePresets.find((item) => item.url === url)
+  $(prefix + 'home-preset').value = match?.id || 'custom'
+}
+for (const prefix of ['', 'edit-']) {
+  const select = $(prefix + 'home-preset')
+  for (const preset of homePresets) {
+    const option = node('option', preset.names[copy === zh ? 0 : 1])
+    option.value = preset.id
+    select.append(option)
+  }
+  const custom = node('option', text('customUrl'))
+  custom.value = 'custom'
+  select.append(custom)
+  select.addEventListener('change', () => {
+    homeDirty[prefix ? 'edit' : 'create'] = true
+    const preset = homePresets.find((item) => item.id === select.value)
+    if (preset) setHomeField(prefix, preset.url)
+    else $(prefix + 'home-url').focus()
+  })
+  $(prefix + 'home-url').addEventListener('input', () => {
+    homeDirty[prefix ? 'edit' : 'create'] = true
+    let match
+    try {
+      match = homePresets.find(
+        (item) =>
+          normalizeHomeUrl(item.url)
+          === normalizeHomeUrl($(prefix + 'home-url').value),
+      )
+    } catch {}
+    select.value = match?.id || 'custom'
+  })
 }
 async function loadPlatforms() {
   const result = await command({ method: 'shops.platforms' })
@@ -535,26 +611,16 @@ function render() {
     const actions = node('td'),
       group = node('div', undefined, 'row-actions')
     if (row.platform) {
-      const select = node('select')
-      select.ariaLabel = `${row.name} · ${text('service')}`
-      for (const value of shopServices(row)) {
-        const option = node(
-          'option',
-          text(value === 'taobao' ? 'taobaoHome' : value),
-        )
-        option.value = value
-        select.append(option)
-      }
-      select.value = services.get(row.id) || shopServices(row)[0]
-      select.disabled = busy
-      select.addEventListener('change', () =>
-        services.set(row.id, select.value),
+      const homepage = node(
+        'span',
+        homeLabel(row.homeUrl, copy === zh),
+        'home-entry',
       )
+      homepage.title = row.homeUrl || ''
       group.append(
-        select,
+        homepage,
         button('open', 'open', row, 'open'),
-        ...((row.verificationSupported
-        ?? (row.platform === 'taobao' && !isTaobaoBuyer(row)))
+        ...((row.verificationSupported ?? false)
           ? [button('verify', 'verify', row)]
           : []),
       )
@@ -596,7 +662,8 @@ async function runAction(action, row) {
     $('edit-platform').value = row.platform || ''
     $('edit-account-type').value = row.accountType || 'merchant'
     $('edit-custom-platform-name').value = row.customPlatformName || ''
-    $('edit-entry-url').value = row.entryUrl || ''
+    homeDirty.edit = Boolean(row.homeUrl)
+    setHomeField('edit-', row.homeUrl || '')
     syncPlatformFields(true)
     $('edit-icon').value = String(row.icon ?? 2)
     $('edit-color').value = row.color || '#007f83'
@@ -632,9 +699,7 @@ async function runAction(action, row) {
   }
   setBusy(true)
   try {
-    await command(
-      shopRequest(action, row, services.get(row.id) || shopServices(row)[0]),
-    )
+    await command(shopRequest(action, row, 'home'))
     await refresh()
     setBusy(false)
     if (action === 'verify')
@@ -725,14 +790,15 @@ $('create-form').addEventListener('submit', async (event) => {
       icon: Number($('create-icon').value),
       color: $('create-color').value,
       customPlatformName: $('custom-platform-name').value,
-      entryUrl: $('entry-url').value,
+      homeUrl: normalizeHomeUrl($('home-url').value),
+      entryUrl: normalizeHomeUrl($('home-url').value),
     })
     created = result.shops.find((row) => row.id === result.createdContainerId)
     if (!created) throw new Error('CONTAINER_NOT_FOUND')
     render()
     $('shop-name').value = ''
     $('create-dialog').close()
-    await command(shopRequest('open', created, shopServices(created)[0]))
+    await command(shopRequest('open', created, 'home'))
     setBusy(false)
   } catch (error) {
     setBusy(false)
@@ -784,9 +850,10 @@ $('edit-form').addEventListener('submit', async (event) => {
     if ($('edit-platform').value) request.platform = $('edit-platform').value
     if (request.platform === 'taobao')
       request.accountType = $('edit-account-type').value
+    request.homeUrl = normalizeHomeUrl($('edit-home-url').value)
     if (request.platform === 'custom') {
       request.customPlatformName = $('edit-custom-platform-name').value
-      request.entryUrl = $('edit-entry-url').value
+      request.entryUrl = request.homeUrl
     }
     await command(request)
     setBusy(false)

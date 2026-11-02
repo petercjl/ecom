@@ -116,6 +116,9 @@ bool SafeEntry(const std::string& text) {
 }
 bool ValidPlatform(const base::DictValue& request) {
   const auto id = Field(request, "platform");
+  if (request.Find("homeUrl") && !SafeEntry(Field(request, "homeUrl"))) {
+    return false;
+  }
   if (const auto* type = request.Find("accountType")) {
     if (!type->is_string() ||
         (type->GetString() != "merchant" && type->GetString() != "buyer") ||
@@ -132,7 +135,22 @@ bool ValidPlatform(const base::DictValue& request) {
   auto name = Field(request, "customPlatformName");
   base::TrimWhitespaceASCII(name, base::TRIM_ALL, &name);
   return !name.empty() && name.size() <= 120 &&
-         SafeEntry(Field(request, "entryUrl"));
+         SafeEntry(request.FindString("homeUrl") ? Field(request, "homeUrl")
+                                                 : Field(request, "entryUrl"));
+}
+std::string HomeUrl(const base::DictValue& metadata) {
+  if (SafeEntry(Field(metadata, "homeUrl"))) {
+    return GURL(Field(metadata, "homeUrl")).spec();
+  }
+  const auto id = Field(metadata, "platform");
+  if (id == "taobao" && Field(metadata, "accountType") == "buyer") {
+    return "https://www.taobao.com/";
+  }
+  if (id == "custom") {
+    return Field(metadata, "entryUrl");
+  }
+  const auto* platform = Platform(id);
+  return platform ? platform->entry : std::string();
 }
 bool SupportsVerification(const base::DictValue& metadata) {
   return Field(metadata, "platform") == "taobao" &&
@@ -392,35 +410,13 @@ class ShopService final : public base::SupportsUserData::Data,
           return;
         }
       }
-      if (request.FindString("platform")) {
-        const auto* metadata = Metadata().FindDict(id);
-        if (metadata &&
-            Field(*metadata, "platform") != Field(request, "platform")) {
-          Send(std::move(callback),
-               Error("PLATFORM_CHANGE_REQUIRES_NEW_CONTAINER"));
+      if (request.FindString("platform") || request.Find("accountType") ||
+          request.Find("homeUrl") || request.Find("customPlatformName") ||
+          request.Find("entryUrl")) {
+        const auto error = UpdateMetadata(id, request);
+        if (!error.empty()) {
+          Send(std::move(callback), Error(error));
           return;
-        }
-        if (metadata && request.FindString("accountType") &&
-            Field(request, "accountType") !=
-                (Field(*metadata, "accountType").empty()
-                     ? "merchant"
-                     : Field(*metadata, "accountType"))) {
-          Send(std::move(callback),
-               Error("ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER"));
-          return;
-        }
-        if (!ValidPlatform(request)) {
-          Send(std::move(callback), Error("INVALID_PLATFORM_INPUT"));
-          return;
-        }
-        if (!metadata) {
-          Configure(id, request);
-        } else if (Field(request, "platform") == "custom") {
-          auto updated = metadata->Clone();
-          updated.Set("customPlatformName",
-                      Field(request, "customPlatformName"));
-          updated.Set("entryUrl", GURL(Field(request, "entryUrl")).spec());
-          Store(id, std::move(updated));
         }
       }
       for (auto& other : list) {
@@ -478,27 +474,10 @@ class ShopService final : public base::SupportsUserData::Data,
       return;
     }
     if (method == "shops.configure") {
-      if (!ValidPlatform(request)) {
-        Send(std::move(callback), Error("PLATFORM_UNSUPPORTED"));
+      const auto error = UpdateMetadata(id, request);
+      if (!error.empty()) {
+        Send(std::move(callback), Error(error));
         return;
-      }
-      if (const auto* old = Metadata().FindDict(id);
-          old && Field(*old, "platform") != Field(request, "platform")) {
-        Send(std::move(callback),
-             Error("PLATFORM_CHANGE_REQUIRES_NEW_CONTAINER"));
-        return;
-      }
-      if (const auto* old = Metadata().FindDict(id);
-          old && request.FindString("accountType") &&
-          Field(request, "accountType") != (Field(*old, "accountType").empty()
-                                                ? "merchant"
-                                                : Field(*old, "accountType"))) {
-        Send(std::move(callback),
-             Error("ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER"));
-        return;
-      }
-      if (!Metadata().FindDict(id)) {
-        Configure(id, request);
       }
       Send(std::move(callback), List());
       return;
@@ -512,8 +491,14 @@ class ShopService final : public base::SupportsUserData::Data,
       std::string url;
       const auto* metadata = Metadata().FindDict(id);
       const auto platform_id = Field(*metadata, "platform");
-      if (platform_id == "taobao" &&
-          Field(*metadata, "accountType") == "buyer") {
+      if (service.empty() || service == "home") {
+        url = HomeUrl(*metadata);
+        if (!SafeEntry(url)) {
+          Send(std::move(callback), Error("INVALID_HOME_URL"));
+          return;
+        }
+      } else if (platform_id == "taobao" &&
+                 Field(*metadata, "accountType") == "buyer") {
         if (!service.empty() && service != "home" && service != "taobao") {
           Send(std::move(callback), Error("SERVICE_UNSUPPORTED"));
           return;
@@ -555,7 +540,9 @@ class ShopService final : public base::SupportsUserData::Data,
       Send(std::move(callback), base::DictValue()
                                     .Set("ok", true)
                                     .Set("containerId", id)
-                                    .Set("service", service));
+                                    .Set("service", service)
+                                    .Set("requestedUrl", url)
+                                    .Set("navigation", "started"));
       return;
     }
     if ((method == "shops.verify" || method == "shops.confirm") &&
@@ -604,6 +591,63 @@ class ShopService final : public base::SupportsUserData::Data,
                                 containers::prefs::kShopContainers);
     update->Set(id, std::move(value));
   }
+  std::string UpdateMetadata(const std::string& id,
+                             const base::DictValue& request) {
+    const auto* old = Metadata().FindDict(id);
+    auto updated = old ? old->Clone() : base::DictValue();
+    for (const char* key : {"platform", "accountType", "customPlatformName",
+                            "entryUrl", "homeUrl"}) {
+      if (const auto* value = request.Find(key)) {
+        updated.Set(key, value->Clone());
+      }
+    }
+    if (old && Field(*old, "platform") != Field(updated, "platform")) {
+      return "PLATFORM_CHANGE_REQUIRES_NEW_CONTAINER";
+    }
+    if (updated.Find("homeUrl") && !SafeEntry(Field(updated, "homeUrl"))) {
+      return "INVALID_HOME_URL";
+    }
+    if (!ValidPlatform(updated)) {
+      return "INVALID_PLATFORM_INPUT";
+    }
+    const auto old_type = old && !Field(*old, "accountType").empty()
+                              ? Field(*old, "accountType")
+                              : "merchant";
+    const auto new_type = Field(updated, "accountType").empty()
+                              ? "merchant"
+                              : Field(updated, "accountType");
+    const bool type_changed = old && old_type != new_type;
+    if (type_changed &&
+        (old->FindDict("identity") || old->FindDict("candidate"))) {
+      return "ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER";
+    }
+    if (type_changed && loaders_.contains(id)) {
+      return "BUSY";
+    }
+    if (!old || type_changed) {
+      for (const char* key : {"authentication", "diagnostics", "lastError",
+                              "checkedAt", "expiry"}) {
+        updated.Remove(key);
+      }
+      updated.Set("state", SupportsVerification(updated)
+                               ? "awaiting-login"
+                               : "verification-unavailable");
+    }
+    if (Field(updated, "platform") == "taobao") {
+      updated.Set("accountType", new_type);
+    }
+    if (Field(updated, "platform") == "custom") {
+      auto name = Field(updated, "customPlatformName");
+      base::TrimWhitespaceASCII(name, base::TRIM_ALL, &name);
+      updated.Set("customPlatformName", name);
+      if (request.FindString("homeUrl")) {
+        updated.Set("entryUrl", GURL(Field(updated, "homeUrl")).spec());
+      }
+    }
+    updated.Set("homeUrl", HomeUrl(updated));
+    Store(id, std::move(updated));
+    return {};
+  }
   void Configure(const std::string& id, const base::DictValue& request) {
     const auto platform = Field(request, "platform");
     auto item =
@@ -622,8 +666,12 @@ class ShopService final : public base::SupportsUserData::Data,
       auto name = Field(request, "customPlatformName");
       base::TrimWhitespaceASCII(name, base::TRIM_ALL, &name);
       item.Set("customPlatformName", name);
-      item.Set("entryUrl", GURL(Field(request, "entryUrl")).spec());
+      item.Set("entryUrl",
+               GURL(request.FindString("homeUrl") ? Field(request, "homeUrl")
+                                                  : Field(request, "entryUrl"))
+                   .spec());
     }
+    item.Set("homeUrl", HomeUrl(request));
     Store(id, std::move(item));
   }
   base::DictValue List() {
@@ -634,6 +682,7 @@ class ShopService final : public base::SupportsUserData::Data,
                       ? Metadata().FindDict(c->id)->Clone()
                       : base::DictValue().Set("state", "unconfigured");
       item.Set("verificationSupported", SupportsVerification(item));
+      item.Set("homeUrl", HomeUrl(item));
       item.Set("id", c->id);
       item.Set("name", c->name);
       item.Set("icon", static_cast<int>(c->icon));
@@ -668,7 +717,9 @@ class ShopService final : public base::SupportsUserData::Data,
     while (profile_ && loaders_.size() < 2 && !queue_.empty()) {
       auto id = queue_.front();
       queue_.pop_front();
-      if (!Metadata().FindDict(id) || loaders_.contains(id)) {
+      if (!Metadata().FindDict(id) ||
+          !SupportsVerification(*Metadata().FindDict(id)) ||
+          loaders_.contains(id)) {
         continue;
       }
       Verify(id, base::BindOnce(&ShopService::AutoChecked, weak_.GetWeakPtr()));

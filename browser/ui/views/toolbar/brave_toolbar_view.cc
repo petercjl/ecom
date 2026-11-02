@@ -254,8 +254,8 @@ void BraveToolbarView::Init() {
     shops->SetVectorIcon(kLeoGrid04Icon);
     const char16_t* label =
         g_browser_process->GetApplicationLocale().starts_with("zh")
-            ? u"店铺管理"
-            : u"Shop manager";
+            ? u"账号管理"
+            : u"Account manager";
     shops->SetTooltipText(label);
     shops->GetViewAccessibility().SetName(label);
     SetBraveButtonFlexBehavior(shops);

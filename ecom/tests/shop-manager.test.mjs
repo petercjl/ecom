@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterShops, shopRequest, appearanceRequest, deletionRequest, displayPlatform, platformNames, shopServices} from '../../browser/ecom/shop_manager/model.js';
+import {filterShops, shopRequest, appearanceRequest, deletionRequest, displayPlatform, platformNames, shopServices, homePresets, normalizeHomeUrl, homeLabel} from '../../browser/ecom/shop_manager/model.js';
 
 const rows = [
   {id:'shop-a', name:'旗舰店', platform:'taobao', state:'ready', identity:{shopId:'123', accountId:'456', platformName:'平台店名'}},
@@ -37,6 +37,14 @@ test('Taobao buyer stays in Taobao category and opens a buyer entry instead of m
   assert.deepEqual(shopServices(buyer),['taobao']);
   assert.deepEqual(shopRequest('open',buyer,'taobao'),{method:'shops.open',containerId:'buyer-a',service:'taobao'});
   assert.throws(()=>shopRequest('open',buyer,'sycm'),/SERVICE_UNSUPPORTED/);
+});
+test('saved homepage permits custom HTTPS paths and rejects credentials and privileged schemes',()=>{
+  assert.equal(normalizeHomeUrl('https://example.com/account/home?tab=orders'),'https://example.com/account/home?tab=orders');
+  for(const url of ['http://example.com/','javascript:alert(1)','chrome://settings/','https://user:pass@example.com/']) assert.throws(()=>normalizeHomeUrl(url),/INVALID_HOME_URL/);
+  assert.ok(homePresets.some(item=>item.id==='qianniu'));
+  assert.equal(homeLabel('https://sycm.taobao.com/portal/home.htm'),'生意参谋');
+  assert.equal(homeLabel('https://example.com/custom'),'example.com');
+  assert.deepEqual(shopRequest('open',{id:'buyer',platform:'taobao',accountType:'buyer'},'home'),{method:'shops.open',containerId:'buyer',service:'home'});
 });
 test('identity confirmation uses the current verified candidate, never the display name',()=>{
   assert.throws(()=>shopRequest('confirm',rows[0]),/STALE_IDENTITY_CANDIDATE/);

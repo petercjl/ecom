@@ -43,6 +43,68 @@ export function shopServices(row) {
 export function isTaobaoBuyer(row) {
   return row.platform === 'taobao' && row.accountType === 'buyer'
 }
+
+export const homePresets = [
+  {
+    id: 'sycm',
+    names: ['生意参谋', 'SYCM'],
+    url: 'https://sycm.taobao.com/portal/home.htm',
+  },
+  {
+    id: 'qianniu',
+    names: ['千牛', 'Qianniu'],
+    url: 'https://myseller.taobao.com/',
+  },
+  {
+    id: 'alimama',
+    names: ['万相台', 'Alimama'],
+    url: 'https://one.alimama.com/',
+  },
+  {
+    id: 'taobao',
+    names: ['淘宝首页', 'Taobao'],
+    url: 'https://www.taobao.com/',
+  },
+  {
+    id: 'douyin',
+    names: ['抖音', 'Douyin'],
+    url: 'https://fxg.jinritemai.com/',
+  },
+  {
+    id: 'pinduoduo',
+    names: ['拼多多', 'Pinduoduo'],
+    url: 'https://mms.pinduoduo.com/',
+  },
+  { id: 'jd', names: ['京东', 'JD'], url: 'https://shop.jd.com/jdm/home' },
+  {
+    id: 'xiaohongshu',
+    names: ['小红书', 'Xiaohongshu'],
+    url: 'https://ark.xiaohongshu.com/',
+  },
+]
+export function normalizeHomeUrl(value) {
+  let url
+  try {
+    url = new URL(value)
+  } catch {
+    throw new Error('INVALID_HOME_URL')
+  }
+  if (url.protocol !== 'https:' || url.username || url.password)
+    throw new Error('INVALID_HOME_URL')
+  return url.href
+}
+export function homeLabel(value, chinese = true) {
+  try {
+    const url = normalizeHomeUrl(value)
+    return (
+      homePresets.find((item) => normalizeHomeUrl(item.url) === url)?.names[
+        chinese ? 0 : 1
+      ] || new URL(url).host
+    )
+  } catch {
+    return chinese ? '未设置首页' : 'Homepage not set'
+  }
+}
 export function shopRequest(action, row, service) {
   if (!row?.id) throw new Error('CONTAINER_REQUIRED')
   const request = { method: 'shops.' + action, containerId: row.id }

@@ -660,3 +660,18 @@ button.danger {
   background: var(--wash);
   color: var(--accent);
 }
+
+.home-entry {
+  max-width: 118px;
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 11px;
+}
+.homepage-fields {
+  margin-top: 20px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}

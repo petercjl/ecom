@@ -43,7 +43,10 @@ node ecom/cli.mjs capabilities
 
 ## 管理、平台与自动状态
 
-淘宝账号可通过 `--account-type merchant|buyer` 在创建或首次配置时明确用途。买家账号仍属于 `taobao` 分类；`shops open --service taobao` 使用同一容器打开淘宝首页，商家服务检查不会应用到买家账号。已配置用途保持稳定，编辑名称与外观不改变用途。GUI 的淘宝账号表单提供相同的用途选项。买家自动登录核验尚未接入，界面如实显示待核验。
+`shops create|configure|update` 支持 `--home-url <HTTPS页面网址>`。`shops list` 返回生效的 `homeUrl`；`shops open --container <ID> --service home` 在该容器打开已保存首页。未设置时使用平台／用途的默认入口，现有账号的 ID 和会话保持不变。首页可独立于平台归属设置，禁止凭证 URL 及非 HTTPS 方案；已有明确服务参数（如 sycm、qianniu）继续作为固定快捷入口。GUI 的常用预设填写同一 URL 字段，用户可编辑任意页面路径。
+
+
+淘宝账号可通过 `--account-type merchant|buyer` 在创建或配置时明确用途。买家账号仍属于 `taobao` 分类；`shops open --service taobao` 使用同一容器打开淘宝首页，商家服务检查不会应用到买家账号。未绑定具体身份的账号可明确调整用途；已绑定身份的用途变更被拒绝。编辑名称与外观保持用途。GUI 的淘宝账号表单提供相同的用途选项。买家自动登录核验尚未接入，界面如实显示待核验。
 
 
 - `shops platforms` 返回六类平台及其入口／服务和自动核验能力。平台 ID 为 `taobao`、`douyin`、`pinduoduo`、`jd`、`xiaohongshu`、`custom`。
