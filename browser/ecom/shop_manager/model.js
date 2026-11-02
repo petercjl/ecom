@@ -5,6 +5,7 @@ export const pendingStates = new Set([
   'awaiting-confirmation',
   'identity-mismatch',
   'login-required',
+  'verification-unavailable',
 ])
 
 export function filterShops(
@@ -13,8 +14,7 @@ export function filterShops(
 ) {
   const term = query.trim().toLocaleLowerCase()
   return rows.filter((row) => {
-    if (scope === 'taobao' && row.platform !== 'taobao') return false
-    if (scope === 'general' && row.platform) return false
+    if (scope !== 'all' && row.platform !== scope) return false
     if (state === 'ready' && !['ready', 'signed-in'].includes(row.state))
       return false
     if (state === 'pending' && !pendingStates.has(row.state)) return false
@@ -37,7 +37,13 @@ export function shopRequest(action, row, service) {
   const request = { method: 'shops.' + action, containerId: row.id }
   if (action === 'configure') request.platform = 'taobao'
   else if (action === 'open') {
-    if (!['sycm', 'qianniu', 'alimama'].includes(service))
+    if (
+      !(
+        row.platform === 'taobao'
+          ? ['sycm', 'qianniu', 'alimama', 'home']
+          : ['home']
+      ).includes(service)
+    )
       throw new Error('SERVICE_UNSUPPORTED')
     request.service = service
   } else if (action === 'confirm') {
@@ -94,4 +100,21 @@ export function deletionRequest(plan) {
     containerId: plan.containerId,
     confirmationId: plan.confirmationId,
   }
+}
+
+export const platformNames = {
+  taobao: ['淘宝 / 天猫', 'Taobao / Tmall'],
+  douyin: ['抖音', 'Douyin'],
+  pinduoduo: ['拼多多', 'Pinduoduo'],
+  jd: ['京东', 'JD'],
+  xiaohongshu: ['小红书', 'Xiaohongshu'],
+  custom: ['自定义', 'Custom'],
+}
+export function displayPlatform(row, chinese = true) {
+  if (row.platform === 'custom' && row.customPlatformName)
+    return row.customPlatformName
+  return (
+    platformNames[row.platform]?.[chinese ? 0 : 1]
+    || (chinese ? '平台待设置' : 'Platform not set')
+  )
 }

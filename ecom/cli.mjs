@@ -58,7 +58,7 @@ export async function nativeCall(profile,request) {
 }
 
 async function main() {
-  const {positionals,values}=parseArgs({allowPositionals:true,options:{profile:{type:'string'},container:{type:'string'},url:{type:'string'},name:{type:'string'},platform:{type:'string'},service:{type:'string'},'shop-id':{type:'string'},'candidate-id':{type:'string'},icon:{type:'string'},color:{type:'string'},'confirmation-id':{type:'string'},json:{type:'boolean'},help:{type:'boolean'}}});
+  const {positionals,values}=parseArgs({allowPositionals:true,options:{profile:{type:'string'},container:{type:'string'},url:{type:'string'},name:{type:'string'},platform:{type:'string'},service:{type:'string'},'shop-id':{type:'string'},'candidate-id':{type:'string'},icon:{type:'string'},color:{type:'string'},'confirmation-id':{type:'string'},'custom-platform-name':{type:'string'},'entry-url':{type:'string'},json:{type:'boolean'},help:{type:'boolean'}}});
   const [group,action]=positionals;
   if(values.help||!group||group==='help') return {ok:true,usage:'node ecom/cli.mjs shops manage|platforms|list|refresh|create|configure|open|verify|confirm|update|delete-preview|delete；containers list | session get --container <ID或名称> --url <HTTPS URL> [--profile <Ecom Dev 数据目录>] [--json]'};
   if(group==='version') return {ok:true,protocolVersion:1,stage:'native-shop-dev'};
@@ -66,15 +66,15 @@ async function main() {
   const profile=values.profile||path.join(root,'.brave-build/profiles/Ecom-Dev');
   if(group==='shops') {
     if(['manage','platforms','list','refresh'].includes(action)) return nativeCall(profile,{method:'shops.'+action});
-    if(action==='create'&&values.name&&values.platform) return nativeCall(profile,{method:'shops.create',name:values.name,platform:values.platform,...(values.icon!==undefined?{icon:Number(values.icon)}:{}),...(values.color?{color:values.color}:{})});
+    if(action==='create'&&values.name&&values.platform) return nativeCall(profile,{method:'shops.create',name:values.name,platform:values.platform,customPlatformName:values['custom-platform-name'],entryUrl:values['entry-url'],...(values.icon!==undefined?{icon:Number(values.icon)}:{}),...(values.color?{color:values.color}:{})});
     if(action==='update'&&!values.name&&values.icon===undefined&&!values.color || action==='delete'&&!values['confirmation-id']) throw error('INVALID_SHOP_COMMAND','编辑需指定名称、图标或主题色；删除需先预览并提交 confirmation-id');
     if(action==='configure'&&!values.platform || action==='confirm'&&(!values['shop-id']||!values['candidate-id'])) throw error('INVALID_SHOP_COMMAND','配置需指定平台；确认需指定 shop-id 和本次 candidate-id');
     if(['configure','open','verify','confirm','update','delete-preview','delete'].includes(action)&&values.container) {
       const listed=await nativeCall(profile,{method:'containers.list'});
       const container=resolveContainer(listed.containers,values.container);
-      return nativeCall(profile,{method:'shops.'+action,containerId:container.id,platform:values.platform,service:values.service,shopId:values['shop-id'],candidateId:values['candidate-id'],name:values.name,...(values.icon!==undefined?{icon:Number(values.icon)}:{}),color:values.color,confirmationId:values['confirmation-id']});
+      return nativeCall(profile,{method:'shops.'+action,containerId:container.id,platform:values.platform,service:values.service,shopId:values['shop-id'],candidateId:values['candidate-id'],name:values.name,...(values.icon!==undefined?{icon:Number(values.icon)}:{}),color:values.color,confirmationId:values['confirmation-id'],customPlatformName:values['custom-platform-name'],entryUrl:values['entry-url']});
     }
-    throw error('INVALID_SHOP_COMMAND','shops manage | platforms | list | create --platform taobao --name <店铺名> | configure --container <ID> --platform taobao | open --container <ID> --service sycm|qianniu|alimama | verify --container <ID> | confirm --container <ID> --shop-id <ID> --candidate-id <核验候选ID> | update --container <ID> [--name <名称>] [--icon <0..10>] [--color <#RRGGBB>] | delete-preview --container <ID> | delete --container <ID> --confirmation-id <预览ID>');
+    throw error('INVALID_SHOP_COMMAND','shops manage | platforms | list | create --platform taobao|douyin|pinduoduo|jd|xiaohongshu|custom --name <店铺名> [--custom-platform-name <名称> --entry-url <HTTPS网址>] | configure --container <ID> --platform taobao | open --container <ID> --service sycm|qianniu|alimama|home | verify --container <ID> | confirm --container <ID> --shop-id <ID> --candidate-id <核验候选ID> | update --container <ID> [--name <名称>] [--icon <0..10>] [--color <#RRGGBB>] | delete-preview --container <ID> | delete --container <ID> --confirmation-id <预览ID>');
   }
   if(group==='containers'&&action==='list') return nativeCall(profile,{method:'containers.list'});
   if(group==='session'&&action==='get'&&values.container&&values.url) {

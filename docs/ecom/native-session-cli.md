@@ -41,6 +41,17 @@ node ecom/cli.mjs capabilities
 
 当前真实双店身份解析尚未通过，界面与 CLI 保留“需登录或验证”状态；该状态不能作为店铺数据已验证的证据。后续修复应在原生适配器内进行。
 
+## 管理、平台与自动状态
+
+- `shops platforms` 返回六类平台及其入口／服务和自动核验能力。平台 ID 为 `taobao`、`douyin`、`pinduoduo`、`jd`、`xiaohongshu`、`custom`。
+- `shops create --platform <ID> --name '<名称>' [--icon <0..10>] [--color '#RRGGBB']` 建立独立会话。自定义平台另需 `--custom-platform-name '<名称>' --entry-url '<HTTPS网址>'`。`shops configure` 为既有未设置平台的容器补充这些信息。已配置平台不能静默更换。
+- `shops open --container '<ID>' --service home` 打开该平台入口；淘宝另支持 `sycm|qianniu|alimama`。页面继续使用目标原生容器。
+- `shops update --container '<ID>' [--name '<名称>'] [--icon <0..10>] [--color '#RRGGBB']` 保留 ID、会话及绑定。不同平台的同名店铺可并存，CLI 名称不唯一时使用 ID。
+- `shops delete-preview --container '<ID>'` 返回目标、打开标签数和五分钟有效的 confirmationId；`shops delete --container '<ID>' --confirmation-id '<本次预览ID>'` 在目标无打开标签且无正在进行的核验时删除。确认参数是针对本次目标的明确删除授权，缺失或失效时拒绝。原生存储清理遵循已有容器引用与垃圾回收规则。
+- `shops refresh` 安排后台检查；`shops list` 返回当前状态、checking、最近检查时间、认证服务和 Cookie 期限参考。生意参谋接口码 `5810` 是该服务需要登录的证据；Cookie 未到期不替代服务响应。仅注册的淘宝检查器会发起自动请求，其他平台标明尚无适配器。
+
+`authentication.state=authenticated` 与 `state=signed-in` 表示固定服务登录检查通过；`state=ready` 才表示具体店铺身份已绑定且重新核实。固定登录检查只检查 JSON 的业务码和已知结构，交易数值不返回管理页。当前 `session.get` 的店铺身份保护继续要求 ready，登录成功本身不能绕过该保护。Cookie 参考不包含凭证值，也不承诺实际登录期限。
+
 ## sycmcli 本地开发适配
 
 ```sh

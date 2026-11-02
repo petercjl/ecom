@@ -40,20 +40,6 @@
           <span class="nav-icon">▦</span><span data-text="all"></span
           ><b id="all-count">0</b>
         </button>
-        <button
-          class="nav-item"
-          data-scope="taobao"
-        >
-          <span class="platform-icon">淘</span><span data-text="taobao"></span
-          ><b id="taobao-count">0</b>
-        </button>
-        <button
-          class="nav-item"
-          data-scope="general"
-        >
-          <span class="nav-icon">◇</span><span data-text="general"></span
-          ><b id="general-count">0</b>
-        </button>
       </nav>
       <div class="sidebar-bottom">
         <span class="connection-dot"></span><span data-text="local"></span>
@@ -189,12 +175,32 @@
           ><select
             id="platform"
             required
-          >
-            <option
-              value="taobao"
-              data-text="taobao"
-            ></option></select
+          ></select
         ></label>
+        <p
+          id="platform-support-note"
+          class="dialog-intro"
+        ></p>
+        <div
+          id="custom-platform-fields"
+          hidden
+        >
+          <label
+            ><span data-text="customPlatformName"></span
+            ><input
+              id="custom-platform-name"
+              maxlength="40"
+              autocomplete="off"
+          /></label>
+          <label
+            ><span data-text="entryUrl"></span
+            ><input
+              id="entry-url"
+              type="url"
+              placeholder="https://"
+              autocomplete="off"
+          /></label>
+        </div>
         <label
           ><span data-text="shopName"></span
           ><input
@@ -318,6 +324,30 @@
           class="dialog-intro"
           data-text="editHint"
         ></p>
+        <label
+          ><span data-text="platform"></span
+          ><select id="edit-platform"></select
+        ></label>
+        <div
+          id="edit-custom-platform-fields"
+          hidden
+        >
+          <label
+            ><span data-text="customPlatformName"></span
+            ><input
+              id="edit-custom-platform-name"
+              maxlength="40"
+              autocomplete="off"
+          /></label>
+          <label
+            ><span data-text="entryUrl"></span
+            ><input
+              id="edit-entry-url"
+              type="url"
+              placeholder="https://"
+              autocomplete="off"
+          /></label>
+        </div>
         <label
           ><span data-text="shopName"></span
           ><input

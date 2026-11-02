@@ -8,6 +8,7 @@ import {
   iconNames,
   appearanceRequest,
   deletionRequest,
+  displayPlatform,
 } from './model.js'
 
 const zh = {
@@ -159,6 +160,19 @@ const en = {
   BUSY: 'This container is being verified. Please wait.',
 }
 Object.assign(zh, {
+  platformPending: '此平台暂提供容器与登录入口，自动登录核验待接入。',
+  customPlatformName: '其他平台名称',
+  entryUrl: '登录网址（HTTPS）',
+  unassigned: '平台待设置',
+  home: '商家后台',
+  configure: '设置平台',
+  'unconfigured': '平台待设置',
+  'verification-unavailable': '自动登录核验待接入',
+  PLATFORM_VERIFICATION_UNAVAILABLE:
+    '该平台的自动核验尚未接入，请在平台网页确认登录。',
+  INVALID_PLATFORM_INPUT: '请填写自定义平台名称和有效的 HTTPS 登录网址。',
+  PLATFORM_CHANGE_REQUIRES_NEW_CONTAINER:
+    '已配置平台保持原有会话归属；其他平台请添加新容器。',
   'signed-in': '已登录 · 登录已核验',
   noIdentity: '店铺身份待确认',
   boundIdentityHint: '已绑定身份，本次尚未重新核对',
@@ -194,6 +208,21 @@ Object.assign(zh, {
   LOGIN_REDIRECT: '该服务需要重新登录，请在原容器内完成。',
 })
 Object.assign(en, {
+  platformPending:
+    'Container and sign-in entry available. Automatic login checks are not implemented.',
+  customPlatformName: 'Other platform name',
+  entryUrl: 'Sign-in URL (HTTPS)',
+  unassigned: 'Platform not set',
+  home: 'Merchant portal',
+  configure: 'Set platform',
+  'unconfigured': 'Platform not set',
+  'verification-unavailable': 'Automatic checks not available',
+  PLATFORM_VERIFICATION_UNAVAILABLE:
+    'Automatic checks are not available for this platform. Check sign-in on its website.',
+  INVALID_PLATFORM_INPUT:
+    'Enter a custom platform name and a valid HTTPS sign-in URL.',
+  PLATFORM_CHANGE_REQUIRES_NEW_CONTAINER:
+    'Keep the configured platform’s session. Add a new container for another platform.',
   'signed-in': 'Signed in · login verified',
   noIdentity: 'Shop identity not confirmed',
   boundIdentityHint: 'Bound identity; not rechecked this time',
@@ -250,6 +279,62 @@ let rows = [],
   confirmationId
 const services = new Map()
 let editId, deletionPlan
+let platforms = []
+function syncPlatformFields(edit = false) {
+  const prefix = edit ? 'edit-' : ''
+  const selector = edit ? $('edit-platform') : $('platform')
+  const custom = selector.value === 'custom'
+  if (!edit)
+    $('platform-support-note').textContent =
+      selector.value === 'taobao' ? '' : text('platformPending')
+  $(prefix + 'custom-platform-fields').hidden = !custom
+  for (const id of ['custom-platform-name', 'entry-url']) {
+    $(prefix + id).required = custom
+    $(prefix + id).disabled = busy || !custom
+  }
+  if (edit)
+    selector.disabled =
+      busy || Boolean(rows.find((row) => row.id === editId)?.platform)
+}
+async function loadPlatforms() {
+  const result = await command({ method: 'shops.platforms' })
+  platforms = result.platforms
+  $('platform').replaceChildren()
+  $('edit-platform').replaceChildren()
+  const unset = node('option', text('unassigned'))
+  unset.value = ''
+  $('edit-platform').append(unset)
+  const marks = {
+    taobao: '淘',
+    douyin: '抖',
+    pinduoduo: '拼',
+    jd: '京',
+    xiaohongshu: '红',
+    custom: '自',
+  }
+  for (const platform of platforms) {
+    const label = displayPlatform({ platform: platform.id }, copy === zh)
+    for (const selector of [$('platform'), $('edit-platform')]) {
+      const option = node('option', label)
+      option.value = platform.id
+      selector.append(option)
+    }
+    const button = node('button', undefined, 'nav-item')
+    button.dataset.scope = platform.id
+    button.append(
+      node('span', marks[platform.id] || '◇', 'platform-icon'),
+      node('span', label),
+    )
+    const count = node('b', '0')
+    count.id = 'platform-count-' + platform.id
+    button.append(count)
+    $('scopes').append(button)
+  }
+  syncPlatformFields()
+  syncPlatformFields(true)
+}
+$('platform').addEventListener('change', () => syncPlatformFields())
+$('edit-platform').addEventListener('change', () => syncPlatformFields(true))
 function previewAppearance(prefix) {
   $(prefix + '-preview').style.backgroundColor = $(prefix + '-color').value
   $(prefix + '-preview-icon').src =
@@ -299,6 +384,8 @@ function setBusy(value) {
   $('message').textContent = value ? text('busy') : ''
   $('delete-confirm').disabled =
     value || !deletionPlan || deletionPlan.openTabs > 0
+  syncPlatformFields()
+  syncPlatformFields(true)
 }
 function button(label, action, row, className) {
   const result = node('button', text(label), className)
@@ -309,10 +396,10 @@ function button(label, action, row, className) {
 function render() {
   const shown = filterShops(rows, { scope, state, query: $('search').value })
   $('all-count').textContent = rows.length
-  $('taobao-count').textContent = rows.filter(
-    (row) => row.platform === 'taobao',
-  ).length
-  $('general-count').textContent = rows.filter((row) => !row.platform).length
+  for (const platform of platforms)
+    $('platform-count-' + platform.id).textContent = rows.filter(
+      (row) => row.platform === platform.id,
+    ).length
   $('result-count').textContent = copy.count(shown.length)
   $('empty').hidden = shown.length > 0
   const fragment = document.createDocumentFragment()
@@ -338,7 +425,7 @@ function render() {
     shop.append(title)
     first.append(shop)
     tr.append(first)
-    tr.append(node('td', row.platform ? text('taobao') : text('general')))
+    tr.append(node('td', displayPlatform(row, copy === zh)))
     const identity = row.identity || row.candidate
     const account = node('td')
     account.append(node('div', identity?.platformName || text('noIdentity')))
@@ -391,12 +478,15 @@ function render() {
     if (row.platform) {
       const select = node('select')
       select.ariaLabel = `${row.name} · ${text('service')}`
-      for (const value of ['sycm', 'qianniu', 'alimama']) {
+      for (const value of row.platform === 'taobao'
+        ? ['sycm', 'qianniu', 'alimama']
+        : ['home']) {
         const option = node('option', text(value))
         option.value = value
         select.append(option)
       }
-      select.value = services.get(row.id) || 'sycm'
+      select.value =
+        services.get(row.id) || (row.platform === 'taobao' ? 'sycm' : 'home')
       select.disabled = busy
       select.addEventListener('change', () =>
         services.set(row.id, select.value),
@@ -404,15 +494,13 @@ function render() {
       group.append(
         select,
         button('open', 'open', row, 'open'),
-        button('verify', 'verify', row),
+        ...(row.platform === 'taobao' ? [button('verify', 'verify', row)] : []),
       )
       if (row.state === 'awaiting-confirmation' && row.candidate)
         group.append(button('finish', 'candidate', row))
-    } else group.append(button('configure', 'configure', row))
-    group.append(
-      button('edit', 'edit', row),
-      button('delete', 'delete', row, 'delete-action'),
-    )
+    } else group.append(button('configure', 'edit', row))
+    if (row.platform) group.append(button('edit', 'edit', row))
+    group.append(button('delete', 'delete', row, 'delete-action'))
     actions.append(group)
     tr.append(actions)
     fragment.append(tr)
@@ -443,6 +531,10 @@ async function runAction(action, row) {
   if (action === 'edit') {
     editId = row.id
     $('edit-name').value = row.name
+    $('edit-platform').value = row.platform || ''
+    $('edit-custom-platform-name').value = row.customPlatformName || ''
+    $('edit-entry-url').value = row.entryUrl || ''
+    syncPlatformFields(true)
     $('edit-icon').value = String(row.icon ?? 2)
     $('edit-color').value = row.color || '#007f83'
     previewAppearance('edit')
@@ -477,7 +569,13 @@ async function runAction(action, row) {
   }
   setBusy(true)
   try {
-    await command(shopRequest(action, row, services.get(row.id) || 'sycm'))
+    await command(
+      shopRequest(
+        action,
+        row,
+        services.get(row.id) || (row.platform === 'taobao' ? 'sycm' : 'home'),
+      ),
+    )
     await refresh()
     setBusy(false)
     if (action === 'verify')
@@ -564,13 +662,21 @@ $('create-form').addEventListener('submit', async (event) => {
       name,
       icon: Number($('create-icon').value),
       color: $('create-color').value,
+      customPlatformName: $('custom-platform-name').value,
+      entryUrl: $('entry-url').value,
     })
-    created = result.shops.find((row) => row.name === name)
+    created = result.shops.find((row) => row.id === result.createdContainerId)
     if (!created) throw new Error('CONTAINER_NOT_FOUND')
     render()
     $('shop-name').value = ''
     $('create-dialog').close()
-    await command(shopRequest('open', created, 'sycm'))
+    await command(
+      shopRequest(
+        'open',
+        created,
+        created.platform === 'taobao' ? 'sycm' : 'home',
+      ),
+    )
     setBusy(false)
   } catch (error) {
     setBusy(false)
@@ -600,6 +706,7 @@ document.addEventListener('visibilitychange', async () => {
   }
 })
 try {
+  await loadPlatforms()
   await command({ method: 'shops.refresh' })
   await refresh()
 } catch (error) {
@@ -612,14 +719,18 @@ $('edit-form').addEventListener('submit', async (event) => {
   setBusy(true)
   $('edit-error').textContent = ''
   try {
-    await command(
-      appearanceRequest(
-        editId,
-        $('edit-name').value,
-        Number($('edit-icon').value),
-        $('edit-color').value,
-      ),
+    const request = appearanceRequest(
+      editId,
+      $('edit-name').value,
+      Number($('edit-icon').value),
+      $('edit-color').value,
     )
+    if ($('edit-platform').value) request.platform = $('edit-platform').value
+    if (request.platform === 'custom') {
+      request.customPlatformName = $('edit-custom-platform-name').value
+      request.entryUrl = $('edit-entry-url').value
+    }
+    await command(request)
     setBusy(false)
     $('edit-dialog').close()
     render()

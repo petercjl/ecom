@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterShops, shopRequest, appearanceRequest, deletionRequest} from '../../browser/ecom/shop_manager/model.js';
+import {filterShops, shopRequest, appearanceRequest, deletionRequest, displayPlatform, platformNames} from '../../browser/ecom/shop_manager/model.js';
 
 const rows = [
   {id:'shop-a', name:'旗舰店', platform:'taobao', state:'ready', identity:{shopId:'123', accountId:'456', platformName:'平台店名'}},
@@ -10,9 +10,19 @@ const rows = [
 test('shop manager composes platform, state and identity search without changing sessions',()=>{
   assert.deepEqual(filterShops(rows,{scope:'taobao',state:'ready',query:'平台店名'}).map(row=>row.id),['shop-a']);
   assert.deepEqual(filterShops(rows,{state:'pending'}).map(row=>row.id),['shop-b']);
-  assert.deepEqual(filterShops(rows,{scope:'general'}).map(row=>row.id),['general']);
+  assert.ok(filterShops(rows).some(row=>row.id==='general'));
   assert.deepEqual(filterShops(rows,{query:' 456 '}).map(row=>row.id),['shop-a']);
   assert.equal(rows[0].state,'ready');
+});
+test('platform categories cover built-in and custom shops while keeping unassigned accounts in all',()=>{
+  assert.deepEqual(Object.keys(platformNames),['taobao','douyin','pinduoduo','jd','xiaohongshu','custom']);
+  assert.equal(displayPlatform({platform:'custom',customPlatformName:'其他商城'}),'其他商城');
+  assert.equal(displayPlatform({}),'平台待设置');
+  const shops=[...rows,{id:'douyin-a',name:'同名店',platform:'douyin',state:'verification-unavailable'}];
+  assert.deepEqual(filterShops(shops,{scope:'douyin'}).map(row=>row.id),['douyin-a']);
+  assert.equal(filterShops(shops,{scope:'general'}).length,0);
+  assert.deepEqual(shopRequest('open',shops[3],'home'),{method:'shops.open',containerId:'douyin-a',service:'home'});
+  assert.throws(()=>shopRequest('open',shops[3],'sycm'),/SERVICE_UNSUPPORTED/);
 });
 test('all shop service choices keep the same stable native container ID',()=>{
   for (const service of ['sycm','qianniu','alimama']) {
