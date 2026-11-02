@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "base/command_line.h"
@@ -62,11 +63,11 @@ bool WriteExclusive(const base::FilePath& path, const std::string& text) {
   int fd = open(path.value().c_str(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW,
                 0600);
   if (fd < 0) return false;
-  size_t offset = 0;
-  while (offset < text.size()) {
-    ssize_t size = write(fd, text.data() + offset, text.size() - offset);
+  std::string_view remaining(text);
+  while (!remaining.empty()) {
+    ssize_t size = write(fd, remaining.data(), remaining.size());
     if (size <= 0) { close(fd); return false; }
-    offset += size;
+    remaining.remove_prefix(size);
   }
   return close(fd) == 0;
 }
@@ -147,9 +148,11 @@ class NativeSessionService final : public ProfileObserver {
                          base::BindRepeating(&NativeSessionService::ScanIO,
                                              base::Unretained(this)))) return;
     base::DictValue metadata;
-    metadata.Set("schemaVersion", 1).Set("instanceId", instance_)
-        .Set("authToken", auth_).Set("pid", static_cast<int>(getpid()))
-        .Set("allowedOrigin", origin_.Serialize());
+    metadata.Set("schemaVersion", 1);
+    metadata.Set("instanceId", instance_);
+    metadata.Set("authToken", auth_);
+    metadata.Set("pid", static_cast<int>(getpid()));
+    metadata.Set("allowedOrigin", origin_.Serialize());
     auto json = base::WriteJson(metadata);
     if (json) WriteExclusive(endpoint, *json);
     ScanIO(folder_, false);
@@ -176,7 +179,8 @@ class NativeSessionService final : public ProfileObserver {
       if (!token || *token != auth_ || !instance || *instance != instance_ ||
           dict.FindInt("schemaVersion") != 1) {
         base::DictValue denied;
-        denied.Set("ok", false).Set("error", base::DictValue().Set(
+        denied.Set("ok", false);
+        denied.Set("error", base::DictValue().Set(
             "code", "INSTANCE_AUTH_FAILED").Set("executed", false));
         WriteResponseIO(id, std::move(denied));
         base::DeleteFile(file);
@@ -194,8 +198,9 @@ class NativeSessionService final : public ProfileObserver {
   }
 
   void WriteResponseIO(const std::string& id, base::DictValue response) {
-    response.Set("schemaVersion", 1).Set("instanceId", instance_)
-        .Set("operationId", id);
+    response.Set("schemaVersion", 1);
+    response.Set("instanceId", instance_);
+    response.Set("operationId", id);
     auto text = base::WriteJson(response);
     if (text && PrivatePath(folder_, true)) {
       WriteExclusive(folder_.AppendASCII(id + ".response.json"), *text);
@@ -255,7 +260,7 @@ class NativeSessionService final : public ProfileObserver {
     resource->redirect_mode = network::mojom::RedirectMode::kError;
     resource->site_for_cookies = net::SiteForCookies::FromUrl(url);
     resource->request_initiator = origin_;
-    resource->referrer = origin_.GetURL().spec();
+    resource->referrer = origin_.GetURL();
     resource->headers.SetHeader("Accept", "application/json");
     constexpr auto annotation = net::DefineNetworkTrafficAnnotation(
         "ecom_native_container_read", R"(
@@ -319,7 +324,7 @@ void StartNativeSessionService(Profile* profile) {
   const GURL origin(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
       "ecom-native-cli-origin"));
   if (!origin.is_valid() || !origin.SchemeIs("https") || origin.has_username() ||
-      origin.has_password() || origin.path_piece() != "/" || origin.has_query() ||
+      origin.has_password() || origin.path() != "/" || origin.has_query() ||
       origin.has_ref()) return;
   static base::NoDestructor<NativeSessionService> service(profile, origin);
 }
