@@ -11,7 +11,6 @@ import * as newTabAdsDataAPI from './api/newTabAdsData'
 import getNTPBrowserAPI, { Background, CustomBackground } from './api/background'
 import { getInitialData } from './api/initialData'
 import * as backgroundData from './data/backgrounds'
-import { loadTimeData } from '$web-common/loadTimeData'
 
 async function updatePreferences (prefData: NewTab.Preferences) {
   getActions().preferencesUpdated(prefData)

@@ -25,7 +25,6 @@ import Toggle from '@brave/leo/react/toggle'
 import Button from '@brave/leo/react/button'
 
 import { getLocale } from '$web-common/locale'
-import { loadTimeData } from '$web-common/loadTimeData'
 import Icon from '@brave/leo/react/icon'
 import styled, { css } from 'styled-components'
 import { spacing } from '@brave/leo/tokens/css/variables'
