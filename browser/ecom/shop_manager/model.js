@@ -33,18 +33,22 @@ export function filterShops(
   })
 }
 
+export function shopServices(row) {
+  if (row.platform === 'taobao')
+    return row.accountType === 'buyer'
+      ? ['taobao']
+      : ['sycm', 'qianniu', 'alimama']
+  return ['home']
+}
+export function isTaobaoBuyer(row) {
+  return row.platform === 'taobao' && row.accountType === 'buyer'
+}
 export function shopRequest(action, row, service) {
   if (!row?.id) throw new Error('CONTAINER_REQUIRED')
   const request = { method: 'shops.' + action, containerId: row.id }
   if (action === 'configure') request.platform = 'taobao'
   else if (action === 'open') {
-    if (
-      !(
-        row.platform === 'taobao'
-          ? ['sycm', 'qianniu', 'alimama', 'home']
-          : ['home']
-      ).includes(service)
-    )
+    if (!shopServices(row).includes(service) && service !== 'home')
       throw new Error('SERVICE_UNSUPPORTED')
     request.service = service
   } else if (action === 'confirm') {

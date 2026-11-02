@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterShops, shopRequest, appearanceRequest, deletionRequest, displayPlatform, platformNames} from '../../browser/ecom/shop_manager/model.js';
+import {filterShops, shopRequest, appearanceRequest, deletionRequest, displayPlatform, platformNames, shopServices} from '../../browser/ecom/shop_manager/model.js';
 
 const rows = [
   {id:'shop-a', name:'旗舰店', platform:'taobao', state:'ready', identity:{shopId:'123', accountId:'456', platformName:'平台店名'}},
@@ -30,6 +30,13 @@ test('all shop service choices keep the same stable native container ID',()=>{
   }
   assert.throws(()=>shopRequest('open',rows[0],'external'),/SERVICE_UNSUPPORTED/);
   assert.throws(()=>shopRequest('open',{name:'ambiguous'},'sycm'),/CONTAINER_REQUIRED/);
+});
+test('Taobao buyer stays in Taobao category and opens a buyer entry instead of merchant services',()=>{
+  const buyer={id:'buyer-a',name:'买家账号',platform:'taobao',accountType:'buyer',state:'verification-unavailable'};
+  assert.deepEqual(filterShops([buyer],{scope:'taobao'}),[buyer]);
+  assert.deepEqual(shopServices(buyer),['taobao']);
+  assert.deepEqual(shopRequest('open',buyer,'taobao'),{method:'shops.open',containerId:'buyer-a',service:'taobao'});
+  assert.throws(()=>shopRequest('open',buyer,'sycm'),/SERVICE_UNSUPPORTED/);
 });
 test('identity confirmation uses the current verified candidate, never the display name',()=>{
   assert.throws(()=>shopRequest('confirm',rows[0]),/STALE_IDENTITY_CANDIDATE/);

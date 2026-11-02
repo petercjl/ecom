@@ -9,6 +9,8 @@ import {
   appearanceRequest,
   deletionRequest,
   displayPlatform,
+  shopServices,
+  isTaobaoBuyer,
 } from './model.js'
 
 const zh = {
@@ -160,6 +162,15 @@ const en = {
   BUSY: 'This container is being verified. Please wait.',
 }
 Object.assign(zh, {
+  buyerPurposeNote: '买家账号使用淘宝首页；买家登录状态以淘宝网页为准。',
+  accountType: '账号用途',
+  merchant: '商家账号',
+  buyer: '买家账号',
+  buyerAccount: '淘宝买家账号',
+  buyerLoginUnknown: '买家登录状态待核验',
+  taobaoHome: '淘宝首页',
+  ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER:
+    '已配置账号用途保持不变，其他用途请添加新容器。',
   loggedIn: '已登录',
   serviceNote:
     '每个店铺在独立会话中打开标签。登录状态按服务自动检查；店铺身份单独确认，未接入核验的平台请在网页确认登录。',
@@ -211,6 +222,16 @@ Object.assign(zh, {
   LOGIN_REDIRECT: '该服务需要重新登录，请在原容器内完成。',
 })
 Object.assign(en, {
+  buyerPurposeNote:
+    'Buyer accounts open Taobao. Check buyer sign-in on the Taobao page.',
+  accountType: 'Account purpose',
+  merchant: 'Merchant',
+  buyer: 'Buyer',
+  buyerAccount: 'Taobao buyer account',
+  buyerLoginUnknown: 'Buyer login not verified',
+  taobaoHome: 'Taobao home',
+  ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER:
+    'Keep the configured account purpose. Use a new container for another purpose.',
   loggedIn: 'Signed in',
   serviceNote:
     'Shops open in isolated container tabs. Login is checked per service; shop identity is confirmed separately. Use the website where automatic checks are not available.',
@@ -291,9 +312,18 @@ function syncPlatformFields(edit = false) {
   const prefix = edit ? 'edit-' : ''
   const selector = edit ? $('edit-platform') : $('platform')
   const custom = selector.value === 'custom'
+  $(prefix + 'account-type-field').hidden = selector.value !== 'taobao'
+  $(prefix + 'account-type').disabled =
+    busy
+    || selector.value !== 'taobao'
+    || (edit && Boolean(rows.find((row) => row.id === editId)?.platform))
   if (!edit)
     $('platform-support-note').textContent =
-      selector.value === 'taobao' ? '' : text('platformPending')
+      selector.value === 'taobao'
+        ? $('account-type').value === 'buyer'
+          ? text('buyerPurposeNote')
+          : ''
+        : text('platformPending')
   $(prefix + 'custom-platform-fields').hidden = !custom
   for (const id of ['custom-platform-name', 'entry-url']) {
     $(prefix + id).required = custom
@@ -341,6 +371,7 @@ async function loadPlatforms() {
   syncPlatformFields(true)
 }
 $('platform').addEventListener('change', () => syncPlatformFields())
+$('account-type').addEventListener('change', () => syncPlatformFields())
 $('edit-platform').addEventListener('change', () => syncPlatformFields(true))
 function previewAppearance(prefix) {
   $(prefix + '-preview').style.backgroundColor = $(prefix + '-color').value
@@ -444,7 +475,13 @@ function render() {
     tr.append(node('td', displayPlatform(row, copy === zh)))
     const identity = row.identity || row.candidate
     const account = node('td')
-    account.append(node('div', identity?.platformName || text('noIdentity')))
+    account.append(
+      node(
+        'div',
+        identity?.platformName
+          || text(isTaobaoBuyer(row) ? 'buyerAccount' : 'noIdentity'),
+      ),
+    )
     if (identity) {
       account.append(
         node('div', `${text('shopId')}: ${identity.shopId}`, 'secondary'),
@@ -459,7 +496,13 @@ function render() {
       account.append(node('div', text('loginService'), 'secondary'))
     tr.append(account)
     const status = node('td')
-    status.append(node('span', text(row.state), 'badge ' + row.state))
+    status.append(
+      node(
+        'span',
+        text(isTaobaoBuyer(row) ? 'buyerLoginUnknown' : row.state),
+        'badge ' + row.state,
+      ),
+    )
     if (row.checking) status.append(node('div', text('checking'), 'secondary'))
     tr.append(status)
     const checkedAt = row.checkedAt || identity?.verifiedAt
@@ -494,15 +537,15 @@ function render() {
     if (row.platform) {
       const select = node('select')
       select.ariaLabel = `${row.name} · ${text('service')}`
-      for (const value of row.platform === 'taobao'
-        ? ['sycm', 'qianniu', 'alimama']
-        : ['home']) {
-        const option = node('option', text(value))
+      for (const value of shopServices(row)) {
+        const option = node(
+          'option',
+          text(value === 'taobao' ? 'taobaoHome' : value),
+        )
         option.value = value
         select.append(option)
       }
-      select.value =
-        services.get(row.id) || (row.platform === 'taobao' ? 'sycm' : 'home')
+      select.value = services.get(row.id) || shopServices(row)[0]
       select.disabled = busy
       select.addEventListener('change', () =>
         services.set(row.id, select.value),
@@ -510,7 +553,10 @@ function render() {
       group.append(
         select,
         button('open', 'open', row, 'open'),
-        ...(row.platform === 'taobao' ? [button('verify', 'verify', row)] : []),
+        ...((row.verificationSupported
+        ?? (row.platform === 'taobao' && !isTaobaoBuyer(row)))
+          ? [button('verify', 'verify', row)]
+          : []),
       )
       if (row.state === 'awaiting-confirmation' && row.candidate)
         group.append(button('finish', 'candidate', row))
@@ -548,6 +594,7 @@ async function runAction(action, row) {
     editId = row.id
     $('edit-name').value = row.name
     $('edit-platform').value = row.platform || ''
+    $('edit-account-type').value = row.accountType || 'merchant'
     $('edit-custom-platform-name').value = row.customPlatformName || ''
     $('edit-entry-url').value = row.entryUrl || ''
     syncPlatformFields(true)
@@ -586,11 +633,7 @@ async function runAction(action, row) {
   setBusy(true)
   try {
     await command(
-      shopRequest(
-        action,
-        row,
-        services.get(row.id) || (row.platform === 'taobao' ? 'sycm' : 'home'),
-      ),
+      shopRequest(action, row, services.get(row.id) || shopServices(row)[0]),
     )
     await refresh()
     setBusy(false)
@@ -675,6 +718,9 @@ $('create-form').addEventListener('submit', async (event) => {
     const result = await command({
       method: 'shops.create',
       platform: $('platform').value,
+      ...($('platform').value === 'taobao'
+        ? { accountType: $('account-type').value }
+        : {}),
       name,
       icon: Number($('create-icon').value),
       color: $('create-color').value,
@@ -686,13 +732,7 @@ $('create-form').addEventListener('submit', async (event) => {
     render()
     $('shop-name').value = ''
     $('create-dialog').close()
-    await command(
-      shopRequest(
-        'open',
-        created,
-        created.platform === 'taobao' ? 'sycm' : 'home',
-      ),
-    )
+    await command(shopRequest('open', created, shopServices(created)[0]))
     setBusy(false)
   } catch (error) {
     setBusy(false)
@@ -742,6 +782,8 @@ $('edit-form').addEventListener('submit', async (event) => {
       $('edit-color').value,
     )
     if ($('edit-platform').value) request.platform = $('edit-platform').value
+    if (request.platform === 'taobao')
+      request.accountType = $('edit-account-type').value
     if (request.platform === 'custom') {
       request.customPlatformName = $('edit-custom-platform-name').value
       request.entryUrl = $('edit-entry-url').value
