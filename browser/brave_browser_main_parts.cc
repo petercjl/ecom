@@ -4,6 +4,11 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "brave/browser/brave_browser_main_parts.h"
+#include "build/build_config.h"
+
+#if BUILDFLAG(IS_MAC)
+#include "brave/browser/ecom/native_session_service.h"
+#endif
 
 #include <memory>
 #include <utility>
@@ -197,6 +202,10 @@ void ChromeBrowserMainParts::PostProfileInit(Profile* profile,
                                              bool is_initial_profile) {
   ChromeBrowserMainParts_ChromiumImpl::PostProfileInit(profile,
                                                        is_initial_profile);
+
+#if BUILDFLAG(IS_MAC)
+  if (is_initial_profile) ecom::StartNativeSessionService(profile);
+#endif
 
 #if BUILDFLAG(IS_ANDROID)
   if (base::FeatureList::IsEnabled(

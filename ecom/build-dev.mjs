@@ -116,7 +116,7 @@ async function main() {
     const log = path.join(runDir, 'start.log');
     if (fs.existsSync(log)) throw new Error('启动日志已存在');
     const fd = fs.openSync(log, 'wx', 0o600);
-    const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'start', 'Component', '--no-first-run', '--no-default-browser-check', '--restore-last-session', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone'], { cwd: root, env, stdio: ['ignore', fd, fd], detached: true });
+    const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'start', 'Component', '--no-first-run', '--no-default-browser-check', '--restore-last-session', '--ecom-native-cli-origin=https://sycm.taobao.com', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone'], { cwd: root, env, stdio: ['ignore', fd, fd], detached: true });
     child.on('error', () => {}); child.unref(); fs.closeSync(fd);
     for (let n = 0; n < 480; n++) {
       const current = runningDev();
