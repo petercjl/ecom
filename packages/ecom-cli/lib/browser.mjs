@@ -89,7 +89,7 @@ export async function registeredReadInConnection(connection,options,operation,pa
   const listed=await readMailbox(connection),container=resolveContainer(listed.containers,options.container);
   const body=await callMailbox(connection,{method:'business.read',containerId:container.id,operation,params},75000);
   if(body.containerId!==container.id||body.businessOperation!==operation||body.httpStatus!==200||!Object.hasOwn(body,'data'))throw fail('PROTOCOL_MISMATCH','Registered response differs from the pinned container or operation',{operationId:body.operationId,executed:'unknown'});
-  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,httpStatus:body.httpStatus,data:body.data,transport:'native-business-read',identityBinding:'container-bound-account',registryHash};
+  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,httpStatus:body.httpStatus,data:body.data,...(Array.isArray(body.dataFlows)&&body.dataFlows.length?{dataFlows:body.dataFlows}:{}),transport:'native-business-read',identityBinding:'container-bound-account',registryHash};
 }
 export async function openBusinessPageInConnection(connection,options,operation,entryUrl,registryHash) {
   if(connection.endpoint.businessPageOpenProtocol!==1||connection.endpoint.businessReadRegistryHash!==registryHash)throw fail('BROWSER_UPGRADE_REQUIRED','Update Ecom to the matching registered-page navigation capability');

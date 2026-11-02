@@ -102,6 +102,33 @@ export function businessResponse(value) {
   if(!Object.hasOwn(value,'data')&&!Object.hasOwn(value,'result')&&!Object.hasOwn(value.content??{},'data'))throw fail('BUSINESS_RESPONSE_INVALID','Unrecognized business data envelope',{executed:true});
   return sanitized(value);
 }
+const template=value=>typeof value==='string'&&/^##[^#]+##$/.test(value);
+const hasTemplate=value=>template(value)||Boolean(value&&typeof value==='object'&&Object.values(value).some(hasTemplate));
+// Template semantics follow the pinned sycmcli MIT Alimama insight reader.
+export function resolveModuleResponse(response,flows) {
+  const results=flows.flatMap(flow=>businessResponse(flow.response)?.data?.resultList??[]);
+  const resolve=value=>{
+    if(template(value)) {
+      const ref=value.slice(2,-2),index=ref.match(/^result\[(\d+)\]$/);
+      if(index) {
+        for(const candidate of results)if(Array.isArray(candidate?.result)&&candidate.result[Number(index[1])]!==undefined)return candidate.result[Number(index[1])];
+        return results[Number(index[1])]??value;
+      }
+      for(const candidate of results) {
+        let current=candidate;
+        for(const key of ref.split('.'))current=current&&typeof current==='object'&&Object.hasOwn(current,key)?current[key]:undefined;
+        if(current!==undefined)return current;
+      }
+      return value;
+    }
+    if(Array.isArray(value))return value.map(resolve);
+    if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([key,child])=>[key,resolve(child)]));
+    return value;
+  };
+  const resolved=resolve(response);
+  if(hasTemplate(resolved))throw fail('DATA_FLOW_EXPANSION_REQUIRED','Registered module returned unresolved data templates; retain the operation ID and inspect service support',{executed:true});
+  return sanitized(resolved);
+}
 export async function runRead(options,deps={}) {
   const params=paramsObject(options['params-json']),op=resolveOperation(options.operation);
   assertPublicParams(params);validateOperationParams(op,params);
@@ -115,7 +142,9 @@ export async function runRead(options,deps={}) {
     result=await (deps.request??requestInConnection)(connection,{...options,url:built.url,method:'GET'});
   }
   try {
-    return {...result,operation:op.id,service:op.service,data:businessResponse(result.data),businessStatus:'success',fetchedAt:new Date().toISOString(),dataDateVerification:'caller-must-check-requested-period-and-platform-update-time'};
+    const data=businessResponse(result.data),flows=result.dataFlows??[];
+    const expanded=op.requestShape==='alimama-dynamic-module'&&hasTemplate(data)?resolveModuleResponse(data,flows):undefined;
+    return {...result,...(flows.length?{dataFlows:sanitized(flows)}:{}),...(expanded?{resolvedResponse:expanded}:{}),operation:op.id,service:op.service,data,businessStatus:'success',fetchedAt:new Date().toISOString(),dataDateVerification:'caller-must-check-requested-period-and-platform-update-time'};
   }catch(error){error.operationId=result.operationId;throw error;}
 }
 export async function openOperation(options,deps={}) {

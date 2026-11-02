@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import {inventory,buildRead,runRead,businessResponse,paramsObject,planMutation,authorizePlan,showPlan,nativeRegistryHash} from '../lib/sycm.mjs';
+import {inventory,buildRead,runRead,businessResponse,paramsObject,planMutation,authorizePlan,showPlan,nativeRegistryHash,resolveModuleResponse} from '../lib/sycm.mjs';
 import {parse,main} from '../lib/cli.mjs';
 import {root} from '../lib/common.mjs';
 import {newerStableVersion} from '../lib/maintenance.mjs';
@@ -102,4 +102,16 @@ test('new native protocol dispatches every registered service without a Chrome r
     assert.equal(result.businessStatus,'success');assert.equal(result.data.data.operation,op.id);
   }
   assert.equal(calls,135);
+});
+
+test('dynamic-module reads resolve native data flows and reject partial or failed expansion',async()=>{
+  const body={data:{chart:'##result[0]##',name:'##profile.name##'},info:{ok:true}};
+  const flows=[{dataFlowId:'1',response:{data:{resultList:[{result:[{value:7}],profile:{name:'Sample'}}]},info:{ok:true}}}];
+  assert.deepEqual(resolveModuleResponse(body,flows).data,{chart:{value:7},name:'Sample'});
+  assert.throws(()=>resolveModuleResponse(body,[]),e=>e.code==='DATA_FLOW_EXPANSION_REQUIRED');
+  assert.throws(()=>resolveModuleResponse(body,[{response:{data:null,info:{ok:false,message:'无权限'}}}]),e=>e.code==='PERMISSION_REQUIRED');
+  const deps={discover:()=>({endpoint:{businessReadProtocol:1}}),registeredRequest:async()=>({operationId:'module-op',data:body,dataFlows:flows})};
+  const result=await runRead({operation:'alimama.insight.industry-categories',container:'sample','params-json':'{}'},deps);
+  assert.equal(result.resolvedResponse.data.chart.value,7);
+  await assert.rejects(runRead({operation:'alimama.insight.industry-categories',container:'sample','params-json':'{}'},{...deps,registeredRequest:async()=>({operationId:'module-op',data:body})}),e=>e.code==='DATA_FLOW_EXPANSION_REQUIRED'&&e.operationId==='module-op');
 });

@@ -3,9 +3,13 @@
 // License, v. 2.0. https://mozilla.org/MPL/2.0/
 #include "brave/browser/ecom/business_read_service.h"
 
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <optional>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "base/check.h"
 #include "base/functional/bind.h"
@@ -14,11 +18,13 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/no_destructor.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/timer/timer.h"
 #include "brave/browser/ecom/shop_identity_parser.h"
 #include "brave/browser/ecom/sycm_read_registry.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
+#include "brave/components/containers/core/browser/pref_names.h"
 #include "brave/components/containers/core/browser/prefs.h"
 #include "brave/components/containers/core/mojom/containers.mojom.h"
 #include "chrome/browser/profiles/profile.h"
@@ -26,6 +32,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "components/embedder_support/user_agent_utils.h"
+#include "components/prefs/pref_service.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/storage_partition_config.h"
@@ -52,15 +59,32 @@
 
 namespace ecom {
 namespace {
-std::string Field(const base::DictValue& value, std::string_view key) {
-  const auto* field = value.Find(key);
+std::string Field(const base::DictValue &value, std::string_view key) {
+  const auto *field = value.Find(key);
   if (!field || field->is_none()) {
     return {};
   }
   return field->is_string() ? field->GetString()
                             : base::WriteJson(*field).value_or("");
 }
-bool CredentialInput(const base::Value& value) {
+std::optional<int64_t> NumericId(const base::Value *value) {
+  if (!value)
+    return std::nullopt;
+  if (value->is_int())
+    return value->GetInt();
+  if (value->is_string()) {
+    int64_t number;
+    if (base::StringToInt64(value->GetString(), &number))
+      return number;
+  } else if (value->is_double()) {
+    const auto number = value->GetDouble();
+    if (std::isfinite(number) && number >= 0 && number <= 9007199254740991.0 &&
+        std::trunc(number) == number)
+      return static_cast<int64_t>(number);
+  }
+  return std::nullopt;
+}
+bool CredentialInput(const base::Value &value) {
   if (value.is_dict()) {
     for (auto [key, child] : value.GetDict()) {
       const auto lower = base::ToLowerASCII(key);
@@ -80,7 +104,7 @@ bool CredentialInput(const base::Value& value) {
       }
     }
   } else if (value.is_list()) {
-    for (const auto& child : value.GetList()) {
+    for (const auto &child : value.GetList()) {
       if (CredentialInput(child)) {
         return true;
       }
@@ -94,7 +118,39 @@ bool CredentialInput(const base::Value& value) {
   }
   return false;
 }
-const base::DictValue* Spec(const std::string& operation) {
+bool HasTemplate(const base::Value &value) {
+  if (value.is_string()) {
+    const auto &text = value.GetString();
+    return text.size() > 4 && text.starts_with("##") && text.ends_with("##");
+  }
+  if (value.is_list()) {
+    for (const auto &child : value.GetList())
+      if (HasTemplate(child))
+        return true;
+  } else if (value.is_dict()) {
+    for (auto [key, child] : value.GetDict())
+      if (HasTemplate(child))
+        return true;
+  }
+  return false;
+}
+void CollectDataFlows(const base::Value &value, std::vector<int64_t> &ids) {
+  if (value.is_list()) {
+    for (const auto &child : value.GetList())
+      CollectDataFlows(child, ids);
+  } else if (value.is_dict()) {
+    if (const auto *list = value.GetDict().FindList("dataFlowIdList")) {
+      for (const auto &id : *list)
+        if (auto number = NumericId(&id);
+            number && *number > 0 && *number <= 9007199254740991LL &&
+            std::find(ids.begin(), ids.end(), *number) == ids.end())
+          ids.push_back(*number);
+    }
+    for (auto [key, child] : value.GetDict())
+      CollectDataFlows(child, ids);
+  }
+}
+const base::DictValue *Spec(const std::string &operation) {
   static const base::NoDestructor<base::DictValue> registry([] {
     auto value =
         base::JSONReader::Read(kSycmReadRegistry, base::JSON_PARSE_RFC);
@@ -105,16 +161,12 @@ const base::DictValue* Spec(const std::string& operation) {
 }
 
 class Read final : public BusinessRead {
- public:
-  Read(Profile* profile,
-       std::string container,
-       std::string operation,
+public:
+  Read(Profile *profile, std::string container, std::string operation,
        base::DictValue params,
        base::OnceCallback<void(base::DictValue)> callback)
-      : profile_(profile),
-        container_(std::move(container)),
-        operation_(std::move(operation)),
-        params_(std::move(params)),
+      : profile_(profile), container_(std::move(container)),
+        operation_(std::move(operation)), params_(std::move(params)),
         callback_(std::move(callback)) {}
 
   void Start() override {
@@ -127,7 +179,7 @@ class Read final : public BusinessRead {
       Fail("CREDENTIAL_INPUT_REJECTED");
       return;
     }
-    for (const auto& key : *spec_->FindList("requiredParams")) {
+    for (const auto &key : *spec_->FindList("requiredParams")) {
       if (Field(params_, key.GetString()).empty()) {
         Fail("INVALID_ARGUMENT");
         return;
@@ -152,11 +204,11 @@ class Read final : public BusinessRead {
     }
   }
 
- private:
-  enum class Stage { kSycm, kAccess, kDmpUser, kResult };
+private:
+  enum class Stage { kSycm, kAccess, kDmpUser, kResult, kDataFlow };
   void ReadAlimamaContext() {
     phase_ = "auth-cookie-metadata";
-    auto* partition = Partition();
+    auto *partition = Partition();
     if (!partition) {
       Fail("CONTAINER_NOT_FOUND");
       return;
@@ -166,8 +218,8 @@ class Read final : public BusinessRead {
         net::CookiePartitionKeyCollection(),
         base::BindOnce(&Read::AlimamaContextRead, weak_.GetWeakPtr()));
   }
-  void AlimamaContextRead(const net::CookieAccessResultList& included,
-                          const net::CookieAccessResultList&) {
+  void AlimamaContextRead(const net::CookieAccessResultList &included,
+                          const net::CookieAccessResultList &) {
     entry_cookie_count_ = static_cast<int>(included.size());
     if (operation_ == "alimama.access") {
       Submit();
@@ -181,16 +233,16 @@ class Read final : public BusinessRead {
     Network(GURL("https://one.alimama.com/member/checkAccess.json"), "POST",
             base::WriteJson(access).value_or("{}"), Stage::kAccess);
   }
-  content::RenderFrameHost* FindServiceFrame() {
+  content::RenderFrameHost *FindServiceFrame() {
     const GURL entry(Field(*spec_, "entryUrl"));
-    content::RenderFrameHost* found = nullptr;
+    content::RenderFrameHost *found = nullptr;
     ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
-        [&](BrowserWindowInterface* browser) {
+        [&](BrowserWindowInterface *browser) {
           if (browser->GetProfile() == profile_) {
-            auto* tabs = browser->GetTabStripModel();
+            auto *tabs = browser->GetTabStripModel();
             for (int i = 0; tabs && i < tabs->count(); ++i) {
-              auto* contents = tabs->GetWebContentsAt(i);
-              auto* frame = contents->GetPrimaryMainFrame();
+              auto *contents = tabs->GetWebContentsAt(i);
+              auto *frame = contents->GetPrimaryMainFrame();
               if (frame &&
                   containers::GetContainerIdForWebContents(contents) ==
                       container_ &&
@@ -207,7 +259,7 @@ class Read final : public BusinessRead {
       matching_tab_found_ = true;
     return found;
   }
-  content::StoragePartition* Partition() {
+  content::StoragePartition *Partition() {
     if (!containers::GetContainerFromPrefs(*profile_->GetPrefs(), container_)) {
       return nullptr;
     }
@@ -237,7 +289,7 @@ class Read final : public BusinessRead {
   }
   void ReadCookie() {
     phase_ = "auth-cookie";
-    auto* partition = Partition();
+    auto *partition = Partition();
     if (!partition) {
       Fail("CONTAINER_NOT_FOUND");
       return;
@@ -247,10 +299,10 @@ class Read final : public BusinessRead {
         net::CookiePartitionKeyCollection(),
         base::BindOnce(&Read::CookieRead, weak_.GetWeakPtr()));
   }
-  void CookieRead(const net::CookieAccessResultList& included,
-                  const net::CookieAccessResultList&) {
+  void CookieRead(const net::CookieAccessResultList &included,
+                  const net::CookieAccessResultList &) {
     entry_cookie_count_ = static_cast<int>(included.size());
-    for (const auto& item : included) {
+    for (const auto &item : included) {
       if (item.cookie.Name() == "_tb_token_") {
         params_.Set("_tb_token_", item.cookie.Value());
         break;
@@ -273,23 +325,22 @@ class Read final : public BusinessRead {
       Submit();
     }
   }
-  void Network(const GURL& url,
-               const std::string& method,
-               const std::string& body,
-               Stage stage) {
-    auto* partition = Partition();
+  void Network(const GURL &url, const std::string &method,
+               const std::string &body, Stage stage) {
+    auto *partition = Partition();
     if (!partition) {
       Fail("CONTAINER_NOT_FOUND");
       return;
     }
     GURL entry(Field(*spec_, "entryUrl"));
-    if (auto* frame = FindServiceFrame()) {
+    if (auto *frame = FindServiceFrame()) {
       entry = frame->GetLastCommittedURL().GetWithoutRef();
     }
-    phase_ = stage == Stage::kSycm      ? "auth-sycm-home"
-             : stage == Stage::kAccess  ? "auth-alimama-access"
-             : stage == Stage::kDmpUser ? "auth-dmp-user"
-                                        : "business-read";
+    phase_ = stage == Stage::kSycm       ? "auth-sycm-home"
+             : stage == Stage::kAccess   ? "auth-alimama-access"
+             : stage == Stage::kDmpUser  ? "auth-dmp-user"
+             : stage == Stage::kDataFlow ? "business-data-flow"
+                                         : "business-read";
     last_status_ = 0;
     net_error_ = 0;
     body_kind_ = "none";
@@ -329,7 +380,7 @@ class Read final : public BusinessRead {
     }
     loader_->SetTimeoutDuration(base::Seconds(15));
     loader_->SetAllowHttpErrorResults(true);
-    if (stage == Stage::kResult) {
+    if (stage == Stage::kResult || stage == Stage::kDataFlow) {
       submitted_ = true;
     }
     loader_->DownloadToString(
@@ -385,8 +436,8 @@ class Read final : public BusinessRead {
       return;
     }
     if (stage == Stage::kDmpUser) {
-      const auto* data = json->GetDict().FindDict("data");
-      const auto* access = data ? data->FindDict("accessInfo") : nullptr;
+      const auto *data = json->GetDict().FindDict("data");
+      const auto *access = data ? data->FindDict("accessInfo") : nullptr;
       const auto csrf = data && !Field(*data, "csrfId").empty()
                             ? Field(*data, "csrfId")
                         : access ? Field(*access, "csrfId")
@@ -399,6 +450,19 @@ class Read final : public BusinessRead {
         Fail("PERMISSION_REQUIRED");
         return;
       }
+      const auto *login = data->FindDict("loginUser");
+      const auto actual =
+          login ? NumericId(login->Find("shopId")) : std::nullopt;
+      const auto *shop = profile_->GetPrefs()
+                             ->GetDict(containers::prefs::kShopContainers)
+                             .FindDict(container_);
+      const auto *identity = shop ? shop->FindDict("identity") : nullptr;
+      const auto expected =
+          identity ? NumericId(identity->Find("shopId")) : std::nullopt;
+      if (actual && (!expected || *actual != *expected)) {
+        Fail("STORE_IDENTITY_MISMATCH");
+        return;
+      }
       params_.Set("bizCode", "dmp");
       params_.Set("csrfId", csrf);
       params_.Set("_csrf", csrf);
@@ -406,11 +470,11 @@ class Read final : public BusinessRead {
       return;
     }
     if (stage == Stage::kAccess) {
-      const auto* data = json->GetDict().FindDict("data");
+      const auto *data = json->GetDict().FindDict("data");
       if (!data) {
         data = json->GetDict().FindDict("result");
       }
-      const auto* info = data ? data->FindDict("accessInfo") : nullptr;
+      const auto *info = data ? data->FindDict("accessInfo") : nullptr;
       if (!info) {
         info = data;
       }
@@ -436,13 +500,58 @@ class Read final : public BusinessRead {
       Submit();
       return;
     }
+    if (stage == Stage::kDataFlow) {
+      data_flows_.Append(
+          base::DictValue()
+              .Set("dataFlowId", base::NumberToString(*flow_ids_.begin()))
+              .Set("response", std::move(*json)));
+      flow_ids_.erase(flow_ids_.begin());
+      NextDataFlow();
+      return;
+    }
+    if (Field(*spec_, "requestShape") == "alimama-dynamic-module" &&
+        HasTemplate(*json)) {
+      CollectDataFlows(*json, flow_ids_);
+      if (flow_ids_.empty() || flow_ids_.size() > 16) {
+        Fail("DATA_FLOW_EXPANSION_REQUIRED");
+        return;
+      }
+      module_response_ = std::move(*json);
+      NextDataFlow();
+      return;
+    }
+    Finish(std::move(*json));
+  }
+  void Finish(base::Value json) {
     timer_.Stop();
     std::move(callback_).Run(base::DictValue()
                                  .Set("ok", true)
                                  .Set("containerId", container_)
                                  .Set("businessOperation", operation_)
                                  .Set("httpStatus", 200)
-                                 .Set("data", std::move(*json)));
+                                 .Set("dataFlows", std::move(data_flows_))
+                                 .Set("data", std::move(json)));
+  }
+  void NextDataFlow() {
+    if (flow_ids_.empty()) {
+      Finish(std::move(module_response_));
+      return;
+    }
+    auto module_params = params_.Clone();
+    module_params.Remove("csrfId");
+    module_params.Remove("loginPointId");
+    auto payload =
+        base::DictValue()
+            .Set("dataFlowId", static_cast<double>(*flow_ids_.begin()))
+            .Set("params", std::move(module_params))
+            .Set("bizCode", Field(*spec_, "bizCode"));
+    for (const auto key : {"csrfId", "loginPointId"})
+      if (const auto *value = params_.Find(key))
+        payload.Set(key, value->Clone());
+    // Expand only IDs supplied by this registered read's own module response.
+    // The caller cannot select an arbitrary data-flow endpoint or operation.
+    Network(GURL("https://one.alimama.com/cube/triggerDataFlowById.json"),
+            "POST", base::WriteJson(payload).value_or("{}"), Stage::kDataFlow);
   }
   void Submit() {
     base::DictValue payload = params_.Clone();
@@ -455,7 +564,7 @@ class Read final : public BusinessRead {
                     .Set("bizCode", Field(*spec_, "bizCode"))
                     .Set("params", std::move(module_params));
       for (const auto key : {"csrfId", "loginPointId"}) {
-        if (const auto* value = params_.Find(key)) {
+        if (const auto *value = params_.Find(key)) {
           payload.Set(key, value->Clone());
         }
       }
@@ -484,6 +593,9 @@ class Read final : public BusinessRead {
   const std::string operation_;
   raw_ptr<const base::DictValue> spec_ = nullptr;
   base::DictValue params_;
+  base::Value module_response_;
+  base::ListValue data_flows_;
+  std::vector<int64_t> flow_ids_;
   std::string sycm_token_;
   bool submitted_ = false;
   int last_status_ = 0;
@@ -498,24 +610,22 @@ class Read final : public BusinessRead {
   base::OneShotTimer timer_;
   base::WeakPtrFactory<Read> weak_{this};
 };
-}  // namespace
+} // namespace
 
-std::optional<BusinessPage> GetBusinessReadPage(const std::string& operation) {
-  const auto* spec = Spec(operation);
+std::optional<BusinessPage> GetBusinessReadPage(const std::string &operation) {
+  const auto *spec = Spec(operation);
   if (!spec) {
     return std::nullopt;
   }
   return BusinessPage{Field(*spec, "service"), Field(*spec, "entryUrl")};
 }
 
-std::unique_ptr<BusinessRead> CreateBusinessRead(
-    Profile* profile,
-    std::string container_id,
-    std::string operation,
-    base::DictValue params,
-    base::OnceCallback<void(base::DictValue)> callback) {
+std::unique_ptr<BusinessRead>
+CreateBusinessRead(Profile *profile, std::string container_id,
+                   std::string operation, base::DictValue params,
+                   base::OnceCallback<void(base::DictValue)> callback) {
   return std::make_unique<Read>(profile, std::move(container_id),
                                 std::move(operation), std::move(params),
                                 std::move(callback));
 }
-}  // namespace ecom
+} // namespace ecom
