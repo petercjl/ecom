@@ -977,7 +977,8 @@ class ShopService final : public base::SupportsUserData::Data,
         if (message) {
           base::DictValue classification;
           classification.Set("token",
-                             base::ContainsCaseInsensitiveASCII(*message, "token"));
+                             base::ToLowerASCII(*message).find("token") !=
+                                 std::string::npos);
           for (const auto* word : {"过期", "登录", "权限", "参数", "非法", "验证"}) {
             classification.Set(word, message->find(word) != std::string::npos);
           }
