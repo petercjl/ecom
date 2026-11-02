@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grit-part>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_TITLE" desc="Ecom shop container: title" formatter_data="webui=Containers">Shop containers</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_INTRO" desc="Ecom shop container: intro" formatter_data="webui=Containers">One container per platform shop account. Taobao services share the same shop session.</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_PLATFORM" desc="Ecom shop container: platform" formatter_data="webui=Containers">Platform</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_SELECT" desc="Ecom shop container: select" formatter_data="webui=Containers">Select a platform</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_TAOBAO" desc="Ecom shop container: taobao" formatter_data="webui=Containers">Taobao / Tmall</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_NAME" desc="Ecom shop container: name" formatter_data="webui=Containers">Shop name</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_CREATE" desc="Ecom shop container: create" formatter_data="webui=Containers">Create and log in</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_REFRESH" desc="Ecom shop container: refresh" formatter_data="webui=Containers">Refresh status</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_CONFIGURE" desc="Ecom shop container: configure" formatter_data="webui=Containers">Configure as Taobao shop</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_LOGIN" desc="Ecom shop container: login" formatter_data="webui=Containers">Log in / open SYCM</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_QIANNIU" desc="Ecom shop container: qianniu" formatter_data="webui=Containers">Qianniu</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_ALIMAMA" desc="Ecom shop container: alimama" formatter_data="webui=Containers">Alimama</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_VERIFY" desc="Ecom shop container: verify" formatter_data="webui=Containers">Verify shop identity</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_CONFIRM" desc="Ecom shop container: confirm" formatter_data="webui=Containers">Confirm identity and finish</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_UNCONFIGURED" desc="Ecom shop container: unconfigured" formatter_data="webui=Containers">General container</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_AWAITING_LOGIN" desc="Ecom shop container: awaiting_login" formatter_data="webui=Containers">Awaiting login</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_VERIFICATION_REQUIRED" desc="Ecom shop container: verification_required" formatter_data="webui=Containers">Login or verification required</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_AWAITING_CONFIRMATION" desc="Ecom shop container: awaiting_confirmation" formatter_data="webui=Containers">Identity found; confirm to finish</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_READY" desc="Ecom shop container: ready" formatter_data="webui=Containers">Identity verified</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_IDENTITY_MISMATCH" desc="Ecom shop container: identity_mismatch" formatter_data="webui=Containers">Account differs from bound shop</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_BUSY" desc="Ecom shop container: busy" formatter_data="webui=Containers">Working…</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_ERROR" desc="Ecom shop container: error" formatter_data="webui=Containers">Unable to complete. Check the selected container login and try verification again.</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_LAST_CHECKED" desc="Ecom shop container: last_checked" formatter_data="webui=Containers">Last verified</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_IDENTITY" desc="Ecom shop container: identity" formatter_data="webui=Containers">Platform identity</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_SERVICE_NOTE" desc="Ecom shop container: service_note" formatter_data="webui=Containers">SYCM identity is checked here. Qianniu and Alimama login and authorization must be checked in their own pages.</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_GENERAL" desc="Ecom shop container: general" formatter_data="webui=Containers">General containers and appearance</message>
+    <message name="IDS_SETTINGS_CONTAINERS_SHOP_NAME_EXISTS" desc="Ecom shop container: name_exists" formatter_data="webui=Containers">A container with this name already exists. Configure the existing container below.</message>
+</grit-part>

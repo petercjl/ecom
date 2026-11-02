@@ -31,10 +31,12 @@
 #include "base/uuid.h"
 #include "base/values.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
+#include "brave/components/containers/core/browser/pref_names.h"
 #include "brave/components/containers/core/browser/prefs.h"
 #include "brave/components/containers/core/mojom/containers.mojom.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_observer.h"
+#include "components/prefs/pref_service.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/storage_partition_config.h"
 #include "net/base/net_errors.h"
@@ -52,7 +54,7 @@
 namespace ecom {
 namespace {
 
-bool PrivatePath(const base::FilePath& path, bool directory) {
+bool PrivatePath(const base::FilePath &path, bool directory) {
   struct stat info;
   return lstat(path.value().c_str(), &info) == 0 && info.st_uid == getuid() &&
          (info.st_mode & 0777) == (directory ? 0700 : 0600) &&
@@ -60,36 +62,43 @@ bool PrivatePath(const base::FilePath& path, bool directory) {
                     : S_ISREG(info.st_mode) && info.st_nlink == 1);
 }
 
-bool WriteExclusive(const base::FilePath& path, const std::string& text) {
+bool WriteExclusive(const base::FilePath &path, const std::string &text) {
   int fd = open(path.value().c_str(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW,
                 0600);
-  if (fd < 0) return false;
+  if (fd < 0)
+    return false;
   std::string_view remaining(text);
   while (!remaining.empty()) {
     ssize_t size = write(fd, remaining.data(), remaining.size());
-    if (size <= 0) { close(fd); return false; }
+    if (size <= 0) {
+      close(fd);
+      return false;
+    }
     remaining.remove_prefix(size);
   }
   return close(fd) == 0;
 }
 
-bool SensitiveKey(const std::string& name) {
+bool SensitiveKey(const std::string &name) {
   std::string key = base::ToLowerASCII(name);
   return key.find("token") != std::string::npos ||
          key.find("cookie") != std::string::npos ||
          key.find("csrf") != std::string::npos ||
-         key.find("password") != std::string::npos ||
-         key == "authorization" || key == "secret" || key == "sessionid";
+         key.find("password") != std::string::npos || key == "authorization" ||
+         key == "secret" || key == "sessionid";
 }
 
-void Redact(base::Value& value) {
+void Redact(base::Value &value) {
   if (value.is_dict()) {
     for (auto [key, child] : value.GetDict()) {
-      if (SensitiveKey(key)) child = base::Value("[REDACTED]");
-      else Redact(child);
+      if (SensitiveKey(key))
+        child = base::Value("[REDACTED]");
+      else
+        Redact(child);
     }
   } else if (value.is_list()) {
-    for (auto& child : value.GetList()) Redact(child);
+    for (auto &child : value.GetList())
+      Redact(child);
   } else if (value.is_string()) {
     const auto lower = base::ToLowerASCII(value.GetString());
     if (lower.find("token=") != std::string::npos ||
@@ -100,8 +109,8 @@ void Redact(base::Value& value) {
 }
 
 class NativeSessionService final : public ProfileObserver {
- public:
-  NativeSessionService(Profile* profile, const GURL& allowed_origin)
+public:
+  NativeSessionService(Profile *profile, const GURL &allowed_origin)
       : profile_(profile),
         folder_(profile->GetPath().AppendASCII(".ecom-native-cli")),
         origin_(url::Origin::Create(allowed_origin)),
@@ -114,40 +123,44 @@ class NativeSessionService final : public ProfileObserver {
     base::Thread::Options options;
     options.message_pump_type = base::MessagePumpType::IO;
     if (io_.StartWithOptions(std::move(options))) {
-      io_.task_runner()->PostTask(
-          FROM_HERE, base::BindOnce(&NativeSessionService::StartIO,
-                                    base::Unretained(this)));
+      io_.task_runner()->PostTask(FROM_HERE,
+                                  base::BindOnce(&NativeSessionService::StartIO,
+                                                 base::Unretained(this)));
     }
   }
 
-  void OnProfileWillBeDestroyed(Profile* profile) override {
+  void OnProfileWillBeDestroyed(Profile *profile) override {
     weak_.InvalidateWeakPtrs();
     requests_.clear();
     profile_->RemoveObserver(this);
     profile_ = nullptr;
     if (io_.IsRunning()) {
-      io_.task_runner()->PostTask(
-          FROM_HERE, base::BindOnce(&NativeSessionService::StopIO,
-                                    base::Unretained(this)));
+      io_.task_runner()->PostTask(FROM_HERE,
+                                  base::BindOnce(&NativeSessionService::StopIO,
+                                                 base::Unretained(this)));
       io_.Stop();
     }
   }
 
- private:
+private:
   void StartIO() {
-    if (mkdir(folder_.value().c_str(), 0700) != 0 &&
-        !base::PathExists(folder_)) return;
-    if (!PrivatePath(folder_, true)) return;
+    if (mkdir(folder_.value().c_str(), 0700) != 0 && !base::PathExists(folder_))
+      return;
+    if (!PrivatePath(folder_, true))
+      return;
     auto endpoint = folder_.AppendASCII("endpoint.json");
     if (base::PathExists(endpoint)) {
-      if (!PrivatePath(endpoint, false)) return;
+      if (!PrivatePath(endpoint, false))
+        return;
       auto archive = folder_.AppendASCII("endpoint-" + instance_ + ".previous");
-      if (base::PathExists(archive) || !base::Move(endpoint, archive)) return;
+      if (base::PathExists(archive) || !base::Move(endpoint, archive))
+        return;
     }
     watcher_ = std::make_unique<base::FilePathWatcher>();
     if (!watcher_->Watch(folder_, base::FilePathWatcher::Type::kNonRecursive,
                          base::BindRepeating(&NativeSessionService::ScanIO,
-                                             base::Unretained(this)))) return;
+                                             base::Unretained(this))))
+      return;
     base::DictValue metadata;
     metadata.Set("schemaVersion", 1);
     metadata.Set("instanceId", instance_);
@@ -155,34 +168,40 @@ class NativeSessionService final : public ProfileObserver {
     metadata.Set("pid", static_cast<int>(getpid()));
     metadata.Set("allowedOrigin", origin_.Serialize());
     auto json = base::WriteJson(metadata);
-    if (json) WriteExclusive(endpoint, *json);
+    if (json)
+      WriteExclusive(endpoint, *json);
     ScanIO(folder_, false);
   }
 
   void StopIO() { watcher_.reset(); }
 
-  void ScanIO(const base::FilePath&, bool error) {
-    if (error || !PrivatePath(folder_, true)) return;
+  void ScanIO(const base::FilePath &, bool error) {
+    if (error || !PrivatePath(folder_, true))
+      return;
     base::FileEnumerator files(folder_, false, base::FileEnumerator::FILES,
-                                FILE_PATH_LITERAL("*.request.json"));
+                               FILE_PATH_LITERAL("*.request.json"));
     for (auto file = files.Next(); !file.empty(); file = files.Next()) {
       std::string name = file.BaseName().value();
       std::string id = name.substr(0, name.size() - 13);
       if (!base::Uuid::ParseLowercase(id).is_valid() ||
-          !PrivatePath(file, false)) continue;
+          !PrivatePath(file, false))
+        continue;
       std::string text;
-      if (!base::ReadFileToStringWithMaxSize(file, &text, 32768)) continue;
+      if (!base::ReadFileToStringWithMaxSize(file, &text, 32768))
+        continue;
       auto message = base::JSONReader::Read(text, base::JSON_PARSE_RFC);
-      if (!message || !message->is_dict()) continue;
-      const auto& dict = message->GetDict();
-      const auto* token = dict.FindString("authToken");
-      const auto* instance = dict.FindString("instanceId");
+      if (!message || !message->is_dict())
+        continue;
+      const auto &dict = message->GetDict();
+      const auto *token = dict.FindString("authToken");
+      const auto *instance = dict.FindString("instanceId");
       if (!token || *token != auth_ || !instance || *instance != instance_ ||
           dict.FindInt("schemaVersion") != 1) {
         base::DictValue denied;
         denied.Set("ok", false);
-        denied.Set("error", base::DictValue().Set(
-            "code", "INSTANCE_AUTH_FAILED").Set("executed", false));
+        denied.Set("error", base::DictValue()
+                                .Set("code", "INSTANCE_AUTH_FAILED")
+                                .Set("executed", false));
         WriteResponseIO(id, std::move(denied));
         base::DeleteFile(file);
         continue;
@@ -192,13 +211,13 @@ class NativeSessionService final : public ProfileObserver {
         continue;
       }
       base::DeleteFile(file);
-      ui_->PostTask(FROM_HERE, base::BindOnce(
-          &NativeSessionService::Dispatch, ui_weak_, id,
-          std::move(message->GetDict())));
+      ui_->PostTask(FROM_HERE,
+                    base::BindOnce(&NativeSessionService::Dispatch, ui_weak_,
+                                   id, std::move(message->GetDict())));
     }
   }
 
-  void WriteResponseIO(const std::string& id, base::DictValue response) {
+  void WriteResponseIO(const std::string &id, base::DictValue response) {
     response.Set("schemaVersion", 1);
     response.Set("instanceId", instance_);
     response.Set("operationId", id);
@@ -208,63 +227,130 @@ class NativeSessionService final : public ProfileObserver {
     }
   }
 
-  void Respond(const std::string& id, base::DictValue response) {
-    io_.task_runner()->PostTask(FROM_HERE, base::BindOnce(
-        &NativeSessionService::WriteResponseIO, base::Unretained(this), id,
-        std::move(response)));
+  void Respond(const std::string &id, base::DictValue response) {
+    io_.task_runner()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&NativeSessionService::WriteResponseIO,
+                       base::Unretained(this), id, std::move(response)));
   }
 
-  void Fail(const std::string& id, const std::string& code,
+  void Fail(const std::string &id, const std::string &code,
             bool executed = false, int status = 0) {
-    Respond(id, base::DictValue().Set("ok", false).Set("error",
-        base::DictValue().Set("code", code).Set("executed", executed)
-            .Set("httpStatus", status)));
+    Respond(id, base::DictValue()
+                    .Set("ok", false)
+                    .Set("error", base::DictValue()
+                                      .Set("code", code)
+                                      .Set("executed", executed)
+                                      .Set("httpStatus", status)));
   }
 
-  void Dispatch(const std::string& id, base::DictValue request) {
-    if (!profile_) return;
-    const auto* method = request.FindString("method");
+  void Dispatch(const std::string &id, base::DictValue request) {
+    if (!profile_)
+      return;
+    const auto *method = request.FindString("method");
     if (method && method->starts_with("shops.")) {
-      RunShopCommand(profile_, base::WriteJson(request).value_or("{}"),
-          base::BindOnce([](base::WeakPtr<NativeSessionService> self,
-                            std::string operation, std::string result) {
-            if (!self) return;
-            auto parsed = base::JSONReader::Read(result, base::JSON_PARSE_RFC);
-            if (!parsed || !parsed->is_dict()) { self->Fail(operation, "INVALID_RESPONSE"); return; }
-            self->Respond(operation, std::move(parsed->GetDict()));
-          }, weak_.GetWeakPtr(), id));
+      RunShopCommand(
+          profile_, base::WriteJson(request).value_or("{}"),
+          base::BindOnce(
+              [](base::WeakPtr<NativeSessionService> self,
+                 std::string operation, std::string result) {
+                if (!self)
+                  return;
+                auto parsed =
+                    base::JSONReader::Read(result, base::JSON_PARSE_RFC);
+                if (!parsed || !parsed->is_dict()) {
+                  self->Fail(operation, "INVALID_RESPONSE");
+                  return;
+                }
+                self->Respond(operation, std::move(parsed->GetDict()));
+              },
+              weak_.GetWeakPtr(), id));
       return;
     }
     auto containers = containers::GetContainersFromPrefs(*profile_->GetPrefs());
     if (method && *method == "containers.list") {
       base::ListValue list;
-      for (const auto& container : containers) {
-        list.Append(base::DictValue().Set("id", container->id)
+      for (const auto &container : containers) {
+        list.Append(base::DictValue()
+                        .Set("id", container->id)
                         .Set("name", container->name));
       }
-      Respond(id, base::DictValue().Set("ok", true).Set("containers", std::move(list)));
+      Respond(
+          id,
+          base::DictValue().Set("ok", true).Set("containers", std::move(list)));
       return;
     }
-    const auto* container_id = request.FindString("containerId");
-    const auto* url_text = request.FindString("url");
+    const auto *container_id = request.FindString("containerId");
+    const auto *url_text = request.FindString("url");
     if (!method || *method != "session.get" || !container_id || !url_text) {
-      Fail(id, "UNSUPPORTED_COMMAND"); return;
+      Fail(id, "UNSUPPORTED_COMMAND");
+      return;
     }
     bool found = false;
-    for (const auto& container : containers) {
-      if (container->id == *container_id) found = true;
+    for (const auto &container : containers) {
+      if (container->id == *container_id)
+        found = true;
     }
-    if (!found) { Fail(id, "CONTAINER_NOT_FOUND"); return; }
+    if (!found) {
+      Fail(id, "CONTAINER_NOT_FOUND");
+      return;
+    }
     GURL url(*url_text);
     if (!url.is_valid() || !url.SchemeIs("https") || url.has_username() ||
         url.has_password() || url::Origin::Create(url) != origin_) {
-      Fail(id, "ORIGIN_NOT_ALLOWED"); return;
+      Fail(id, "ORIGIN_NOT_ALLOWED");
+      return;
     }
-    if (requests_.size() >= 2) { Fail(id, "BUSY"); return; }
+    const auto *shop = profile_->GetPrefs()
+                           ->GetDict(containers::prefs::kShopContainers)
+                           .FindDict(*container_id);
+    if (shop) {
+      const auto *state = shop->FindString("state");
+      if (!state || *state != "ready") {
+        Fail(id, "SHOP_NOT_READY");
+        return;
+      }
+      auto verify = base::DictValue()
+                        .Set("method", "shops.verify")
+                        .Set("containerId", *container_id);
+      RunShopCommand(
+          profile_, base::WriteJson(verify).value_or("{}"),
+          base::BindOnce(
+              [](base::WeakPtr<NativeSessionService> self,
+                 std::string operation, std::string container, GURL target,
+                 std::string result) {
+                if (!self)
+                  return;
+                auto parsed =
+                    base::JSONReader::Read(result, base::JSON_PARSE_RFC);
+                if (!parsed || !parsed->is_dict() ||
+                    !parsed->GetDict().FindBool("ok").value_or(false)) {
+                  self->Fail(operation, "SHOP_VERIFICATION_FAILED");
+                  return;
+                }
+                self->Fetch(operation, container, target);
+              },
+              weak_.GetWeakPtr(), id, *container_id, url));
+      return;
+    }
+    Fetch(id, *container_id, url);
+  }
+
+  void Fetch(const std::string &id, const std::string &container_id,
+             const GURL &url) {
+    if (!containers::GetContainerFromPrefs(*profile_->GetPrefs(),
+                                           container_id)) {
+      Fail(id, "CONTAINER_NOT_FOUND");
+      return;
+    }
+    if (requests_.size() >= 2) {
+      Fail(id, "BUSY");
+      return;
+    }
     auto partition_config = content::StoragePartitionConfig::Create(
-        profile_, containers::kContainersStoragePartitionDomain, *container_id,
+        profile_, containers::kContainersStoragePartitionDomain, container_id,
         false);
-    auto* partition = profile_->GetStoragePartition(partition_config);
+    auto *partition = profile_->GetStoragePartition(partition_config);
     auto resource = std::make_unique<network::ResourceRequest>();
     resource->url = url;
     resource->method = "GET";
@@ -274,8 +360,8 @@ class NativeSessionService final : public ProfileObserver {
     resource->request_initiator = origin_;
     resource->referrer = origin_.GetURL();
     resource->headers.SetHeader("Accept", "application/json");
-    constexpr auto annotation = net::DefineNetworkTrafficAnnotation(
-        "ecom_native_container_read", R"(
+    constexpr auto annotation =
+        net::DefineNetworkTrafficAnnotation("ecom_native_container_read", R"(
           semantics {
             sender: "Ecom native container CLI"
             description: "A local authenticated user requests a read using a selected container session."
@@ -289,31 +375,42 @@ class NativeSessionService final : public ProfileObserver {
             setting: "Only enabled with an explicitly configured HTTPS origin."
             policy_exception_justification: "A local opt-in internal browser capability."
           })");
-    auto loader = network::SimpleURLLoader::Create(std::move(resource), annotation);
+    auto loader =
+        network::SimpleURLLoader::Create(std::move(resource), annotation);
     loader->SetTimeoutDuration(base::Seconds(20));
     loader->SetAllowHttpErrorResults(true);
-    auto* pending = loader.get();
+    auto *pending = loader.get();
     requests_[id] = std::move(loader);
     auto factory = partition->GetURLLoaderFactoryForBrowserProcess();
-    pending->DownloadToString(factory.get(), base::BindOnce(
-        &NativeSessionService::OnResponse, weak_.GetWeakPtr(), id, *container_id),
-        2 * 1024 * 1024);
+    pending->DownloadToString(factory.get(),
+                              base::BindOnce(&NativeSessionService::OnResponse,
+                                             weak_.GetWeakPtr(), id,
+                                             container_id),
+                              2 * 1024 * 1024);
   }
 
-  void OnResponse(const std::string& id, const std::string& container_id,
+  void OnResponse(const std::string &id, const std::string &container_id,
                   std::optional<std::string> body) {
     auto loader = std::move(requests_.at(id));
     requests_.erase(id);
     int status = loader->ResponseInfo() && loader->ResponseInfo()->headers
-                     ? loader->ResponseInfo()->headers->response_code() : 0;
+                     ? loader->ResponseInfo()->headers->response_code()
+                     : 0;
     if (loader->NetError() != net::OK || status != 200 || !body) {
-      Fail(id, "REQUEST_FAILED", true, status); return;
+      Fail(id, "REQUEST_FAILED", true, status);
+      return;
     }
     auto json = base::JSONReader::Read(*body, base::JSON_PARSE_RFC);
-    if (!json) { Fail(id, "NON_JSON_RESPONSE", true, status); return; }
+    if (!json) {
+      Fail(id, "NON_JSON_RESPONSE", true, status);
+      return;
+    }
     Redact(*json);
-    Respond(id, base::DictValue().Set("ok", true).Set("containerId", container_id)
-        .Set("httpStatus", status).Set("data", std::move(*json)));
+    Respond(id, base::DictValue()
+                    .Set("ok", true)
+                    .Set("containerId", container_id)
+                    .Set("httpStatus", status)
+                    .Set("data", std::move(*json)));
   }
 
   raw_ptr<Profile> profile_;
@@ -323,22 +420,24 @@ class NativeSessionService final : public ProfileObserver {
   const std::string auth_;
   scoped_refptr<base::SingleThreadTaskRunner> ui_;
   base::Thread io_;
-  std::unique_ptr<base::FilePathWatcher> watcher_;  // Accessed on io_ only.
+  std::unique_ptr<base::FilePathWatcher> watcher_; // Accessed on io_ only.
   std::map<std::string, std::unique_ptr<network::SimpleURLLoader>> requests_;
   base::WeakPtr<NativeSessionService> ui_weak_;
   base::WeakPtrFactory<NativeSessionService> weak_{this};
 };
 
-}  // namespace
+} // namespace
 
-void StartNativeSessionService(Profile* profile) {
-  if (profile->IsOffTheRecord()) return;
+void StartNativeSessionService(Profile *profile) {
+  if (profile->IsOffTheRecord())
+    return;
   const GURL origin(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
       "ecom-native-cli-origin"));
-  if (!origin.is_valid() || !origin.SchemeIs("https") || origin.has_username() ||
-      origin.has_password() || origin.path() != "/" || origin.has_query() ||
-      origin.has_ref()) return;
+  if (!origin.is_valid() || !origin.SchemeIs("https") ||
+      origin.has_username() || origin.has_password() || origin.path() != "/" ||
+      origin.has_query() || origin.has_ref())
+    return;
   static base::NoDestructor<NativeSessionService> service(profile, origin);
 }
 
-}  // namespace ecom
+} // namespace ecom

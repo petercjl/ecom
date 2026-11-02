@@ -1,16 +1,18 @@
 #ifndef BRAVE_BROWSER_ECOM_SHOP_CONTAINER_SERVICE_H_
 #define BRAVE_BROWSER_ECOM_SHOP_CONTAINER_SERVICE_H_
 
+#include "base/functional/callback_forward.h"
 #include <memory>
 #include <string>
-#include "base/functional/callback_forward.h"
 
 class Profile;
-namespace content { class WebUIMessageHandler; }
+namespace content {
+class WebUIMessageHandler;
+}
 namespace ecom {
 // Both trusted settings UI and authenticated native CLI use this contract.
-void RunShopCommand(Profile* profile, std::string request,
+void RunShopCommand(Profile *profile, std::string request,
                     base::OnceCallback<void(std::string)> callback);
 std::unique_ptr<content::WebUIMessageHandler> CreateShopSettingsHandler();
-}  // namespace ecom
+} // namespace ecom
 #endif
