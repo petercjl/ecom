@@ -5,6 +5,7 @@
 
 #include "brave/browser/brave_browser_main_parts_mac.h"
 
+#include "base/apple/bundle_locations.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
 #include "brave/browser/mac/keystone_glue.h"
@@ -61,6 +62,25 @@ void BraveBrowserMainPartsMac::PreCreateMainMessageLoop() {
 
 int BraveBrowserMainPartsMac::PreMainMessageLoopRun() {
   int result = ChromeBrowserMainPartsMac::PreMainMessageLoopRun();
+
+  // Only a packaged release carries this metadata and the native npm updater.
+  NSBundle* bundle = base::apple::OuterBundle();
+  if (result == 0 &&
+      [bundle.bundleIdentifier isEqualToString:@"app.ecom.browser"] &&
+      [bundle.infoDictionary[@"EcomUpdateProtocol"] integerValue] == 1) {
+    NSURL* helper = [bundle.bundleURL
+        URLByAppendingPathComponent:@"Contents/Helpers/EcomUpdater"];
+    NSTask* task = [[NSTask alloc] init];
+    task.executableURL = helper;
+    task.arguments = @[
+      bundle.bundlePath,
+      [NSString stringWithFormat:@"%d", NSProcessInfo.processInfo.processIdentifier]
+    ];
+    NSError* error = nil;
+    if (![task launchAndReturnError:&error]) {
+      LOG(ERROR) << "Ecom update helper failed to start";
+    }
+  }
 
   if (base::FeatureList::IsEnabled(commands::features::kBraveCommands)) {
     accelerator_menu_coordinator_ =

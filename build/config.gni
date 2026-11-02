@@ -167,8 +167,11 @@ if (is_win) {
     brave_product_dir_name_suffix = "-Development"
   }
 
-  brave_product_dir_name =
-      "Ecom/Ecom-Dev"
+  if (is_official_build && brave_channel == "") {
+    brave_product_dir_name = "Ecom/Ecom"
+  } else {
+    brave_product_dir_name = "Ecom/Ecom-Dev"
+  }
 
   if (base_sparkle_update_url == "") {
     base_sparkle_update_url =
