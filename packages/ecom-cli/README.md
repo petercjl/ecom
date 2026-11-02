@@ -1,6 +1,6 @@
 # Ecom CLI
 
-Agent CLI and portable Skill for the Ecom desktop browser. The first release lists the names and stable IDs of existing containers without opening websites or switching tabs. Ecom must already be running in normal desktop mode. The browser transport currently supports macOS; Windows browser integration is not implemented.
+Agent CLI and portable Skill for the Ecom desktop browser. List existing containers, inspect a selected account’s platform/homepage/login status, and perform explicitly authorized HTTPS JSON GET operations through that container’s native session, preserving the active tab. Ecom must already be running in normal desktop mode. The browser transport currently supports macOS; Windows browser integration is not implemented.
 
 ## Install
 
@@ -13,6 +13,12 @@ The Agent needs local Node.js 22+ and terminal/file access. Installation include
 ## Use
 
 > 用 Ecom CLI 列出我当前的浏览器容器。
+
+> 用 Ecom CLI 查看指定账号的平台、首页和登录核验状态。
+
+> 用 Ecom CLI，通过指定账号请求我提供的只读接口地址。
+
+Provide the account name or stable container ID. For requests, supply an authorized read-only HTTPS endpoint or a trusted registered business operation. The browser permits only its explicitly enabled origin, rejects redirects/HTML and unsupported methods, and retains credentials in its native session. Native account readiness and identity checks remain authoritative. An HTTP 200 JSON response is transport success; the caller evaluates business success.
 
 Container names may identify accounts. Use a trusted Agent and share results intentionally. Installing the plugin does not authorize website operations, cookie export or account modification.
 

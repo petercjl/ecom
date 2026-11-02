@@ -26,27 +26,85 @@ export function discover({profile,instance}={}) {
   if(candidates.length!==1) throw fail(candidates.length?'INSTANCE_AMBIGUOUS':'INSTANCE_NOT_RUNNING',candidates.length?'Multiple Ecom instances; specify --profile or --instance':'Open an Ecom build supporting this CLI in normal desktop mode');
   return candidates[0];
 }
+const instanceOf=({endpoint,channel})=>({id:endpoint.instanceId,pid:endpoint.pid,channel});
+const credentialKey=/token|cookie|csrf|password|authorization|secret|sessionid|api[-_]?key|access[-_]?key|credential/i;
+function homeUrl(value) {
+  try {
+    const url=new URL(value);if(url.protocol!=='https:')return null;
+    url.username='';url.password='';
+    for(const [key,value]of url.searchParams)if(credentialKey.test(key)||credentialKey.test(value)&&/[=%]/.test(value))url.searchParams.set(key,'[REDACTED]');
+    if(credentialKey.test(url.hash))url.hash='[REDACTED]';
+    return url.href;
+  }catch{return null;}
+}
+export function resolveContainer(items,value) {
+  if(typeof value!=='string'||!value.trim())throw fail('INVALID_ARGUMENT','Specify --container with a stable ID or unique exact name');
+  const matches=items.filter(c=>c.id===value||c.name===value);
+  if(matches.length!==1)throw fail(matches.length?'CONTAINER_AMBIGUOUS':'CONTAINER_NOT_FOUND','Select an existing stable container ID or unique exact name');
+  return matches[0];
+}
+export function validateReadUrl(value,method='GET') {
+  if(method!=='GET')throw fail('METHOD_UNSUPPORTED','This version supports explicit read-only GET operations only');
+  let url;try{url=new URL(value);}catch{throw fail('INVALID_URL','Specify an absolute HTTPS URL');}
+  if(url.protocol!=='https:'||url.username||url.password||url.hash)throw fail('INVALID_URL','HTTPS URL must have no credentials or fragment');
+  for(const [key,value]of url.searchParams)if(credentialKey.test(key)||credentialKey.test(value)&&/[=%]/.test(value))throw fail('CREDENTIAL_INPUT_REJECTED','Credentials remain in the browser; credential query parameters are not accepted');
+  return url.href;
+}
 export async function listContainers(options={}) {return readMailbox(discover(options));}
-export async function readMailbox({folder,endpoint,channel},timeoutMs=10000) {
+export async function readMailbox(connection,timeoutMs=10000) {
+  const body=await callMailbox(connection,{method:'containers.list'},timeoutMs);
+  if(!Array.isArray(body.containers)||body.containers.some(c=>typeof c.id!=='string'||typeof c.name!=='string'))throw fail('PROTOCOL_MISMATCH','Invalid container list',{operationId:body.operationId,executed:'unknown'});
+  return {...body,instance:instanceOf(connection),containers:body.containers.map(({id,name})=>({id,name}))};
+}
+export async function inspectContainer(options={}) {
+  if(!options.container)throw fail('INVALID_ARGUMENT','containers inspect requires --container');
+  return inspectInConnection(discover(options),options.container);
+}
+export async function inspectInConnection(connection,selector) {
+  const body=await callMailbox(connection,{method:'shops.list'});
+  if(!Array.isArray(body.shops)||body.shops.some(c=>typeof c.id!=='string'||typeof c.name!=='string'))throw fail('PROTOCOL_MISMATCH','Invalid account metadata',{operationId:body.operationId,executed:'unknown'});
+  const row=resolveContainer(body.shops,selector);
+  const string=x=>typeof x==='string'?x:null;
+  const container={id:row.id,name:row.name,platform:string(row.platform),platformName:string(row.customPlatformName),homeUrl:homeUrl(row.homeUrl),icon:Number.isInteger(row.icon)?row.icon:null,color:string(row.color),
+    login:{state:string(row.state)??'unconfigured',service:string(row.authentication?.service),authenticationState:string(row.authentication?.state),verificationSupported:row.verificationSupported===true,checking:row.checking===true,checkedAt:string(row.checkedAt),identityBound:!!row.identity,identityConfirmed:row.state==='ready'&&!!row.identity,expiry:row.expiry?{kind:string(row.expiry.kind),cookieExpiresAt:string(row.expiry.cookieExpiresAt)}:null}};
+  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container};
+}
+export async function requestSession(options={}) {
+  if(!options.container||!options.url)throw fail('INVALID_ARGUMENT','session request requires --container and --url');
+  const url=validateReadUrl(options.url,options.method??'GET');
+  return requestInConnection(discover(options),{...options,url});
+}
+export async function requestInConnection(connection,options) {
+  const url=validateReadUrl(options.url,options.method??'GET');
+  if(!connection.endpoint.allowedOrigin||new URL(url).origin!==connection.endpoint.allowedOrigin)throw fail('ORIGIN_NOT_ALLOWED','URL must match the HTTPS origin explicitly enabled by this Ecom instance');
+  const listed=await readMailbox(connection);
+  const container=resolveContainer(listed.containers,options.container);
+  const body=await callMailbox(connection,{method:'session.get',containerId:container.id,url},60000);
+  if(body.containerId!==container.id||body.httpStatus!==200||!Object.hasOwn(body,'data'))throw fail('PROTOCOL_MISMATCH','Session response does not match selected container or JSON response contract',{operationId:body.operationId,executed:'unknown'});
+  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,request:{method:'GET',url},httpStatus:body.httpStatus,data:body.data,businessStatus:'not-evaluated'};
+}
+export async function callMailbox({folder,endpoint},payload,timeoutMs=10000) {
   privatePath(folder,true);privatePath(path.join(folder,'endpoint.json'));
   const current=JSON.parse(fs.readFileSync(path.join(folder,'endpoint.json'),'utf8'));
   if(current.pid!==endpoint.pid || current.instanceId!==endpoint.instanceId || current.authToken!==endpoint.authToken) throw fail('INSTANCE_CHANGED','Instance changed before submission; discover it again');
   const id=crypto.randomUUID(), request=path.join(folder,id+'.request.json'), temporary=path.join(folder,id+'.request.tmp'), response=path.join(folder,id+'.response.json');
   if(exists(request)||exists(response)) throw fail('OPERATION_COLLISION','Request already exists');
-  writeNew(temporary,{schemaVersion:1,instanceId:endpoint.instanceId,authToken:endpoint.authToken,method:'containers.list'});
+  writeNew(temporary,{...payload,schemaVersion:1,instanceId:endpoint.instanceId,authToken:endpoint.authToken});
   fs.renameSync(temporary,request);
   const end=Date.now()+timeoutMs;
   while(Date.now()<end) {
     if(exists(response)) {
       privatePath(response);
       const raw=fs.readFileSync(response,'utf8');
-      if(Buffer.byteLength(raw)>1024*1024) throw fail('PROTOCOL_MISMATCH','Oversized response',{operationId:id,executed:'unknown'});
+      if(Buffer.byteLength(raw)>(payload.method==='session.get'?2*1024*1024+65536:1024*1024)) throw fail('PROTOCOL_MISMATCH','Oversized response',{operationId:id,executed:'unknown'});
       let body;try{body=JSON.parse(raw);}catch{await pause(25);continue;}
       if(body.schemaVersion!==1 || body.instanceId!==endpoint.instanceId || body.operationId!==id) throw fail('PROTOCOL_MISMATCH','Response does not match this operation',{operationId:id,executed:'unknown'});
       fs.unlinkSync(response);
-      if(body.ok!==true) throw fail('BROWSER_ERROR','Browser refused read-only request',{operationId:id,executed:body.error?.executed??false});
-      if(!Array.isArray(body.containers)||body.containers.some(c=>typeof c.id!=='string'||typeof c.name!=='string')) throw fail('PROTOCOL_MISMATCH','Invalid container list',{operationId:id,executed:'unknown'});
-      return {ok:true,schemaVersion:1,operationId:id,instance:{id:endpoint.instanceId,pid:endpoint.pid,channel},containers:body.containers.map(({id,name})=>({id,name}))};
+      if(body.ok!==true) {
+        const code=/^[A-Z][A-Z0-9_]{0,63}$/.test(body.error?.code??'')?body.error.code:'BROWSER_ERROR';
+        throw fail(code,'Ecom refused the request: '+code,{operationId:id,executed:body.error?.executed??'unknown',...(Number.isInteger(body.error?.httpStatus)?{httpStatus:body.error.httpStatus}:{})});
+      }
+      return body;
     }
     await pause(25);
   }

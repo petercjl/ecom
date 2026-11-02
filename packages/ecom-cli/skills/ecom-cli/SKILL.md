@@ -1,23 +1,29 @@
 ---
 name: ecom-cli
-description: List isolated account containers in the running Ecom desktop browser, inspect its CLI connection, or install/update the Ecom CLI and companion Skill for the current Agent. Use when the user asks for Ecom browser containers or Ecom CLI setup. Website business queries and browser mutations are outside the first release.
+description: List and inspect account containers in the running Ecom browser, send explicitly authorized read-only HTTPS JSON requests using a selected container session, diagnose connections, or install/update the Ecom CLI and companion Skill. Use for Ecom account metadata and native-session API access; application business logic stays with the calling workflow.
 ---
 
 # Ecom CLI
 
 ## Input → strategy → output
 
-Input is a request to list Ecom containers, diagnose the connection, or maintain this plugin for the current Agent. The current Agent needs local command execution, file access and Node.js 22+. Output is a verified container list (stable ID and name), connection diagnosis, or an installation receipt with a separate host discovery check. Container names may identify accounts; disclose only within the user's request.
+Input is an Ecom container listing/detail request, an authorized read-only endpoint plus target container, a connection diagnosis, or selected-Agent maintenance intent. The current Agent needs local command execution, file access and Node.js 22+. Output is a container list, projected account metadata, native-redacted JSON response with pinned target identity, connection diagnosis, or installation receipt with a separate host discovery check. Container names may identify accounts; disclose only within the user's request.
 
 ## Main line
 
 1. Resolve this installed Skill's directory from the host's actual discovery record. Its bundled CLI is `.runtime/bin/ecom-cli.mjs` relative to that directory. Invoke it through an available Node.js 22+ runtime, checking host-managed runtime configuration before PATH. Canonical npm source has no `.runtime`; complete its managed installation using the packaged INSTALL.md first.
 2. Read [capabilities.json](capabilities.json) and use [the generic adapter](adapters/generic.json) for any host with the required capabilities. Probe the actual entry with `version --json` and `capabilities --json`; use only declared commands and flags. A missing runtime or required capability ends with CAPABILITY_UNAVAILABLE; do not modify adapters during a task.
-3. For normal listing, invoke the resolved entry with `containers list --json`. Ecom must already be running in normal desktop mode. Discovery validates the live executable and protected endpoint. With multiple instances, ask which instance/profile the user intends and pass the declared selector. Never choose an account from a name guess.
-4. Require `ok=true`, protocol version 1, a concrete instance identity and container ID/name pairs. Return the names and stable IDs as requested. This operation reads containers without navigating pages or changing the active tab.
+3. Choose the supported operation from the live schema. Use `containers list --json` to locate targets, then use a stable ID or unique exact name. Ecom must already be running in normal desktop mode; discovery validates its executable and protected endpoint. Multiple instances require an explicit intended instance/profile rather than a guess.
+4. For account details, run `containers inspect --container VALUE --json`. Report platform, saved homepage and timestamped service-login status. `identityBound` records a saved binding; `identityConfirmed` requires the native ready state. Cookie expiry is a reference, not proof of current service access. Account names are labels and do not grant or remove capabilities. Credential-like homepage fields are redacted.
+5. For a session request, require an explicit authorized read-only endpoint from the user or a trusted business capability’s registered operation. Business selection, endpoint semantics, date/metrics and interpretation belong to that caller. Run `session request --container VALUE --url HTTPS_URL --method GET --json`. GET alone does not prove an endpoint has no side effects; resolve unclear endpoint intent before submission. The CLI pins one instance and container across discovery and execution. Credentials remain native; header/body/credential inputs, redirects and HTML are unsupported. The enabled origin is controlled by Ecom, not expanded by the CLI.
+6. Require `ok=true`, protocol version 1, operation ID and matching instance/container IDs. For requests, require the JSON response contract and distinguish HTTP success from business success: `businessStatus=not-evaluated` requires the caller’s platform-specific check. Preserve structured errors and executed status. These operations do not navigate or activate tabs.
 
 ## Diagnosis and recovery
 
+- SHOP_NOT_READY: inspect this exact account. Complete login and platform-identity verification through its Ecom account management page; a cookie expiry or account name does not satisfy readiness. If the native adapter cannot verify identity, report that gap and stop the data request. Return to step 5 only after readiness is established.
+- SHOP_VERIFICATION_FAILED: stop; the browser’s pre-request identity check failed. Preserve the selected target and report the failure.
+- ORIGIN_NOT_ALLOWED, CREDENTIAL_INPUT_REJECTED, METHOD_UNSUPPORTED or INVALID_URL: correct the intended input within the declared contract; do not broaden browser permissions.
+- REQUEST_FAILED or NON_JSON_RESPONSE: preserve HTTP/operation/execute fields; handle login, permission or challenge through the original container. Do not infer business success.
 - INSTANCE_NOT_RUNNING: run `doctor --json`. Ask the user to open a compatible Ecom version. Do not enable remote debugging or substitute another browser.
 - INSTANCE_AMBIGUOUS: obtain the intended instance or profile, then return to step 3.
 - INSTANCE_CHANGED: no request was submitted; rediscover before returning to step 3.

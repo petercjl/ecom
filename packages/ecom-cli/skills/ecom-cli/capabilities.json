@@ -24,13 +24,17 @@
       "output_fields": [
         "ok",
         "containers",
+        "container",
         "instance",
+        "httpStatus",
+        "data",
+        "businessStatus",
         "error"
       ],
       "side_effects": {
         "external_mutation": false,
         "may_cost_money": false,
-        "authorization": "Read-only browser request authorized by user; selected-target writes require installation/update intent"
+        "authorization": "Container metadata reads and explicitly authorized read-only HTTPS operations; website Set-Cookie may refresh the native session. Selected-target maintenance requires installation/update intent."
       },
       "errors": [
         "CAPABILITY_UNAVAILABLE",
