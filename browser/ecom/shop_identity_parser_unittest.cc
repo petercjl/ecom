@@ -48,6 +48,9 @@ TEST(ShopIdentityParser, TokenIsConfinedToActualMicrodataMetaAttribute) {
   ASSERT_TRUE(first);
   EXPECT_EQ(*first, "fixture-token");
   EXPECT_EQ(ExtractSycmLegalityToken(
+                R"(<meta name="microdata" content="legalityToken=fixture-token==;loginUserId=123">)"),
+            std::optional<std::string>("fixture-token"));
+  EXPECT_EQ(ExtractSycmLegalityToken(
                 R"(<meta name="microdata" content="legalityToken=fixture%2Btoken%3D">)"),
             std::optional<std::string>("fixture%2Btoken%3D"));
   auto second = ExtractSycmLegalityToken(

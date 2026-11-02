@@ -146,7 +146,10 @@ std::optional<std::string> ExtractSycmLegalityToken(std::string_view html) {
       if (!pair.starts_with(prefix)) {
         continue;
       }
-      const std::string candidate = pair.substr(prefix.size());
+      // Match the platform client's semicolon-separated key=value metadata:
+      // its split('=')[1] preserves existing percent encoding.
+      const std::string candidate =
+          pair.substr(prefix.size(), pair.find('=', prefix.size()) - prefix.size());
       if (token || candidate.empty() || candidate.size() > 1024 ||
           candidate == "null" || candidate == "undefined" ||
           !std::all_of(candidate.begin(), candidate.end(), [](unsigned char c) {

@@ -970,6 +970,19 @@ class ShopService final : public base::SupportsUserData::Data,
         if (const auto code = payload->GetDict().FindInt("code")) {
           diagnostics.Set("identityProbeCode", *code);
         }
+        const auto* message = payload->GetDict().FindString("message");
+        if (!message) {
+          message = payload->GetDict().FindString("msg");
+        }
+        if (message) {
+          base::DictValue classification;
+          classification.Set("token",
+                             base::ContainsCaseInsensitiveASCII(*message, "token"));
+          for (const auto* word : {"过期", "登录", "权限", "参数", "非法", "验证"}) {
+            classification.Set(word, message->find(word) != std::string::npos);
+          }
+          diagnostics.Set("identityProbeMessageClass", std::move(classification));
+        }
         if (const auto* data = payload->GetDict().FindDict("data")) {
           base::DictValue types;
           for (const auto* key : {"runAsShopId", "loginUserId", "mainUserId",
