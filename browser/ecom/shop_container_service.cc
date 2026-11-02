@@ -913,7 +913,8 @@ class ShopService final : public base::SupportsUserData::Data,
     resource->site_for_cookies = net::SiteForCookies::FromUrl(url);
     resource->request_initiator = url::Origin::Create(url);
     resource->headers.SetHeader("Accept", "application/json");
-    resource->headers.SetHeader("Referer", kHome);
+    resource->referrer = GURL(kHome);
+    resource->mode = network::mojom::RequestMode::kCors;
     resource->headers.SetHeader("User-Agent", embedder_support::GetUserAgent());
     constexpr auto annotation =
         net::DefineNetworkTrafficAnnotation("ecom_shop_personal_view", R"(
@@ -1026,7 +1027,8 @@ class ShopService final : public base::SupportsUserData::Data,
     resource->site_for_cookies = net::SiteForCookies::FromUrl(url);
     resource->request_initiator = url::Origin::Create(url);
     resource->headers.SetHeader("Accept", "application/json");
-    resource->headers.SetHeader("Referer", kHome);
+    resource->referrer = GURL(kHome);
+    resource->mode = network::mojom::RequestMode::kCors;
     resource->headers.SetHeader("User-Agent", embedder_support::GetUserAgent());
     constexpr auto annotation =
         net::DefineNetworkTrafficAnnotation("ecom_shop_login_check", R"(
