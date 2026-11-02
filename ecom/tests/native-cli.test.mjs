@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { validateReadUrl, resolveContainer } from '../cli.mjs';
 
 test('native read URL rejects credentials and insecure schemes before submission',()=>{
@@ -15,16 +16,16 @@ test('container selection requires a unique exact name or stable ID',()=>{
   assert.throws(()=>resolveContainer(list,'unknown'),{code:'CONTAINER_NOT_FOUND'});
 });
 test('actual native CLI exposes dev capabilities and structured failure without connecting a browser',()=>{
-  const script=new URL('../cli.mjs',import.meta.url);
-  const caps=JSON.parse(execFileSync(process.execPath,[script.pathname,'capabilities'],{encoding:'utf8'}));
+  const script=fileURLToPath(new URL('../cli.mjs',import.meta.url));
+  const caps=JSON.parse(execFileSync(process.execPath,[script,'capabilities'],{encoding:'utf8'}));
   assert.equal(caps.debuggingRequired,false);
   assert.deepEqual(caps.commands.slice(0,2),['containers list','session get']);
   for(const command of ['shops manage','shops create','shops configure','shops open','shops verify','shops confirm']) assert.ok(caps.commands.includes(command));
-  assert.throws(()=>execFileSync(process.execPath,[script.pathname,'evaluate'],{encoding:'utf8',stdio:'pipe'}),e=>JSON.parse(e.stderr).error.code==='UNSUPPORTED_COMMAND');
+  assert.throws(()=>execFileSync(process.execPath,[script,'evaluate'],{encoding:'utf8',stdio:'pipe'}),e=>JSON.parse(e.stderr).error.code==='UNSUPPORTED_COMMAND');
 });
 
 test('shop CLI rejects incomplete creation and confirmation before native calls',()=>{
- const script=new URL('../cli.mjs',import.meta.url).pathname;
+ const script=fileURLToPath(new URL('../cli.mjs',import.meta.url));
  for(const args of [['shops','create','--name','Example'],['shops','confirm','--container','unknown'],['shops','configure','--container','unknown'],['shops','delete','--container','unknown'],['shops','update','--container','unknown']]) {
   assert.throws(()=>execFileSync(process.execPath,[script,...args],{encoding:'utf8',stdio:'pipe'}),e=>JSON.parse(e.stderr).error.code==='INVALID_SHOP_COMMAND');
  }
