@@ -21,6 +21,7 @@
 *.json5 text eol=lf
 *.md    text eol=lf
 *.mm    text eol=lf diff=cpp
+*.mjs   text eol=lf
 *.mojom text eol=lf
 *.patch text eol=lf
 *.pdf -diff
@@ -72,3 +73,4 @@ test/data/tor/tor_control/*_win/controlport   text eol=crlf
 tools/crates/vendor/** -text
 third_party/boringtun/vendor/** -text
 third_party/wasm/vendor/** -text
+packages/ecom-cli/lib/sycm-vendor/** -text
