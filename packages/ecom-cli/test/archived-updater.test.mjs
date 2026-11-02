@@ -63,19 +63,31 @@ for(const archive of archives.versions)test(`published ${archive.version} update
     // Package acquisition succeeds, while activation is refused by a held lock.
     fs.writeFileSync(target+'.ecom-lock','fixture lock',{flag:'wx'});
     const failed=await invoke(old,['update','install',...options(target),'--yes','--version',version]);
-    assert.equal(failed.ok,false);assert.equal(failed.error.code,'CANDIDATE_ACTIVATION_FAILED');
+    assert.equal(failed.ok,false);
+    assert.equal(failed.error.code,archive.version==='0.1.3'?'CANDIDATE_ACTIVATION_FAILED':'TARGET_LOCKED');
     assert.equal((await invoke(path.join(target,'.runtime/bin/ecom-cli.mjs'),['version','--json'])).version,archive.version);
+    const journals=fs.readdirSync(path.dirname(target)).filter(name=>name.startsWith(path.basename(target)+'.ecom-update-'));
+    assert.equal(journals.length,1);
+    const journal=JSON.parse(fs.readFileSync(path.join(path.dirname(target),journals[0])));
+    const acquiredEntry=path.join(journal.candidate,'node_modules/@petercjl/ecom-cli/bin/ecom-cli.mjs');
+    assert.equal((await invoke(acquiredEntry,['version','--json'])).version,version);
     fs.unlinkSync(target+'.ecom-lock');
-    const updated=await invoke(old,['update','install',...options(target),'--yes','--version',version]);
+    const repaired=await invoke(acquiredEntry,['skill','update',...options(target)]);
+    assert.equal(repaired.current,true);
+    assert.deepEqual(fs.readFileSync(path.join(repaired.backup,'SKILL.md')),priorSkill);
+    // Exercise each archived implementation's successful update path as well.
+    const roundtrip=path.join(tmp,'host-roundtrip/ecom-cli');
+    assert.equal((await invoke(old,['skill','install',...options(roundtrip)])).current,true);
+    const updated=await invoke(old,['update','install',...options(roundtrip),'--yes','--version',version]);
     assert.equal(updated.ok,true,JSON.stringify(updated));assert.ok(updated.backup);
     assert.deepEqual(fs.readFileSync(path.join(updated.backup,'SKILL.md')),priorSkill);
     assert.equal(JSON.parse(fs.readFileSync(path.join(updated.backup,'.runtime/package.json'))).version,archive.version);
-    const entry=path.join(target,'.runtime/bin/ecom-cli.mjs');
+    const entry=path.join(roundtrip,'.runtime/bin/ecom-cli.mjs');
     assert.equal((await invoke(entry,['version','--json'])).version,version);
-    let status=await invoke(entry,['skill','status',...options(target)]);
-    if(status.recovery?.required)status=await invoke(entry,['skill','update',...options(target)]);
+    let status=await invoke(entry,['skill','status',...options(roundtrip)]);
+    if(status.recovery?.required)status=await invoke(entry,['skill','update',...options(roundtrip)]);
     assert.equal(status.current,true);assert.equal(status.recovery?.required,false);
-    const noop=await invoke(entry,['update','install',...options(target),'--yes','--version',version]);
+    const noop=await invoke(entry,['update','install',...options(roundtrip),'--yes','--version',version]);
     assert.equal(noop.current,true);assert.equal(noop.changed,false);
     assert.deepEqual(fs.readFileSync(path.join(other,'.ecom-receipt.json')),otherReceipt);
     fs.appendFileSync(path.join(other,'SKILL.md'),'\nfixture local edit\n');
