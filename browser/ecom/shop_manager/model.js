@@ -34,14 +34,8 @@ export function filterShops(
 }
 
 export function shopServices(row) {
-  if (row.platform === 'taobao')
-    return row.accountType === 'buyer'
-      ? ['taobao']
-      : ['sycm', 'qianniu', 'alimama']
+  if (row.platform === 'taobao') return ['sycm', 'qianniu', 'alimama', 'taobao']
   return ['home']
-}
-export function isTaobaoBuyer(row) {
-  return row.platform === 'taobao' && row.accountType === 'buyer'
 }
 
 export const homePresets = [

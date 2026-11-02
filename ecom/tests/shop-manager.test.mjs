@@ -31,12 +31,13 @@ test('all shop service choices keep the same stable native container ID',()=>{
   assert.throws(()=>shopRequest('open',rows[0],'external'),/SERVICE_UNSUPPORTED/);
   assert.throws(()=>shopRequest('open',{name:'ambiguous'},'sycm'),/CONTAINER_REQUIRED/);
 });
-test('Taobao buyer stays in Taobao category and opens a buyer entry instead of merchant services',()=>{
-  const buyer={id:'buyer-a',name:'买家账号',platform:'taobao',accountType:'buyer',state:'verification-unavailable'};
-  assert.deepEqual(filterShops([buyer],{scope:'taobao'}),[buyer]);
-  assert.deepEqual(shopServices(buyer),['taobao']);
-  assert.deepEqual(shopRequest('open',buyer,'taobao'),{method:'shops.open',containerId:'buyer-a',service:'taobao'});
-  assert.throws(()=>shopRequest('open',buyer,'sycm'),/SERVICE_UNSUPPORTED/);
+test('account names and legacy purpose metadata keep equal platform service access',()=>{
+  const account={id:'account-a',name:'买家账号',platform:'taobao',accountType:'buyer',state:'login-required'};
+  assert.deepEqual(filterShops([account],{scope:'taobao'}),[account]);
+  assert.deepEqual(shopServices(account),shopServices(rows[0]));
+  for(const service of ['sycm','qianniu','alimama','taobao','home'])
+    assert.deepEqual(shopRequest('open',account,service),{method:'shops.open',containerId:'account-a',service});
+  assert.deepEqual(shopRequest('verify',account),{method:'shops.verify',containerId:'account-a'});
 });
 test('saved homepage permits custom HTTPS paths and rejects credentials and privileged schemes',()=>{
   assert.equal(normalizeHomeUrl('https://example.com/account/home?tab=orders'),'https://example.com/account/home?tab=orders');

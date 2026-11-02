@@ -143,6 +143,7 @@ std::string HomeUrl(const base::DictValue& metadata) {
     return GURL(Field(metadata, "homeUrl")).spec();
   }
   const auto id = Field(metadata, "platform");
+  // Preserve the fallback homepage of legacy records without a saved URL.
   if (id == "taobao" && Field(metadata, "accountType") == "buyer") {
     return "https://www.taobao.com/";
   }
@@ -153,8 +154,7 @@ std::string HomeUrl(const base::DictValue& metadata) {
   return platform ? platform->entry : std::string();
 }
 bool SupportsVerification(const base::DictValue& metadata) {
-  return Field(metadata, "platform") == "taobao" &&
-         Field(metadata, "accountType") != "buyer";
+  return Field(metadata, "platform") == "taobao";
 }
 bool SamePlatform(const base::DictValue* existing,
                   const base::DictValue& target) {
@@ -497,13 +497,6 @@ class ShopService final : public base::SupportsUserData::Data,
           Send(std::move(callback), Error("INVALID_HOME_URL"));
           return;
         }
-      } else if (platform_id == "taobao" &&
-                 Field(*metadata, "accountType") == "buyer") {
-        if (!service.empty() && service != "home" && service != "taobao") {
-          Send(std::move(callback), Error("SERVICE_UNSUPPORTED"));
-          return;
-        }
-        url = "https://www.taobao.com/";
       } else if (platform_id != "taobao") {
         const auto* platform = Platform(platform_id);
         if (!platform || (!service.empty() && service != "home")) {
@@ -522,6 +515,8 @@ class ShopService final : public base::SupportsUserData::Data,
         url = "https://myseller.taobao.com/";
       } else if (service == "alimama") {
         url = "https://one.alimama.com/";
+      } else if (service == "taobao") {
+        url = "https://www.taobao.com/";
       } else {
         Send(std::move(callback), Error("SERVICE_UNSUPPORTED"));
         return;
@@ -610,21 +605,7 @@ class ShopService final : public base::SupportsUserData::Data,
     if (!ValidPlatform(updated)) {
       return "INVALID_PLATFORM_INPUT";
     }
-    const auto old_type = old && !Field(*old, "accountType").empty()
-                              ? Field(*old, "accountType")
-                              : "merchant";
-    const auto new_type = Field(updated, "accountType").empty()
-                              ? "merchant"
-                              : Field(updated, "accountType");
-    const bool type_changed = old && old_type != new_type;
-    if (type_changed &&
-        (old->FindDict("identity") || old->FindDict("candidate"))) {
-      return "ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER";
-    }
-    if (type_changed && loaders_.contains(id)) {
-      return "BUSY";
-    }
-    if (!old || type_changed) {
+    if (!old) {
       for (const char* key : {"authentication", "diagnostics", "lastError",
                               "checkedAt", "expiry"}) {
         updated.Remove(key);
@@ -632,9 +613,6 @@ class ShopService final : public base::SupportsUserData::Data,
       updated.Set("state", SupportsVerification(updated)
                                ? "awaiting-login"
                                : "verification-unavailable");
-    }
-    if (Field(updated, "platform") == "taobao") {
-      updated.Set("accountType", new_type);
     }
     if (Field(updated, "platform") == "custom") {
       auto name = Field(updated, "customPlatformName");
@@ -655,13 +633,6 @@ class ShopService final : public base::SupportsUserData::Data,
             .Set("platform", platform)
             .Set("state", platform == "taobao" ? "awaiting-login"
                                                : "verification-unavailable");
-    if (platform == "taobao") {
-      const bool buyer = Field(request, "accountType") == "buyer";
-      item.Set("accountType", buyer ? "buyer" : "merchant");
-      if (buyer) {
-        item.Set("state", "verification-unavailable");
-      }
-    }
     if (platform == "custom") {
       auto name = Field(request, "customPlatformName");
       base::TrimWhitespaceASCII(name, base::TRIM_ALL, &name);

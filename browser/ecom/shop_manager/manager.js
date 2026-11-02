@@ -9,7 +9,6 @@ import {
   appearanceRequest,
   deletionRequest,
   displayPlatform,
-  isTaobaoBuyer,
   homePresets,
   normalizeHomeUrl,
   homeLabel,
@@ -340,22 +339,9 @@ function syncPlatformFields(edit = false) {
   const prefix = edit ? 'edit-' : ''
   const selector = edit ? $('edit-platform') : $('platform')
   const custom = selector.value === 'custom'
-  $(prefix + 'account-type-field').hidden = selector.value !== 'taobao'
-  $(prefix + 'account-type').disabled =
-    busy
-    || selector.value !== 'taobao'
-    || (edit
-      && Boolean(
-        rows.find((row) => row.id === editId)?.identity
-          || rows.find((row) => row.id === editId)?.candidate,
-      ))
   if (!edit)
     $('platform-support-note').textContent =
-      selector.value === 'taobao'
-        ? $('account-type').value === 'buyer'
-          ? text('buyerPurposeNote')
-          : ''
-        : text('platformPending')
+      selector.value === 'taobao' ? '' : text('platformPending')
   $(prefix + 'custom-platform-fields').hidden = !custom
   for (const id of ['custom-platform-name']) {
     $(prefix + id).required = custom
@@ -364,11 +350,7 @@ function syncPlatformFields(edit = false) {
   if (!homeDirty[edit ? 'edit' : 'create']) {
     const base =
       platforms.find((item) => item.id === selector.value)?.entryUrl || ''
-    const url =
-      selector.value === 'taobao'
-      && $(prefix + 'account-type').value === 'buyer'
-        ? 'https://www.taobao.com/'
-        : base
+    const url = base
     setHomeField(prefix, url)
   }
   if (edit)
@@ -447,7 +429,6 @@ async function loadPlatforms() {
   syncPlatformFields(true)
 }
 $('platform').addEventListener('change', () => syncPlatformFields())
-$('account-type').addEventListener('change', () => syncPlatformFields())
 $('edit-platform').addEventListener('change', () => syncPlatformFields(true))
 function previewAppearance(prefix) {
   $(prefix + '-preview').style.backgroundColor = $(prefix + '-color').value
@@ -554,8 +535,7 @@ function render() {
     account.append(
       node(
         'div',
-        identity?.platformName
-          || text(isTaobaoBuyer(row) ? 'buyerAccount' : 'noIdentity'),
+        identity?.platformName || text('noIdentity'),
       ),
     )
     if (identity) {
@@ -575,7 +555,7 @@ function render() {
     status.append(
       node(
         'span',
-        text(isTaobaoBuyer(row) ? 'buyerLoginUnknown' : row.state),
+        text(row.state),
         'badge ' + row.state,
       ),
     )
@@ -660,7 +640,6 @@ async function runAction(action, row) {
     editId = row.id
     $('edit-name').value = row.name
     $('edit-platform').value = row.platform || ''
-    $('edit-account-type').value = row.accountType || 'merchant'
     $('edit-custom-platform-name').value = row.customPlatformName || ''
     homeDirty.edit = Boolean(row.homeUrl)
     setHomeField('edit-', row.homeUrl || '')
@@ -783,9 +762,6 @@ $('create-form').addEventListener('submit', async (event) => {
     const result = await command({
       method: 'shops.create',
       platform: $('platform').value,
-      ...($('platform').value === 'taobao'
-        ? { accountType: $('account-type').value }
-        : {}),
       name,
       icon: Number($('create-icon').value),
       color: $('create-color').value,
@@ -848,8 +824,6 @@ $('edit-form').addEventListener('submit', async (event) => {
       $('edit-color').value,
     )
     if ($('edit-platform').value) request.platform = $('edit-platform').value
-    if (request.platform === 'taobao')
-      request.accountType = $('edit-account-type').value
     request.homeUrl = normalizeHomeUrl($('edit-home-url').value)
     if (request.platform === 'custom') {
       request.customPlatformName = $('edit-custom-platform-name').value
