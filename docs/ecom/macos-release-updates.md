@@ -22,6 +22,8 @@ npm 提供版本元数据、tarball URL 和 SHA-512 integrity；助手仅访问 
 
 公开载荷仅包含原生应用、发布契约和许可证。发布前检查应用资源、隐私内容及真实打包清单；构建日志、工作区和账号数据不进入包。
 
+Ecom 的正式产品渠道由品牌、应用标识、数据目录和发布契约定义。构建设置 `is_debug=false`、`is_component_build=false` 和 `brave_channel=""`；GN 的 `is_official_build=false` 用于避开基线中 Brave 官方服务密钥与发行基础设施要求，不影响独立应用打包。构建不使用占位服务密钥。性能及与 Dev 的体积差异以完整产物实测为准。
+
 ## npm 发布与验收边界
 
 本体包与公开的 `@petercjl/ecom-cli` 独立。当前本体包尚未建立；首次创建须单独批准最小 prerelease bootstrap 和一次性 Trusted Publisher 设置。常规正式发布通过 GitHub 托管 Actions 与 OIDC，由 `npm-release-kit` 调度；不从本机直接发布正式载荷。稳定渠道为 `latest`，发布动作另行确认。

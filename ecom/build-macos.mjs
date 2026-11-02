@@ -58,7 +58,7 @@ async function main() {
     if (fs.existsSync(log)) throw new Error('Build log exists');
     const fd = fs.openSync(log, 'wx', 0o600);
     console.log(JSON.stringify({ revision, log, mode: args.length ? 'prepare' : 'build', output: 'Release_arm64', restartsDev: false, rootHasUncommittedChanges: source.rootHasUncommittedChanges }));
-    const buildArgs = [path.join(workspace, 'build/commands/scripts/build.ts'), 'Release', '--target_arch', 'arm64', '--channel', 'release', '--skip_signing', '--use_remoteexec', 'false', '--offline', '--gn', 'chrome_pgo_phase:0', '--gn', 'use_thin_lto:false', '--gn', 'enable_updater:false', '--gn', 'enable_sparkle:false', '--gn', 'enable_update_notifications:false'];
+    const buildArgs = [path.join(workspace, 'build/commands/scripts/build.ts'), 'Release', '--target_arch', 'arm64', '--channel', 'release', '--skip_signing', '--use_remoteexec', 'false', '--offline', '--gn', 'is_official_build:false', '--gn', 'chrome_pgo_phase:0', '--gn', 'use_thin_lto:false', '--gn', 'enable_updater:false', '--gn', 'enable_sparkle:false', '--gn', 'enable_update_notifications:false'];
     if (args.length) buildArgs.push('--prepare_only');
     try {
       await new Promise((resolve, reject) => {

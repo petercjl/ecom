@@ -167,7 +167,7 @@ if (is_win) {
     brave_product_dir_name_suffix = "-Development"
   }
 
-  if (is_official_build && brave_channel == "") {
+  if (brave_channel == "") {
     brave_product_dir_name = "Ecom/Ecom"
   } else {
     brave_product_dir_name = "Ecom/Ecom-Dev"
