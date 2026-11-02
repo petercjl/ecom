@@ -2,7 +2,7 @@
 import './strings.m.js'
 import { sendWithPromise } from 'chrome://resources/js/cr.js'
 import { loadTimeData } from 'chrome://resources/js/load_time_data.js'
-import { filterShops, shopRequest } from './model.mjs'
+import { filterShops, shopRequest } from './model.js'
 
 const zh = {
   workspace: '我的工作空间',

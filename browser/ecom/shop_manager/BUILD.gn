@@ -7,7 +7,7 @@ action("resources") {
     "index.html",
     "manager.css",
     "manager.js",
-    "model.mjs",
+    "model.js",
   ]
   outputs = [ "$target_gen_dir/shop_manager_resources.h" ]
   args = [

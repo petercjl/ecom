@@ -12,7 +12,7 @@ def main():
     args = parser.parse_args()
     parts = ['// Generated Ecom shop WebUI resources.\n#pragma once\nnamespace ecom {\n']
     for filename, name in [('index.html', 'Html'), ('manager.css', 'Css'),
-                           ('manager.js', 'Js'), ('model.mjs', 'Model')]:
+                           ('manager.js', 'Js'), ('model.js', 'Model')]:
         text = (args.source / filename).read_text()
         assert ')ECOMRESOURCE"' not in text
         parts.append(f'inline constexpr char kShopManager{name}[] = R"ECOMRESOURCE({text})ECOMRESOURCE";\n')

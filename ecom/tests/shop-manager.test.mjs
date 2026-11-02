@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterShops, shopRequest} from '../../browser/ecom/shop_manager/model.mjs';
+import {filterShops, shopRequest} from '../../browser/ecom/shop_manager/model.js';
 
 const rows = [
   {id:'shop-a', name:'旗舰店', platform:'taobao', state:'ready', identity:{shopId:'123', accountId:'456', platformName:'平台店名'}},

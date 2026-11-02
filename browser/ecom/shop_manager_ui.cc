@@ -41,7 +41,7 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
   source->SetRequestFilter(
       base::BindRepeating([](const std::string& path) {
         return path.empty() || path == "index.html" || path == "manager.css" ||
-               path == "manager.js" || path == "model.mjs";
+               path == "manager.js" || path == "model.js";
       }),
       base::BindRepeating([](const std::string& path,
                              content::WebUIDataSource::GotDataCallback done) {
@@ -50,7 +50,7 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
           data = kShopManagerCss;
         } else if (path == "manager.js") {
           data = kShopManagerJs;
-        } else if (path == "model.mjs") {
+        } else if (path == "model.js") {
           data = kShopManagerModel;
         }
         std::move(done).Run(
