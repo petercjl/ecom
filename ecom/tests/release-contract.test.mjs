@@ -83,8 +83,16 @@ test('publication verifies an actual tarball and rejects changed transport bytes
     write('ecom/releases/macos-arm64/' + config.version + '.json', JSON.stringify({ version: config.version, packageName: config.packageName, platform: 'darwin', arch: 'arm64', sourceRevision, tarballSha256: await sha256(tgz), nativeSmokeTest: true, localUpdateRecoveryVerified: true, updateRoundTripVerified: true, evidencePath }));
     run('git', ['add', '.']); run('git', ['commit', '-m', 'Fixture evidence']);
     assert.equal((await verifyPayload(repo, config.version, tgz)).artifactVerified, true);
+    const originalTarball = fs.readFileSync(tgz);
     fs.appendFileSync(tgz, 'changed transport bytes');
     await assert.rejects(verifyPayload(repo, config.version, tgz), /differs from the committed artifact/);
+    fs.writeFileSync(tgz, originalTarball);
+    write('ecom/test-macos-update-recovery.mjs', '// Development-only recovery verification');
+    run('git', ['add', '.']); run('git', ['commit', '-m', 'Verification-only change']);
+    assert.equal((await verifyPayload(repo, config.version, tgz)).artifactVerified, true);
+    write('ecom/updater/EcomUpdater.swift', '// Changed production updater');
+    run('git', ['add', '.']); run('git', ['commit', '-m', 'Native input change']);
+    await assert.rejects(verifyPayload(repo, config.version, tgz), /Native inputs changed/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 test('release source excludes concurrent edits and refuses modified managed source', () => {

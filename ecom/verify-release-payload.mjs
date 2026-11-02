@@ -32,7 +32,8 @@ export async function verifyPayload(repositoryRoot, version, tgz, tag = 'latest'
   if (!evidence.includes(record.sourceRevision)) throw new Error('Evidence does not identify the native build source');
   // Unknown application or recipe changes select a new build rather than reuse.
   const changes = git(root, ['diff', '--name-only', record.sourceRevision, 'HEAD']).split('\n').filter(Boolean);
-  const managerOnly = file => file.startsWith('docs/') || file.startsWith('packages/ecom-cli/') || file.startsWith('ecom/releases/') || file === 'AGENTS.md' || file === '.github/workflows/ecom-macos-publish.yml' || file === 'ecom/verify-release-payload.mjs';
+  const verificationOnly = new Set(['ecom/test-macos-update-recovery.mjs', 'ecom/tests/release-contract.test.mjs']);
+  const managerOnly = file => verificationOnly.has(file) || file.startsWith('docs/') || file.startsWith('packages/ecom-cli/') || file.startsWith('ecom/releases/') || file === 'AGENTS.md' || file === '.github/workflows/ecom-macos-publish.yml' || file === 'ecom/verify-release-payload.mjs';
   if (changes.some(file => !managerOnly(file))) throw new Error('Native inputs changed after the verified artifact; build again');
   if (!tgz) return { ok: true, version, record, artifactVerified: false };
   if (await sha256(tgz) !== record.tarballSha256) throw new Error('Payload differs from the committed artifact');

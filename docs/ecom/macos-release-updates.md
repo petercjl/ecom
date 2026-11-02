@@ -26,7 +26,7 @@ Ecom 的正式产品渠道由品牌、应用标识、数据目录和发布契约
 
 ## npm 发布与验收边界
 
-本体包与公开的 `@petercjl/ecom-cli` 独立。当前本体包尚未建立；首次创建须单独批准最小 prerelease bootstrap 和一次性 Trusted Publisher 设置。常规正式发布通过 GitHub 托管 Actions 与 OIDC，由 `npm-release-kit` 调度；不从本机直接发布正式载荷。稳定渠道为 `latest`，发布动作另行确认。
+本体包与公开的 `@petercjl/ecom-cli` 独立。本体包通过最小 prerelease bootstrap 创建，并一次性配置 Trusted Publisher。常规正式发布通过 GitHub 托管 Actions 与 OIDC，由 `npm-release-kit` 调度；不从本机直接发布正式载荷。稳定渠道为 `latest`，发布动作另行确认。
 
 本体流水线为 `.github/workflows/ecom-macos-publish.yml`，使用 GitHub 托管 runner 与 OIDC，默认仅验证。`npm-release-kit doctor/publish` 的 package-dir 指向 `ecom/distribution`，workflow 参数为文件名 `ecom-macos-publish.yml`；执行真实发布时需显式传入 `validate_only=false`，发布动作另行授权。此流水线发布已固定版本和哈希的 tarball，不对原生程序执行自动版本递增或 CI 重编译。
 
@@ -34,7 +34,7 @@ Ecom 的正式产品渠道由品牌、应用标识、数据目录和发布契约
 
 将证据保存至 `docs/ecom/release-evidence/`，提交 `ecom/releases/macos-arm64/<版本>.json`，记录确切版本、包名、平台、架构、源码提交、tarball SHA-256、`nativeSmokeTest=true`、`localUpdateRecoveryVerified=true` 与 `evidencePath`。发布到 `next` 允许真实更新往返待验收；提升到 `latest` 还要求 `updateRoundTripVerified=true`。原生构建 receipt 的原生运行及真实更新状态默认 false，不能直接作为发布批准。流水线在下载前检查已提交证据；源码或构建配方变化要求重新构建。产物来自同仓库 `ecom-macos-v<版本>` 的不可变 Release 附件，下载后再次核对完整包及内部 ZIP 哈希。
 
-提升渠道前读取注册表的准确版本，校验其 SHA-512 与已验证 tarball 一致，再通过 OIDC 执行 dist-tag 操作，保留相同原生程序与包版本；不重新打包已发布版本。首次 `latest` 只允许提升已发布的候选。Trusted Publisher 需一次性启用 **Allow npm dist-tag**；workflow 固定 npm 11.21.0，满足此操作的 CLI 要求，依据见 [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)。当前尚无满足条件的本体发布记录，未执行本体发布或渠道提升。
+提升渠道前读取注册表的准确版本，校验其 SHA-512 与已验证 tarball 一致，再通过 OIDC 执行 dist-tag 操作，保留相同原生程序与包版本；不重新打包已发布版本。首次 `latest` 只允许提升已发布的候选。Trusted Publisher 需一次性启用 **Allow npm dist-tag**；workflow 固定 npm 11.21.0，满足此操作的 CLI 要求，依据见 [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)。确切构建、安装、更新验收和发布状态记录在对应的 `ecom/releases/macos-arm64/` 与 `docs/ecom/release-evidence/` 中，并与 npm 注册表交叉核对。
 
 当前 GUI 更新入口为原生助手的两个确认对话框；设置页的手动检查、进度展示及产品 CLI 的 update status/check/download/apply 尚未开放，列为能力缺口。Windows 与 Intel Mac 待分别实现和验证。原生助手契约自检和 Node 单元测试不能替代正式浏览器、首次安装或真实 npm 更新往返验收。
 
