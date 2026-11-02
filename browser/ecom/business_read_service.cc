@@ -430,6 +430,13 @@ private:
       Submit();
       return;
     }
+    if (stage == Stage::kResult || stage == Stage::kDataFlow) {
+      if (body->size() > 2 * 1024 * 1024 - response_bytes_) {
+        Fail("RESPONSE_TOO_LARGE");
+        return;
+      }
+      response_bytes_ += body->size();
+    }
     auto json = base::JSONReader::Read(*body, base::JSON_PARSE_RFC);
     if (!json || !json->is_dict()) {
       Fail("NON_JSON_RESPONSE");
@@ -596,6 +603,7 @@ private:
   base::Value module_response_;
   base::ListValue data_flows_;
   std::vector<int64_t> flow_ids_;
+  size_t response_bytes_ = 0;
   std::string sycm_token_;
   bool submitted_ = false;
   int last_status_ = 0;

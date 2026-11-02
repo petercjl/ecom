@@ -116,7 +116,7 @@ export function resolveModuleResponse(response,flows) {
       }
       for(const candidate of results) {
         let current=candidate;
-        for(const key of ref.split('.'))current=current&&typeof current==='object'&&Object.hasOwn(current,key)?current[key]:undefined;
+        for(const key of ref.replace(/\[(\d+)\]/g,'.$1').split('.'))current=current&&typeof current==='object'&&Object.hasOwn(current,key)?current[key]:undefined;
         if(current!==undefined)return current;
       }
       return value;
@@ -126,7 +126,7 @@ export function resolveModuleResponse(response,flows) {
     return value;
   };
   const resolved=resolve(response);
-  if(hasTemplate(resolved))throw fail('DATA_FLOW_EXPANSION_REQUIRED','Registered module returned unresolved data templates; retain the operation ID and inspect service support',{executed:true});
+  if(hasTemplate(resolved)&&!flows.length)throw fail('DATA_FLOW_EXPANSION_REQUIRED','Registered module needs native data-flow expansion; retain the operation ID and inspect browser support',{executed:true});
   return sanitized(resolved);
 }
 export async function runRead(options,deps={}) {
@@ -144,7 +144,8 @@ export async function runRead(options,deps={}) {
   try {
     const data=businessResponse(result.data),flows=result.dataFlows??[];
     const expanded=op.requestShape==='alimama-dynamic-module'&&hasTemplate(data)?resolveModuleResponse(data,flows):undefined;
-    return {...result,...(flows.length?{dataFlows:sanitized(flows)}:{}),...(expanded?{resolvedResponse:expanded}:{}),operation:op.id,service:op.service,data,businessStatus:'success',fetchedAt:new Date().toISOString(),dataDateVerification:'caller-must-check-requested-period-and-platform-update-time'};
+    const partial=Boolean(expanded&&hasTemplate(expanded));
+    return {...result,...(flows.length?{dataFlows:sanitized(flows)}:{}),...(expanded?{resolvedResponse:expanded,completeness:{complete:!partial,scope:'registered-module-response',...(partial?{reason:'Platform data flows returned successfully but some template references have no returned value; inspect resolvedResponse and do not infer missing values.'}:{})}}:{}),operation:op.id,service:op.service,data,businessStatus:partial?'partial':'success',fetchedAt:new Date().toISOString(),dataDateVerification:'caller-must-check-requested-period-and-platform-update-time'};
   }catch(error){error.operationId=result.operationId;throw error;}
 }
 export async function openOperation(options,deps={}) {

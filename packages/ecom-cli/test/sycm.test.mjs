@@ -108,10 +108,14 @@ test('dynamic-module reads resolve native data flows and reject partial or faile
   const body={data:{chart:'##result[0]##',name:'##profile.name##'},info:{ok:true}};
   const flows=[{dataFlowId:'1',response:{data:{resultList:[{result:[{value:7}],profile:{name:'Sample'}}]},info:{ok:true}}}];
   assert.deepEqual(resolveModuleResponse(body,flows).data,{chart:{value:7},name:'Sample'});
+  assert.equal(resolveModuleResponse({data:{visible:'##totalInterpret[0].isShow##'}},[{response:{data:{resultList:[{totalInterpret:[{isShow:true}]}]}}}]).data.visible,true);
   assert.throws(()=>resolveModuleResponse(body,[]),e=>e.code==='DATA_FLOW_EXPANSION_REQUIRED');
   assert.throws(()=>resolveModuleResponse(body,[{response:{data:null,info:{ok:false,message:'无权限'}}}]),e=>e.code==='PERMISSION_REQUIRED');
   const deps={discover:()=>({endpoint:{businessReadProtocol:1}}),registeredRequest:async()=>({operationId:'module-op',data:body,dataFlows:flows})};
   const result=await runRead({operation:'alimama.insight.industry-categories',container:'sample','params-json':'{}'},deps);
   assert.equal(result.resolvedResponse.data.chart.value,7);
+  const emptyFlows=[{response:{data:{resultList:[]},info:{ok:true}}}];
+  const partial=await runRead({operation:'alimama.insight.industry-categories',container:'sample','params-json':'{}'},{...deps,registeredRequest:async()=>({operationId:'partial-op',data:body,dataFlows:emptyFlows})});
+  assert.equal(partial.businessStatus,'partial');assert.equal(partial.completeness.complete,false);
   await assert.rejects(runRead({operation:'alimama.insight.industry-categories',container:'sample','params-json':'{}'},{...deps,registeredRequest:async()=>({operationId:'module-op',data:body})}),e=>e.code==='DATA_FLOW_EXPANSION_REQUIRED'&&e.operationId==='module-op');
 });
