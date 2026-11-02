@@ -33,6 +33,36 @@ import { ContainersSettingsHandlerBrowserProxy } from './containers_browser_prox
 import type { IconSelectedEvent } from './containers_icon.js'
 import { DragReorderMixin, getDragReorderCss } from './drag_reorder_mixin.js'
 
+const shopStrings: Record<string, string> = {
+  TITLE: ContainersStrings.SETTINGS_CONTAINERS_SHOP_TITLE,
+  INTRO: ContainersStrings.SETTINGS_CONTAINERS_SHOP_INTRO,
+  PLATFORM: ContainersStrings.SETTINGS_CONTAINERS_SHOP_PLATFORM,
+  SELECT: ContainersStrings.SETTINGS_CONTAINERS_SHOP_SELECT,
+  TAOBAO: ContainersStrings.SETTINGS_CONTAINERS_SHOP_TAOBAO,
+  NAME: ContainersStrings.SETTINGS_CONTAINERS_SHOP_NAME,
+  CREATE: ContainersStrings.SETTINGS_CONTAINERS_SHOP_CREATE,
+  REFRESH: ContainersStrings.SETTINGS_CONTAINERS_SHOP_REFRESH,
+  CONFIGURE: ContainersStrings.SETTINGS_CONTAINERS_SHOP_CONFIGURE,
+  LOGIN: ContainersStrings.SETTINGS_CONTAINERS_SHOP_LOGIN,
+  QIANNIU: ContainersStrings.SETTINGS_CONTAINERS_SHOP_QIANNIU,
+  ALIMAMA: ContainersStrings.SETTINGS_CONTAINERS_SHOP_ALIMAMA,
+  VERIFY: ContainersStrings.SETTINGS_CONTAINERS_SHOP_VERIFY,
+  CONFIRM: ContainersStrings.SETTINGS_CONTAINERS_SHOP_CONFIRM,
+  UNCONFIGURED: ContainersStrings.SETTINGS_CONTAINERS_SHOP_UNCONFIGURED,
+  AWAITING_LOGIN: ContainersStrings.SETTINGS_CONTAINERS_SHOP_AWAITING_LOGIN,
+  VERIFICATION_REQUIRED: ContainersStrings.SETTINGS_CONTAINERS_SHOP_VERIFICATION_REQUIRED,
+  AWAITING_CONFIRMATION: ContainersStrings.SETTINGS_CONTAINERS_SHOP_AWAITING_CONFIRMATION,
+  READY: ContainersStrings.SETTINGS_CONTAINERS_SHOP_READY,
+  IDENTITY_MISMATCH: ContainersStrings.SETTINGS_CONTAINERS_SHOP_IDENTITY_MISMATCH,
+  BUSY: ContainersStrings.SETTINGS_CONTAINERS_SHOP_BUSY,
+  ERROR: ContainersStrings.SETTINGS_CONTAINERS_SHOP_ERROR,
+  LAST_CHECKED: ContainersStrings.SETTINGS_CONTAINERS_SHOP_LAST_CHECKED,
+  IDENTITY: ContainersStrings.SETTINGS_CONTAINERS_SHOP_IDENTITY,
+  SERVICE_NOTE: ContainersStrings.SETTINGS_CONTAINERS_SHOP_SERVICE_NOTE,
+  GENERAL: ContainersStrings.SETTINGS_CONTAINERS_SHOP_GENERAL,
+  NAME_EXISTS: ContainersStrings.SETTINGS_CONTAINERS_SHOP_NAME_EXISTS,
+}
+
 interface ShopIdentity { shopId: string; accountId: string; platformName: string; verifiedAt: string; candidateId?: string }
 interface ShopRow { id: string; name: string; platform?: string; state: string; identity?: ShopIdentity; candidate?: ShopIdentity }
 
@@ -94,7 +124,7 @@ export class SettingsBraveContentContainersElement extends SettingsBraveContentC
   accessor shopError_ = ''
 
   shopText_(suffix: string): string {
-    const key = (ContainersStrings as unknown as Record<string, string>)['SETTINGS_CONTAINERS_SHOP_' + suffix]
+    const key = shopStrings[suffix]
     return key ? this.i18n(key) : suffix
   }
 

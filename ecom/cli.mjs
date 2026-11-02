@@ -67,6 +67,7 @@ async function main() {
   if(group==='shops') {
     if(['platforms','list'].includes(action)) return nativeCall(profile,{method:'shops.'+action});
     if(action==='create'&&values.name&&values.platform) return nativeCall(profile,{method:'shops.create',name:values.name,platform:values.platform});
+    if(action==='configure'&&!values.platform || action==='confirm'&&(!values['shop-id']||!values['candidate-id'])) throw error('INVALID_SHOP_COMMAND','配置需指定平台；确认需指定 shop-id 和本次 candidate-id');
     if(['configure','open','verify','confirm'].includes(action)&&values.container) {
       const listed=await nativeCall(profile,{method:'containers.list'});
       const container=resolveContainer(listed.containers,values.container);
