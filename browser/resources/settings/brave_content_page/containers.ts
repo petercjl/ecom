@@ -50,10 +50,13 @@ const shopStrings: Record<string, string> = {
   CONFIRM: ContainersStrings.SETTINGS_CONTAINERS_SHOP_CONFIRM,
   UNCONFIGURED: ContainersStrings.SETTINGS_CONTAINERS_SHOP_UNCONFIGURED,
   AWAITING_LOGIN: ContainersStrings.SETTINGS_CONTAINERS_SHOP_AWAITING_LOGIN,
-  VERIFICATION_REQUIRED: ContainersStrings.SETTINGS_CONTAINERS_SHOP_VERIFICATION_REQUIRED,
-  AWAITING_CONFIRMATION: ContainersStrings.SETTINGS_CONTAINERS_SHOP_AWAITING_CONFIRMATION,
+  VERIFICATION_REQUIRED:
+    ContainersStrings.SETTINGS_CONTAINERS_SHOP_VERIFICATION_REQUIRED,
+  AWAITING_CONFIRMATION:
+    ContainersStrings.SETTINGS_CONTAINERS_SHOP_AWAITING_CONFIRMATION,
   READY: ContainersStrings.SETTINGS_CONTAINERS_SHOP_READY,
-  IDENTITY_MISMATCH: ContainersStrings.SETTINGS_CONTAINERS_SHOP_IDENTITY_MISMATCH,
+  IDENTITY_MISMATCH:
+    ContainersStrings.SETTINGS_CONTAINERS_SHOP_IDENTITY_MISMATCH,
   BUSY: ContainersStrings.SETTINGS_CONTAINERS_SHOP_BUSY,
   ERROR: ContainersStrings.SETTINGS_CONTAINERS_SHOP_ERROR,
   LAST_CHECKED: ContainersStrings.SETTINGS_CONTAINERS_SHOP_LAST_CHECKED,
@@ -63,8 +66,21 @@ const shopStrings: Record<string, string> = {
   NAME_EXISTS: ContainersStrings.SETTINGS_CONTAINERS_SHOP_NAME_EXISTS,
 }
 
-interface ShopIdentity { shopId: string; accountId: string; platformName: string; verifiedAt: string; candidateId?: string }
-interface ShopRow { id: string; name: string; platform?: string; state: string; identity?: ShopIdentity; candidate?: ShopIdentity }
+interface ShopIdentity {
+  shopId: string
+  accountId: string
+  platformName: string
+  verifiedAt: string
+  candidateId?: string
+}
+interface ShopRow {
+  id: string
+  name: string
+  platform?: string
+  state: string
+  identity?: ShopIdentity
+  candidate?: ShopIdentity
+}
 
 const SettingsBraveContentContainersElementBase = DragReorderMixin(
   PrefServiceObserverMixinLit(I18nMixinLit(CrLitElement)),
@@ -136,44 +152,85 @@ export class SettingsBraveContentContainersElement extends SettingsBraveContentC
     return new Date(Number(identity.verifiedAt) * 1000).toLocaleString()
   }
 
-  async shopCommand_(request: object): Promise<{ok: boolean; shops?: ShopRow[]; error?: {code: string}}> {
-    const result = JSON.parse(await sendWithPromise<string>('ecomShopCommand', JSON.stringify(request)))
+  async shopCommand_(
+    request: object,
+  ): Promise<{ ok: boolean; shops?: ShopRow[]; error?: { code: string } }> {
+    const result = JSON.parse(
+      await sendWithPromise<string>('ecomShopCommand', JSON.stringify(request)),
+    )
     if (result.shops) this.shopRows_ = result.shops
     if (!result.ok) throw new Error(result.error?.code || 'SHOP_ERROR')
     return result
   }
 
   async refreshShops_() {
-    try { await this.shopCommand_({method:'shops.list'}) } catch { this.shopError_ = this.shopText_('ERROR') }
+    try {
+      await this.shopCommand_({ method: 'shops.list' })
+    } catch {
+      this.shopError_ = this.shopText_('ERROR')
+    }
   }
 
-  onShopNameInput_(e: Event) { this.shopName_ = (e.target as HTMLInputElement).value }
-  onShopPlatformChange_(e: Event) { this.shopPlatform_ = (e.target as HTMLSelectElement).value }
+  onShopNameInput_(e: Event) {
+    this.shopName_ = (e.target as HTMLInputElement).value
+  }
+  onShopPlatformChange_(e: Event) {
+    this.shopPlatform_ = (e.target as HTMLSelectElement).value
+  }
 
   async onCreateShop_() {
     if (this.shopBusy_ || !this.shopName_.trim() || !this.shopPlatform_) return
-    this.shopBusy_ = true; this.shopError_ = ''
+    this.shopBusy_ = true
+    this.shopError_ = ''
     try {
       const name = this.shopName_.trim()
-      const result = await this.shopCommand_({method:'shops.create',name,platform:this.shopPlatform_})
-      const created = result.shops?.find(row => row.name === name)
+      const result = await this.shopCommand_({
+        method: 'shops.create',
+        name,
+        platform: this.shopPlatform_,
+      })
+      const created = result.shops?.find((row) => row.name === name)
       this.shopName_ = ''
-      if (created) await this.shopCommand_({method:'shops.open',containerId:created.id,service:'sycm'})
-    } catch (e) { this.shopError_ = this.shopText_(e instanceof Error && e.message === 'CONTAINER_NAME_EXISTS' ? 'NAME_EXISTS' : 'ERROR') }
-    finally { this.shopBusy_ = false; await this.refreshShops_() }
+      if (created)
+        await this.shopCommand_({
+          method: 'shops.open',
+          containerId: created.id,
+          service: 'sycm',
+        })
+    } catch (e) {
+      this.shopError_ = this.shopText_(
+        e instanceof Error && e.message === 'CONTAINER_NAME_EXISTS'
+          ? 'NAME_EXISTS'
+          : 'ERROR',
+      )
+    } finally {
+      this.shopBusy_ = false
+      await this.refreshShops_()
+    }
   }
 
   async onShopAction_(e: Event) {
     if (this.shopBusy_) return
-    const {id,action,service} = (e.currentTarget as HTMLElement).dataset
-    const row = this.shopRows_.find(value => value.id === id)
+    const { id, action, service } = (e.currentTarget as HTMLElement).dataset
+    const row = this.shopRows_.find((value) => value.id === id)
     if (!row || !action) return
-    this.shopBusy_ = true; this.shopError_ = ''
+    this.shopBusy_ = true
+    this.shopError_ = ''
     try {
-      await this.shopCommand_({method:'shops.'+action,containerId:id,platform:'taobao',service,
-        shopId:row.candidate?.shopId,candidateId:row.candidate?.candidateId})
-    } catch { this.shopError_ = this.shopText_('ERROR') }
-    finally { this.shopBusy_ = false; await this.refreshShops_() }
+      await this.shopCommand_({
+        method: 'shops.' + action,
+        containerId: id,
+        platform: 'taobao',
+        service,
+        shopId: row.candidate?.shopId,
+        candidateId: row.candidate?.candidateId,
+      })
+    } catch {
+      this.shopError_ = this.shopText_('ERROR')
+    } finally {
+      this.shopBusy_ = false
+      await this.refreshShops_()
+    }
   }
 
   private browserProxy = ContainersSettingsHandlerBrowserProxy.getInstance()

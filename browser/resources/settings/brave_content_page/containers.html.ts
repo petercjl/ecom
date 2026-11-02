@@ -3,7 +3,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at https://mozilla.org/MPL/2.0/.
 
-import { html, nothing, repeat } from 'chrome://resources/lit/v3_0/lit.rollup.js'
+import {
+  html,
+  nothing,
+  repeat,
+} from 'chrome://resources/lit/v3_0/lit.rollup.js'
 import { SettingsBraveContentContainersElement } from './containers.js'
 import { ContainersStrings } from '../brave_generated_resources_webui_strings.js'
 import { Icon } from '../containers.mojom-webui.js'
@@ -16,7 +20,10 @@ import './containers_background_chip.js'
 
 export function getHtml(this: SettingsBraveContentContainersElement) {
   return html`<!--_html_template_start_-->
-    <settings-section id="containers" page-title="$i18n{SETTINGS_CONTAINERS_SECTION_LABEL}">
+    <settings-section
+      id="containers"
+      page-title="$i18n{SETTINGS_CONTAINERS_SECTION_LABEL}"
+    >
       <div class="cr-row first two-line">
         <div class="flex">
           <localized-link
@@ -42,48 +49,141 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
               <h2>${this.shopText_('TITLE')}</h2>
               <p class="shop-intro">${this.shopText_('INTRO')}</p>
               <div class="shop-create">
-                <label>${this.shopText_('PLATFORM')}
-                  <select .value="${this.shopPlatform_}" @change="${this.onShopPlatformChange_}" ?disabled="${this.shopBusy_}">
+                <label
+                  >${this.shopText_('PLATFORM')}
+                  <select
+                    .value="${this.shopPlatform_}"
+                    @change="${this.onShopPlatformChange_}"
+                    ?disabled="${this.shopBusy_}"
+                  >
                     <option value="">${this.shopText_('SELECT')}</option>
                     <option value="taobao">${this.shopText_('TAOBAO')}</option>
                   </select>
                 </label>
-                <cr-input label="${this.shopText_('NAME')}" .value="${this.shopName_}"
-                  @input="${this.onShopNameInput_}" ?disabled="${this.shopBusy_}" maxlength="60"></cr-input>
-                <cr-button class="action-button" @click="${this.onCreateShop_}"
-                  ?disabled="${this.shopBusy_ || !this.shopName_.trim() || !this.shopPlatform_}">${this.shopText_('CREATE')}</cr-button>
+                <cr-input
+                  label="${this.shopText_('NAME')}"
+                  .value="${this.shopName_}"
+                  @input="${this.onShopNameInput_}"
+                  ?disabled="${this.shopBusy_}"
+                  maxlength="60"
+                ></cr-input>
+                <cr-button
+                  class="action-button"
+                  @click="${this.onCreateShop_}"
+                  ?disabled="${this.shopBusy_
+                  || !this.shopName_.trim()
+                  || !this.shopPlatform_}"
+                  >${this.shopText_('CREATE')}</cr-button
+                >
               </div>
-              <div class="shop-message" role="status" aria-live="polite">
+              <div
+                class="shop-message"
+                role="status"
+                aria-live="polite"
+              >
                 ${this.shopBusy_ ? this.shopText_('BUSY') : this.shopError_}
               </div>
-              ${repeat(this.shopRows_, row=>row.id, row=>html`
-                <div class="shop-card">
-                  <div class="shop-card-header">
-                    <strong>${row.name}</strong>
-                    <span class="shop-state ${row.state === 'ready' ? 'ready' : ''}">${this.shopState_(row)}</span>
-                  </div>
-                  ${row.platform ? html`<div class="shop-platform">${this.shopText_('TAOBAO')}</div>` : nothing}
-                  ${row.identity || row.candidate ? html`
-                    <div class="shop-identity">
-                      ${this.shopText_('IDENTITY')}：${(row.identity || row.candidate)!.platformName}
-                      <div>Shop ID: ${(row.identity || row.candidate)!.shopId} · Account ID: ${(row.identity || row.candidate)!.accountId}</div>
-                      <div>${this.shopText_('LAST_CHECKED')}：${this.shopChecked_((row.identity || row.candidate)!)}</div>
-                    </div>` : nothing}
-                  <div class="shop-actions">
-                    ${!row.platform ? html`
-                      <cr-button data-id="${row.id}" data-action="configure" @click="${this.onShopAction_}" ?disabled="${this.shopBusy_}">${this.shopText_('CONFIGURE')}</cr-button>
-                    ` : html`
-                      <cr-button data-id="${row.id}" data-action="open" data-service="sycm" @click="${this.onShopAction_}" ?disabled="${this.shopBusy_}">${this.shopText_('LOGIN')}</cr-button>
-                      <cr-button data-id="${row.id}" data-action="open" data-service="qianniu" @click="${this.onShopAction_}" ?disabled="${this.shopBusy_}">${this.shopText_('QIANNIU')}</cr-button>
-                      <cr-button data-id="${row.id}" data-action="open" data-service="alimama" @click="${this.onShopAction_}" ?disabled="${this.shopBusy_}">${this.shopText_('ALIMAMA')}</cr-button>
-                      <cr-button data-id="${row.id}" data-action="verify" @click="${this.onShopAction_}" ?disabled="${this.shopBusy_}">${this.shopText_('VERIFY')}</cr-button>
-                      ${row.candidate && row.state === 'awaiting-confirmation' ? html`
-                        <cr-button class="action-button" data-id="${row.id}" data-action="confirm" @click="${this.onShopAction_}" ?disabled="${this.shopBusy_}">${this.shopText_('CONFIRM')}</cr-button>` : nothing}
-                    `}
-                  </div>
-                </div>`)}
+              ${repeat(
+                this.shopRows_,
+                (row) => row.id,
+                (row) =>
+                  html` <div class="shop-card">
+                    <div class="shop-card-header">
+                      <strong>${row.name}</strong>
+                      <span
+                        class="shop-state ${row.state === 'ready'
+                          ? 'ready'
+                          : ''}"
+                        >${this.shopState_(row)}</span
+                      >
+                    </div>
+                    ${row.platform
+                      ? html`<div class="shop-platform">
+                          ${this.shopText_('TAOBAO')}
+                        </div>`
+                      : nothing}
+                    ${row.identity || row.candidate
+                      ? html` <div class="shop-identity">
+                          ${this.shopText_('IDENTITY')}：${(row.identity
+                            || row.candidate)!.platformName}
+                          <div>
+                            Shop ID: ${(row.identity || row.candidate)!.shopId}
+                            · Account ID:
+                            ${(row.identity || row.candidate)!.accountId}
+                          </div>
+                          <div>
+                            ${this.shopText_(
+                              'LAST_CHECKED',
+                            )}：${this.shopChecked_(
+                              (row.identity || row.candidate)!,
+                            )}
+                          </div>
+                        </div>`
+                      : nothing}
+                    <div class="shop-actions">
+                      ${!row.platform
+                        ? html`
+                            <cr-button
+                              data-id="${row.id}"
+                              data-action="configure"
+                              @click="${this.onShopAction_}"
+                              ?disabled="${this.shopBusy_}"
+                              >${this.shopText_('CONFIGURE')}</cr-button
+                            >
+                          `
+                        : html`
+                            <cr-button
+                              data-id="${row.id}"
+                              data-action="open"
+                              data-service="sycm"
+                              @click="${this.onShopAction_}"
+                              ?disabled="${this.shopBusy_}"
+                              >${this.shopText_('LOGIN')}</cr-button
+                            >
+                            <cr-button
+                              data-id="${row.id}"
+                              data-action="open"
+                              data-service="qianniu"
+                              @click="${this.onShopAction_}"
+                              ?disabled="${this.shopBusy_}"
+                              >${this.shopText_('QIANNIU')}</cr-button
+                            >
+                            <cr-button
+                              data-id="${row.id}"
+                              data-action="open"
+                              data-service="alimama"
+                              @click="${this.onShopAction_}"
+                              ?disabled="${this.shopBusy_}"
+                              >${this.shopText_('ALIMAMA')}</cr-button
+                            >
+                            <cr-button
+                              data-id="${row.id}"
+                              data-action="verify"
+                              @click="${this.onShopAction_}"
+                              ?disabled="${this.shopBusy_}"
+                              >${this.shopText_('VERIFY')}</cr-button
+                            >
+                            ${row.candidate
+                            && row.state === 'awaiting-confirmation'
+                              ? html` <cr-button
+                                  class="action-button"
+                                  data-id="${row.id}"
+                                  data-action="confirm"
+                                  @click="${this.onShopAction_}"
+                                  ?disabled="${this.shopBusy_}"
+                                  >${this.shopText_('CONFIRM')}</cr-button
+                                >`
+                              : nothing}
+                          `}
+                    </div>
+                  </div>`,
+              )}
               <p class="shop-intro">${this.shopText_('SERVICE_NOTE')}</p>
-              <cr-button @click="${this.refreshShops_}" ?disabled="${this.shopBusy_}">${this.shopText_('REFRESH')}</cr-button>
+              <cr-button
+                @click="${this.refreshShops_}"
+                ?disabled="${this.shopBusy_}"
+                >${this.shopText_('REFRESH')}</cr-button
+              >
               <h3>${this.shopText_('GENERAL')}</h3>
             </div>
             <settings-toggle-button
@@ -214,7 +314,8 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
                                 this.editingContainer_!.backgroundColor,
                               )}"
                               icon=${icon}
-                              ?selected="${icon === this.editingContainer_!.icon}"
+                              ?selected="${icon
+                              === this.editingContainer_!.icon}"
                               @icon-selected="${this.onContainersIconSelected_}"
                             ></settings-brave-content-containers-icon>
                           `,
@@ -222,11 +323,15 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
                     </section>
                   </div>
                 </div>
-                ${this.editDialogError_
+                ${
+                  this.editDialogError_
                     ? html`
-                        <div class="error-message">${this.editDialogError_}</div>
+                        <div class="error-message">
+                          ${this.editDialogError_}
+                        </div>
                       `
-                    : nothing}
+                    : nothing
+                }
               </div>
               <div slot="button-container">
                 <cr-button
@@ -239,7 +344,8 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
                   class="action-button"
                   @click="${this.onSaveContainerFromDialogClick_}"
                   ?disabled="${
-                    !this.editingContainer_?.name || this.isEditDialogNameInvalid_
+                    !this.editingContainer_?.name
+                    || this.isEditDialogNameInvalid_
                   }"
                 >
                   $i18n{save}
@@ -268,7 +374,9 @@ export function getHtml(this: SettingsBraveContentContainersElement) {
                 </div>
                 ${this.deleteDialogError_
                   ? html`
-                      <div class="error-message">${this.deleteDialogError_}</div>
+                      <div class="error-message">
+                        ${this.deleteDialogError_}
+                      </div>
                     `
                   : nothing}
               </div>
