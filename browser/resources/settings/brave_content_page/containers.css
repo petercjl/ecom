@@ -111,3 +111,21 @@
 .containers-add-row {
   padding-block-end: calc(var(--cr-section-padding) / 2);
 }
+
+.shop-panel { padding: 8px var(--cr-section-padding) 20px; }
+.shop-panel h2 { font-size: 18px; margin: 12px 0 6px; }
+.shop-intro { color: var(--cr-secondary-text-color); line-height: 1.6; }
+.shop-create { display:flex; gap:16px; align-items:flex-end; padding:16px 0; flex-wrap:wrap; }
+.shop-create label { display:flex; flex-direction:column; gap:8px; min-width:150px; }
+.shop-create select { padding:9px 12px; border:1px solid var(--cr-separator-color); border-radius:8px; background:var(--cr-card-background-color); color:var(--cr-primary-text-color); }
+.shop-create cr-input { flex:1; min-width:180px; }
+.shop-create cr-button { margin-bottom:8px; }
+.shop-card { border:1px solid var(--cr-separator-color); border-radius:12px; padding:18px; margin:12px 0; }
+.shop-card-header { display:flex; gap:12px; align-items:center; justify-content:space-between; }
+.shop-state { font-size:12px; color:var(--cr-secondary-text-color); }
+.shop-state.ready { color:var(--cr-link-color); }
+.shop-platform { margin-top:6px; color:var(--cr-secondary-text-color); font-size:12px; }
+.shop-identity { line-height:1.8; padding-top:10px; overflow-wrap:anywhere; }
+.shop-identity div { font-size:12px; color:var(--cr-secondary-text-color); }
+.shop-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+.shop-message { color:var(--cr-link-color); min-height:16px; }

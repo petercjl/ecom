@@ -12,6 +12,9 @@ namespace containers::prefs {
 // existing container tabs are not affected when the pref is disabled.
 inline constexpr char kContainersEnabled[] = "brave.containers.enabled";
 
+// Local-only Ecom platform and verified shop metadata keyed by container ID.
+inline constexpr char kShopContainers[] = "ecom.shop_containers";
+
 // Syncable list of containers.
 inline constexpr char kContainersList[] = "brave.containers.list";
 

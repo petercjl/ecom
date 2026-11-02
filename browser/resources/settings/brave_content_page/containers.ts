@@ -10,6 +10,7 @@ import '../controls/settings_toggle_button.js'
 
 import { I18nMixinLit } from '//resources/cr_elements/i18n_mixin_lit.js'
 import { assert } from '//resources/js/assert.js'
+import { sendWithPromise } from 'chrome://resources/js/cr.js'
 import { CrInputElement } from 'chrome://resources/cr_elements/cr_input/cr_input.js'
 import {
   CrLitElement,
@@ -31,6 +32,9 @@ import type { ColorSelectedEvent } from './containers_background_chip.js'
 import { ContainersSettingsHandlerBrowserProxy } from './containers_browser_proxy.js'
 import type { IconSelectedEvent } from './containers_icon.js'
 import { DragReorderMixin, getDragReorderCss } from './drag_reorder_mixin.js'
+
+interface ShopIdentity { shopId: string; accountId: string; platformName: string; verifiedAt: string; candidateId?: string }
+interface ShopRow { id: string; name: string; platform?: string; state: string; identity?: ShopIdentity; candidate?: ShopIdentity }
 
 const SettingsBraveContentContainersElementBase = DragReorderMixin(
   PrefServiceObserverMixinLit(I18nMixinLit(CrLitElement)),
@@ -54,6 +58,11 @@ export class SettingsBraveContentContainersElement extends SettingsBraveContentC
 
   static override get properties() {
     return {
+      shopRows_: { type: Array },
+      shopPlatform_: { type: String },
+      shopName_: { type: String },
+      shopBusy_: { type: Boolean },
+      shopError_: { type: String },
       containersEnabledPref_: {
         type: Object,
       },
@@ -78,6 +87,65 @@ export class SettingsBraveContentContainersElement extends SettingsBraveContentC
     }
   }
 
+  accessor shopRows_: ShopRow[] = []
+  accessor shopPlatform_ = ''
+  accessor shopName_ = ''
+  accessor shopBusy_ = false
+  accessor shopError_ = ''
+
+  shopText_(suffix: string): string {
+    const key = (ContainersStrings as unknown as Record<string, string>)['SETTINGS_CONTAINERS_SHOP_' + suffix]
+    return key ? this.i18n(key) : suffix
+  }
+
+  shopState_(row: ShopRow): string {
+    return this.shopText_(row.state.replaceAll('-', '_').toUpperCase())
+  }
+
+  shopChecked_(identity: ShopIdentity): string {
+    return new Date(Number(identity.verifiedAt) * 1000).toLocaleString()
+  }
+
+  async shopCommand_(request: object): Promise<{ok: boolean; shops?: ShopRow[]; error?: {code: string}}> {
+    const result = JSON.parse(await sendWithPromise<string>('ecomShopCommand', JSON.stringify(request)))
+    if (result.shops) this.shopRows_ = result.shops
+    if (!result.ok) throw new Error(result.error?.code || 'SHOP_ERROR')
+    return result
+  }
+
+  async refreshShops_() {
+    try { await this.shopCommand_({method:'shops.list'}) } catch { this.shopError_ = this.shopText_('ERROR') }
+  }
+
+  onShopNameInput_(e: Event) { this.shopName_ = (e.target as HTMLInputElement).value }
+  onShopPlatformChange_(e: Event) { this.shopPlatform_ = (e.target as HTMLSelectElement).value }
+
+  async onCreateShop_() {
+    if (this.shopBusy_ || !this.shopName_.trim() || !this.shopPlatform_) return
+    this.shopBusy_ = true; this.shopError_ = ''
+    try {
+      const name = this.shopName_.trim()
+      const result = await this.shopCommand_({method:'shops.create',name,platform:this.shopPlatform_})
+      const created = result.shops?.find(row => row.name === name)
+      this.shopName_ = ''
+      if (created) await this.shopCommand_({method:'shops.open',containerId:created.id,service:'sycm'})
+    } catch (e) { this.shopError_ = this.shopText_(e instanceof Error && e.message === 'CONTAINER_NAME_EXISTS' ? 'NAME_EXISTS' : 'ERROR') }
+    finally { this.shopBusy_ = false; await this.refreshShops_() }
+  }
+
+  async onShopAction_(e: Event) {
+    if (this.shopBusy_) return
+    const {id,action,service} = (e.currentTarget as HTMLElement).dataset
+    const row = this.shopRows_.find(value => value.id === id)
+    if (!row || !action) return
+    this.shopBusy_ = true; this.shopError_ = ''
+    try {
+      await this.shopCommand_({method:'shops.'+action,containerId:id,platform:'taobao',service,
+        shopId:row.candidate?.shopId,candidateId:row.candidate?.candidateId})
+    } catch { this.shopError_ = this.shopText_('ERROR') }
+    finally { this.shopBusy_ = false; await this.refreshShops_() }
+  }
+
   private browserProxy = ContainersSettingsHandlerBrowserProxy.getInstance()
   accessor containersEnabledPref_:
     | chrome.settingsPrivate.PrefObject<boolean>
@@ -94,6 +162,7 @@ export class SettingsBraveContentContainersElement extends SettingsBraveContentC
     this.browserProxy.handler.getContainers().then(({ containers }) => {
       this.onContainersListUpdated_(containers)
     })
+    void this.refreshShops_()
     this.mirrorPref('brave.containers.enabled', 'containersEnabledPref_')
     this.browserProxy.callbackRouter.onContainersChanged.addListener(
       this.onContainersListUpdated_.bind(this),

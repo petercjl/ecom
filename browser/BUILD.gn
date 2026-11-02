@@ -85,7 +85,7 @@ source_set("core") {
 
   sources = brave_chrome_browser_sources
   if (is_mac) {
-    sources += [ "ecom/native_session_service.cc", "ecom/native_session_service.h" ]
+    sources += [ "ecom/native_session_service.cc", "ecom/native_session_service.h", "ecom/shop_container_service.cc", "ecom/shop_container_service.h" ]
   }
   deps = brave_chrome_browser_deps + [
            "//brave/browser/ui/webui:favicon_source_chromium_impl",

@@ -1,4 +1,5 @@
 #include "brave/browser/ecom/native_session_service.h"
+#include "brave/browser/ecom/shop_container_service.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -223,6 +224,17 @@ class NativeSessionService final : public ProfileObserver {
   void Dispatch(const std::string& id, base::DictValue request) {
     if (!profile_) return;
     const auto* method = request.FindString("method");
+    if (method && method->starts_with("shops.")) {
+      RunShopCommand(profile_, base::WriteJson(request).value_or("{}"),
+          base::BindOnce([](base::WeakPtr<NativeSessionService> self,
+                            std::string operation, std::string result) {
+            if (!self) return;
+            auto parsed = base::JSONReader::Read(result, base::JSON_PARSE_RFC);
+            if (!parsed || !parsed->is_dict()) { self->Fail(operation, "INVALID_RESPONSE"); return; }
+            self->Respond(operation, std::move(parsed->GetDict()));
+          }, weak_.GetWeakPtr(), id));
+      return;
+    }
     auto containers = containers::GetContainersFromPrefs(*profile_->GetPrefs());
     if (method && *method == "containers.list") {
       base::ListValue list;
