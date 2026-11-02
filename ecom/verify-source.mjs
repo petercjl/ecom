@@ -13,7 +13,7 @@ const pkg = JSON.parse(read('package.json'));
 const baseline = JSON.parse(read('ecom/source-baseline.json'));
 assert.equal(pkg.name, 'ecom-core');
 for (const name of ['BRANDING', 'BRANDING.development']) {
-  const branding = read('app/theme/brave/' + name);
+  const branding = read('app/theme/brave/' + name).replace(/\r\n/g, '\n');
   const development = name.endsWith('.development');
   assert.ok(branding.includes('PRODUCT_FULLNAME=' + (development ? 'Ecom Dev' : 'Ecom') + '\n'));
   assert.ok(branding.includes('MAC_BUNDLE_ID=app.ecom.browser' + (development ? '.dev' : '') + '\n'));

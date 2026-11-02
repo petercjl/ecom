@@ -44,7 +44,7 @@ test('channel promotion requires a byte-identical published version', async () =
     await assert.rejects(registryPayloadStatus(config.version, file, 'latest', async () => ({ ok: true, json: async () => ({ ...metadata, dist: { integrity: 'sha512-wrong' } }) })), /differs from the verified tarball/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
-test('application audit refuses profile files, external links and private build paths', async () => {
+test('application audit refuses profile files, external links and private build paths', { skip: process.platform === 'win32' && 'macOS bundle filesystem test' }, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecom-app-audit-'));
   const app = path.join(dir, 'Ecom.app'); fs.mkdirSync(app);
   try {
@@ -54,11 +54,11 @@ test('application audit refuses profile files, external links and private build 
     await assert.rejects(auditMacBundle(app), /Runtime\/private file/); fs.unlinkSync(path.join(app, 'Cookies'));
     fs.writeFileSync(path.join(app, 'private-path'), os.homedir() + '/fixture', { flag: 'wx' });
     await assert.rejects(auditMacBundle(app), /Private build path/); fs.unlinkSync(path.join(app, 'private-path'));
-    fs.symlinkSync(dir, path.join(app, 'external'));
+    fs.symlinkSync(dir, path.join(app, 'external'), 'dir');
     await assert.rejects(auditMacBundle(app), /External application symlink/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
-test('publication verifies an actual tarball and rejects changed transport bytes', async () => {
+test('publication verifies an actual tarball and rejects changed transport bytes', { skip: process.platform === 'win32' && 'macOS tar payload integration test' }, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecom-payload-'));
   const repo = path.join(dir, 'repo'); fs.mkdirSync(repo);
   const run = (file, args, cwd = repo) => {
