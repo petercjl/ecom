@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { prepareReleaseSource } from '../build-macos.mjs';
 import { validatePublication, verifyPayload } from '../verify-release-payload.mjs';
-import { auditMacBundle } from '../package-macos.mjs';
+import { auditMacBundle, verifyMacArchitecture } from '../package-macos.mjs';
 import { registryPayloadStatus } from '../registry-payload-status.mjs';
 import crypto from 'node:crypto';
 import { artifactManifest, payloadPackage, validateRelease, sha256 } from '../release-contract.mjs';
@@ -108,5 +108,14 @@ test('release source excludes concurrent edits and refuses modified managed sour
     fs.writeFileSync(path.join(workspace, 'source.txt'), 'local build edit');
     assert.throws(() => prepareReleaseSource(repo, workspace), /Commit or preserve/);
     assert.equal(fs.readFileSync(path.join(workspace, 'source.txt'), 'utf8'), 'local build edit');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('macOS architecture gate invokes real lipo on Mach-O input', { skip: process.platform !== 'darwin' || process.arch !== 'arm64' }, () => {
+  verifyMacArchitecture(process.execPath);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecom-architecture-'));
+  try {
+    const invalid = path.join(dir, 'not-macho'); fs.writeFileSync(invalid, 'invalid', { flag: 'wx' });
+    assert.throws(() => verifyMacArchitecture(invalid));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

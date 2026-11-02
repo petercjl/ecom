@@ -100,6 +100,9 @@ func run(_ executable: String, _ arguments: [String], output: URL? = nil) throws
     try require(process.terminationStatus == 0, "tool failed: " + executable)
     return String(data: data, encoding: .utf8) ?? ""
 }
+func verifyArm64(_ executable: URL) throws {
+    try run("/usr/bin/lipo", [executable.path, "-verify_arch", "arm64"])
+}
 struct Artifact: Decodable {
     let schemaVersion: Int, updateProtocol: Int
     let packageName: String, version: String, channel: String, platform: String, arch: String
@@ -201,7 +204,7 @@ final class Updater {
         try require(bundle.bundleIdentifier == manifest.bundleId && bundle.object(forInfoDictionaryKey: "EcomReleaseVersion") as? String == version && bundle.object(forInfoDictionaryKey: "EcomSourceRevision") as? String == manifest.sourceRevision && bundle.object(forInfoDictionaryKey: "EcomUpdateProtocol") as? Int == 1 && bundle.object(forInfoDictionaryKey: "EcomUpdatePackage") as? String == manifest.packageName, "candidate identity")
         try require(bundle.object(forInfoDictionaryKey: "EcomUpdateChannel") as? String == "latest" && bundle.object(forInfoDictionaryKey: "EcomUpdateTestSeed") as? Bool != true, "production candidate channel")
         try run("/usr/bin/codesign", ["--verify", "--deep", "--strict", candidate.path])
-        try run("/usr/bin/lipo", ["-verify_arch", "arm64", candidate.appendingPathComponent("Contents/MacOS/Ecom").path])
+        try verifyArm64(candidate.appendingPathComponent("Contents/MacOS/Ecom"))
         if owner.isTerminated || !ask("更新已准备完成", "退出 Ecom 并安装 " + version + "？账号和容器数据保留，旧应用将保留在安装目录供恢复。", "退出并安装") { return false }
         try require(owner.bundleURL?.resolvingSymlinksInPath() == app && owner.bundleIdentifier == "app.ecom.browser", "owner changed")
         try require(owner.terminate(), "normal quit refused")
@@ -256,6 +259,7 @@ struct Main {
                 try require(relaunchArguments(profile: "/tmp/profile", origin: "https://sycm.taobao.com/").last == "--ecom-native-cli-origin=https://sycm.taobao.com/", "CLI origin restoration")
                 try require(allowedOrigin("https://user:password@example.com/") == nil && allowedOrigin("http://example.com/") == nil && allowedOrigin("https://example.com/path") == nil, "CLI origin restriction")
                 try transactionSelfTest()
+                try verifyArm64(URL(fileURLWithPath: CommandLine.arguments[0]))
                 print("Ecom updater contract self-test passed")
             } catch { fputs("Updater self-test failed\n", stderr); exit(1) }
             return

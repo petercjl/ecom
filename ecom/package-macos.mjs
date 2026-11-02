@@ -16,6 +16,9 @@ function writeNew(file, contents) {
   if (fs.existsSync(file)) throw new Error('Output already exists: ' + file);
   fs.writeFileSync(file, contents, { flag: 'wx' });
 }
+export function verifyMacArchitecture(executable) {
+  run('/usr/bin/lipo', [executable, '-verify_arch', 'arm64']);
+}
 export async function auditMacBundle(app) {
   const forbidden = new Set(['.git', '.npmrc', '.env', 'Cookies', 'Login Data', 'Local State', 'Preferences', 'History', 'DevToolsActivePort']);
   const privatePaths = [...new Set([os.homedir() + '/', root + '/'])].map(value => Buffer.from(value));
@@ -78,7 +81,7 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   const metadata = JSON.parse(run('/usr/bin/plutil', ['-convert', 'json', '-o', '-', infoFile]));
   if (metadata.CFBundleIdentifier !== config.bundleId || metadata.CFBundleExecutable !== 'Ecom') throw new Error('Expected a standalone Ecom release bundle, not Dev');
   if (git(sourceRoot, ['status', '--porcelain']) || git(sourceRoot, ['rev-parse', 'HEAD']) !== sourceRevision) throw new Error('Source must remain at the clean build revision');
-  run('/usr/bin/lipo', ['-verify_arch', 'arm64', path.join(sourceApp, 'Contents/MacOS/Ecom')]);
+  verifyMacArchitecture(path.join(sourceApp, 'Contents/MacOS/Ecom'));
   fs.mkdirSync(output, { recursive: true, mode: 0o700 });
   const stage = path.join(output, 'dmg-root'); fs.mkdirSync(stage);
   const app = path.join(stage, 'Ecom.app');
