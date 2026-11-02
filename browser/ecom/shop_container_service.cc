@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstdint>
 #include <deque>
 #include <map>
@@ -17,6 +16,7 @@
 #include "base/json/json_writer.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/strings/escape.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
@@ -25,6 +25,7 @@
 #include "base/timer/timer.h"
 #include "base/uuid.h"
 #include "base/values.h"
+#include "brave/browser/ecom/shop_identity_parser.h"
 #include "brave/browser/ecom/shop_manager_ui.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "brave/components/containers/core/browser/containers_settings_handler.h"
@@ -220,64 +221,6 @@ bool ApplyAppearance(const base::DictValue& request,
   return !containers::ContainersSettingsHandler::
               ValidateEditableContainerProperties(container)
                   .has_value();
-}
-
-// Read only whitelisted identity fields from the platform's embedded metadata.
-// HTML and credentials never leave the browser. Missing/changed page formats
-// fail closed.
-std::optional<base::DictValue> ParseIdentity(const std::string& html) {
-  std::string block;
-  if (!re2::RE2::PartialMatch(
-          html,
-          re2::RE2(R"re((?s)(?:window\.)?metaCacheData\s*=\s*(\{.+?\})\s*;)re"),
-          &block)) {
-    return std::nullopt;
-  }
-  auto metadata =
-      base::JSONReader::Read(block, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
-  if (!metadata || !metadata->is_dict()) {
-    return std::nullopt;
-  }
-  auto field = [&metadata](const char* key) {
-    const auto* value = metadata->GetDict().Find(key);
-    if (!value) {
-      return std::string();
-    }
-    if (value->is_string()) {
-      return value->GetString();
-    }
-    if (value->is_int()) {
-      return base::NumberToString(value->GetInt());
-    }
-    if (value->is_double()) {
-      const double number = value->GetDouble();
-      if (number > 0 && number <= 9007199254740991.0 &&
-          number == std::floor(number)) {
-        return base::NumberToString(static_cast<int64_t>(number));
-      }
-    }
-    return std::string();
-  };
-  auto shop = field("runAsShopId");
-  auto account = field("loginUserId");
-  if (account.empty()) {
-    account = field("mainUserId");
-  }
-  auto name = field("runAsShopTitle");
-  if (name.empty()) {
-    name = field("runAsUserName");
-  }
-  if (name.empty()) {
-    name = field("mainUserName");
-  }
-  if (shop.empty() || account.empty() || name.empty() || shop == "0" ||
-      account == "0") {
-    return std::nullopt;
-  }
-  return base::DictValue()
-      .Set("shopId", shop)
-      .Set("accountId", account)
-      .Set("platformName", name);
 }
 
 class ShopService final : public base::SupportsUserData::Data,
@@ -824,9 +767,14 @@ class ShopService final : public base::SupportsUserData::Data,
     auto item = Metadata().FindDict(id)->Clone();
     item.Remove("candidate");
     item.Set("checkedAt", base::NumberToString(base::Time::Now().ToTimeT()));
-    const auto identity = body && loader->NetError() == net::OK
-                              ? ParseIdentity(*body)
-                              : std::nullopt;
+    const bool trusted_page =
+        body && loader->NetError() == net::OK && loader->ResponseInfo() &&
+        loader->ResponseInfo()->headers &&
+        loader->ResponseInfo()->headers->response_code() == 200 &&
+        url::Origin::Create(loader->GetFinalURL()) ==
+            url::Origin::Create(GURL(kHome));
+    const auto identity =
+        trusted_page ? ParseEmbeddedShopIdentity(*body) : std::nullopt;
     if (!identity) {
       base::DictValue diagnostics;
       diagnostics.Set("networkError", loader->NetError());
@@ -874,20 +822,6 @@ class ShopService final : public base::SupportsUserData::Data,
         }
         // Fixed field names and syntax classes only; values remain native.
         diagnostics.Set("identityFieldShapes", std::move(field_shapes));
-        base::ListValue script_paths;
-        re2::StringPiece script_input(*body);
-        const re2::RE2 script_pattern(
-            R"re(<script[^>]+src\s*=\s*["']([^"']+)["'])re");
-        std::string script;
-        while (script_paths.size() < 20 &&
-               re2::RE2::FindAndConsume(&script_input, script_pattern, &script)) {
-          const GURL source = GURL(kHome).Resolve(script);
-          if (source.SchemeIs("https") && source.host() == "g.alicdn.com") {
-            script_paths.Append(url::Origin::Create(source).Serialize() +
-                                std::string(source.path()));
-          }
-        }
-        diagnostics.Set("identityScriptPaths", std::move(script_paths));
         std::string block;
         bool object = re2::RE2::PartialMatch(
             *body,
@@ -906,22 +840,36 @@ class ShopService final : public base::SupportsUserData::Data,
       }
       item.Set("diagnostics", std::move(diagnostics));
       Store(id, std::move(item));
+      if (trusted_page) {
+        if (const auto token = ExtractSycmLegalityToken(*body)) {
+          FetchPersonalView(id, *token, std::move(callback));
+          return;
+        }
+      }
       ProbeLogin(id, std::move(callback));
       return;
     }
+    IdentityVerified(id, *identity, std::move(callback), "sycm-embedded-metadata");
+  }
+  void IdentityVerified(const std::string& id,
+                        const base::DictValue& identity,
+                        Reply callback,
+                        const std::string& source) {
+    auto item = Metadata().FindDict(id)->Clone();
+    item.Set("checkedAt", base::NumberToString(base::Time::Now().ToTimeT()));
     item.Set(
         "authentication",
         base::DictValue()
             .Set("state", "authenticated")
             .Set("service", "sycm")
-            .Set("source", "sycm-embedded-identity")
+            .Set("source", source)
             .Set("checkedAt", base::NumberToString(base::Time::Now().ToTimeT()))
             .Set("lastSuccessfulAt",
                  base::NumberToString(base::Time::Now().ToTimeT())));
-    auto candidate = identity->Clone();
+    auto candidate = identity.Clone();
     candidate.Set("verifiedAt",
                   base::NumberToString(base::Time::Now().ToTimeT()));
-    candidate.Set("source", "sycm-embedded-metadata");
+    candidate.Set("source", source);
     const auto* bound = item.FindDict("identity");
     if (bound &&
         (Field(*bound, "shopId") != Field(candidate, "shopId") ||
@@ -947,6 +895,77 @@ class ShopService final : public base::SupportsUserData::Data,
     }
     Store(id, std::move(item));
     Send(std::move(callback), List());
+  }
+  void FetchPersonalView(const std::string& id,
+                         const std::string& token,
+                         Reply callback) {
+    // This fixed endpoint and page-derived token stay inside the browser.
+    // No caller-selected URL, credentials or script execution is introduced.
+    const GURL url(
+        "https://sycm.taobao.com/custom/menu/getPersonalView.json?token=" +
+        base::EscapeQueryParamValue(token, false));
+    auto resource = std::make_unique<network::ResourceRequest>();
+    resource->url = url;
+    resource->load_flags = net::LOAD_BYPASS_CACHE | net::LOAD_DISABLE_CACHE;
+    resource->credentials_mode = network::mojom::CredentialsMode::kInclude;
+    resource->redirect_mode = network::mojom::RedirectMode::kError;
+    resource->site_for_cookies = net::SiteForCookies::FromUrl(url);
+    resource->request_initiator = url::Origin::Create(url);
+    resource->headers.SetHeader("Accept", "application/json");
+    resource->headers.SetHeader("Referer", kHome);
+    resource->headers.SetHeader("User-Agent", embedder_support::GetUserAgent());
+    constexpr auto annotation =
+        net::DefineNetworkTrafficAnnotation("ecom_shop_personal_view", R"(
+      semantics { sender: "Ecom shop identity checks" description: "Reads the platform's fixed current-account identity endpoint using its own homepage token. Only whitelisted identity fields are retained."
+        trigger: "User verification or automatic configured-account check." data: "Selected container cookies and page-provided request token." destination: WEBSITE }
+      policy { cookies_allowed: YES cookies_store: "Selected container" setting: "Configured Taobao account verification."
+        policy_exception_justification: "User managed local account containers." })");
+    auto loader =
+        network::SimpleURLLoader::Create(std::move(resource), annotation);
+    loader->SetTimeoutDuration(base::Seconds(8));
+    auto* pending = loader.get();
+    loaders_[id] = {std::move(loader), std::move(callback), 0};
+    const auto config = content::StoragePartitionConfig::Create(
+        profile_, containers::kContainersStoragePartitionDomain, id, false);
+    pending->DownloadToString(
+        profile_->GetStoragePartition(config)
+            ->GetURLLoaderFactoryForBrowserProcess()
+            .get(),
+        base::BindOnce(&ShopService::PersonalViewFetched, weak_.GetWeakPtr(), id),
+        2 * 1024 * 1024);
+  }
+  void PersonalViewFetched(const std::string& id,
+                           std::optional<std::string> body) {
+    auto pending = std::move(loaders_.at(id));
+    loaders_.erase(id);
+    if (!Metadata().FindDict(id) ||
+        !containers::GetContainerFromPrefs(*profile_->GetPrefs(), id)) {
+      Send(std::move(pending.callback), Error("CONTAINER_NOT_FOUND"));
+      return;
+    }
+    const int status = pending.loader->ResponseInfo() &&
+                               pending.loader->ResponseInfo()->headers
+                           ? pending.loader->ResponseInfo()->headers->response_code()
+                           : 0;
+    const auto identity = body && pending.loader->NetError() == net::OK &&
+                                  status == 200
+                              ? ParsePersonalViewShopIdentity(*body)
+                              : std::nullopt;
+    if (identity) {
+      IdentityVerified(id, *identity, std::move(pending.callback),
+                       "sycm-personal-view-json");
+      return;
+    }
+    auto item = Metadata().FindDict(id)->Clone();
+    auto diagnostics = item.FindDict("diagnostics")
+                           ? item.FindDict("diagnostics")->Clone()
+                           : base::DictValue();
+    diagnostics.Set("identityProbeHttpStatus", status);
+    diagnostics.Set("identityProbeNetworkError", pending.loader->NetError());
+    diagnostics.Set("identityProbeValidIdentity", false);
+    item.Set("diagnostics", std::move(diagnostics));
+    Store(id, std::move(item));
+    ProbeLogin(id, std::move(pending.callback));
   }
   // A successful registered SYCM JSON operation proves service login, not a
   // particular shop identity. Business values are inspected here and discarded.

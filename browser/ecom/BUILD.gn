@@ -1,0 +1,17 @@
+# Copyright 2026 The Ecom Authors. All rights reserved.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. https://mozilla.org/MPL/2.0/
+import("//testing/test.gni")
+
+test("shop_identity_parser_tests") {
+  sources = [
+    "shop_identity_parser.cc",
+    "shop_identity_parser_unittest.cc",
+  ]
+  deps = [
+    "//base",
+    "//base/test:run_all_unittests",
+    "//testing/gtest",
+    "//third_party/re2",
+  ]
+}
