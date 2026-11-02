@@ -148,18 +148,18 @@ class ShopService final : public base::SupportsUserData::Data,
     profile_ = nullptr;
   }
   void Run(const base::DictValue& request, Reply callback) {
+    const auto method = Field(request, "method");
+    if (profile_ && !profile_->IsOffTheRecord() && method == "shops.manage") {
+      OpenShopManager(profile_);
+      Send(std::move(callback),
+           base::DictValue().Set("ok", true).Set("url", kShopManagerURL));
+      return;
+    }
     if (!profile_ || profile_->IsOffTheRecord() ||
         !base::FeatureList::IsEnabled(containers::features::kContainers) ||
         !profile_->GetPrefs()->GetBoolean(
             containers::prefs::kContainersEnabled)) {
       Send(std::move(callback), Error("CONTAINERS_UNAVAILABLE"));
-      return;
-    }
-    const auto method = Field(request, "method");
-    if (method == "shops.manage") {
-      OpenShopManager(profile_);
-      Send(std::move(callback),
-           base::DictValue().Set("ok", true).Set("url", kShopManagerURL));
       return;
     }
     if (method == "shops.platforms") {
