@@ -16,7 +16,6 @@
 #include "base/json/json_writer.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/strings/escape.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
@@ -901,9 +900,11 @@ class ShopService final : public base::SupportsUserData::Data,
                          Reply callback) {
     // This fixed endpoint and page-derived token stay inside the browser.
     // No caller-selected URL, credentials or script execution is introduced.
+    // The platform emits a query-encoded token and appends it directly in its
+    // own client. Preserve that representation; the parser excludes URL query
+    // delimiters so it cannot change this fixed endpoint or add parameters.
     const GURL url(
-        "https://sycm.taobao.com/custom/menu/getPersonalView.json?token=" +
-        base::EscapeQueryParamValue(token, false));
+        "https://sycm.taobao.com/custom/menu/getPersonalView.json?token=" + token);
     auto resource = std::make_unique<network::ResourceRequest>();
     resource->url = url;
     resource->load_flags = net::LOAD_BYPASS_CACHE | net::LOAD_DISABLE_CACHE;
