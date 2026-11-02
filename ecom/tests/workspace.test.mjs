@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { git, prepareWorkspace, workspaceStatus, developmentStartArgs } from '../workspace.mjs';
 function fixture() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecom-git-'));
@@ -51,6 +53,26 @@ test('unsafe paths and an unknown revision refuse before filesystem creation', (
     assert.throws(() => prepareWorkspace(dir, workspace, 'missing-revision'), { code: 'GIT_ERROR' });
     assert.equal(fs.existsSync(workspace), false);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('workspace CLI pins a committed revision without changing canonical main', () => {
+  const {dir}=fixture();
+  try {
+    fs.mkdirSync(path.join(dir,'ecom'));
+    const entry=path.join(dir,'ecom/workspace.mjs');
+    fs.copyFileSync(fileURLToPath(new URL('../workspace.mjs',import.meta.url)),entry);
+    fs.appendFileSync(path.join(dir,'.gitignore'),'.brave-build/\n');
+    git(dir,['add','.']);git(dir,['commit','-m','Add workspace entry']);
+    const pinned=git(dir,['rev-parse','HEAD']);
+    fs.writeFileSync(path.join(dir,'source.txt'),'later source');
+    git(dir,['add','source.txt']);git(dir,['commit','-m','Advance canonical main']);
+    const main=git(dir,['rev-parse','HEAD']);
+    const result=JSON.parse(execFileSync(process.execPath,[fs.realpathSync(entry),'prepare','--source-ref',pinned],{encoding:'utf8'}));
+    assert.equal(result.revision,pinned);
+    assert.equal(fs.readFileSync(path.join(dir,'.brave-build/src/brave/source.txt'),'utf8'),'one');
+    assert.equal(git(dir,['rev-parse','HEAD']),main);
+    assert.equal(fs.readFileSync(path.join(dir,'source.txt'),'utf8'),'later source');
+  } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });
 
 test('native development launch selects an Ecom profile and keeps its update channel', () => {
