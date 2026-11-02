@@ -47,6 +47,7 @@ sycmcli ecom run shop.trade-summary --container '<现有容器ID或名称>' \
 - 实际 `sycmcli ecom containers` 列出了两个现有容器，包含用户指定的“杉居旗舰店”。
 - 首次通过 `sycmcli ecom run shop.trade-summary` 请求 2026-11-01 单日数据，原生网络返回 JSON；生意参谋业务返回登录错误，平台码 5810。该次没有返回业务数据。用户在同一容器手动完成生意参谋登录后，复测同一注册接口（`dateType=recent1`，单日 2026-11-01）返回业务码 0、非空交易概况字段。第二次 CLI 进程耗时约 0.40 秒（含命令启动及两次容器查询），与第一次为同一浏览器实例、同一容器 ID。完整业务数值仅保存在本地私有证据中。
 - 原生入口实测拒绝其他 HTTPS 来源、未知容器与任意 evaluate 方法，均报告 `executed: false`。
+- 两店业务页面全部关闭、只保留一个新标签页时，两店同一接口仍成功返回各自原有数据；取数未打开任何业务页面。该条件与完全退出 Ecom 不同，详见 [多容器取数测试](multi-container-test-2026-11-02.md)。
 - 没有切换其他店铺、复制 Cookie、连接旧 Chrome 或启用 CDP。
 
 ## 尚未验证与缺口
