@@ -99,7 +99,11 @@ source_set("core") {
            "//brave/ui/webui/custom_profile_image/buildflags",
          ]
   if (is_mac) {
-    deps += [ "//brave/browser/ecom/shop_manager:resources" ]
+    deps += [
+      "//brave/browser/ecom/shop_manager:resources",
+      "//brave/components/containers/core/browser",
+      "//components/embedder_support:user_agent",
+    ]
   }
   if (!is_android) {
     deps += [ "//brave/browser/ui:brave_browser_header" ]

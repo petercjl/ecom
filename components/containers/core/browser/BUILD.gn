@@ -33,7 +33,9 @@ static_library("browser") {
     "unknown_container.cc",
   ]
 
+  # Ecom native sessions read the same container metadata as the service.
   friend = [
+    "//brave/browser:core",
     "//brave/browser/containers:browser_tests",
     "//brave/browser/ui/containers:unit_tests",
     "//brave/browser/ui/views/page_action:unit_tests",
