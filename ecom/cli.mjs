@@ -16,7 +16,7 @@ function privatePath(file,directory=false) {
 export function validateReadUrl(text) {
   const url=new URL(text);
   if(url.protocol!=='https:'||url.username||url.password) throw error('INVALID_URL','只支持不含凭证的 HTTPS 只读请求');
-  for(const key of url.searchParams.keys()) if(/token|cookie|csrf|password|authorization/i.test(key)) throw error('CREDENTIAL_INPUT_REJECTED','凭证由浏览器会话管理，命令不接受凭证参数');
+  for(const key of url.searchParams.keys()) if(/token|cookie|csrf|password|authorization|secret|sessionid/i.test(key)) throw error('CREDENTIAL_INPUT_REJECTED','凭证由浏览器会话管理，命令不接受凭证参数');
   return url.href;
 }
 export function resolveContainer(items,value) {
