@@ -1,4 +1,5 @@
 {
+  "npm": {"allowSameVersion": true},
   "hooks": {"after:bump": "node scripts/sync-version.mjs", "before:release": "node scripts/validate.mjs"},
   "git": {"tagName": "ecom-cli-v${version}", "commitMessage": "chore: release Ecom CLI ${version}"}
 }

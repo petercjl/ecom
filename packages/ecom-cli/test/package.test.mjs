@@ -76,6 +76,22 @@ test('actual npm packed install, update repair, isolation, local-edits and docto
     const visit=dir=>{for(const name of fs.readdirSync(dir)){const f=path.join(dir,name),st=fs.lstatSync(f);assert.equal(st.isSymbolicLink(),false);if(st.isDirectory())visit(f);else assert.equal(st.nlink,1);}};visit(b);
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
+test('pre-versioned release runs real npm version hooks and validates synchronized Skill metadata',{timeout:60000},()=>{
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'ecom-preversioned-release-'));
+  try {
+    for(const name of ['package.json','capabilities.json','bin','lib','scripts','skills','README.md','INSTALL.md','UPDATE.md','LICENSE'])fs.cpSync(path.join(root,name),path.join(tmp,name),{recursive:true});
+    const file=path.join(tmp,'skills/ecom-cli/package.json'),stale=JSON.parse(fs.readFileSync(file));
+    stale.version='0.0.0-stale';fs.writeFileSync(file,JSON.stringify(stale));
+    const release=JSON.parse(fs.readFileSync(path.join(root,'.release-it.json')));
+    const args=['version',pkg.version,'--no-git-tag-version','--workspaces=false',...(release.npm?.allowSameVersion?['--allow-same-version']:[])];
+    const result=spawnSync(npm,args,{cwd:tmp,encoding:'utf8',timeout:30000,shell:process.platform==='win32',env:{...process.env,npm_config_ignore_scripts:'false',npm_config_dry_run:'false'}});
+    assert.equal(result.status,0,result.stderr);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(tmp,'package.json'))).version,pkg.version);
+    assert.equal(JSON.parse(fs.readFileSync(file)).version,pkg.version);
+    const validation=spawnSync(process.execPath,['scripts/validate.mjs'],{cwd:tmp,encoding:'utf8'});
+    assert.equal(validation.status,0,validation.stderr);
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
 test('npm prepack rejects mismatched published capability and Skill versions',{timeout:60000},()=>{
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'ecom-version-drift-'));
   try {
