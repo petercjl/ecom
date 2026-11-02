@@ -5,6 +5,16 @@ import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {root,pkg,fail,exists,tree,writeNew} from './common.mjs';
 const receiptName='.ecom-receipt.json';
+const runtimeNames=['package.json','capabilities.json','bin','lib','scripts','skills','README.md','INSTALL.md','UPDATE.md','LICENSE'];
+function runtimeFiles(base) {
+  const files={};
+  for(const name of runtimeNames) {
+    const item=path.join(base,name);
+    if(fs.lstatSync(item).isDirectory())Object.assign(files,tree(item,name+'/'));
+    else files[name]=crypto.createHash('sha256').update(fs.readFileSync(item)).digest('hex');
+  }
+  return files;
+}
 function legacyBackup(target,backup) {
   return typeof backup==='string'&&path.dirname(backup)===path.dirname(target)&&path.basename(backup).startsWith(path.basename(target)+'.ecom-backup-')&&exists(backup);
 }
@@ -39,8 +49,10 @@ export function status(options,base=root) {
   const files=installed?tree(target):{}, old=managed?receipt.files:{}, edited=managed && JSON.stringify(files)!==JSON.stringify(old);
   const identity=source(base), canonical=tree(identity.path);
   const canonicalCurrent=managed && Object.entries(canonical).every(([name,hash])=>files[name]===hash) && Object.keys(files).filter(n=>!n.startsWith('.runtime/')).length===Object.keys(canonical).length;
+  const canonicalRuntime=runtimeFiles(base);
+  const runtimeCurrent=managed&&Object.entries(canonicalRuntime).every(([name,hash])=>files['.runtime/'+name]===hash)&&Object.keys(files).filter(n=>n.startsWith('.runtime/')).length===Object.keys(canonicalRuntime).length;
   let runtimeVersion;try{runtimeVersion=JSON.parse(fs.readFileSync(path.join(target,'.runtime/package.json'),'utf8')).version;}catch{}
-  const current=!!(managed&&!edited&&canonicalCurrent&&runtimeVersion===identity.version&&receipt.version===identity.version);
+  const current=!!(managed&&!edited&&canonicalCurrent&&runtimeCurrent&&runtimeVersion===identity.version&&receipt.version===identity.version);
   const layoutRecovery=managed&&legacyBackup(target,receipt.backup);
   return {...identity,target,installed,managed,current,edited:!!edited,adapter:'generic',agent:options.agent,entry:path.join(target,'.runtime/bin/ecom-cli.mjs'),verification:{verified:current,algorithm:'sha256'},recovery:{required:installed&&(!current||layoutRecovery),action:edited?'Preserve local edits; reconcile them before update':layoutRecovery?'Run skill update using this new entry to relocate legacy backups outside host discovery':'Run skill update for this exact target'},hostDiscovery:{authority:'host',verified:false},...(managed?{installedVersion:receipt.version,backup:receipt.backup??null,migratedBackups:receipt.migratedBackups??[]}:{})};
 }
@@ -61,7 +73,7 @@ export function installSkill(options,base=root) {
     tree(base);
     fs.cpSync(source(base).path,staging,{recursive:true,errorOnExist:true,force:false});
     const runtime=path.join(staging,'.runtime');fs.mkdirSync(runtime);
-    for(const name of ['package.json','capabilities.json','bin','lib','scripts','skills','README.md','INSTALL.md','UPDATE.md','LICENSE']) {
+    for(const name of runtimeNames) {
       fs.cpSync(path.join(base,name),path.join(runtime,name),{recursive:true,errorOnExist:true,force:false});
     }
     const manifest=source(base);

@@ -30,6 +30,12 @@
       "file": "petercjl-ecom-cli-0.2.1.tgz",
       "integrity": "sha512-9MyJJEkho108MBe/BOwP6KLJTDB36yXJvDSIoQ/qvoy/DUkmyfnTISqctVfk2qTuKUT/R2T9M1KooZKbLGj59g==",
       "tarball": "https://registry.npmjs.org/@petercjl/ecom-cli/-/ecom-cli-0.2.1.tgz"
+    },
+    {
+      "version": "0.3.0",
+      "file": "petercjl-ecom-cli-0.3.0.tgz",
+      "integrity": "sha512-poFkGq/7ZPe5LaxREgZB+YcqR+UFflm5NUoQ7+04l005/Z7a7WU1TpTlTJGyA0tRy/ajYFODU3POK2v3vkf1/g==",
+      "tarball": "https://registry.npmjs.org/@petercjl/ecom-cli/-/ecom-cli-0.3.0.tgz"
     }
   ]
 }
