@@ -669,15 +669,20 @@ class ShopService final : public base::SupportsUserData::Data,
                         re2::RE2::PartialMatch(
                             *body, R"(metaCacheData\s*=\s*JSON\.parse)"));
       }
-      item.Set("state", "verification-required");
-      item.Set("lastError", "IDENTITY_UNAVAILABLE");
-      item.Set("diagnostics", diagnostics.Clone());
+      item.Set("diagnostics", std::move(diagnostics));
       Store(id, std::move(item));
-      auto error = Error("IDENTITY_UNAVAILABLE");
-      error.FindDict("error")->Set("details", std::move(diagnostics));
-      Send(std::move(callback), std::move(error));
+      ProbeLogin(id, std::move(callback));
       return;
     }
+    item.Set(
+        "authentication",
+        base::DictValue()
+            .Set("state", "authenticated")
+            .Set("service", "sycm")
+            .Set("source", "sycm-embedded-identity")
+            .Set("checkedAt", base::NumberToString(base::Time::Now().ToTimeT()))
+            .Set("lastSuccessfulAt",
+                 base::NumberToString(base::Time::Now().ToTimeT())));
     auto candidate = identity->Clone();
     candidate.Set("verifiedAt",
                   base::NumberToString(base::Time::Now().ToTimeT()));
@@ -707,6 +712,111 @@ class ShopService final : public base::SupportsUserData::Data,
     }
     Store(id, std::move(item));
     Send(std::move(callback), List());
+  }
+  // A successful registered SYCM JSON operation proves service login, not a
+  // particular shop identity. Business values are inspected here and discarded.
+  void ProbeLogin(const std::string& id, Reply callback) {
+    base::Time::Exploded day;
+    (base::Time::Now() - base::Days(1)).LocalExplode(&day);
+    const auto date = base::StringPrintf("%04d-%02d-%02d", day.year, day.month,
+                                         day.day_of_month);
+    const GURL url(
+        "https://sycm.taobao.com/bda/tradinganaly/overview/"
+        "get_summary.json?dateType=recent1&device=0&dateRange=" +
+        date + "%7C" + date);
+    auto resource = std::make_unique<network::ResourceRequest>();
+    resource->url = url;
+    resource->load_flags = net::LOAD_BYPASS_CACHE | net::LOAD_DISABLE_CACHE;
+    resource->credentials_mode = network::mojom::CredentialsMode::kInclude;
+    resource->redirect_mode = network::mojom::RedirectMode::kError;
+    resource->site_for_cookies = net::SiteForCookies::FromUrl(url);
+    resource->request_initiator = url::Origin::Create(url);
+    resource->headers.SetHeader("Accept", "application/json");
+    resource->headers.SetHeader("Referer", kHome);
+    resource->headers.SetHeader("User-Agent", embedder_support::GetUserAgent());
+    constexpr auto annotation =
+        net::DefineNetworkTrafficAnnotation("ecom_shop_login_check", R"(
+      semantics { sender: "Ecom shop login checks" description: "Checks whether the selected container can access a fixed read-only SYCM endpoint. Business values are discarded."
+        trigger: "Periodic check or user refresh in shop manager." data: "Selected container cookies and previous-day date." destination: WEBSITE }
+      policy { cookies_allowed: YES cookies_store: "Selected container" setting: "Configured Taobao shop containers."
+        policy_exception_justification: "User requested automatic login monitoring." })");
+    auto loader =
+        network::SimpleURLLoader::Create(std::move(resource), annotation);
+    loader->SetTimeoutDuration(base::Seconds(8));
+    loader->SetAllowHttpErrorResults(true);
+    auto* pending = loader.get();
+    loaders_[id] = {std::move(loader), std::move(callback), 0};
+    const auto config = content::StoragePartitionConfig::Create(
+        profile_, containers::kContainersStoragePartitionDomain, id, false);
+    pending->DownloadToString(
+        profile_->GetStoragePartition(config)
+            ->GetURLLoaderFactoryForBrowserProcess()
+            .get(),
+        base::BindOnce(&ShopService::LoginProbed, weak_.GetWeakPtr(), id),
+        2 * 1024 * 1024);
+  }
+  void LoginProbed(const std::string& id, std::optional<std::string> body) {
+    auto pending = std::move(loaders_.at(id));
+    loaders_.erase(id);
+    if (!Metadata().FindDict(id) ||
+        !containers::GetContainerFromPrefs(*profile_->GetPrefs(), id)) {
+      Send(std::move(pending.callback), Error("CONTAINER_NOT_FOUND"));
+      return;
+    }
+    auto item = Metadata().FindDict(id)->Clone();
+    const int status =
+        pending.loader->ResponseInfo() &&
+                pending.loader->ResponseInfo()->headers
+            ? pending.loader->ResponseInfo()->headers->response_code()
+            : 0;
+    auto payload =
+        body && pending.loader->NetError() == net::OK && status == 200
+            ? base::JSONReader::Read(*body, base::JSON_PARSE_RFC)
+            : std::nullopt;
+    const auto* envelope =
+        payload && payload->is_dict() ? &payload->GetDict() : nullptr;
+    const auto code = envelope ? envelope->FindInt("code") : std::nullopt;
+    const auto* data = envelope ? envelope->FindDict("data") : nullptr;
+    const bool authenticated =
+        code == 0 && data && data->Find("payAmt") && data->Find("uv");
+    const auto now = base::NumberToString(base::Time::Now().ToTimeT());
+    auto auth = item.FindDict("authentication")
+                    ? item.FindDict("authentication")->Clone()
+                    : base::DictValue();
+    auth.Set("state", authenticated                   ? "authenticated"
+                      : code == 5810 || status == 401 ? "signed-out"
+                                                      : "unknown");
+    auth.Set("service", "sycm");
+    auth.Set("source", "sycm-authenticated-json");
+    auth.Set("checkedAt", now);
+    if (authenticated) {
+      auth.Set("lastSuccessfulAt", now);
+    }
+    item.Set("authentication", std::move(auth));
+    item.Set("checkedAt", now);
+    if (auto* diagnostics = item.FindDict("diagnostics")) {
+      diagnostics->Set("loginProbeHttpStatus", status);
+      diagnostics->Set("loginProbeNetworkError", pending.loader->NetError());
+      diagnostics->Set("loginProbeHasData", data != nullptr);
+      if (code) {
+        diagnostics->Set("loginProbeCode", *code);
+      }
+    }
+    if (authenticated) {
+      // Keep identity binding separate: successful data access cannot identify
+      // which shop owns the session.
+      item.Set("state", "signed-in");
+      item.Remove("lastError");
+      Store(id, std::move(item));
+      Send(std::move(pending.callback), List());
+    } else {
+      item.Set("state", code == 5810 || status == 401
+                            ? "login-required"
+                            : "verification-required");
+      item.Set("lastError", "LOGIN_CHECK_UNAVAILABLE");
+      Store(id, std::move(item));
+      Send(std::move(pending.callback), Error("LOGIN_CHECK_UNAVAILABLE"));
+    }
   }
   raw_ptr<Profile> profile_;
   struct PendingCheck {

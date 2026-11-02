@@ -159,6 +159,11 @@ const en = {
   BUSY: 'This container is being verified. Please wait.',
 }
 Object.assign(zh, {
+  'signed-in': '已登录 · 登录已核验',
+  noIdentity: '店铺身份待确认',
+  boundIdentityHint: '已绑定身份，本次尚未重新核对',
+  loginService: '登录检查：生意参谋',
+  LOGIN_CHECK_UNAVAILABLE: '暂时无法确认登录状态，请在原容器检查该服务。',
   checked: '最近检查',
   icon: '容器图标',
   themeColor: '主题色',
@@ -189,6 +194,12 @@ Object.assign(zh, {
   LOGIN_REDIRECT: '该服务需要重新登录，请在原容器内完成。',
 })
 Object.assign(en, {
+  'signed-in': 'Signed in · login verified',
+  noIdentity: 'Shop identity not confirmed',
+  boundIdentityHint: 'Bound identity; not rechecked this time',
+  loginService: 'Login check: SYCM',
+  LOGIN_CHECK_UNAVAILABLE:
+    'Unable to confirm service login. Check this container’s service session.',
   checked: 'Last checked',
   icon: 'Container icon',
   themeColor: 'Theme color',
@@ -339,6 +350,10 @@ function render() {
         node('div', `${text('accountId')}: ${identity.accountId}`, 'secondary'),
       )
     }
+    if (identity && row.state !== 'ready')
+      account.append(node('div', text('boundIdentityHint'), 'secondary'))
+    if (row.authentication)
+      account.append(node('div', text('loginService'), 'secondary'))
     tr.append(account)
     const status = node('td')
     status.append(node('span', text(row.state), 'badge ' + row.state))
@@ -351,9 +366,11 @@ function render() {
     tr.append(node('td', checked))
     const validity = node(
       'td',
-      row.expiry?.kind === 'session'
-        ? text('sessionExpiry')
-        : text('platformExpiry'),
+      !row.platform
+        ? text('never')
+        : row.expiry?.kind === 'session'
+          ? text('sessionExpiry')
+          : text('platformExpiry'),
       'validity-cell',
     )
     if (row.expiry?.cookieExpiresAt)

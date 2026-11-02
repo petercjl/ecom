@@ -655,3 +655,8 @@ button.danger {
 .row-actions .delete-action {
   color: var(--danger);
 }
+
+.badge.signed-in {
+  background: var(--wash);
+  color: var(--accent);
+}

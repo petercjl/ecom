@@ -4,6 +4,7 @@ export const pendingStates = new Set([
   'verification-required',
   'awaiting-confirmation',
   'identity-mismatch',
+  'login-required',
 ])
 
 export function filterShops(
@@ -14,7 +15,8 @@ export function filterShops(
   return rows.filter((row) => {
     if (scope === 'taobao' && row.platform !== 'taobao') return false
     if (scope === 'general' && row.platform) return false
-    if (state === 'ready' && row.state !== 'ready') return false
+    if (state === 'ready' && !['ready', 'signed-in'].includes(row.state))
+      return false
     if (state === 'pending' && !pendingStates.has(row.state)) return false
     const identity = row.identity || row.candidate || {}
     return [
