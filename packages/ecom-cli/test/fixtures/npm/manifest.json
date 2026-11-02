@@ -1,0 +1,23 @@
+{
+  "package": "@petercjl/ecom-cli",
+  "versions": [
+    {
+      "version": "0.1.1",
+      "file": "petercjl-ecom-cli-0.1.1.tgz",
+      "integrity": "sha512-JA46LEl5sAANF1Ct5tLY/sIgSacj7nMjNE+SatFFW7Mwx5JzimY2t6jMgH3GjBzvG+hA+nW4uEqeEr1GCHtvTg==",
+      "tarball": "https://registry.npmjs.org/@petercjl/ecom-cli/-/ecom-cli-0.1.1.tgz"
+    },
+    {
+      "version": "0.1.2",
+      "file": "petercjl-ecom-cli-0.1.2.tgz",
+      "integrity": "sha512-HPhtEgjM+gMn9JbpsB9wBmKQIVv/1XOVGs9unQXbvM9lXt2GtHnpI6B3f8GPJCJfLo9JeTEDYuxR5REV7QuWlQ==",
+      "tarball": "https://registry.npmjs.org/@petercjl/ecom-cli/-/ecom-cli-0.1.2.tgz"
+    },
+    {
+      "version": "0.1.3",
+      "file": "petercjl-ecom-cli-0.1.3.tgz",
+      "integrity": "sha512-NkQkVq1msujZCXKjEtG7D0XxKAW3XGJ8kBaKxDla5DSyWCsbFC+8LSbCEMvvrUzPP3N0eaWaXqPDyW/CDy062A==",
+      "tarball": "https://registry.npmjs.org/@petercjl/ecom-cli/-/ecom-cli-0.1.3.tgz"
+    }
+  ]
+}

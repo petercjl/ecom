@@ -51,6 +51,9 @@ TEST(ShopIdentityParser, TokenIsConfinedToActualMicrodataMetaAttribute) {
       R"(<META content='legalityToken=fixture&#45;token' NAME=microdata >)");
   ASSERT_TRUE(second);
   EXPECT_EQ(*second, "fixture-token");
+  EXPECT_EQ(ExtractSycmLegalityToken(
+                R"(<meta name="microdata" content="legalityToken=fixture&#x2D;token">)"),
+            std::optional<std::string>("fixture-token"));
   for (const auto* html : {
            R"(<script>const legalityToken="fixture";</script>)",
            R"(<meta name="other" content="legalityToken=fixture">)",
@@ -62,6 +65,8 @@ TEST(ShopIdentityParser, TokenIsConfinedToActualMicrodataMetaAttribute) {
            R"(<meta name="microdata" content="legalityToken=fixture&#10;token">)"}) {
     EXPECT_FALSE(ExtractSycmLegalityToken(html)) << html;
   }
+  EXPECT_FALSE(ExtractSycmLegalityToken(
+      R"(<meta name="microdata" content="legalityToken=fixture&amp;#45;token">)"));
   EXPECT_FALSE(ExtractSycmLegalityToken(
       "<meta name='microdata' content='legalityToken=" +
       std::string(1025, 'x') + "'>"));

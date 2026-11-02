@@ -8,15 +8,48 @@
 #include <cstdint>
 
 #include "base/json/json_reader.h"
-#include "base/strings/escape.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
-#include "base/strings/utf_string_conversions.h"
 #include "third_party/re2/src/re2/re2.h"
 
 namespace ecom {
 namespace {
+std::string DecodeAttribute(std::string_view text) {
+  std::string decoded;
+  for (size_t i = 0; i < text.size();) {
+    const auto end = text[i] == '&' ? text.find(';', i + 1)
+                                    : std::string_view::npos;
+    if (end != std::string_view::npos && end - i < 16) {
+      const auto entity = text.substr(i + 1, end - i - 1);
+      unsigned value = 0;
+      bool numeric = false;
+      if (entity.starts_with("#x") || entity.starts_with("#X")) {
+        numeric = base::HexStringToUInt(entity.substr(2), &value);
+      } else if (entity.starts_with('#')) {
+        numeric = base::StringToUint(entity.substr(1), &value);
+      } else if (entity == "amp") {
+        value = '&';
+      } else if (entity == "quot") {
+        value = '"';
+      } else if (entity == "apos") {
+        value = '\'';
+      } else if (entity == "lt") {
+        value = '<';
+      } else if (entity == "gt") {
+        value = '>';
+      }
+      if ((numeric || value != 0) && value < 128) {
+        decoded.push_back(static_cast<char>(value));
+        i = end + 1;
+        continue;
+      }
+    }
+    decoded.push_back(text[i++]);
+  }
+  return decoded;
+}
+
 std::string IdentityId(const base::DictValue& data, const char* key) {
   const auto* value = data.Find(key);
   std::string id;
@@ -106,8 +139,7 @@ std::optional<std::string> ExtractSycmLegalityToken(std::string_view html) {
             tag, R"re((?i)\scontent\s*=\s*'([^']*)')re", &content)) {
       return std::nullopt;
     }
-    content = base::UTF16ToUTF8(
-        base::UnescapeForHTML(base::UTF8ToUTF16(content)));
+    content = DecodeAttribute(content);
     for (const auto& pair : base::SplitString(
              content, ";", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
       constexpr std::string_view prefix = "legalityToken=";

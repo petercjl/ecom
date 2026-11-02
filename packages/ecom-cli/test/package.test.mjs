@@ -76,29 +76,31 @@ test('actual npm packed install, update repair, isolation, local-edits and docto
 });
 test('real npm candidate update activates both runtime and Skill and preserves recovery',{timeout:120000},async()=>{
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'ecom-update-test-'));
+  const [major,minor,patch]=pkg.version.split('.').map(Number);
+  const candidateVersion=`${major}.${minor}.${patch+1}`;
   let server;
   try {
     const candidate=path.join(tmp,'source');fs.mkdirSync(candidate);
     for(const name of ['package.json','capabilities.json','bin','lib','scripts','skills','README.md','INSTALL.md','UPDATE.md','LICENSE'])fs.cpSync(path.join(root,name),path.join(candidate,name),{recursive:true});
     for(const rel of ['package.json','capabilities.json','skills/ecom-cli/package.json']) {
-      const f=path.join(candidate,rel),value=JSON.parse(fs.readFileSync(f));value.version='0.2.0';fs.writeFileSync(f,JSON.stringify(value));
+      const f=path.join(candidate,rel),value=JSON.parse(fs.readFileSync(f));value.version=candidateVersion;fs.writeFileSync(f,JSON.stringify(value));
     }
     const packed=spawnSync(npm,['pack','--json','--pack-destination',tmp],{cwd:candidate,encoding:'utf8',shell:process.platform==='win32'});assert.equal(packed.status,0,packed.stderr);
     const tar=fs.readFileSync(path.join(tmp,JSON.parse(packed.stdout)[0].filename));
     server=http.createServer((req,res)=>{
       if(req.url==='/candidate.tgz'){res.end(tar);return;}
       const port=server.address().port;
-      res.setHeader('content-type','application/json');res.end(JSON.stringify({name:pkg.name,'dist-tags':{latest:'0.2.0'},versions:{'0.2.0':{name:pkg.name,version:'0.2.0',dist:{tarball:'http://127.0.0.1:'+port+'/candidate.tgz'}}}}));
+      res.setHeader('content-type','application/json');res.end(JSON.stringify({name:pkg.name,'dist-tags':{latest:candidateVersion},versions:{[candidateVersion]:{name:pkg.name,version:candidateVersion,dist:{tarball:'http://127.0.0.1:'+port+'/candidate.tgz'}}}}));
     });
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     const target=path.join(tmp,'skills/ecom-cli'), entry=path.join(root,'bin/ecom-cli.mjs'),args=['--agent','fixture-host','--target',target,'--json'];
     assert.equal(invoke(entry,['skill','install',...args]).current,true);
     const call=(env={})=>new Promise(resolve=>{
-      const child=spawn(process.execPath,[path.join(target,'.runtime/bin/ecom-cli.mjs'),'update','install',...args,'--yes','--version','0.2.0'],{env:{...process.env,ECOM_CLI_STATE_DIR:path.join(tmp,'state'),npm_config_registry:'http://127.0.0.1:'+server.address().port,...env}});
+      const child=spawn(process.execPath,[path.join(target,'.runtime/bin/ecom-cli.mjs'),'update','install',...args,'--yes','--version',candidateVersion],{env:{...process.env,ECOM_CLI_STATE_DIR:path.join(tmp,'state'),npm_config_registry:'http://127.0.0.1:'+server.address().port,...env}});
       let output='';child.stdout.on('data',s=>output+=s);child.stderr.resume();child.on('close',code=>resolve({code,...JSON.parse(output)}));
     });
-    const result=await call();assert.equal(result.ok,true,JSON.stringify(result));assert.equal(result.version,'0.2.0');assert.ok(result.backup);assert.ok(result.journal);
-    assert.equal(invoke(result.entry,['version','--json']).version,'0.2.0');
+    const result=await call();assert.equal(result.ok,true,JSON.stringify(result));assert.equal(result.version,candidateVersion);assert.ok(result.backup);assert.ok(result.journal);
+    assert.equal(invoke(result.entry,['version','--json']).version,candidateVersion);
     assert.equal(invoke(result.entry,['skill','status',...args]).current,true);
     assert.equal(JSON.parse(fs.readFileSync(path.join(result.backup,'.runtime/package.json'))).version,pkg.version);
   }finally{if(server)await new Promise(resolve=>server.close(resolve));fs.rmSync(tmp,{recursive:true,force:true});}
