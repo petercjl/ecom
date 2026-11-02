@@ -853,6 +853,26 @@ class ShopService final : public base::SupportsUserData::Data,
                         body->find("loginUserId") != std::string::npos);
         diagnostics.Set("userIdField",
                         body->find("runAsUserId") != std::string::npos);
+        base::DictValue field_shapes;
+        for (const auto* key : {"runAsShopId", "loginUserId", "mainUserId",
+                                "runAsUserId", "runAsShopTitle",
+                                "runAsUserName", "mainUserName"}) {
+          std::string first;
+          const std::string pattern =
+              std::string(R"re(["']?)re") + key +
+              R"re(["']?\s*[:=]\s*(["'0-9A-Za-z_]))re";
+          if (re2::RE2::PartialMatch(*body, re2::RE2(pattern), &first)) {
+            field_shapes.Set(key, first == "\"" || first == "'"
+                                      ? "quoted-literal"
+                                  : base::IsAsciiDigit(first[0])
+                                      ? "numeric-literal"
+                                      : "expression");
+          } else {
+            field_shapes.Set(key, "not-found");
+          }
+        }
+        // Fixed field names and syntax classes only; values remain native.
+        diagnostics.Set("identityFieldShapes", std::move(field_shapes));
         std::string block;
         bool object = re2::RE2::PartialMatch(
             *body,
