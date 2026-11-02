@@ -5209,6 +5209,9 @@ are declared in tools/grit/grit_args.gni.
         <message name="IDS_EXTENSION_PROMPT_WARNING_USB_DEVICE_UNKNOWN_VENDOR" desc="Permission string for acceess to a specific USB device with an unknown vendor ID.">
           Access USB devices from an unknown vendor
         </message>
+        <message name="IDS_EXTENSION_PROMPT_WARNING_VPN" desc="Permission string for access to VPN API.">
+          Access your network traffic
+        </message>
 
         <message name="IDS_EXTENSION_PROMPT_WARNING_CONTENT_SETTINGS" desc="Permission string for access to content settings.">
           Change and grant access to features such as geolocation, microphone, camera, cookies, etc., for all your websites and extensions, including this extension.
