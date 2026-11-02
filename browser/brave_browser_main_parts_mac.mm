@@ -6,8 +6,10 @@
 #include "brave/browser/brave_browser_main_parts_mac.h"
 
 #include "base/apple/bundle_locations.h"
+#include "base/apple/foundation_util.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
+#include "base/path_service.h"
 #include "brave/browser/mac/keystone_glue.h"
 #include "brave/browser/sparkle_buildflags.h"
 #include "brave/browser/ui/commands/accelerator_menu_coordinator_mac.h"
@@ -16,6 +18,7 @@
 #include "brave/components/commands/common/features.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/common/channel_info.h"
+#include "chrome/common/chrome_paths.h"
 #include "components/version_info/channel.h"
 
 #if BUILDFLAG(ENABLE_SPARKLE)
@@ -65,16 +68,19 @@ int BraveBrowserMainPartsMac::PreMainMessageLoopRun() {
 
   // Only a packaged release carries this metadata and the native npm updater.
   NSBundle* bundle = base::apple::OuterBundle();
+  base::FilePath user_data_dir;
   if (result == 0 &&
       [bundle.bundleIdentifier isEqualToString:@"app.ecom.browser"] &&
-      [bundle.infoDictionary[@"EcomUpdateProtocol"] integerValue] == 1) {
+      [bundle.infoDictionary[@"EcomUpdateProtocol"] integerValue] == 1 &&
+      base::PathService::Get(chrome::DIR_USER_DATA, &user_data_dir)) {
     NSURL* helper = [bundle.bundleURL
         URLByAppendingPathComponent:@"Contents/Helpers/EcomUpdater"];
     NSTask* task = [[NSTask alloc] init];
     task.executableURL = helper;
     task.arguments = @[
       bundle.bundlePath,
-      [NSString stringWithFormat:@"%d", NSProcessInfo.processInfo.processIdentifier]
+      [NSString stringWithFormat:@"%d", NSProcessInfo.processInfo.processIdentifier],
+      base::apple::FilePathToNSString(user_data_dir)
     ];
     NSError* error = nil;
     if (![task launchAndReturnError:&error]) {

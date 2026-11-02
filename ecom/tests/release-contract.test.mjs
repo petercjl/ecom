@@ -7,6 +7,8 @@ import { spawnSync } from 'node:child_process';
 import { prepareReleaseSource } from '../build-macos.mjs';
 import { validatePublication, verifyPayload } from '../verify-release-payload.mjs';
 import { auditMacBundle } from '../package-macos.mjs';
+import { registryPayloadStatus } from '../registry-payload-status.mjs';
+import crypto from 'node:crypto';
 import { artifactManifest, payloadPackage, validateRelease, sha256 } from '../release-contract.mjs';
 const config = JSON.parse(fs.readFileSync(new URL('../release-config.json', import.meta.url)));
 test('release artifact pins native source, payload hash and supported target', () => {
@@ -25,9 +27,22 @@ test('binary payload has an explicit allowlist and no install scripts or runtime
   assert.deepEqual(JSON.parse(fs.readFileSync(new URL('../distribution/package.json', import.meta.url))), pkg);
 });
 test('publication requires exact native identity and explicit installation/update evidence', () => {
-  const record = { version: config.version, packageName: config.packageName, platform: 'darwin', arch: 'arm64', sourceRevision: 'a'.repeat(40), tarballSha256: 'b'.repeat(64), nativeSmokeTest: true, updateRoundTripVerified: true, evidencePath: 'docs/ecom/release-evidence/macos-0.1.0.md' };
+  const record = { version: config.version, packageName: config.packageName, platform: 'darwin', arch: 'arm64', sourceRevision: 'a'.repeat(40), tarballSha256: 'b'.repeat(64), nativeSmokeTest: true, localUpdateRecoveryVerified: true, updateRoundTripVerified: true, evidencePath: 'docs/ecom/release-evidence/macos-0.1.0.md' };
   assert.equal(validatePublication(record, config), record);
-  for (const patch of [{ nativeSmokeTest: false }, { updateRoundTripVerified: false }, { sourceRevision: 'HEAD' }, { evidencePath: '/tmp/uncommitted.md' }, { tarballSha256: '' }, { packageName: '@petercjl/ecom-cli' }]) assert.throws(() => validatePublication({ ...record, ...patch }, config));
+  for (const patch of [{ nativeSmokeTest: false }, { localUpdateRecoveryVerified: false }, { updateRoundTripVerified: false }, { sourceRevision: 'HEAD' }, { evidencePath: '/tmp/uncommitted.md' }, { tarballSha256: '' }, { packageName: '@petercjl/ecom-cli' }]) assert.throws(() => validatePublication({ ...record, ...patch }, config));
+  assert.equal(validatePublication({ ...record, updateRoundTripVerified: false }, config, 'next').nativeSmokeTest, true);
+});
+test('channel promotion requires a byte-identical published version', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecom-registry-proof-'));
+  const file = path.join(dir, 'payload.tgz'); fs.writeFileSync(file, 'fixture bytes', { flag: 'wx' });
+  const absent = async () => ({ status: 404 });
+  const metadata = { name: config.packageName, version: config.version, dist: { integrity: 'sha512-' + crypto.createHash('sha512').update('fixture bytes').digest('base64') } };
+  try {
+    assert.deepEqual(await registryPayloadStatus(config.version, file, 'next', absent), { exists: false });
+    await assert.rejects(registryPayloadStatus(config.version, file, 'latest', absent), /candidate on next/);
+    assert.deepEqual(await registryPayloadStatus(config.version, file, 'latest', async () => ({ ok: true, json: async () => metadata })), { exists: true });
+    await assert.rejects(registryPayloadStatus(config.version, file, 'latest', async () => ({ ok: true, json: async () => ({ ...metadata, dist: { integrity: 'sha512-wrong' } }) })), /differs from the verified tarball/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 test('application audit refuses profile files, external links and private build paths', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecom-app-audit-'));
@@ -65,7 +80,7 @@ test('publication verifies an actual tarball and rejects changed transport bytes
     const tgz = path.join(dir, 'payload.tgz');
     run('/usr/bin/tar', ['-czf', tgz, '-C', stage, 'package/Ecom.zip', 'package/LICENSE', 'package/artifact.json', 'package/package.json']);
     const evidencePath = 'docs/ecom/release-evidence/fixture.md'; write(evidencePath, 'Transport fixture source: ' + sourceRevision);
-    write('ecom/releases/macos-arm64/' + config.version + '.json', JSON.stringify({ version: config.version, packageName: config.packageName, platform: 'darwin', arch: 'arm64', sourceRevision, tarballSha256: await sha256(tgz), nativeSmokeTest: true, updateRoundTripVerified: true, evidencePath }));
+    write('ecom/releases/macos-arm64/' + config.version + '.json', JSON.stringify({ version: config.version, packageName: config.packageName, platform: 'darwin', arch: 'arm64', sourceRevision, tarballSha256: await sha256(tgz), nativeSmokeTest: true, localUpdateRecoveryVerified: true, updateRoundTripVerified: true, evidencePath }));
     run('git', ['add', '.']); run('git', ['commit', '-m', 'Fixture evidence']);
     assert.equal((await verifyPayload(repo, config.version, tgz)).artifactVerified, true);
     fs.appendFileSync(tgz, 'changed transport bytes');

@@ -113,7 +113,7 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   const npm = fs.realpathSync(run('/usr/bin/which', ['npm']));
   run(process.execPath, [npm, 'pack', payload, '--json', '--pack-destination', output]);
   if (!fs.statSync(tarball).isFile()) throw new Error('npm pack did not produce the expected payload');
-  const receipt = { ...manifest, dmg: path.basename(dmg), dmgSha256: await sha256(dmg), tarball: path.basename(tarball), tarballSha256: await sha256(tarball), buildEnvironment: { node: process.version, xcode: run('/usr/bin/xcodebuild', ['-version']).split('\n')[0], sdk: run('/usr/bin/xcrun', ['--sdk', 'macosx', '--show-sdk-version']), argsSha256: await sha256(path.resolve(sourceRoot, '../out/Release_arm64/args_generated.gni')) }, updaterSelfTest: true, codesignVerified: true, nativeSmokeTest: false, updateRoundTripVerified: false, published: false };
+  const receipt = { ...manifest, dmg: path.basename(dmg), dmgSha256: await sha256(dmg), tarball: path.basename(tarball), tarballSha256: await sha256(tarball), buildEnvironment: { node: process.version, xcode: run('/usr/bin/xcodebuild', ['-version']).split('\n')[0], sdk: run('/usr/bin/xcrun', ['--sdk', 'macosx', '--show-sdk-version']), argsSha256: await sha256(path.resolve(sourceRoot, '../out/Release_arm64/args_generated.gni')) }, updaterSelfTest: true, localUpdateRecoveryVerified: true, codesignVerified: true, nativeSmokeTest: false, updateRoundTripVerified: false, published: false };
   writeNew(path.join(output, 'release-receipt.json'), JSON.stringify(receipt, null, 2) + '\n');
   return { output, payload, dmg, tarball, receipt };
 }

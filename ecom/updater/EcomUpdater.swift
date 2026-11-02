@@ -5,6 +5,9 @@ import CryptoKit
 import Darwin
 
 enum UpdateFailure: Error { case invalid(String) }
+func relaunchArguments(profile: String) -> [String] {
+    ["--user-data-dir=" + profile, "--restore-last-session"]
+}
 func require(_ condition: Bool, _ reason: String) throws {
     if !condition { throw UpdateFailure.invalid(reason) }
 }
@@ -108,7 +111,7 @@ final class RegistrySession: NSObject, URLSessionTaskDelegate {
 }
 @MainActor
 final class Updater {
-    let app: URL, owner: NSRunningApplication, current: String, currentSource: String
+    let app: URL, owner: NSRunningApplication, current: String, currentSource: String, profile: String, channel: String
     let fm = FileManager.default
     let delegate = RegistrySession()
     var downloadRequested = false
@@ -118,13 +121,17 @@ final class Updater {
         config.timeoutIntervalForRequest = 60; config.timeoutIntervalForResource = 3600
         return URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
     }()
-    init(path: String, pid: pid_t) throws {
+    init(path: String, pid: pid_t, profilePath: String) throws {
         app = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath()
         guard let bundle = Bundle(url: app), let process = NSRunningApplication(processIdentifier: pid),
               let version = bundle.object(forInfoDictionaryKey: "EcomReleaseVersion") as? String,
               let source = bundle.object(forInfoDictionaryKey: "EcomSourceRevision") as? String else { throw UpdateFailure.invalid("application") }
         try require(app.lastPathComponent == "Ecom.app" && bundle.bundleIdentifier == "app.ecom.browser" && process.bundleIdentifier == "app.ecom.browser" && process.bundleURL?.resolvingSymlinksInPath() == app && bundle.object(forInfoDictionaryKey: "EcomUpdatePackage") as? String == "@petercjl/ecom-macos-arm64", "application identity")
+        let selectedChannel = bundle.object(forInfoDictionaryKey: "EcomUpdateChannel") as? String ?? "latest"
+        try require(selectedChannel == "latest" || (selectedChannel == "next" && bundle.object(forInfoDictionaryKey: "EcomUpdateTestSeed") as? Bool == true), "update channel")
+        try require(profilePath.hasPrefix("/") && !profilePath.contains("\0"), "profile path")
         _ = try stableVersion(version); current = version; currentSource = source; owner = process
+        profile = profilePath; channel = selectedChannel
     }
     func ask(_ title: String, _ message: String, _ action: String) -> Bool {
         let alert = NSAlert(); alert.messageText = title; alert.informativeText = message
@@ -137,7 +144,7 @@ final class Updater {
     }
     func check() async throws -> Bool {
         downloadRequested = false
-        let url = URL(string: "https://registry.npmjs.org/@petercjl%2fecom-macos-arm64/latest")!
+        let url = URL(string: "https://registry.npmjs.org/@petercjl%2fecom-macos-arm64/" + channel)!
         let (data, response) = try await session.data(from: url)
         // An unpublished first version is an ordinary no-update result.
         if (response as? HTTPURLResponse)?.statusCode == 404 { return false }
@@ -184,6 +191,7 @@ final class Updater {
         try validateBundleLinks(candidate)
         guard let bundle = Bundle(url: candidate) else { throw UpdateFailure.invalid("candidate bundle") }
         try require(bundle.bundleIdentifier == manifest.bundleId && bundle.object(forInfoDictionaryKey: "EcomReleaseVersion") as? String == version && bundle.object(forInfoDictionaryKey: "EcomSourceRevision") as? String == manifest.sourceRevision && bundle.object(forInfoDictionaryKey: "EcomUpdateProtocol") as? Int == 1 && bundle.object(forInfoDictionaryKey: "EcomUpdatePackage") as? String == manifest.packageName, "candidate identity")
+        try require(bundle.object(forInfoDictionaryKey: "EcomUpdateChannel") as? String == "latest" && bundle.object(forInfoDictionaryKey: "EcomUpdateTestSeed") as? Bool != true, "production candidate channel")
         try run("/usr/bin/codesign", ["--verify", "--deep", "--strict", candidate.path])
         try run("/usr/bin/lipo", ["-verify_arch", "arm64", candidate.appendingPathComponent("Contents/MacOS/Ecom").path])
         if owner.isTerminated || !ask("更新已准备完成", "退出 Ecom 并安装 " + version + "？账号和容器数据保留，旧应用将保留在安装目录供恢复。", "退出并安装") { return false }
@@ -201,7 +209,7 @@ final class Updater {
         let backup = parent.appendingPathComponent("Ecom.previous-" + current + "-" + UUID().uuidString + ".app")
         try activateBundle(app: app, candidate: candidate, backup: backup)
         do {
-            try run("/usr/bin/open", ["-n", app.path, "--args", "--restore-last-session"])
+            try run("/usr/bin/open", ["-n", app.path, "--args"] + relaunchArguments(profile: profile))
             try await Task.sleep(nanoseconds: 8_000_000_000)
             try require(NSRunningApplication.runningApplications(withBundleIdentifier: "app.ecom.browser").contains { $0.bundleURL?.resolvingSymlinksInPath() == app && !$0.isTerminated }, "updated application failed to start")
         } catch {
@@ -214,7 +222,7 @@ final class Updater {
             }
             try require(started.allSatisfy { $0.isTerminated }, "recovery awaits normal quit; previous application retained")
             try restoreBundle(app: app, backup: backup, failed: parent.appendingPathComponent("Ecom.failed-" + UUID().uuidString + ".app"))
-            _ = try? run("/usr/bin/open", ["-n", app.path, "--args", "--restore-last-session"])
+            _ = try? run("/usr/bin/open", ["-n", app.path, "--args"] + relaunchArguments(profile: profile))
             throw error
         }
         return true
@@ -236,15 +244,17 @@ struct Main {
                     do { try safeArchivePaths(invalid, prefix: "Ecom.app/"); fatalError("accepted unsafe archive") } catch {}
                 }
                 try require(!RegistrySession.allowed(URL(string: "https://registry.npmjs.org.evil.test/x")), "host check")
+                try require(relaunchArguments(profile: "/tmp/Ecom 账号") == ["--user-data-dir=/tmp/Ecom 账号", "--restore-last-session"], "profile restoration")
                 try transactionSelfTest()
                 print("Ecom updater contract self-test passed")
             } catch { fputs("Updater self-test failed\n", stderr); exit(1) }
             return
         }
-        guard CommandLine.arguments.count == 3, let pid = Int32(CommandLine.arguments[2]) else { exit(2) }
+        guard CommandLine.arguments.count == 4, let pid = Int32(CommandLine.arguments[2]) else { exit(2) }
         _ = NSApplication.shared; NSApp.setActivationPolicy(.accessory)
         do {
-            let updater = try Updater(path: CommandLine.arguments[1], pid: pid)
+            let updater = try Updater(path: CommandLine.arguments[1], pid: pid, profilePath: CommandLine.arguments[3])
+            NSApp.applicationIconImage = NSWorkspace.shared.icon(forFile: updater.app.path)
             // Process-scoped lock avoids duplicate helpers without persisting a stale PID.
             let lockPath = updater.app.path + ".update-lock"
             let fd = open(lockPath, O_CREAT | O_RDWR | O_NOFOLLOW, 0o600)

@@ -11,7 +11,7 @@ on:
         required: true
         default: latest
         type: choice
-        options: [latest]
+        options: [next, latest]
       validate_only:
         description: Validate without publication
         required: false
@@ -29,6 +29,7 @@ jobs:
     timeout-minutes: 30
     env:
       RELEASE: ${{ inputs.release }}
+      DIST_TAG: ${{ inputs.tag }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
@@ -40,15 +41,21 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - name: Pin npm with Trusted Publishing support
-        run: npm install --global npm@11.18.0
+        run: npm install --global npm@11.21.0
       - name: Validate committed native evidence before downloading
-        run: node ecom/verify-release-payload.mjs "$RELEASE"
+        run: node ecom/verify-release-payload.mjs "$RELEASE" --tag "$DIST_TAG"
       - name: Download immutable native payload
         run: |
           mkdir payload-download
           gh release download "ecom-macos-v$RELEASE" --pattern "petercjl-ecom-macos-arm64-$RELEASE.tgz" --dir payload-download
       - name: Verify native payload identity and checksums
-        run: node ecom/verify-release-payload.mjs "$RELEASE" "payload-download/petercjl-ecom-macos-arm64-$RELEASE.tgz"
+        run: node ecom/verify-release-payload.mjs "$RELEASE" "payload-download/petercjl-ecom-macos-arm64-$RELEASE.tgz" --tag "$DIST_TAG"
+      - name: Verify registry identity before publication or promotion
+        id: registry
+        run: node ecom/registry-payload-status.mjs "$RELEASE" "payload-download/petercjl-ecom-macos-arm64-$RELEASE.tgz" "$DIST_TAG" >> "$GITHUB_OUTPUT"
       - name: Publish the exact prebuilt payload through OIDC
-        if: ${{ !inputs.validate_only }}
-        run: npm publish "payload-download/petercjl-ecom-macos-arm64-$RELEASE.tgz" --access public --tag latest
+        if: ${{ !inputs.validate_only && steps.registry.outputs.exists == 'false' }}
+        run: npm publish "payload-download/petercjl-ecom-macos-arm64-$RELEASE.tgz" --access public --tag "$DIST_TAG"
+      - name: Promote the byte-identical verified version through OIDC
+        if: ${{ !inputs.validate_only && steps.registry.outputs.exists == 'true' }}
+        run: npm dist-tag add "@petercjl/ecom-macos-arm64@$RELEASE" "$DIST_TAG"

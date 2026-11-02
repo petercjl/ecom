@@ -3,20 +3,22 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 import { validateRelease, payloadPackage, sha256 } from './release-contract.mjs';
 import { git } from './workspace.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export function validatePublication(record, config) {
+export function validatePublication(record, config, tag = 'latest') {
   validateRelease(config);
   if (record.version !== config.version || record.packageName !== config.packageName ||
       record.platform !== config.platform || record.arch !== config.arch ||
-      record.nativeSmokeTest !== true || record.updateRoundTripVerified !== true ||
+      !['latest', 'next'].includes(tag) || record.nativeSmokeTest !== true || record.localUpdateRecoveryVerified !== true ||
+      (tag === 'latest' && record.updateRoundTripVerified !== true) ||
       !/^[a-f0-9]{40}$/.test(record.sourceRevision) || !/^[a-f0-9]{64}$/.test(record.tarballSha256) ||
       !/^docs\/ecom\/release-evidence\/[a-zA-Z0-9._-]+\.md$/.test(record.evidencePath)) throw new Error('Native release evidence is incomplete');
   return record;
 }
-export async function verifyPayload(repositoryRoot, version, tgz) {
+export async function verifyPayload(repositoryRoot, version, tgz, tag = 'latest') {
   const root = repositoryRoot;
   const config = validateRelease(JSON.parse(fs.readFileSync(path.join(root, 'ecom/release-config.json'), 'utf8')));
   if (version !== config.version) throw new Error('Release input must match the committed version');
@@ -24,7 +26,7 @@ export async function verifyPayload(repositoryRoot, version, tgz) {
   if (JSON.stringify(descriptor) !== JSON.stringify(payloadPackage(config))) throw new Error('Distribution descriptor differs from release config');
   const recordPath = path.join(root, 'ecom/releases/macos-arm64', version + '.json');
   if (!fs.existsSync(recordPath)) throw new Error('Native release record is missing; complete installation and update validation before publishing');
-  const record = validatePublication(JSON.parse(fs.readFileSync(recordPath, 'utf8')), config);
+  const record = validatePublication(JSON.parse(fs.readFileSync(recordPath, 'utf8')), config, tag);
   git(root, ['cat-file', '-e', record.sourceRevision + '^{commit}']);
   const evidence = git(root, ['show', 'HEAD:' + record.evidencePath]);
   if (!evidence.includes(record.sourceRevision)) throw new Error('Evidence does not identify the native build source');
@@ -55,5 +57,6 @@ export async function verifyPayload(repositoryRoot, version, tgz) {
   return { ok: true, version, record, artifactVerified: true };
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  verifyPayload(root, process.argv[2], process.argv[3]).then(result => console.log(JSON.stringify(result))).catch(error => { console.error(error.message); process.exitCode = 1; });
+  const { positionals, values } = parseArgs({ options: { tag: { type: 'string', default: 'latest' } }, allowPositionals: true });
+  verifyPayload(root, positionals[0], positionals[1], values.tag).then(result => console.log(JSON.stringify(result))).catch(error => { console.error(error.message); process.exitCode = 1; });
 }
