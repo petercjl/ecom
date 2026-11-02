@@ -33,6 +33,8 @@ node ecom/cli.mjs capabilities
 
 ## 店铺配置合同
 
+独立管理页的已验证范围与限制见 [管理页验收记录](shop-manager-test-2026-11-02.md)。
+
 `shops create --platform taobao --name '<店铺名>'` 创建待登录容器；`shops configure --container '<ID>' --platform taobao` 为现有容器补充平台信息，保留 ID 与会话。`shops open --container '<ID>' --service sycm|qianniu|alimama` 在该容器中打开对应服务。管理页使用相同命令，创建后进入网页登录；关闭登录页后，待配置记录仍可恢复。
 
 `shops verify --container '<ID>'` 请求平台身份。成功解析后返回候选身份及五分钟有效的 candidateId，待用户核对名称和账号；`shops confirm --container '<ID>' --shop-id '<候选店铺ID>' --candidate-id '<候选ID>'` 完成绑定。已绑定店铺的 `session.get` 在业务请求前重新核验，身份不符停止请求。普通容器保持原有行为；一个服务的身份核验不表示其他服务已经登录或获授权。
