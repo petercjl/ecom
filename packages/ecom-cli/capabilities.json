@@ -311,7 +311,7 @@
     "updateGuide": "UPDATE.md",
     "install": "Resolve current Agent exact Skill target; run skill install --agent NAME --target PATH; load Skill through host discovery.",
     "update": "Run selected Skill runtime update install --agent NAME --target PATH --yes; verify returned activated entry and refresh host discovery.",
-    "verification": "Verify CLI and Skill versions, managed hashes and current=true; host loads installed SKILL.md independently."
+    "verification": "Verify CLI and Skill versions, managed hashes, current=true and recovery.required=false; host loads installed SKILL.md independently."
   },
   "automaticUpdates": {
     "enabledByDefault": true,

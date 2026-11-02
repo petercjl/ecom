@@ -33,6 +33,8 @@ Resolve the current Agent's exact Skill destination from host configuration; use
 
 For an authorized package update, invoke the installed entry's `update install --agent NAME --target PATH --yes --json`. It acquires stable latest and activates CLI plus Skill together. Use the new entry from its receipt, verify CLI/Skill versions and SHA-256 `current=true`, then refresh and load this exact Skill through host discovery. Preserve receipts and backups. Local edits and unmanaged destinations require reconciliation before replacement; other Agent installations remain untouched. Automatic task-entry checks only notify; offline checks retain the installed runtime.
 
+Always inspect `skill status` using the newly activated entry. If `recovery.required=true` identifies legacy backups in host discovery, run the new entry's `skill update` for that same target and verify recovery clears. Backups are preserved outside the Skill discovery directory; migration records identify both old and new locations.
+
 ## QA and evolution
 
 Success requires actual structured CLI output, not inferred browser state. Maintenance additionally requires integrity plus native host discovery. Runtime checks do not claim clean-context regression or other Agents/OS tests. Add new commands to the browser capability layer, CLI schema, tests and this canonical Skill together in an authorized development cycle. This simple deterministic Skill uses direct internalization of user-confirmed scope and verified CLI contracts; private knowledge bases are not runtime dependencies.

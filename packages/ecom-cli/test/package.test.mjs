@@ -10,7 +10,9 @@ import {parse} from '../lib/cli.mjs';
 import {checkUpdate} from '../lib/maintenance.mjs';
 const npm=process.platform==='win32'?'npm.cmd':'npm';
 const invoke=(entry,args)=>{
-  const r=spawnSync(process.execPath,[entry,...args],{encoding:'utf8',env:{...process.env,ECOM_CLI_UPDATE_CHECK:'0'},timeout:30000});
+  const target=args[args.indexOf('--target')+1];
+  const state=args.includes('--target')?{ECOM_CLI_STATE_DIR:path.join(path.dirname(target),'..','.ecom-test-state')}:{};
+  const r=spawnSync(process.execPath,[entry,...args],{encoding:'utf8',env:{...process.env,...state,ECOM_CLI_UPDATE_CHECK:'0'},timeout:30000});
   assert.ok(r.stdout,r.stderr);return {exit:r.status,...JSON.parse(r.stdout)};
 };
 test('strict parser and discoverable command help refuse invalid writes',()=>{
@@ -48,6 +50,11 @@ test('actual npm packed install, update repair, isolation, local-edits and docto
     const receipt=path.join(a,'.ecom-receipt.json'), meta=JSON.parse(fs.readFileSync(receipt));
     meta.version='0.0.0';fs.writeFileSync(receipt,JSON.stringify(meta));
     const repaired=invoke(entry,args('update',a));assert.equal(repaired.current,true);assert.ok(fs.statSync(repaired.backup).isDirectory());
+    assert.notEqual(path.dirname(repaired.backup),path.dirname(a));
+    const legacy=a+'.ecom-backup-fixture';fs.cpSync(repaired.backup,legacy,{recursive:true});
+    const legacyMeta=JSON.parse(fs.readFileSync(receipt));legacyMeta.backup=legacy;fs.writeFileSync(receipt,JSON.stringify(legacyMeta));
+    assert.equal(invoke(entry,args('status',a)).recovery.required,true);
+    const migrated=invoke(entry,args('update',a));assert.equal(migrated.recovery.required,false);assert.equal(fs.existsSync(legacy),false);assert.equal(migrated.migratedBackups[0].from,legacy);assert.ok(fs.existsSync(migrated.migratedBackups[0].to));
     meta.version='0.0.0';fs.writeFileSync(receipt,JSON.stringify(meta));fs.writeFileSync(a+'.ecom-lock','lock');
     assert.equal(invoke(entry,args('update',a)).error.code,'TARGET_LOCKED');
     fs.unlinkSync(a+'.ecom-lock');assert.equal(invoke(entry,args('update',a)).current,true);
@@ -87,7 +94,7 @@ test('real npm candidate update activates both runtime and Skill and preserves r
     const target=path.join(tmp,'skills/ecom-cli'), entry=path.join(root,'bin/ecom-cli.mjs'),args=['--agent','fixture-host','--target',target,'--json'];
     assert.equal(invoke(entry,['skill','install',...args]).current,true);
     const call=(env={})=>new Promise(resolve=>{
-      const child=spawn(process.execPath,[path.join(target,'.runtime/bin/ecom-cli.mjs'),'update','install',...args,'--yes','--version','0.2.0'],{env:{...process.env,npm_config_registry:'http://127.0.0.1:'+server.address().port,...env}});
+      const child=spawn(process.execPath,[path.join(target,'.runtime/bin/ecom-cli.mjs'),'update','install',...args,'--yes','--version','0.2.0'],{env:{...process.env,ECOM_CLI_STATE_DIR:path.join(tmp,'state'),npm_config_registry:'http://127.0.0.1:'+server.address().port,...env}});
       let output='';child.stdout.on('data',s=>output+=s);child.stderr.resume();child.on('close',code=>resolve({code,...JSON.parse(output)}));
     });
     const result=await call();assert.equal(result.ok,true,JSON.stringify(result));assert.equal(result.version,'0.2.0');assert.ok(result.backup);assert.ok(result.journal);
