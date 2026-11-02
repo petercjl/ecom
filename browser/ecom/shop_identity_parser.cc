@@ -163,4 +163,24 @@ std::optional<std::string> ExtractSycmLegalityToken(std::string_view html) {
   }
   return token;
 }
+
+std::string RedactIdentityError(std::string_view message,
+                                std::string_view request_token) {
+  if (message.size() > 600) {
+    return "IDENTITY_RESPONSE_ERROR";
+  }
+  std::string safe(message);
+  if (!request_token.empty()) {
+    base::ReplaceSubstringsAfterOffset(&safe, 0, request_token, "[REDACTED]");
+  }
+  re2::RE2::GlobalReplace(&safe, R"re(https?://[^\s"'<>]+)re", "[URL]");
+  re2::RE2::GlobalReplace(
+      &safe,
+      R"re((?i)(?:cookie|token|password|authorization|secret)\s*[:=]\s*[^\s,;]+)re",
+      "[REDACTED]");
+  re2::RE2::GlobalReplace(&safe, R"re([-A-Za-z0-9_.~+/%=]{12,})re",
+                         "[REDACTED]");
+  re2::RE2::GlobalReplace(&safe, R"re([0-9]{6,})re", "[REDACTED]");
+  return safe;
+}
 }  // namespace ecom

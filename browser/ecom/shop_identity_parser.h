@@ -15,5 +15,7 @@ std::optional<base::DictValue> ParseEmbeddedShopIdentity(std::string_view html);
 std::optional<base::DictValue> ParsePersonalViewShopIdentity(std::string_view json);
 // The returned value is browser-private request material, never CLI output.
 std::optional<std::string> ExtractSycmLegalityToken(std::string_view html);
+std::string RedactIdentityError(std::string_view message,
+                                std::string_view request_token);
 }  // namespace ecom
 #endif  // BRAVE_BROWSER_ECOM_SHOP_IDENTITY_PARSER_H_

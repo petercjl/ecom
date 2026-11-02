@@ -77,4 +77,17 @@ TEST(ShopIdentityParser, TokenIsConfinedToActualMicrodataMetaAttribute) {
       "<meta name='microdata' content='legalityToken=" +
       std::string(1025, 'x') + "'>"));
 }
+TEST(ShopIdentityParser, ErrorDiagnosticsRetainExplanationAndRedactCredentials) {
+  EXPECT_EQ(RedactIdentityError("请求方式必须是 POST", "fixture"),
+            "请求方式必须是 POST");
+  const auto safe = RedactIdentityError(
+      "error token=short; detail tiny; key abcdefghijklmnop; id 123456789; "
+      "url https://example.com/private?token=secret", "tiny");
+  for (const auto* secret : {"short", "tiny", "abcdefghijklmnop", "123456789",
+                             "example.com", "secret"}) {
+    EXPECT_EQ(safe.find(secret), std::string::npos);
+  }
+  EXPECT_EQ(RedactIdentityError(std::string(601, 'x'), ""),
+            "IDENTITY_RESPONSE_ERROR");
+}
 }  // namespace ecom

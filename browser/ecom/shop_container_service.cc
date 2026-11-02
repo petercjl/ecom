@@ -983,12 +983,12 @@ class ShopService final : public base::SupportsUserData::Data,
             classification.Set(word, message->find(word) != std::string::npos);
           }
           diagnostics.Set("identityProbeMessageClass", std::move(classification));
-          if (message->size() <= 600 &&
-              std::none_of(message->begin(), message->end(), [](unsigned char c) {
-                return base::IsAsciiAlpha(c) || base::IsAsciiDigit(c);
-              })) {
-            diagnostics.Set("identityProbeLocalizedMessage", *message);
-          }
+          const auto query = pending.loader->GetFinalURL().query();
+          diagnostics.Set("identityProbeMessage",
+                          RedactIdentityError(
+                              *message, query.starts_with("token=")
+                                            ? query.substr(6)
+                                            : std::string_view()));
         }
         if (const auto* data = payload->GetDict().FindDict("data")) {
           base::DictValue types;
