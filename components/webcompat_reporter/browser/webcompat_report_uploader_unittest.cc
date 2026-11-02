@@ -98,7 +98,6 @@ TEST_F(WebcompatReportUploaderUnitTest, GenerateReport) {
           .Set("additionalDetails", *report_copy->details)
           .Set("api_key", brave_stats::GetAPIKey())
           .Set("block_scripts", *report_copy->block_scripts == "true")
-          .Set("braveVPNEnabled", report_copy->brave_vpn_connected.has_value())
           .Set("category", *report_copy->category)
           .Set("channel", *report_copy->channel)
           .Set("contactInfo", *report_copy->contact)

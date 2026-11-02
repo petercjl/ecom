@@ -13,7 +13,6 @@ import("//brave/components/brave_news/common/buildflags/buildflags.gni")
 import("//brave/components/brave_origin/buildflags/buildflags.gni")
 import("//brave/components/brave_rewards/core/buildflags/buildflags.gni")
 import("//brave/components/brave_talk/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wallet/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wayback_machine/buildflags/buildflags.gni")
 import("//brave/components/commander/common/buildflags/buildflags.gni")
@@ -29,6 +28,7 @@ import("//brave/components/text_recognition/common/buildflags/buildflags.gni")
 import("//brave/components/tor/buildflags/buildflags.gni")
 import("//brave/components/traffic_control/buildflags/buildflags.gni")
 import("//brave/components/web_discovery/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 import("//brave/ui/webui/custom_profile_image/buildflags/buildflags.gni")
 import("//build/config/features.gni")
 import("//chrome/common/features.gni")
@@ -831,30 +831,6 @@ source_set("ui") {
       "//components/bookmarks/browser",
     ]
 
-    if (enable_brave_vpn) {
-      deps += [ "//brave/browser/ui/brave_vpn" ]
-
-      if (is_win) {
-        sources += [
-          "views/brave_vpn/brave_vpn_dns_settings_notificiation_dialog_view.cc",
-          "views/brave_vpn/brave_vpn_dns_settings_notificiation_dialog_view.h",
-          "views/brave_vpn/brave_vpn_fallback_dialog_view.cc",
-          "views/brave_vpn/brave_vpn_fallback_dialog_view.h",
-          "webui/settings/brave_settings_secure_dns_handler.cc",
-          "webui/settings/brave_settings_secure_dns_handler.h",
-          "webui/settings/brave_vpn/brave_vpn_handler.cc",
-          "webui/settings/brave_vpn/brave_vpn_handler.h",
-        ]
-
-        deps += [ "//chrome/browser:flags" ]
-
-        if (enable_brave_vpn_v1) {
-          deps += [ "//brave/browser/brave_vpn/win:wireguard_utils" ]
-        }
-      }
-      sources += [ "brave_vpn/brave_vpn_controller.cc" ]
-    }
-
     if (use_aura) {
       sources += [
         "views/renderer_context_menu/brave_render_view_context_menu_views.cc",
@@ -1018,7 +994,6 @@ source_set("ui") {
     "//brave/components/brave_sync:prefs",
     "//brave/components/brave_sync:time_limited_codes",
     "//brave/components/brave_talk/buildflags",
-    "//brave/components/brave_vpn/common/buildflags",
     "//brave/components/constants",
     "//brave/components/containers/buildflags",
     "//brave/components/cosmetic_filters/resources/data:generated_resources",
@@ -1106,22 +1081,6 @@ source_set("ui") {
       "//brave/components/psst/resources",
       "//brave/components/psst/resources:psst_dialog_generated_resources",
     ]
-  }
-
-  if (enable_brave_vpn) {
-    deps += [
-      "//brave/browser/brave_vpn",
-      "//brave/components/brave_vpn/browser",
-      "//brave/components/brave_vpn/common",
-    ]
-  }
-  if (enable_brave_vpn_v1) {
-    if (is_win) {
-      deps += [
-        "//brave/components/brave_vpn/common/win",
-        "//brave/components/brave_vpn/common/wireguard",
-      ]
-    }
   }
 
   if (enable_brave_rewards) {
@@ -1433,36 +1392,6 @@ source_set("ui") {
     deps += [ "//brave/components/ntp_background_images/browser" ]
   }
 
-  if (enable_brave_vpn && !is_android) {
-    sources += [
-      "toolbar/brave_vpn_menu_model.cc",
-      "toolbar/brave_vpn_menu_model.h",
-      "webui/brave_vpn/vpn_panel_handler.cc",
-      "webui/brave_vpn/vpn_panel_handler.h",
-      "webui/brave_vpn/vpn_panel_ui.cc",
-      "webui/brave_vpn/vpn_panel_ui.h",
-    ]
-    public_deps += [ "//brave/components/brave_vpn/common/mojom" ]
-    deps += [
-      "//brave/components/brave_vpn/resources:panel_resources",
-      "//mojo/public/cpp/bindings",
-      "//ui/webui",
-    ]
-
-    if (toolkit_views) {
-      sources += [
-        "views/toolbar/brave_vpn_button.cc",
-        "views/toolbar/brave_vpn_button.h",
-        "views/toolbar/brave_vpn_panel_controller.cc",
-        "views/toolbar/brave_vpn_panel_controller.h",
-        "views/toolbar/brave_vpn_status_label.cc",
-        "views/toolbar/brave_vpn_status_label.h",
-        "views/toolbar/brave_vpn_toggle_button.cc",
-        "views/toolbar/brave_vpn_toggle_button.h",
-      ]
-    }
-  }
-
   if (enable_tor) {
     sources += [
       "webui/tor_internals_ui.cc",
@@ -1496,10 +1425,6 @@ source_set("ui") {
         "webui/brave_rewards/rewards_page_top_ui.cc",
         "webui/brave_rewards/rewards_page_top_ui.h",
       ]
-    }
-
-    if (enable_brave_vpn) {
-      deps += [ "//brave/components/brave_vpn/common" ]
     }
 
     if (enable_email_aliases) {
@@ -1645,27 +1570,6 @@ source_set("unit_tests") {
       "//ui/base:test_support",
       "//ui/gfx",
     ]
-
-    if (enable_brave_vpn) {
-      sources += [ "views/toolbar/brave_vpn_button_unittest.cc" ]
-      deps += [
-        "//base",
-        "//brave/components/brave_vpn/browser",
-        "//brave/components/skus/browser",
-        "//chrome/browser/prefs",
-        "//chrome/browser/themes",
-        "//chrome/browser/ui/views:layout_provider",
-        "//chrome/test:test_support",
-        "//skia",
-        "//third_party/abseil-cpp:absl",
-      ]
-    }
-    if (enable_brave_vpn_v1) {
-      deps += [
-        "//brave/components/brave_vpn/browser/connection:api",
-        "//brave/components/brave_vpn/browser/connection/ikev2:sim",
-      ]
-    }
   }
 }
 

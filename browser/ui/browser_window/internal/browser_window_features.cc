@@ -26,7 +26,6 @@
 #include "brave/browser/workspaces/features.h"
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/email_aliases/buildflags/buildflags.h"
 #include "brave/components/playlist/core/common/buildflags/buildflags.h"
 #include "chrome/browser/profiles/profile.h"
@@ -42,9 +41,6 @@
 #include "brave/browser/ui/brave_rewards/rewards_panel_coordinator.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/ui/brave_vpn/brave_vpn_controller.h"
-#endif
 
 #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
 #include "brave/browser/screenshot/print_preview_extractor_factory.h"
@@ -157,11 +153,6 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
   }
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  brave_vpn_controller_ =
-      GetUserDataFactory().CreateInstance<BraveVPNController>(*browser_,
-                                                              browser_view);
-#endif
 
 #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
   {
@@ -223,9 +214,6 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   screenshot_controller_.reset();
 #if BUILDFLAG(ENABLE_AI_CHAT)
   ai_chat_side_panel_tab_transfer_bridge_.reset();
-#endif
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  brave_vpn_controller_.reset();
 #endif
 
 #if BUILDFLAG(ENABLE_EMAIL_ALIASES)

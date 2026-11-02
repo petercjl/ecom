@@ -31,6 +31,12 @@ assert.equal(pkg.config.projects.depot_tools.revision, baseline.dependencies.dep
 assert.equal(pkg.repository.url, 'https://github.com/petercjl/ecom.git');
 assert.equal(pkg.scripts.sync, undefined);
 for (const flag of ['enable_ai_chat', 'enable_brave_news', 'enable_brave_wallet', 'enable_brave_rewards', 'enable_brave_ads', 'enable_web_discovery', 'enable_web_discovery_native', 'enable_updater', 'enable_sparkle', 'enable_update_notifications']) assert.equal(pkg.config.gn.args[flag], false);
+for (const name of ['components/brave_vpn', 'browser/brave_vpn', 'browser/ui/brave_vpn', 'browser/ui/webui/brave_vpn', 'browser/ui/views/toolbar/brave_vpn_button.cc']) {
+  assert.ok(!fs.existsSync(path.join(root, name)) || !fs.readdirSync(path.join(root, name)).length, name);
+}
+for (const name of ['enable_brave_vpn', 'enable_brave_vpn_v1', 'enable_brave_vpn_v2']) {
+  assert.match(read('ecom/removed-features.gni'), new RegExp('^' + name + ' = false$', 'm'));
+}
 const solutionWriter = read('build/commands/lib/syncUtils.js');
 assert.ok(!solutionWriter.includes('https://github.com/brave/brave-core.git'));
 assert.equal(solutionWriter.split(pkg.repository.url).length - 1, 2);

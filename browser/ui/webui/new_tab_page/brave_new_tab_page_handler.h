@@ -16,7 +16,6 @@
 #include "base/scoped_observation.h"
 #include "brave/browser/ui/webui/new_tab_page/brave_new_tab_ui.h"
 #include "brave/components/brave_new_tab_ui/brave_new_tab_page.mojom.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/search_engines/template_url_service.h"
 #include "components/search_engines/template_url_service_observer.h"
@@ -24,9 +23,6 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "ui/shell_dialogs/select_file_dialog.h"
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/mojom/brave_vpn.mojom.h"
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 
 namespace base {
 class FilePath;
@@ -81,12 +77,6 @@ class BraveNewTabPageHandler : public brave_new_tab_page::mojom::PageHandler,
                           bool meta_key,
                           bool shift_key) override;
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  void RefreshVPNState() override;
-  void LaunchVPNPanel() override;
-  void OpenVPNAccountPage(brave_vpn::mojom::ManageURLType type) override;
-  void ReportVPNWidgetUsage() override;
-#endif
 
   // Observe BraveNTPCustomBackgroundService.
   void OnBackgroundUpdated();

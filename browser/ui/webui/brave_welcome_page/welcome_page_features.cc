@@ -8,7 +8,6 @@
 #include "base/check.h"
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/constants/pref_names.h"
 #include "chrome/browser/profiles/profile.h"
@@ -24,10 +23,6 @@
 #include "brave/components/brave_rewards/core/pref_names.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/brave_vpn/vpn_utils.h"
-#include "brave/components/brave_vpn/common/pref_names.h"
-#endif
 
 #if BUILDFLAG(ENABLE_BRAVE_WALLET)
 #include "brave/browser/brave_wallet/brave_wallet_context_utils.h"
@@ -59,11 +54,6 @@ base::flat_set<mojom::Feature> GetAvailableFeatures(Profile* profile) {
   }
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  if (brave_vpn::IsBraveVPNEnabled(profile)) {
-    features.insert(mojom::Feature::kVPN);
-  }
-#endif
 
   return features;
 }
@@ -89,13 +79,6 @@ std::vector<std::string_view> GetFeatureVisibilityPrefs(
 #if BUILDFLAG(ENABLE_BRAVE_REWARDS)
           brave_rewards::prefs::kShowLocationBarButton,
           kNewTabPageShowRewards,
-#endif
-      };
-    case mojom::Feature::kVPN:
-      return {
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-          brave_vpn::prefs::kBraveVPNShowButton,
-          kNewTabPageShowBraveVPN,
 #endif
       };
   }

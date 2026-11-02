@@ -21,7 +21,6 @@
 #include "brave/components/brave_shields/content/browser/ad_block_service.h"
 #include "brave/components/brave_shields/core/browser/brave_shields_p3a.h"
 #include "brave/components/brave_sync/brave_sync_prefs.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/ipfs/ipfs_prefs.h"
@@ -68,9 +67,6 @@
 #include "brave/browser/ui/webui/brave_welcome_page/brave_welcome_page_prefs.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/brave_vpn_utils.h"
-#endif
 
 #if BUILDFLAG(ENABLE_BRAVE_WALLET)
 #include "brave/components/brave_wallet/browser/keyring_service.h"
@@ -299,10 +295,6 @@ void MigrateObsoleteBraveLocalStatePrefsAfterChromium(
   local_state->ClearPref(kDefaultBrowserPromptEnabled);
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  // Added 09/2024
-  brave_vpn::MigrateLocalStatePrefs(local_state);
-#endif
 
   misc_metrics::UptimeMonitorImpl::MigrateObsoletePrefs(local_state);
   brave_search::BackupResultsMetrics::MigrateObsoleteLocalStatePrefs(

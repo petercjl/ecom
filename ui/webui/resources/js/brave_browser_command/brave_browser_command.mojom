@@ -18,7 +18,6 @@ enum Command {
   kOpenRewardsOnboarding = 1,
   [EnableIf=enable_brave_wallet]
   kOpenWalletOnboarding = 2,
-  kOpenVPNOnboarding = 3,
   [EnableIf=enable_ai_chat]
   kOpenAIChat = 4
 };

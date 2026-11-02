@@ -152,11 +152,6 @@ void WebcompatReportUploader::SubmitReport(mojom::ReportInfoPtr report_info) {
         report_info->language_farbling.value() == kStringTrue);
   }
 
-  if (report_info->brave_vpn_connected) {
-    report_details_dict.Set(
-        kBraveVPNEnabledField,
-        report_info->brave_vpn_connected.value() == kStringTrue);
-  }
 
   if (report_info->cookie_policy) {
     report_details_dict.Set(kCookiePolicyField,

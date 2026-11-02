@@ -15,7 +15,6 @@ import {
   useRewardsState,
   useRewardsActions,
 } from '../../context/rewards_context'
-import { useVpnState, useVpnActions } from '../../context/vpn_context'
 import { SettingsPanel } from './settings_panel'
 
 import { style } from './widgets_panel.style'
@@ -24,7 +23,6 @@ export function WidgetsPanel() {
   const braveNews = useBraveNews()
   const newTabActions = useNewTabActions()
   const rewardsActions = useRewardsActions()
-  const vpnActions = useVpnActions()
 
   const showStats = useNewTabState((s) => s.showShieldsStats)
   const talkFeatureEnabled = useNewTabState((s) => s.talkFeatureEnabled)
@@ -32,8 +30,6 @@ export function WidgetsPanel() {
   const newsFeatureEnabled = useNewTabState((s) => s.newsFeatureEnabled)
   const rewardsFeatureEnabled = useRewardsState((s) => s.rewardsFeatureEnabled)
   const showRewardsWidget = useRewardsState((s) => s.showRewardsWidget)
-  const vpnFeatureEnabled = useVpnState((s) => s.vpnFeatureEnabled)
-  const showVpnWidget = useVpnState((s) => s.showVpnWidget)
 
   return (
     <SettingsPanel
@@ -53,21 +49,6 @@ export function WidgetsPanel() {
           {getString(S.NEW_TAB_SHOW_STATS_LABEL)}
         </span>
       </Toggle>
-      {vpnFeatureEnabled && (
-        <Toggle
-          className='toggle-row'
-          size='small'
-          checked={showVpnWidget}
-          onChange={({ checked }) => {
-            vpnActions.setShowVpnWidget(checked)
-          }}
-        >
-          <span className='label'>
-            <Icon name='product-vpn' />
-            {getString(S.NEW_TAB_SHOW_VPN_WIDGET_LABEL)}
-          </span>
-        </Toggle>
-      )}
       {rewardsFeatureEnabled && (
         <Toggle
           className='toggle-row'

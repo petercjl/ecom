@@ -14,7 +14,6 @@
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_ads/buildflags/buildflags.h"
 #include "brave/components/brave_component_updater/browser/brave_component.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/speedreader/common/buildflags/buildflags.h"
 #include "brave/components/tor/brave_tor_pluggable_transport_updater.h"
 #include "brave/components/tor/buildflags/buildflags.h"
@@ -142,9 +141,6 @@ class BraveBrowserProcessImpl : public BraveBrowserProcess,
   speedreader::SpeedreaderRewriterService* speedreader_rewriter_service()
       override;
 #endif
-#if BUILDFLAG(ENABLE_BRAVE_VPN_V1)
-  brave_vpn::BraveVPNConnectionManager* brave_vpn_connection_manager() override;
-#endif
   misc_metrics::ProcessMiscMetrics* process_misc_metrics() override;
 
  private:
@@ -216,10 +212,6 @@ class BraveBrowserProcessImpl : public BraveBrowserProcess,
       speedreader_rewriter_service_;
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN_V1)
-  std::unique_ptr<brave_vpn::BraveVPNConnectionManager>
-      brave_vpn_connection_manager_;
-#endif
 
   std::unique_ptr<misc_metrics::ProcessMiscMetrics> process_misc_metrics_;
 

@@ -7,7 +7,6 @@ import * as preferencesAPI from './preferences'
 import * as statsAPI from './stats'
 import * as wallpaper from './wallpaper'
 import getNTPBrowserAPI from './background'
-import getVPNServiceHandler, * as BraveVPN from '../api/braveVpn'
 import { loadTimeData } from '$web-common/loadTimeData'
 
 export type InitialData = {
@@ -19,7 +18,6 @@ export type InitialData = {
   braveRewardsSupported: boolean
   braveTalkSupported: boolean
   searchPromotionEnabled: boolean
-  purchasedState: BraveVPN.PurchasedState
 }
 
 const isIncognito: boolean = chrome.extension.inIncognitoContext
@@ -37,7 +35,6 @@ export async function getInitialData (): Promise<InitialData> {
       searchPromotionEnabled,
       braveBackgrounds,
       customImageBackgrounds,
-      purchasedState
     ] = await Promise.all([
       preferencesAPI.getPreferences(),
       statsAPI.getStats(),
@@ -60,15 +57,6 @@ export async function getInitialData (): Promise<InitialData> {
       getNTPBrowserAPI().pageHandler.getCustomImageBackgrounds().then(({ backgrounds }) => {
         return backgrounds.map(background => ({ type: 'image', wallpaperImageUrl: background.url.url }))
       }),
-      new Promise((resolve) => {
-        if (loadTimeData.getBoolean('vpnWidgetSupported')) {
-          getVPNServiceHandler().getPurchasedState().then(({state}) => {
-            resolve(state.state)
-          })
-        } else {
-          resolve(BraveVPN.PurchasedState.NOT_PURCHASED)
-        }
-      })
     ])
     console.timeStamp('Got all initial data.')
     return {
@@ -80,7 +68,6 @@ export async function getInitialData (): Promise<InitialData> {
       braveRewardsSupported,
       braveTalkSupported,
       searchPromotionEnabled,
-      purchasedState
     } as InitialData
   } catch (e) {
     console.error(e)

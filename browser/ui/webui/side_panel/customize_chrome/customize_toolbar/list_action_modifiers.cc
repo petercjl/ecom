@@ -17,7 +17,6 @@
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sharing_hub/sharing_hub_features.h"
@@ -45,9 +44,6 @@
 #include "brave/components/brave_news/common/pref_names.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/brave_vpn/vpn_utils.h"
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 
 #if BUILDFLAG(ENABLE_BRAVE_WALLET)
 #include "brave/browser/brave_wallet/brave_wallet_context_utils.h"
@@ -252,11 +248,6 @@ std::vector<BraveAction> ListBraveSpecificActions(
     brave_actions.push_back(kShowScreenshotAction);
   }
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  if (brave_vpn::IsBraveVPNEnabled(web_contents->GetBrowserContext())) {
-    brave_actions.push_back(kShowVPNAction);
-  }
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 
 #if BUILDFLAG(ENABLE_AI_CHAT)
   if (ai_chat::IsAIChatEnabled(prefs)) {

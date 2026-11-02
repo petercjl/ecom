@@ -109,7 +109,6 @@ void BraveEducationPageUI::CreateBrowserCommandHandler(
 #if BUILDFLAG(ENABLE_BRAVE_WALLET)
           brave_browser_command::mojom::Command::kOpenWalletOnboarding,
 #endif
-          brave_browser_command::mojom::Command::kOpenVPNOnboarding,
 #if BUILDFLAG(ENABLE_AI_CHAT)
           brave_browser_command::mojom::Command::kOpenAIChat,
 #endif

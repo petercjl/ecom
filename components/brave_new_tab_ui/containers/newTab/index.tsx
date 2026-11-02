@@ -11,7 +11,7 @@ import { addNewTopSite, editTopSite } from '../../api/topSites'
 import { recordClickedAdEvent } from '../../api/wallpaper'
 import * as BraveAds from 'gen/brave/components/brave_ads/core/mojom/brave_ads.mojom.m.js'
 import {
-  BraveTalkWidget as BraveTalk, Clock, EditTopSite, OverrideReadabilityColor, SearchPromotion, VPNWidget
+  BraveTalkWidget as BraveTalk, Clock, EditTopSite, OverrideReadabilityColor, SearchPromotion
 } from '../../components/default'
 import BrandedWallpaperLogo from '../../components/default/brandedWallpaper/logo'
 import BraveNews from '../../components/default/braveNews'
@@ -30,7 +30,6 @@ import isReadableOnBackground from '../../helpers/colorUtil'
 // Types
 import { NewTabActions } from '../../constants/new_tab_types'
 import { BraveNewsState } from '../../reducers/today'
-import { BraveVPNState } from '../../reducers/brave_vpn'
 
 // NTP features
 import { MAX_GRID_SIZE } from '../../constants/new_tab_ui'
@@ -55,7 +54,6 @@ interface Props {
   newTabData: NewTab.State
   gridSitesData: NewTab.GridSitesState
   todayData: BraveNewsState
-  braveVPNData: BraveVPNState
   actions: NewTabActions
   saveShowBackgroundImage: (value: boolean) => void
   saveShowRewards: (value: boolean) => void
@@ -439,7 +437,6 @@ class NewTabPage extends React.Component<Props, State> {
     window.open('https://brave.com/brave-rewards/', '_blank', 'noopener')
   }
 
-  braveVPNSupported = loadTimeData.getBoolean('vpnWidgetSupported')
 
   getCryptoContent () {
     if (this.props.newTabData.hideAllWidgets) {
@@ -452,7 +449,6 @@ class NewTabPage extends React.Component<Props, State> {
       braveTalkSupported,
       showRewards,
       showBraveTalk,
-      showBraveVPN,
       isBraveTalkDisabledByPolicy
     } = this.props.newTabData
 
@@ -460,10 +456,6 @@ class NewTabPage extends React.Component<Props, State> {
       'rewards': {
         display: braveRewardsSupported && showRewards,
         render: this.renderRewardsWidget.bind(this)
-      },
-      'braveVPN': {
-        display: this.braveVPNSupported && showBraveVPN,
-        render: this.renderBraveVPNWidget
       },
       'braveTalk': {
         display: braveTalkSupported && showBraveTalk &&
@@ -500,7 +492,6 @@ class NewTabPage extends React.Component<Props, State> {
       braveTalkSupported,
       showRewards,
       showBraveTalk,
-      showBraveVPN,
       hideAllWidgets,
       isBraveTalkDisabledByPolicy
     } = this.props.newTabData
@@ -508,7 +499,6 @@ class NewTabPage extends React.Component<Props, State> {
       braveRewardsSupported && showRewards,
       braveTalkSupported && showBraveTalk &&
         !isBraveTalkDisabledByPolicy,
-      this.braveVPNSupported && showBraveVPN,
     ].every((widget: boolean) => !widget)
   }
 
@@ -585,21 +575,6 @@ class NewTabPage extends React.Component<Props, State> {
     )
   }
 
-  renderBraveVPNWidget = (showContent: boolean, position: number) => {
-    return (
-      <VPNWidget
-        isCardWidget
-        paddingType={'none'}
-        menuPosition={'left'}
-        textDirection={this.props.newTabData.textDirection}
-        widgetTitle={getLocale('braveVpnWidgetTitle')}
-        onShowContent={this.setForegroundStackWidget.bind(this, 'braveVPN')}
-        isForeground={showContent}
-        showContent={showContent}
-        braveVPNState={this.props.braveVPNData}
-      />
-    )
-  }
 
   render () {
     const { newTabData, gridSitesData, actions } = this.props

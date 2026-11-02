@@ -59,9 +59,7 @@
       </if>
       <!-- WebUI vpn resources -->
       <if expr="not is_android">
-        <if expr="enable_brave_vpn">
-          <include name="IDR_VPN_PANEL_HTML" file="../brave_vpn/resources/panel/vpn_panel.html" type="BINDATA" />
-        </if>
+
       </if>
 
       <!-- Imagery links -->

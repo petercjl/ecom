@@ -6,11 +6,11 @@
 import("//brave/components/brave_education/buildflags.gni")
 import("//brave/components/brave_news/common/buildflags/buildflags.gni")
 import("//brave/components/brave_origin/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/containers/buildflags/buildflags.gni")
 import("//brave/components/playlist/core/common/buildflags/buildflags.gni")
 import("//brave/components/psst/buildflags/buildflags.gni")
 import("//brave/components/traffic_control/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 
 # This is required for chromium_src overrides.
 brave_browser_ui_webui_configs_deps = [
@@ -21,7 +21,6 @@ brave_browser_ui_webui_configs_deps = [
   "//brave/components/brave_news/common/buildflags",
   "//brave/components/brave_origin/buildflags",
   "//brave/components/brave_shields/content/browser",
-  "//brave/components/brave_vpn/common/buildflags",
   "//brave/components/containers/buildflags",
   "//brave/components/playlist/core/common/buildflags",
 ]
@@ -31,11 +30,6 @@ if (enable_playlist_webui) {
     "//brave/components/playlist/core/browser",
     "//brave/components/playlist/core/common",
   ]
-}
-
-if (enable_brave_vpn) {
-  brave_browser_ui_webui_configs_deps +=
-      [ "//brave/components/brave_vpn/browser" ]
 }
 
 if (enable_brave_education) {

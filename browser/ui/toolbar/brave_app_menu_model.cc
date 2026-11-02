@@ -36,9 +36,6 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/ui/toolbar/brave_vpn_menu_model.h"
-#endif
 
 #if BUILDFLAG(ENABLE_COMMANDER)
 #include "brave/browser/ui/commander/commander_service.h"
@@ -194,20 +191,6 @@ void BraveAppMenuModel::BuildBraveProductsSection() {
     need_separator = true;
   }
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  if (IsCommandIdEnabled(IDC_BRAVE_VPN_MENU)) {
-    sub_menus().push_back(std::make_unique<BraveVPNMenuModel>(
-        browser(), browser()->GetProfile()->GetPrefs()));
-    InsertSubMenuWithStringIdAt(GetNextIndexOfBraveProductsSection(),
-                                IDC_BRAVE_VPN_MENU, IDS_BRAVE_VPN_MENU,
-                                sub_menus().back().get());
-    need_separator = true;
-  } else if (IsCommandIdEnabled(IDC_SHOW_BRAVE_VPN_PANEL)) {
-    InsertItemWithStringIdAt(GetNextIndexOfBraveProductsSection(),
-                             IDC_SHOW_BRAVE_VPN_PANEL, IDS_BRAVE_VPN_MENU);
-    need_separator = true;
-  }
-#endif
 
 #if defined(TOOLKIT_VIEWS)
   if (sidebar::CanUseSidebar(browser())) {
@@ -495,9 +478,7 @@ bool BraveAppMenuModel::IsCommandIdEnabled(int id) const {
 }
 
 size_t BraveAppMenuModel::GetNextIndexOfBraveProductsSection() const {
-  std::vector<int> commands_to_check = {IDC_SHOW_BRAVE_VPN_PANEL,
-                                        IDC_BRAVE_VPN_MENU,
-                                        IDC_SHOW_BRAVE_WALLET,
+  std::vector<int> commands_to_check = {IDC_SHOW_BRAVE_WALLET,
                                         IDC_TOGGLE_AI_CHAT,
                                         IDC_NEW_OFFTHERECORD_WINDOW_TOR,
                                         IDC_NEW_INCOGNITO_WINDOW,

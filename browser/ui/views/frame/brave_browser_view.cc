@@ -125,10 +125,6 @@
 #include "brave/browser/ui/views/toolbar/wallet_button.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/ui/views/toolbar/brave_vpn_button.h"
-#include "brave/components/brave_vpn/common/pref_names.h"
-#endif
 
 #if BUILDFLAG(ENABLE_SPARKLE)
 #include "brave/browser/ui/views/update_recommended_message_box_mac.h"
@@ -355,12 +351,6 @@ BraveBrowserView::BraveBrowserView(BrowserWindowInterface* browser)
       base::BindRepeating(&BraveBrowserView::OnPreferenceChanged,
                           base::Unretained(this)));
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  pref_change_registrar_.Add(
-      brave_vpn::prefs::kBraveVPNShowButton,
-      base::BindRepeating(&BraveBrowserView::OnPreferenceChanged,
-                          base::Unretained(this)));
-#endif
 
   // Only normal window (tabbed) should have sidebar.
   const bool can_have_sidebar = sidebar::CanUseSidebar(browser_);
@@ -447,12 +437,6 @@ void BraveBrowserView::OnPreferenceChanged(const std::string& pref_name) {
     return;
   }
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  if (pref_name == brave_vpn::prefs::kBraveVPNShowButton) {
-    vpn_panel_controller_.ResetBubbleManager();
-    return;
-  }
-#endif
 }
 
 void BraveBrowserView::UpdateSideBarHorizontalAlignment() {
@@ -504,24 +488,9 @@ void BraveBrowserView::ToggleSidebar() {
   SidePanelUI::From(browser_)->Toggle();
 }
 
-void BraveBrowserView::ShowBraveVPNBubble(bool show_select) {
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  vpn_panel_controller_.ShowBraveVPNPanel(show_select);
-#endif
-}
 
-views::View* BraveBrowserView::GetAnchorViewForBraveVPNPanel() {
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  auto* vpn_button =
-      static_cast<BraveToolbarView*>(toolbar())->brave_vpn_button();
-  if (vpn_button->GetVisible()) {
-    return vpn_button;
-  }
-  return toolbar()->app_menu_button();
-#else
-  return nullptr;
-#endif
-}
+
+
 
 gfx::Rect BraveBrowserView::GetShieldsBubbleRect() {
   if (web_app::AppBrowserController::IsWebApp(browser())) {

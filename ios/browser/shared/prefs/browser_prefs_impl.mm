@@ -18,7 +18,6 @@
 #include "brave/components/brave_shields/core/common/pref_names.h"
 #include "brave/components/brave_sync/brave_sync_prefs.h"
 #include "brave/components/brave_talk/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/de_amp/common/pref_names.h"
@@ -42,9 +41,6 @@
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "ios/chrome/common/channel_info.h"
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/pref_names.h"
-#endif
 
 #if BUILDFLAG(ENABLE_BRAVE_TALK)
 #include "brave/components/brave_talk/pref_names.h"
@@ -108,10 +104,6 @@ void RegisterBrowserStatePrefs(user_prefs::PrefRegistrySyncable* registry) {
   // use that service
   registry->RegisterBooleanPref(playlist::kPlaylistEnabledPref, true);
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  registry->RegisterBooleanPref(brave_vpn::prefs::kManagedBraveVPNDisabled,
-                                false);
-#endif
 
   registry->RegisterIntegerPref(youtube::prefs::kAutoQualityMode, 0);
 

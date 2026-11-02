@@ -8,8 +8,6 @@
 #include "base/test/scoped_feature_list.h"
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_origin/features.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/features.h"
 #include "brave/components/skus/common/features.h"
 #include "content/public/common/isolated_world_ids.h"
 #include "content/public/test/content_mock_cert_verifier.h"

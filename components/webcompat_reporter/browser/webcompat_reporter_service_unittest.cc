@@ -128,7 +128,6 @@ class WebcompatReporterServiceUnitTest : public testing::Test {
           EXPECT_EQ(report->ad_block_list_names, "ad_block_list_names");
           EXPECT_EQ(report->languages, "languages");
           EXPECT_EQ(report->language_farbling, "true");
-          EXPECT_EQ(report->brave_vpn_connected, "true");
           EXPECT_EQ(report->cookie_policy, "block");
           EXPECT_EQ(report->block_scripts, "true");
 
@@ -254,7 +253,6 @@ TEST_F(WebcompatReporterServiceUnitTest, SubmitReportWithNoPropsOverride) {
         EXPECT_FALSE(report->fp_block_setting);
         EXPECT_FALSE(report->ad_block_setting);
         EXPECT_FALSE(report->language_farbling);
-        EXPECT_FALSE(report->brave_vpn_connected);
         EXPECT_FALSE(report->languages);
       });
   EXPECT_CALL(*delegate_, GetComponentInfos)

@@ -114,7 +114,6 @@ export class BraveEducationAppElement extends CrLitElement {
         // <if expr="enable_brave_wallet">
         'open-wallet-onboarding': Command.kOpenWalletOnboarding,
         // </if>
-        'open-vpn-onboarding': Command.kOpenVPNOnboarding,
         // <if expr="enable_ai_chat">
         'open-ai-chat': Command.kOpenAIChat,
         // </if>

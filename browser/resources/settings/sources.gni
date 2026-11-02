@@ -7,13 +7,13 @@ import("//brave/browser/shell_integrations/buildflags/buildflags.gni")
 import("//brave/components/ai_chat/core/common/buildflags/buildflags.gni")
 import("//brave/components/brave_ads/buildflags/buildflags.gni")
 import("//brave/components/brave_rewards/core/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wallet/common/buildflags/buildflags.gni")
 import("//brave/components/containers/buildflags/buildflags.gni")
 import("//brave/components/email_aliases/buildflags/buildflags.gni")
 import("//brave/components/speedreader/common/buildflags/buildflags.gni")
 import("//brave/components/tor/buildflags/buildflags.gni")
 import("//brave/components/traffic_control/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 
 # Provide our file list to chromium's settings page build Since our components
 # start in a different path, we'll do the first step (move them to the generated
@@ -149,12 +149,6 @@ brave_account_settings_css_files = [
 # Matches upstream (minus chromeos)
 if (!is_mac) {
   brave_settings_ts_files += [ "br/edit_dictionary_page.ts" ]
-}
-
-if (enable_brave_vpn_wireguard) {
-  brave_settings_web_component_files +=
-      [ "brave_system_page/brave_vpn_page.ts" ]
-  brave_settings_ts_files += [ "brave_system_page/brave_vpn_browser_proxy.ts" ]
 }
 
 if (enable_pin_shortcut) {

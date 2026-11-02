@@ -28,10 +28,6 @@ class PlaylistActionDialog;
 class TextRecognitionDialogView;
 class ObsoleteSystemConfirmDialogView;
 
-namespace brave_vpn {
-class BraveVpnFallbackDialogView;
-class BraveVpnDnsSettingsNotificiationDialogView;
-}  // namespace brave_vpn
 
 #define CreatePassKey                                                 \
   CreatePassKey_Unused();                                             \
@@ -40,8 +36,6 @@ class BraveVpnDnsSettingsNotificiationDialogView;
   friend class ::PlaylistActionDialog;                                \
   friend class ::TextRecognitionDialogView;                           \
   friend class ::ObsoleteSystemConfirmDialogView;                     \
-  friend class brave_vpn::BraveVpnFallbackDialogView;                 \
-  friend class brave_vpn::BraveVpnDnsSettingsNotificiationDialogView; \
   static DdvPassKey CreatePassKey
 
 #include <ui/views/window/dialog_delegate.h>  // IWYU pragma: export

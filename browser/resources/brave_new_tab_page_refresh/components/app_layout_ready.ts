@@ -8,7 +8,6 @@ import { useBraveNews } from '../../../../components/brave_news/browser/resource
 import { useNewTabState } from '../context/new_tab_context'
 import { useTopSitesState } from '../context/top_sites_context'
 import { useRewardsState } from '../context/rewards_context'
-import { useVpnState } from '../context/vpn_context'
 
 // Returns a value indicating whether the search component is ready for layout
 // based on application state initialization status.
@@ -22,11 +21,10 @@ export function useSearchLayoutReady() {
 export function useWidgetLayoutReady() {
   const newTabInitialized = useNewTabState((s) => s.initialized)
   const rewardsInitialized = useRewardsState((s) => s.initialized)
-  const vpnInitialized = useVpnState((s) => s.initialized)
   const newsInitialized = useBraveNewsInitialized()
 
   return (
-    newTabInitialized && rewardsInitialized && vpnInitialized && newsInitialized
+    newTabInitialized && rewardsInitialized && newsInitialized
   )
 }
 

@@ -6,7 +6,6 @@
 module brave_new_tab_page_refresh.mojom;
 
 import "brave/components/brave_ads/core/mojom/brave_ads.mojom";
-import "brave/components/brave_vpn/common/mojom/brave_vpn.mojom";
 
 struct BraveBackground {
   string author;
@@ -96,7 +95,6 @@ interface NewTabPage {
   [EnableIf=enable_brave_talk]
   OnTalkStateUpdated();
   OnRewardsStateUpdated();
-  OnVPNStateUpdated();
 };
 
 // Browser-side handler for requests from the WebUI page.
@@ -262,19 +260,13 @@ interface NewTabPageHandler {
   SetShowRewardsWidget(bool show_rewards_widget) => ();
 
   // Gets or sets whether the Brave VPN widget is displayed.
-  GetShowVPNWidget() => (bool show_vpn_widget);
-  SetShowVPNWidget(bool show_vpn_widget) => ();
 
   // Reloads the user's VPN purchase state.
-  ReloadVPNPurchasedState() => ();
 
   // Opens the VPN panel.
-  OpenVPNPanel() => ();
 
   // Opens the specified VPN account page.
-  OpenVPNAccountPage(brave_vpn.mojom.ManageURLType url_type) => ();
 
   // Records VPN widget usage metrics.
-  ReportVPNWidgetUsage() => ();
 
 };

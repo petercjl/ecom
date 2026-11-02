@@ -14,7 +14,6 @@
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/l10n/common/test/scoped_default_locale.h"
 #include "brave/components/vector_icons/vector_icons.h"
@@ -46,10 +45,6 @@
 #include "brave/components/ai_chat/core/common/pref_names.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/brave_vpn/vpn_utils.h"
-#include "brave/components/brave_vpn/common/pref_names.h"
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 
 #if BUILDFLAG(ENABLE_BRAVE_NEWS)
 #include "brave/components/brave_news/common/pref_names.h"
@@ -257,33 +252,6 @@ TEST_F(
       l10n_util::GetStringUTF8(IDS_CUSTOMIZE_TOOLBAR_TOGGLE_BOOKMARKS_PANEL));
 }
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-TEST_F(ListActionModifiersUnitTest,
-       ApplyBraveSpecificModifications_VPNShouldNotBeAddedWhenDisabled) {
-  // VPN should be added by default(VPN enabled by default)
-  ASSERT_TRUE(brave_vpn::IsBraveVPNEnabled(web_contents_->GetBrowserContext()));
-  auto modified_actions = customize_chrome::ApplyBraveSpecificModifications(
-      web_contents_.get(), GetBasicActions());
-  auto vpn_action_it =
-      std::ranges::find(modified_actions, ActionId::kShowVPN,
-                        &side_panel::customize_chrome::mojom::Action::id);
-  ASSERT_NE(vpn_action_it, modified_actions.end());
-
-  // Disable VPN in prefs
-  prefs()->SetManagedPref(brave_vpn::prefs::kManagedBraveVPNDisabled,
-                          base::Value(true));
-  ASSERT_FALSE(
-      brave_vpn::IsBraveVPNEnabled(web_contents_->GetBrowserContext()));
-
-  modified_actions = customize_chrome::ApplyBraveSpecificModifications(
-      web_contents_.get(), GetBasicActions());
-  vpn_action_it =
-      std::ranges::find(modified_actions, ActionId::kShowVPN,
-                        &side_panel::customize_chrome::mojom::Action::id);
-  // Show VPN action should not be present
-  EXPECT_EQ(vpn_action_it, modified_actions.end());
-}
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 
 #if BUILDFLAG(ENABLE_AI_CHAT)
 
@@ -428,9 +396,6 @@ TEST_F(ListActionModifiersUnitTest,
        ApplyBraveSpecificModifications_ComprehensiveOrderTest) {
   base::test::ScopedFeatureList feature_list(
       screenshot::features::kBraveScreenshot);
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  ASSERT_TRUE(brave_vpn::IsBraveVPNEnabled(web_contents_->GetBrowserContext()));
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 #if BUILDFLAG(ENABLE_AI_CHAT)
   ASSERT_TRUE(ai_chat::IsAIChatEnabled(prefs()));
 #endif  // BUILDFLAG(ENABLE_AI_CHAT)
@@ -461,9 +426,6 @@ TEST_F(ListActionModifiersUnitTest,
 #if BUILDFLAG(ENABLE_AI_CHAT)
           EqId(ActionId::kShowAIChat),
 #endif  // BUILDFLAG(ENABLE_AI_CHAT)
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-          EqId(ActionId::kShowVPN),
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
           EqId(ActionId::kShowScreenshot), EqId(ActionId::kShowBookmarks),
           EqId(ActionId::kDevTools),
 #if BUILDFLAG(ENABLE_BRAVE_REWARDS)

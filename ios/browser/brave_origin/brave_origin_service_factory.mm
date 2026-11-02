@@ -18,7 +18,6 @@
 #include "brave/components/brave_origin/brave_origin_service.h"
 #include "brave/components/brave_origin/profile_id.h"
 #include "brave/components/brave_rewards/core/pref_names.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/email_aliases/buildflags/buildflags.h"
 #include "brave/components/p3a/pref_names.h"
@@ -45,9 +44,6 @@
 #include "brave/components/brave_talk/pref_names.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/pref_names.h"
-#endif
 
 #if BUILDFLAG(ENABLE_BRAVE_NEWS)
 #include "brave/components/brave_news/common/pref_names.h"
@@ -111,13 +107,6 @@ constexpr auto kBraveOriginProfileMetadata =
              /*user_settable=*/false)},
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-        // Brave VPN preferences
-        {brave_vpn::prefs::kManagedBraveVPNDisabled,
-         BraveOriginServiceFactory::BraveOriginPrefMetadata(
-             true,
-             /*user_settable=*/false)},
-#endif
 
 #if BUILDFLAG(ENABLE_BRAVE_TALK)
         // Brave Talk preferences

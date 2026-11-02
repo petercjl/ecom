@@ -38,8 +38,6 @@
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
 #include "brave/components/brave_rewards/core/pref_names.h"
 #include "brave/components/brave_shields/core/common/features.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/features.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/brave_wayback_machine/buildflags/buildflags.h"
 #include "brave/components/commander/common/features.h"
@@ -92,14 +90,6 @@
 #include "brave/components/speedreader/speedreader_pref_names.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/brave_vpn/brave_vpn_service_factory.h"
-#include "brave/browser/brave_vpn/vpn_utils.h"
-#include "brave/components/brave_vpn/browser/brave_vpn_service.h"
-#if BUILDFLAG(IS_WIN)
-#include "brave/browser/ui/webui/settings/brave_vpn/brave_vpn_handler.h"
-#endif
-#endif
 
 #if BUILDFLAG(ENABLE_BRAVE_WAYBACK_MACHINE)
 #include "brave/components/brave_wayback_machine/pref_names.h"
@@ -200,12 +190,6 @@ BraveSettingsUI::BraveSettingsUI(content::WebUI* web_ui) : SettingsUI(web_ui) {
 #if BUILDFLAG(ENABLE_PIN_SHORTCUT)
   web_ui->AddMessageHandler(std::make_unique<PinShortcutHandler>());
 #endif
-#if BUILDFLAG(IS_WIN) && BUILDFLAG(ENABLE_BRAVE_VPN)
-  if (brave_vpn::IsBraveVPNEnabled(Profile::FromWebUI(web_ui))) {
-    web_ui->AddMessageHandler(
-        std::make_unique<BraveVpnHandler>(Profile::FromWebUI(web_ui)));
-  }
-#endif
 }
 
 BraveSettingsUI::~BraveSettingsUI() = default;
@@ -222,16 +206,6 @@ void BraveSettingsUI::AddResources(content::WebUIDataSource* html_source,
   html_source->AddBoolean(
       "isIdleDetectionFeatureEnabled",
       base::FeatureList::IsEnabled(features::kIdleDetection));
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  html_source->AddBoolean("isBraveVPNEnabled",
-                          brave_vpn::IsBraveVPNEnabled(profile));
-#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_BRAVE_VPN_WIREGUARD)
-  html_source->AddBoolean(
-      "isBraveVPNWireguardEnabledOnMac",
-      base::FeatureList::IsEnabled(
-          brave_vpn::features::kBraveVPNEnableWireguardForOSX));
-#endif  // BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_BRAVE_VPN_WIREGUARD)
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 #if BUILDFLAG(ENABLE_SPEEDREADER)
   html_source->AddBoolean(
       "isSpeedreaderAllowed",

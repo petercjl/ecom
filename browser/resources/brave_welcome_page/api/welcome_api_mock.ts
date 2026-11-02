@@ -151,7 +151,6 @@ export function createWelcomeApiMock(): WelcomeApi {
     aiChat: true,
     wallet: true,
     rewards: true,
-    vpn: true,
   }
 
   const pushTheme = (next: Partial<Theme>) => {
@@ -284,7 +283,6 @@ export function createWelcomeApiMock(): WelcomeApi {
     aiChatFeatureEnabled: true,
     walletFeatureEnabled: true,
     rewardsFeatureEnabled: true,
-    vpnFeatureEnabled: true,
   })
 
   return api

@@ -33,7 +33,6 @@ class BraveBrowserCommandHandler
     virtual void OpenURL(const GURL& url,
                          WindowOpenDisposition disposition) = 0;
     virtual void OpenRewardsPanel() = 0;
-    virtual void OpenVPNPanel() = 0;
 #if BUILDFLAG(ENABLE_AI_CHAT)
     virtual void OpenAIChat() = 0;
 #endif

@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "base/gtest_prod_util.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "chrome/browser/ui/toolbar/app_menu_model.h"
 #include "ui/menus/simple_menu_model.h"
 

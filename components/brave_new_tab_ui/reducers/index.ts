@@ -12,11 +12,9 @@ import gridSitesReducer from './grid_sites_reducer'
 import rewardsReducer from './rewards_reducer'
 import { stackWidgetReducer } from './stack_widget_reducer'
 import todayReducer, { BraveNewsState } from './today'
-import braveVPNReducer, { BraveVPNState } from './brave_vpn'
 
 export type ApplicationState = NewTab.ApplicationState & {
   today: BraveNewsState
-  braveVPN: BraveVPNState
 }
 
 export const newTabReducers = (state: NewTab.State | undefined, action: any) => {
@@ -40,7 +38,6 @@ export const mainNewTabReducer = combineReducers<ApplicationState>({
   newTabData: newTabReducers,
   gridSitesData: gridSitesReducer,
   today: todayReducer,
-  braveVPN: braveVPNReducer
 })
 
 export const newTabReducer = newTabStateReducer

@@ -26,7 +26,6 @@ enum Feature {
   kAIChat,
   kWallet,
   kRewards,
-  kVPN,
 };
 
 // Whether each feature's UI entry points, such as toolbar buttons and new tab
@@ -37,7 +36,6 @@ struct FeatureVisibility {
   bool ai_chat;
   bool wallet;
   bool rewards;
-  bool vpn;
 };
 
 // WebUI-side handler for notifications from the browser.

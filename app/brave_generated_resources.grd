@@ -1176,87 +1176,7 @@ Or change later at <ph name="SETTINGS_EXTENIONS_LINK">$2<ex>brave://settings/ext
       </if>
 
       <!-- Brave VPN -->
-      <if expr="enable_brave_vpn">
-        <message name="IDS_SETTINGS_VPN_PAGE_TITLE" desc="Title of the vpn settings page">
-          Brave VPN
-        </message>
-        <message name="IDS_SETTINGS_VPN_PAGE_USE_WIREGUARD_TITLE" desc="Title of the WireGuard option on the vpn settings page">
-          Use WireGuard protocol in Brave VPN
-        </message>
-        <message name="IDS_SETTINGS_VPN_PAGE_SUBLABEL_VPN_CONNECTED" desc="Title of the WireGuard sub label on the vpn settings page when brave vpn connected">
-          This setting cannot be changed while Brave VPN is connected.
-        </message>
-        <message name="IDS_SETTINGS_VPN_PAGE_SHOW_IN_SYSTEM_TRAY_WINDOWS" desc="Title of the 'Show system tray' option on the vpn settings page for Windows customers">
-          Show VPN Tray Icon
-        </message>
-        <message name="IDS_SETTINGS_VPN_PAGE_SHOW_IN_SYSTEM_TRAY_WINDOWS_SUBLABEL" desc="Sub title for the 'Show system tray' option on the vpn settings page for Windows customers">
-          When enabled, the Windows taskbar will show the tray icon for Brave VPN.
-        </message>
-        <message name="IDS_SETTINGS_SHOW_VPN_BUTTON" desc="The label for showing vpn button in the toolbar">
-          Show VPN button
-        </message>
-        <message name="IDS_SETTINGS_SHOW_VPN_BUTTON_SUB_LABEL" desc="The sub label for vpn button setting">
-            Shows the VPN button in the toolbar
-        </message>
-        <message name="IDS_BRAVE_VPN_TOOLBAR_BUTTON_TEXT" desc="Text for vpn button in toolbar.">
-          VPN
-        </message>
-        <message name="IDS_BRAVE_VPN_TOGGLE_MENU_ITEM_TEXT" desc="Text for vpn toggle button in app menu.">
-          Toggle VPN
-        </message>
-        <message name="IDS_BRAVE_VPN_MENU" desc="The Brave VPN item (app menu)">
-          Brave VPN
-        </message>
-        <message name="IDS_BRAVE_VPN_ABOUT_VPN_MENU_ITEM" desc="The menu item for showing about vpn">
-          About Brave VPN
-        </message>
-        <message name="IDS_BRAVE_VPN_STATUS_LABEL_CONNECTING" desc="The text for vpn status label in connecting">
-          Connecting...
-        </message>
-        <message name="IDS_BRAVE_VPN_STATUS_LABEL_CONNECTED" desc="The text for vpn status label in connected">
-          Connected
-        </message>
-        <message name="IDS_BRAVE_VPN_STATUS_LABEL_DISCONNECTING" desc="The text for vpn status label in disconnecting">
-          Disconnecting...
-        </message>
-        <message name="IDS_BRAVE_VPN_STATUS_LABEL_DISCONNECTED" desc="The text for vpn status label in disconnected">
-          Disconnected
-        </message>
-        <if expr="use_titlecase">
-          <message name="IDS_BRAVE_VPN_SHOW_VPN_BUTTON_MENU_ITEM" desc="The menu item for showing vpn button in toolbar">
-            Show VPN Button in Toolbar
-          </message>
-          <message name="IDS_BRAVE_VPN_HIDE_VPN_BUTTON_MENU_ITEM" desc="The menu item for hiding vpn button in toolbar">
-            Hide VPN Button in Toolbar
-          </message>
-          <message name="IDS_BRAVE_VPN_SHOW_VPN_TRAY_ICON_MENU_ITEM" desc="The menu item for showing vpn tray icon in windows">
-            Show VPN Tray Icon
-          </message>
-          <message name="IDS_BRAVE_VPN_SHOW_FEEDBACK_MENU_ITEM" desc="The menu item for sending feedback">
-            Send Feedback
-          </message>
-          <message name="IDS_BRAVE_VPN_MANAGE_MY_PLAN_MENU_ITEM" desc="The menu item for managing my vpn plan">
-            Manage My Plan
-          </message>
-        </if>
-        <if expr="not use_titlecase">
-          <message name="IDS_BRAVE_VPN_SHOW_VPN_BUTTON_MENU_ITEM" desc="The menu item for showing vpn button in toolbar">
-            Show VPN button in toolbar
-          </message>
-          <message name="IDS_BRAVE_VPN_HIDE_VPN_BUTTON_MENU_ITEM" desc="The menu item for hiding vpn button in toolbar">
-            Hide VPN button in toolbar
-          </message>
-          <message name="IDS_BRAVE_VPN_SHOW_VPN_TRAY_ICON_MENU_ITEM" desc="The menu item for showing vpn tray icon in windows">
-            Show VPN tray icon
-          </message>
-          <message name="IDS_BRAVE_VPN_SHOW_FEEDBACK_MENU_ITEM" desc="The menu item for sending feedback">
-            Send feedback
-          </message>
-          <message name="IDS_BRAVE_VPN_MANAGE_MY_PLAN_MENU_ITEM" desc="The menu item for managing my vpn plan">
-            Manage my plan
-          </message>
-        </if>
-      </if>
+
 
       <!-- Full disk -->
       <message name="IDS_FULL_DISK_ACCESS_CONFIRM_DIALOG_TITLE" desc="The label for full disk access dialog title">
@@ -1660,3 +1580,4 @@ Or change later at <ph name="SETTINGS_EXTENIONS_LINK">$2<ex>brave://settings/ext
     </messages>
   </release>
 </grit>
+</if>

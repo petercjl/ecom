@@ -8,10 +8,9 @@ import { createStore, applyMiddleware } from 'redux'
 
 // Feature core reducer
 import { mainNewTabReducer } from './reducers'
-import braveVPNAsyncHandler from './async/brave_vpn'
 import todayAsyncHandler from './async/today'
 
 export default createStore(
   mainNewTabReducer,
-  applyMiddleware(todayAsyncHandler, braveVPNAsyncHandler)
+  applyMiddleware(todayAsyncHandler)
 )

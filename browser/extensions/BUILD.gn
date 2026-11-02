@@ -7,7 +7,6 @@ import("//brave/components/ai_chat/core/common/buildflags/buildflags.gni")
 import("//brave/components/brave_ads/buildflags/buildflags.gni")
 import("//brave/components/brave_news/common/buildflags/buildflags.gni")
 import("//brave/components/brave_talk/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wallet/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wayback_machine/buildflags/buildflags.gni")
 import("//brave/components/containers/buildflags/buildflags.gni")
@@ -19,6 +18,7 @@ import("//brave/components/speedreader/common/buildflags/buildflags.gni")
 import("//brave/components/tor/buildflags/buildflags.gni")
 import("//brave/components/traffic_control/buildflags/buildflags.gni")
 import("//brave/components/web_discovery/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 import("//build/config/features.gni")
 import("//build/config/ui.gni")
 import("//components/gcm_driver/config.gni")
@@ -113,7 +113,6 @@ source_set("extensions") {
     "//brave/components/brave_search/browser",
     "//brave/components/brave_shields/core/common",
     "//brave/components/brave_talk/buildflags",
-    "//brave/components/brave_vpn/common/buildflags",
     "//brave/components/brave_wallet/common/buildflags",
     "//brave/components/brave_wayback_machine/buildflags",
     "//brave/components/constants",
@@ -179,10 +178,6 @@ source_set("extensions") {
 
   if (enable_brave_news) {
     deps += [ "//brave/components/brave_news/common" ]
-  }
-
-  if (enable_brave_vpn) {
-    deps += [ "//brave/components/brave_vpn/common" ]
   }
 
   if (enable_tor) {

@@ -16,15 +16,11 @@
 #include "brave/components/ai_chat/core/common/mojom/ai_chat.mojom.h"
 #include "brave/components/ai_chat/core/common/mojom/common.mojom.h"
 #include "brave/components/brave_origin/mojom/brave_origin_settings.mojom.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "content/public/renderer/render_frame.h"
 #include "content/public/renderer/render_frame_observer.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "v8/include/v8.h"
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/mojom/brave_vpn.mojom.h"
-#endif
 
 namespace brave_subscription {
 
@@ -85,9 +81,6 @@ class SubscriptionRenderFrameObserver : public content::RenderFrameObserver {
   const int32_t world_id_;
   std::optional<Product> product_ = std::nullopt;
   std::optional<Page> page_ = std::nullopt;
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  mojo::Remote<brave_vpn::mojom::ServiceHandler> vpn_service_;
-#endif
   mojo::Remote<ai_chat::mojom::IAPSubscription> ai_chat_subscription_;
   mojo::Remote<brave_origin::mojom::OriginIAPSubscription> origin_subscription_;
   base::WeakPtrFactory<SubscriptionRenderFrameObserver> weak_factory_{this};

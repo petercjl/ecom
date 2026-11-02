@@ -47,7 +47,6 @@
 #endif  // BUILDFLAG(ENABLE_BRAVE_NEWS)
 #endif
 
-#include "brave/browser/brave_vpn/vpn_utils.h"
 
 #if BUILDFLAG(ENABLE_PLAYLIST_WEBUI)
 #include "brave/browser/ui/webui/playlist_ui.h"

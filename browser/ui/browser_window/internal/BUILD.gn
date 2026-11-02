@@ -5,9 +5,9 @@
 
 import("//brave/components/ai_chat/core/common/buildflags/buildflags.gni")
 import("//brave/components/brave_rewards/core/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/email_aliases/buildflags/buildflags.gni")
 import("//brave/components/playlist/core/common/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 import("//build/config/ui.gni")
 import("//printing/buildflags/buildflags.gni")
 
@@ -21,7 +21,6 @@ source_set("internal") {
     "//base",
     "//brave/components/ai_chat/core/common/buildflags",
     "//brave/components/brave_rewards/core/buildflags",
-    "//brave/components/brave_vpn/common/buildflags",
     "//brave/components/email_aliases/buildflags",
     "//brave/components/playlist/core/common/buildflags",
     "//chrome/browser/profiles:profile",
@@ -75,10 +74,6 @@ source_set("internal") {
 
   if (enable_brave_rewards) {
     deps += [ "//brave/browser/brave_rewards" ]
-  }
-
-  if (enable_brave_vpn) {
-    deps += [ "//brave/browser/ui/brave_vpn" ]
   }
 
   if (enable_email_aliases) {

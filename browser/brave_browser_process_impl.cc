@@ -109,10 +109,6 @@
 #include "brave/components/request_otr/common/features.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN_V1)
-#include "brave/browser/brave_vpn/vpn_connection_manager_utils.h"
-#include "brave/components/brave_vpn/browser/connection/brave_vpn_connection_manager.h"
-#endif
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)
 #include "brave/browser/day_zero_browser_ui_expt/day_zero_browser_ui_expt_manager.h"
@@ -573,18 +569,6 @@ BraveBrowserProcessImpl::speedreader_rewriter_service() {
 }
 #endif  // BUILDFLAG(ENABLE_SPEEDREADER)
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN_V1)
-brave_vpn::BraveVPNConnectionManager*
-BraveBrowserProcessImpl::brave_vpn_connection_manager() {
-  if (brave_vpn_connection_manager_) {
-    return brave_vpn_connection_manager_.get();
-  }
-
-  brave_vpn_connection_manager_ = brave_vpn::CreateBraveVPNConnectionManager(
-      shared_url_loader_factory(), local_state());
-  return brave_vpn_connection_manager_.get();
-}
-#endif
 
 misc_metrics::ProcessMiscMetrics*
 BraveBrowserProcessImpl::process_misc_metrics() {

@@ -23,9 +23,7 @@ import { WebUiListenerMixin } from 'chrome://resources/cr_elements/web_ui_listen
 import { getTemplate } from './brave_system_page_index.html.js';
 import * as BraveOriginMojom from '../brave_origin_settings.mojom-webui.js'
 
-// <if expr="enable_brave_vpn_wireguard">
-import '../brave_system_page/brave_vpn_page.js'
-// </if>
+//
 import '../brave_origin_page/brave_origin_onboarding.js'
 import '../shortcuts_page/shortcuts_page.js'
 
@@ -70,15 +68,7 @@ export class SettingsBraveSystemPageIndexElement extends
         type: Boolean,
         value: () => loadTimeData.getBoolean('areShortcutsSupported'),
       },
-      // <if expr="enable_brave_vpn_wireguard">
-      showVPNPage_: {
-        type: Boolean,
-        value: () => loadTimeData.getBoolean('isBraveVPNEnabled')
-          // <if expr="is_macosx">
-          && loadTimeData.getBoolean('isBraveVPNWireguardEnabledOnMac')
-        // </if>
-      },
-      // </if>
+      //
       showOriginOnboarding_: {
         type: Boolean,
         value: () => loadTimeData.getBoolean('isBraveOriginFeatureEnabled') &&
@@ -92,9 +82,7 @@ export class SettingsBraveSystemPageIndexElement extends
   declare private showShortcutsPage_: boolean;
   declare private showOriginOnboarding_: boolean;
 
-  // <if expr="enable_brave_vpn_wireguard">
-  declare private showVPNPage_: boolean;
-  // </if>
+  //
 
   private braveOriginHandler_:
       BraveOriginMojom.BraveOriginSettingsHandlerRemote | null = null
@@ -170,11 +158,7 @@ export class SettingsBraveSystemPageIndexElement extends
 
   private showDefaultViews_() {
     const views = ['system']
-    // <if expr="enable_brave_vpn_wireguard">
-    if (this.showVPNPage_) {
-      views.push('vpn')
-    }
-    // </if>
+    //
 
     views.push('memory')
 

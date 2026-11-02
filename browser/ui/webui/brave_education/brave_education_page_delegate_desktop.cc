@@ -7,10 +7,8 @@
 
 #include "base/check.h"
 #include "base/types/to_address.h"
-#include "brave/browser/ui/brave_vpn/brave_vpn_controller.h"
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 
@@ -48,12 +46,7 @@ void BraveEducationPageDelegateDesktop::OpenRewardsPanel() {
 #endif
 }
 
-void BraveEducationPageDelegateDesktop::OpenVPNPanel() {
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  BraveVPNController::From(base::to_address(window_interface_))
-      ->ShowBraveVPNBubble(/* show_select */ false);
-#endif
-}
+
 
 #if BUILDFLAG(ENABLE_AI_CHAT)
 void BraveEducationPageDelegateDesktop::OpenAIChat() {

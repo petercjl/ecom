@@ -20,7 +20,6 @@ import {
   ToggleCardsText
 } from '../../../components/default'
 import braveTalkBanner from './assets/brave-talk.png'
-import braveVPNBanner from './assets/brave-vpn.png'
 import rewardsBanner from './assets/braverewards.png'
 import Toggle from '@brave/leo/react/toggle'
 import Button from '@brave/leo/react/button'
@@ -62,7 +61,6 @@ const ToggleButton = ({ on, toggleFunc, float }: { on: boolean, toggleFunc: any,
 }
 
 function CardSettings({ toggleShowBraveTalk, showBraveTalk, braveTalkSupported, toggleShowRewards, showRewards, braveRewardsSupported, toggleCards, cardsHidden }: Props) {
-  const [showBraveVPN, saveShowBraveVPN] = useNewTabPref('showBraveVPN')
   const [isBraveTalkDisabledByPolicy] = useNewTabPref(
     'isBraveTalkDisabledByPolicy'
   )
@@ -93,18 +91,7 @@ function CardSettings({ toggleShowBraveTalk, showBraveTalk, braveTalkSupported, 
       </StyledSettingsInfo>
       <ToggleButton on={showRewards} toggleFunc={toggleShowRewards} />
     </SettingsWidget>}
-    {loadTimeData.getBoolean('vpnWidgetSupported') && <SettingsWidget>
-      <StyledBannerImage src={braveVPNBanner} />
-      <StyledSettingsInfo>
-        <StyledSettingsTitle>
-          {getLocale('braveVpnWidgetSettingTitle')}
-        </StyledSettingsTitle>
-        <StyledSettingsCopy>
-          {getLocale('braveVpnWidgetSettingDesc')}
-        </StyledSettingsCopy>
-      </StyledSettingsInfo>
-      <ToggleButton on={showBraveVPN!} toggleFunc={() => saveShowBraveVPN(!showBraveVPN)} />
-    </SettingsWidget>}
+
     <FeaturedSettingsWidget>
       <ToggleCardsWrapper>
         <ToggleCardsText>

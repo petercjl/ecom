@@ -14,8 +14,6 @@
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
 #include "brave/components/brave_talk/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/pref_names.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/brave_wayback_machine/buildflags/buildflags.h"
 #include "brave/components/commands/common/accelerator_parsing.h"
@@ -505,32 +503,6 @@ TEST_F(AcceleratorServiceUnitTest, PolicyFiltering) {
   EXPECT_TRUE(service.IsCommandDisabledByPolicy(IDC_SHOW_BRAVE_TALK));
   profile().GetPrefs()->SetBoolean(brave_talk::prefs::kDisabledByPolicy, false);
   EXPECT_FALSE(service.IsCommandDisabledByPolicy(IDC_SHOW_BRAVE_TALK));
-#endif
-
-  // Test Brave VPN (multiple commands)
-  const std::vector<int> vpn_commands = {IDC_SHOW_BRAVE_VPN_PANEL,
-                                         IDC_TOGGLE_BRAVE_VPN_TOOLBAR_BUTTON,
-                                         IDC_TOGGLE_BRAVE_VPN_TRAY_ICON,
-                                         IDC_SEND_BRAVE_VPN_FEEDBACK,
-                                         IDC_ABOUT_BRAVE_VPN,
-                                         IDC_MANAGE_BRAVE_VPN_PLAN,
-                                         IDC_TOGGLE_BRAVE_VPN};
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  for (int command : vpn_commands) {
-    EXPECT_FALSE(service.IsCommandDisabledByPolicy(command));
-  }
-  profile().GetPrefs()->SetBoolean(brave_vpn::prefs::kManagedBraveVPNDisabled,
-                                   true);
-  for (int command : vpn_commands) {
-    EXPECT_TRUE(service.IsCommandDisabledByPolicy(command));
-  }
-  profile().GetPrefs()->SetBoolean(brave_vpn::prefs::kManagedBraveVPNDisabled,
-                                   false);
-#else
-  // VPN not compiled in, should always return true (disabled)
-  for (int command : vpn_commands) {
-    EXPECT_TRUE(service.IsCommandDisabledByPolicy(command));
-  }
 #endif
 
   // Test Brave Wallet (multiple commands)

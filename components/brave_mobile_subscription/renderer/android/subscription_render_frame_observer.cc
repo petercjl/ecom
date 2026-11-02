@@ -27,9 +27,6 @@
 #include "third_party/blink/public/web/web_local_frame.h"
 #include "url/url_util.h"
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/brave_vpn_utils.h"
-#endif
 
 namespace brave_subscription {
 
@@ -56,15 +53,6 @@ SubscriptionRenderFrameObserver::~SubscriptionRenderFrameObserver() = default;
 
 bool SubscriptionRenderFrameObserver::EnsureConnected() {
   bool bound = false;
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  if (brave_vpn::IsBraveVPNFeatureEnabled() && product_ == Product::kVPN) {
-    if (!vpn_service_.is_bound()) {
-      render_frame()->GetBrowserInterfaceBroker().GetInterface(
-          vpn_service_.BindNewPipeAndPassReceiver());
-    }
-    bound |= vpn_service_.is_bound();
-  }
-#endif
 
   if (ai_chat::features::IsAIChatEnabled() && product_ == Product::kLeo) {
     if (!ai_chat_subscription_.is_bound()) {
@@ -107,13 +95,6 @@ void SubscriptionRenderFrameObserver::DidCreateScriptContext(
   }
 
   if (product_ == Product::kVPN) {
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-    if (vpn_service_.is_bound()) {
-      vpn_service_->GetPurchaseToken(
-          base::BindOnce(&SubscriptionRenderFrameObserver::OnGetPurchaseToken,
-                         weak_factory_.GetWeakPtr()));
-    }
-#endif
   } else if (product_ == Product::kLeo) {
     if (ai_chat_subscription_.is_bound()) {
       // Inject only linkResult object on the

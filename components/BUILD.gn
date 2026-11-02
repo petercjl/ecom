@@ -4,7 +4,6 @@
 # You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import("//brave/components/ai_chat/core/common/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wallet/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wayback_machine/buildflags/buildflags.gni")
 import("//brave/components/containers/buildflags/buildflags.gni")
@@ -14,6 +13,7 @@ import("//brave/components/playlist/core/common/buildflags/buildflags.gni")
 import("//brave/components/psst/buildflags/buildflags.gni")
 import("//brave/components/speedreader/common/buildflags/buildflags.gni")
 import("//brave/components/traffic_control/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 import("//build/config/features.gni")
 import("//build/config/ui.gni")
 import("//extensions/buildflags/buildflags.gni")
@@ -96,21 +96,6 @@ test("brave_components_unittests") {
       "//brave/components/ai_chat/core/browser/ollama:unit_tests",
       "//brave/components/ai_chat/core/common:unit_tests",
       "//brave/components/web_mcp/core/browser:unit_tests",
-    ]
-  }
-
-  if (enable_brave_vpn_v2) {
-    deps += [
-      "//brave/components/brave_vpn/browser/v2/api:unit_tests",
-      "//brave/components/brave_vpn/common/v2:unit_tests",
-    ]
-  }
-
-  if (enable_brave_vpn_v2_apps) {
-    deps += [
-      "//brave/components/brave_vpn/app/v2/agent:unit_tests",
-      "//brave/components/brave_vpn/app/v2/shared:unit_tests",
-      "//brave/components/brave_vpn/browser/v2/agent:unit_tests",
     ]
   }
 

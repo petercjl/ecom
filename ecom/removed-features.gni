@@ -1,0 +1,8 @@
+# Removed Ecom products: compatibility constants for inherited GN descriptions.
+enable_brave_vpn = false
+enable_brave_vpn_v1 = false
+enable_brave_vpn_v2 = false
+enable_brave_vpn_panel = false
+enable_brave_vpn_wireguard = false
+enable_brave_vpn_v2_apps = false
+enable_brave_vpn_v2_bundling = false

@@ -20,7 +20,6 @@
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
 #include "brave/components/brave_talk/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/brave_wayback_machine/buildflags/buildflags.h"
 #include "brave/components/commands/browser/accelerator_pref_manager.h"
@@ -55,9 +54,6 @@
 #include "brave/components/tor/pref_names.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/pref_names.h"
-#endif
 
 #if BUILDFLAG(ENABLE_SPEEDREADER)
 #include "brave/components/speedreader/speedreader_pref_names.h"
@@ -478,19 +474,6 @@ bool AcceleratorService::IsCommandDisabledByPolicy(int command_id) const {
       return pref_service_->GetBoolean(brave_talk::prefs::kDisabledByPolicy);
 #else
       return true;  // Talk not compiled in, always disabled
-#endif
-    case IDC_SHOW_BRAVE_VPN_PANEL:
-    case IDC_TOGGLE_BRAVE_VPN_TOOLBAR_BUTTON:
-    case IDC_TOGGLE_BRAVE_VPN_TRAY_ICON:
-    case IDC_SEND_BRAVE_VPN_FEEDBACK:
-    case IDC_ABOUT_BRAVE_VPN:
-    case IDC_MANAGE_BRAVE_VPN_PLAN:
-    case IDC_TOGGLE_BRAVE_VPN:
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-      return pref_service_->GetBoolean(
-          brave_vpn::prefs::kManagedBraveVPNDisabled);
-#else
-      return true;  // VPN not compiled in, always disabled
 #endif
     case IDC_SHOW_BRAVE_WALLET:
     case IDC_SHOW_BRAVE_WALLET_PANEL:

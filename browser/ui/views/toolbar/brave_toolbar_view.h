@@ -10,7 +10,6 @@
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "components/prefs/pref_member.h"
@@ -20,9 +19,6 @@
 class AIChatButton;
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-class BraveVPNButton;
-#endif
 
 class BraveBookmarkButton;
 class BrowserWindowInterface;
@@ -57,11 +53,6 @@ class BraveToolbarView : public ToolbarView,
   AIChatButton* ai_chat_button() const { return ai_chat_button_; }
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  BraveVPNButton* brave_vpn_button() const { return brave_vpn_; }
-  bool IsBraveVPNButtonVisible() const;
-  void OnVPNButtonVisibilityChanged();
-#endif
 
   void UpdateHorizontalPadding();
 
@@ -119,11 +110,6 @@ class BraveToolbarView : public ToolbarView,
   raw_ptr<WalletButton> wallet_ = nullptr;
   raw_ptr<SidePanelButton> side_panel_ = nullptr;
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  raw_ptr<BraveVPNButton> brave_vpn_ = nullptr;
-  BooleanPrefMember show_brave_vpn_button_;
-  BooleanPrefMember hide_brave_vpn_button_by_policy_;
-#endif
 
   BooleanPrefMember show_bookmarks_button_;
 

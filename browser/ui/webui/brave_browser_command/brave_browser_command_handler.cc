@@ -12,7 +12,6 @@
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_education/education_urls.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "chrome/browser/profiles/profile.h"
 
@@ -20,9 +19,6 @@
 #include "brave/browser/ai_chat/ai_chat_service_factory.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/brave_vpn/vpn_utils.h"
-#endif
 
 #if BUILDFLAG(ENABLE_BRAVE_REWARDS)
 #include "brave/browser/brave_rewards/rewards_service_factory.h"
@@ -51,13 +47,7 @@ bool CanShowRewardsOnboarding(Profile* profile) {
 #endif
 }
 
-bool CanShowVPNBubble(Profile* profile) {
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  return brave_vpn::IsAllowedForContext(profile);
-#else
-  return false;
-#endif
-}
+
 
 #if BUILDFLAG(ENABLE_AI_CHAT)
 bool CanShowAIChat(Profile* profile) {
@@ -100,9 +90,6 @@ void BraveBrowserCommandHandler::CanExecuteCommand(
     case brave_browser_command::mojom::Command::kOpenRewardsOnboarding:
       can_execute = CanShowRewardsOnboarding(profile_);
       break;
-    case brave_browser_command::mojom::Command::kOpenVPNOnboarding:
-      can_execute = CanShowVPNBubble(profile_);
-      break;
 #if BUILDFLAG(ENABLE_AI_CHAT)
     case brave_browser_command::mojom::Command::kOpenAIChat:
       can_execute = CanShowAIChat(profile_);
@@ -130,14 +117,6 @@ void BraveBrowserCommandHandler::ExecuteCommand(
     case brave_browser_command::mojom::Command::kOpenRewardsOnboarding:
 #if BUILDFLAG(ENABLE_BRAVE_REWARDS)
       delegate_->OpenRewardsPanel();
-      break;
-#else
-      std::move(callback).Run(false);
-      return;
-#endif
-    case brave_browser_command::mojom::Command::kOpenVPNOnboarding:
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-      delegate_->OpenVPNPanel();
       break;
 #else
       std::move(callback).Run(false);

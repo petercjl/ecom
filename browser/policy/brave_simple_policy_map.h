@@ -12,7 +12,6 @@
 #include "brave/components/brave_shields/core/common/pref_names.h"
 #include "brave/components/brave_sync/brave_sync_prefs.h"
 #include "brave/components/brave_talk/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/brave_wayback_machine/buildflags/buildflags.h"
 #include "brave/components/constants/pref_names.h"
@@ -44,9 +43,6 @@
 #include "brave/components/tor/pref_names.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/pref_names.h"
-#endif
 
 #if BUILDFLAG(DEPRECATE_IPFS)
 #include "brave/components/ipfs/ipfs_prefs.h"  // nogncheck
@@ -107,10 +103,6 @@ inline constexpr PolicyToPreferenceMapEntry kBraveSimplePolicyMap[] = {
      base::Value::Type::STRING},
 #if BUILDFLAG(ENABLE_TOR)
     {policy::key::kTorDisabled, tor::prefs::kTorDisabled,
-     base::Value::Type::BOOLEAN},
-#endif
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-    {policy::key::kBraveVPNDisabled, brave_vpn::prefs::kManagedBraveVPNDisabled,
      base::Value::Type::BOOLEAN},
 #endif
 #if BUILDFLAG(ENABLE_AI_CHAT)

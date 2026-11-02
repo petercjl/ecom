@@ -14,16 +14,12 @@
 #include "base/memory/raw_ref.h"
 #include "base/scoped_observation.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/tor/buildflags/buildflags.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "components/prefs/pref_change_registrar.h"
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/browser/brave_vpn_service_observer.h"
-#endif
 
 class BraveAppMenuBrowserTest;
 class BraveAppMenuModelBrowserTest;
@@ -39,10 +35,6 @@ class WebContents;
 namespace chrome {
 
 class BraveBrowserCommandController : public chrome::BrowserCommandController
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-    ,
-                                      public brave_vpn::BraveVpnServiceObserver
-#endif
 {
  public:
   explicit BraveBrowserCommandController(BrowserWindowInterface* bwi);
@@ -85,12 +77,6 @@ class BraveBrowserCommandController : public chrome::BrowserCommandController
   void RemoveCommandObserver(CommandObserver* observer) override;
   bool UpdateCommandEnabled(int id, bool state) override;
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  // brave_vpn::BraveVpnServiceObserver overrides:
-  void OnPurchasedStateChanged(
-      brave_vpn::mojom::PurchasedState state,
-      const std::optional<std::string>& description) override;
-#endif
 
   void InitBraveCommandState();
 #if BUILDFLAG(ENABLE_BRAVE_REWARDS)
@@ -103,7 +89,6 @@ class BraveBrowserCommandController : public chrome::BrowserCommandController
 #endif
   void UpdateCommandForSidebar();
   void UpdateCommandForAIChat();
-  void UpdateCommandForBraveVPN();
   void UpdateCommandForPlaylist();
   void UpdateCommandForWaybackMachine();
   void UpdateCommandsForTabs();

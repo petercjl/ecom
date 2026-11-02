@@ -22,7 +22,6 @@
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
 #include "brave/components/brave_search_conversion/pref_names.h"
 #include "brave/components/brave_talk/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/constants/webui_url_constants.h"
 #include "brave/components/ntp_background_images/browser/features.h"
@@ -67,9 +66,6 @@
 #include "brave/browser/brave_rewards/rewards_util.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/brave_vpn_utils.h"
-#endif
 
 #if BUILDFLAG(ENABLE_BRAVE_TALK)
 #include "brave/components/brave_talk/pref_names.h"
@@ -143,9 +139,6 @@ void NewTabPageInitializer::MigrateProfilePrefs(PrefService* prefs) {
 #if BUILDFLAG(ENABLE_BRAVE_TALK)
     prefs->SetBoolean(brave_talk::prefs::kNewTabPageShowBraveTalk, false);
 #endif
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-    prefs->SetBoolean(kNewTabPageShowBraveVPN, false);
-#endif
   }
   prefs->ClearPref(kNewTabPageHideAllWidgets);
 
@@ -218,12 +211,6 @@ void NewTabPageInitializer::AddLoadTimeValues() {
   source_->AddBoolean("rewardsFeatureEnabled", false);
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  bool vpn_feature_enabled = brave_vpn::IsBraveVPNEnabled(prefs);
-#else
-  bool vpn_feature_enabled = false;
-#endif
-  source_->AddBoolean("vpnFeatureEnabled", vpn_feature_enabled);
 
 #if BUILDFLAG(ENABLE_BRAVE_NEWS)
   bool news_feed_update_enabled =

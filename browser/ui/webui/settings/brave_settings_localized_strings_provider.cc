@@ -21,7 +21,6 @@
 #include "brave/components/brave_rewards/core/pref_names.h"
 #include "brave/components/brave_shields/core/browser/brave_shields_locale_utils.h"
 #include "brave/components/brave_shields/core/common/features.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/brave_wayback_machine/buildflags/buildflags.h"
 #include "brave/components/brave_wayback_machine/pref_names.h"
@@ -261,7 +260,6 @@ void BraveAddCommonStrings(content::WebUIDataSource* html_source,
        IDS_SETTINGS_BRAVE_ORIGIN_STATS_REPORTING_TOGGLE_TITLE},
       {"braveOriginTorWindowsToggleTitle",
        IDS_SETTINGS_BRAVE_ORIGIN_TOR_WINDOWS_TOGGLE_TITLE},
-      {"braveOriginVpnToggleTitle", IDS_SETTINGS_BRAVE_ORIGIN_VPN_TOGGLE_TITLE},
       {"braveOriginWalletToggleTitle",
        IDS_SETTINGS_BRAVE_ORIGIN_WALLET_TOGGLE_TITLE},
       {"braveOriginCrossProfileSubLabel",
@@ -386,17 +384,6 @@ void BraveAddCommonStrings(content::WebUIDataSource* html_source,
       {"contentSettingsContentSection",
        IDS_SETTINGS_APPEARANCE_SETTINGS_CONTENT_SECTION},
 #endif  // defined(TOOLKIT_VIEWS)
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-      {"showBraveVPNButton", IDS_SETTINGS_SHOW_VPN_BUTTON},
-      {"showBraveVPNButtonSubLabel", IDS_SETTINGS_SHOW_VPN_BUTTON_SUB_LABEL},
-      {"vpnPageTitle", IDS_SETTINGS_VPN_PAGE_TITLE},
-      {"useWireguardLabel", IDS_SETTINGS_VPN_PAGE_USE_WIREGUARD_TITLE},
-      {"sublabelVpnConnected", IDS_SETTINGS_VPN_PAGE_SUBLABEL_VPN_CONNECTED},
-      {"showInSystemTrayWindows",
-       IDS_SETTINGS_VPN_PAGE_SHOW_IN_SYSTEM_TRAY_WINDOWS},
-      {"showInSystemTrayWindowsSubLabel",
-       IDS_SETTINGS_VPN_PAGE_SHOW_IN_SYSTEM_TRAY_WINDOWS_SUBLABEL},
-#endif
 #if BUILDFLAG(IS_MAC)
       {"showToolbarInFullScreen", IDS_SHOW_TOOLBAR_IN_FULL_SCREEN},
 #endif

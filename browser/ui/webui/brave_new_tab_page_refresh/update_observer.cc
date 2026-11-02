@@ -15,7 +15,6 @@
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
 #include "brave/components/brave_search_conversion/pref_names.h"
 #include "brave/components/brave_talk/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/ntp_background_images/common/pref_names.h"
 #include "chrome/browser/new_tab_page/prefs/ntp_pref_names.h"
@@ -77,9 +76,6 @@ UpdateObserver::UpdateObserver(PrefService& pref_service,
   AddPrefListener(brave_rewards::prefs::kExternalWalletType, Source::kTopSites);
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  AddPrefListener(kNewTabPageShowBraveVPN, Source::kVPN);
-#endif
 
   if (top_sites_facade) {
     top_sites_facade->SetSitesUpdatedCallback(

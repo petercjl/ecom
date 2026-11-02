@@ -34,7 +34,6 @@ class UpdateObserver {
     kTalk,
 #endif
     kRewards,
-    kVPN
   };
 
   UpdateObserver(PrefService& pref_service, TopSitesFacade* top_sites_facade);

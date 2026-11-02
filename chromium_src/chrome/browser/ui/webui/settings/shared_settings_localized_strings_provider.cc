@@ -4,7 +4,6 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "base/containers/fixed_flat_map.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/net/dns/secure_dns_endpoints.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
@@ -17,28 +16,7 @@
 #include "components/prefs/pref_service.h"
 #include "net/base/features.h"
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/features.h"
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN) && BUILDFLAG(IS_WIN)
-namespace {
-
-bool ShouldReplaceSecureDNSDisabledDescription() {
-  if (!base::FeatureList::IsEnabled(
-          brave_vpn::features::kBraveVPNDnsProtection))
-    return false;
-  auto dns_config = SystemNetworkContextManager::GetStubResolverConfigReader()
-                        ->GetSecureDnsConfiguration(false);
-  return !g_browser_process->local_state()
-              ->GetString(prefs::kBraveVpnDnsConfig)
-              .empty() ||
-         dns_config.mode() == net::SecureDnsMode::kSecure;
-}
-
-}  // namespace
-
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN) && BUILDFLAG(IS_WIN)
 
 #define AddSecureDnsStrings AddSecureDnsStrings_ChromiumImpl
 
@@ -66,15 +44,6 @@ void AddSecureDnsStrings(content::WebUIDataSource* html_source) {
                                       kAlternateLocalizedStrings.at(endpoint));
     }
   }
-#if BUILDFLAG(ENABLE_BRAVE_VPN) && BUILDFLAG(IS_WIN)
-  if (ShouldReplaceSecureDNSDisabledDescription()) {
-    static constexpr webui::LocalizedString kLocalizedStrings[] = {
-        {"secureDnsDisabledForManagedEnvironment",
-         IDS_SETTINGS_SECURE_DNS_DISABLED_BY_BRAVE_VPN}};
-    html_source->AddLocalizedStrings(kLocalizedStrings);
-  }
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN) && BUILDFLAG(IS_WIN)
 }
 
 }  // namespace settings
-

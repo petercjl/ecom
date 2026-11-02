@@ -18,7 +18,6 @@ import { style } from './features_step.style'
 import aiImage from '../assets/ai.svg'
 import web3Image from '../assets/web3.svg'
 import rewardsImage from '../assets/rewards.svg'
-import vpnImage from '../assets/vpn.svg'
 
 export function FeaturesStep(props: StepComponentProps) {
   const features = useProductFeatures()
@@ -66,15 +65,6 @@ export function FeaturesStep(props: StepComponentProps) {
               )}
               checked={features.rewards.visible}
               onChange={features.rewards.setVisible}
-            />
-          )}
-          {features.vpn.available && (
-            <ProductCard
-              image={vpnImage}
-              title={getString('WELCOME_PAGE_PRODUCT_VPN_TITLE')}
-              description={getString('WELCOME_PAGE_PRODUCT_VPN_DESCRIPTION')}
-              checked={features.vpn.visible}
-              onChange={features.vpn.setVisible}
             />
           )}
         </div>

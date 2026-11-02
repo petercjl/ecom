@@ -6,7 +6,6 @@
 import("//brave/browser/ai_chat/android/sources.gni")
 import("//brave/browser/autocomplete/sources.gni")
 import("//brave/browser/brave_referrals/sources.gni")
-import("//brave/browser/brave_vpn/sources.gni")
 import("//brave/browser/browsing_data/sources.gni")
 import("//brave/browser/cosmetic_filters/sources.gni")
 import("//brave/browser/debounce/sources.gni")
@@ -40,7 +39,6 @@ import("//brave/components/brave_news/common/buildflags/buildflags.gni")
 import("//brave/components/brave_origin/buildflags/buildflags.gni")
 import("//brave/components/brave_rewards/core/buildflags/buildflags.gni")
 import("//brave/components/brave_talk/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wallet/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wayback_machine/buildflags/buildflags.gni")
 import("//brave/components/commander/common/buildflags/buildflags.gni")
@@ -53,6 +51,7 @@ import("//brave/components/psst/buildflags/buildflags.gni")
 import("//brave/components/tor/buildflags/buildflags.gni")
 import("//brave/components/traffic_control/buildflags/buildflags.gni")
 import("//brave/components/web_discovery/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 import("//chrome/browser/buildflags.gni")
 import("//extensions/buildflags/buildflags.gni")
 import("//printing/buildflags/buildflags.gni")
@@ -209,8 +208,6 @@ brave_chrome_browser_deps = [
   "//brave/components/brave_talk/buildflags",
   "//brave/components/brave_user_agent/browser",
   "//brave/components/brave_user_agent/common",
-  "//brave/components/brave_vpn/common/buildflags",
-  "//brave/components/brave_vpn/common/mojom",
   "//brave/components/brave_wallet/common/buildflags",
   "//brave/components/brave_wayback_machine/buildflags",
   "//brave/components/commander/common/buildflags",
@@ -601,21 +598,6 @@ if (enable_web_discovery_native) {
   ]
 }
 
-if (enable_brave_vpn) {
-  brave_chrome_browser_deps += [
-    "//brave/components/brave_vpn/browser",
-    "//brave/components/brave_vpn/browser:v1_utils",
-    "//brave/components/brave_vpn/browser/connection",
-    "//brave/components/brave_vpn/browser/connection:api",
-    "//brave/components/brave_vpn/common",
-  ]
-}
-
-if (enable_brave_vpn_v2) {
-  brave_chrome_browser_deps +=
-      [ "//brave/components/brave_vpn/browser/v2:browser" ]
-}
-
 if (is_android) {
   brave_chrome_browser_sources += [
     "//brave/browser/android/brave_init_android.cc",
@@ -798,16 +780,11 @@ if (is_mac) {
           [ "//brave/browser:prebuilt_sparkle_framework_bundle_data" ]
     }
   }
-
-  if (enable_brave_vpn_v2_bundling) {
-    brave_chrome_framework_bundle_deps += [ "//brave:vpn_apps_bundle_data" ]
-  }
 }
 
 brave_chrome_browser_sources += brave_browser_profiles_sources
 brave_chrome_browser_sources += brave_browser_autocomplete_sources
 brave_chrome_browser_sources += brave_browser_brave_referrals_sources
-brave_chrome_browser_sources += brave_browser_brave_vpn_sources
 brave_chrome_browser_sources += brave_browser_browsing_data_sources
 brave_chrome_browser_sources += brave_browser_cosmetic_filters_sources
 brave_chrome_browser_sources += brave_browser_debounce_sources
@@ -830,7 +807,6 @@ brave_chrome_browser_sources += brave_browser_webcompat_reporter_sources
 
 brave_chrome_browser_deps += brave_browser_autocomplete_deps
 brave_chrome_browser_deps += brave_browser_brave_referrals_deps
-brave_chrome_browser_deps += brave_browser_brave_vpn_deps
 brave_chrome_browser_deps += brave_browser_browsing_data_deps
 brave_chrome_browser_deps += brave_browser_cosmetic_filters_deps
 brave_chrome_browser_deps += brave_browser_debounce_deps

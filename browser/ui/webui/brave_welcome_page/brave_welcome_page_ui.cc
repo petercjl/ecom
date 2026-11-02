@@ -129,7 +129,6 @@ BraveWelcomePageUI::BraveWelcomePageUI(content::WebUI* web_ui)
                      features.contains(Feature::kWallet));
   source->AddBoolean("rewardsFeatureEnabled",
                      features.contains(Feature::kRewards));
-  source->AddBoolean("vpnFeatureEnabled", features.contains(Feature::kVPN));
 
   PrefService* prefs = profile->GetPrefs();
   if (!prefs->GetBoolean(brave_welcome_page::prefs::kHasSeenBraveWelcomePage) &&

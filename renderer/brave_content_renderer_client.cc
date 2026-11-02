@@ -15,7 +15,6 @@
 #include "brave/components/brave_search/common/brave_search_utils.h"
 #include "brave/components/brave_search/renderer/brave_search_render_frame_observer.h"
 #include "brave/components/brave_shields/core/common/features.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/cosmetic_filters/renderer/cosmetic_filters_js_render_frame_observer.h"
 #include "brave/components/misc_metrics/renderer/web3_metrics_render_frame_observer.h"
 #include "brave/components/playlist/core/common/buildflags/buildflags.h"
@@ -53,9 +52,6 @@
 #include "brave/components/playlist/core/common/features.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/brave_vpn_utils.h"
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 
 #if BUILDFLAG(IS_ANDROID)
 #include "brave/components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.h"
@@ -224,9 +220,6 @@ void BraveContentRendererClient::RenderFrameCreated(
 
 #if BUILDFLAG(IS_ANDROID)
   bool should_create_subscription_observer = false;
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  should_create_subscription_observer |= brave_vpn::IsBraveVPNFeatureEnabled();
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 #if BUILDFLAG(ENABLE_AI_CHAT)
   should_create_subscription_observer |=
       ai_chat::features::IsAIChatHistoryEnabled();

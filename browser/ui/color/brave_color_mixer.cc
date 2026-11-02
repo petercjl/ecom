@@ -8,7 +8,6 @@
 #include "base/numerics/safe_conversions.h"
 #include "brave/browser/ui/color/brave_color_id.h"
 #include "brave/browser/ui/color/color_palette.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wayback_machine/buildflags/buildflags.h"
 #include "brave/components/playlist/core/common/buildflags/buildflags.h"
 #include "brave/components/speedreader/common/buildflags/buildflags.h"
@@ -71,7 +70,7 @@ bool HasCustomToolbarColor(const ui::ColorProviderKey& key) {
                                     &custom_toolbar_color);
 }
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN) || BUILDFLAG(ENABLE_SPEEDREADER)
+#if 0 || BUILDFLAG(ENABLE_SPEEDREADER)
 SkColor PickSimilarColorToToolbar(const ui::ColorProviderKey& key,
                                   const ui::ColorMixer& mixer,
                                   SkColor light_theme_color,
@@ -117,49 +116,6 @@ void AddOmniboxHoverSelect(ui::ColorMixer& mixer) {
       kOmniboxOpacitySelected)};
 }
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-void AddBraveVpnColorMixer(ui::ColorProvider* provider,
-                           const ui::ColorProviderKey& key) {
-  ui::ColorMixer& mixer = provider->AddMixer();
-  if (key.custom_theme) {
-    mixer[kColorBraveVpnButtonIconConnected] = {PickSimilarColorToToolbar(
-        key, mixer, mixer.GetResultColor(nala::kColorPrimitiveGreen50),
-        mixer.GetResultColor(nala::kColorPrimitiveGreen60))};
-    mixer[kColorBraveVpnButtonIconDisconnected] = {PickSimilarColorToToolbar(
-        key, mixer, mixer.GetResultColor(nala::kColorPrimitiveNeutral30),
-        mixer.GetResultColor(nala::kColorPrimitiveNeutral80))};
-    mixer[kColorBraveVpnButtonIconError] = {PickSimilarColorToToolbar(
-        key, mixer, mixer.GetResultColor(nala::kColorPrimitiveRed60),
-        mixer.GetResultColor(nala::kColorPrimitiveRed50))};
-    mixer[kColorBraveVpnButtonErrorBackgroundNormal] = {
-        PickSimilarColorToToolbar(
-            key, mixer, mixer.GetResultColor(nala::kColorPrimitiveRed95),
-            mixer.GetResultColor(nala::kColorPrimitiveRed15))};
-  } else {
-    mixer[kColorBraveVpnButtonIconConnected] = {
-        nala::kColorSystemfeedbackSuccessIcon};
-    mixer[kColorBraveVpnButtonIconDisconnected] = {nala::kColorIconDefault};
-    mixer[kColorBraveVpnButtonIconError] = {
-        nala::kColorSystemfeedbackErrorIcon};
-    mixer[kColorBraveVpnButtonErrorBackgroundNormal] = {
-        nala::kColorSystemfeedbackErrorBackground};
-  }
-
-  mixer[kColorBraveVpnButtonBackgroundNormal] = {kColorToolbar};
-
-#if defined(TOOLKIT_VIEWS)
-  if (!base::FeatureList::IsEnabled(
-          darker_theme::features::kBraveDarkerTheme) ||
-      key.scheme_variant != ui::ColorProviderKey::SchemeVariant::kDarker) {
-    return;
-  }
-
-  auto& postprocessing_mixer = provider->AddPostprocessingMixer();
-  postprocessing_mixer[kColorBraveVpnButtonBackgroundNormal] =
-      darker_theme::ApplyDarknessFromColor(nala::kColorPrimitiveNeutral5);
-#endif  // defined(TOOLKIT_VIEWS)
-}
-#endif
 
 #if BUILDFLAG(ENABLE_SPEEDREADER)
 void AddBraveSpeedreaderColorMixer(ui::ColorProvider* provider,
@@ -573,9 +529,6 @@ void AddBraveThemeColorMixer(ui::ColorProvider* provider,
   key.color_mode == ui::ColorProviderKey::ColorMode::kDark
       ? AddBraveDarkThemeColorMixer(provider, key)
       : AddBraveLightThemeColorMixer(provider, key);
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  AddBraveVpnColorMixer(provider, key);
-#endif
 #if BUILDFLAG(ENABLE_SPEEDREADER)
   AddBraveSpeedreaderColorMixer(provider, key);
 #endif

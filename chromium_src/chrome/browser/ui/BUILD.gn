@@ -7,8 +7,6 @@ import("//brave/components/ai_chat/core/common/buildflags/buildflags.gni")
 import("//build/config/ui.gni")
 
 group("ui") {
-  deps = [ "//brave/components/brave_vpn/common/buildflags" ]
-
   if (!is_android) {
     deps += [
       "//brave/browser/ui/tabs:tree_tab_session_manager",

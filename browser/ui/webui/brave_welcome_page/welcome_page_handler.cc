@@ -163,7 +163,6 @@ void WelcomePageHandler::GetFeatureVisibility(
   visibility->ai_chat = IsFeatureVisible(mojom::Feature::kAIChat);
   visibility->wallet = IsFeatureVisible(mojom::Feature::kWallet);
   visibility->rewards = IsFeatureVisible(mojom::Feature::kRewards);
-  visibility->vpn = IsFeatureVisible(mojom::Feature::kVPN);
   std::move(callback).Run(std::move(visibility));
 }
 

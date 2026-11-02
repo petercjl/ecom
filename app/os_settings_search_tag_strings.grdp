@@ -153,9 +153,6 @@
   <message name="IDS_OS_SETTINGS_TAG_INSTANT_TETHERING_DISCONNECT_LEGACY" desc="Text for search result item which, when clicked, navigates the user to Instant Tethering settings, with a button to disconnect from the currently-connected Instant Tethering network. Alternate phrase for: 'Configure Wi-Fi'">
     Disconnect Instant Tethering network
   </message>
-  <message name="IDS_OS_SETTINGS_TAG_VPN" desc="Text for search result item which, when clicked, navigates the user to VPN settings.">
-    VPN
-  </message>
   <message name="IDS_OS_SETTINGS_TAG_AUDIO_SETTINGS" desc="Text for search result item which, when clicked, navigates the user to Audio settings.">
     Audio
   </message>

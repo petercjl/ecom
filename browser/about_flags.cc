@@ -21,7 +21,6 @@
 #include "brave/components/brave_rewards/core/features.h"
 #include "brave/components/brave_shields/core/common/features.h"
 #include "brave/components/brave_sync/features.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/brave_wayback_machine/buildflags/buildflags.h"
 #include "brave/components/containers/buildflags/buildflags.h"
@@ -76,9 +75,6 @@
 #include "brave/browser/ui/webui/custom_profile_image/features.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/features.h"
-#endif
 
 #if BUILDFLAG(ENABLE_PLAYLIST)
 #include "brave/components/playlist/core/common/features.h"

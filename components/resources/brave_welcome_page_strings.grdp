@@ -169,14 +169,6 @@
     Support content creators and earn tokens for ads you see in Brave.
   </message>
 
-  <message name="IDS_WELCOME_PAGE_PRODUCT_VPN_TITLE" desc="Title of the Brave VPN product card" formatter_data="webui=BraveWelcomePage">
-    VPN
-  </message>
-
-  <message name="IDS_WELCOME_PAGE_PRODUCT_VPN_DESCRIPTION" desc="Description of the Brave VPN product card" formatter_data="webui=BraveWelcomePage">
-    Hide your IP address, mask your location, and access your favorite content on the go.
-  </message>
-
   <message name="IDS_WELCOME_PAGE_METRICS_STEP_TITLE" desc="Title for the metrics opt-in step" formatter_data="webui=BraveWelcomePage">
     Build a better web with us
   </message>

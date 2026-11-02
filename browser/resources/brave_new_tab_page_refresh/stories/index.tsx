@@ -12,7 +12,6 @@ import { NewTabContext } from '../context/new_tab_context'
 import { BackgroundContext } from '../context/background_context'
 import { SearchContext } from '../context/search_context'
 import { TopSitesContext } from '../context/top_sites_context'
-import { VpnContext } from '../context/vpn_context'
 import { RewardsContext } from '../context/rewards_context'
 
 import { createNewTabStore } from './mock_new_tab_store'
@@ -23,7 +22,6 @@ import {
 import { createRewardsStore } from './mock_rewards_store'
 import { createSearchStore } from './mock_search_store'
 import { createTopSitesStore } from './mock_top_sites_store'
-import { createVpnStore } from './mock_vpn_store'
 
 import { App } from '../components/app'
 
@@ -38,7 +36,6 @@ function StorybookApp(props: StorybookArgs) {
       background: createBackgroundStore(),
       search: createSearchStore(),
       topSites: createTopSitesStore(),
-      vpn: createVpnStore(),
       rewards: createRewardsStore(),
     }
   }, [])
@@ -52,13 +49,11 @@ function StorybookApp(props: StorybookArgs) {
       <BackgroundContext.Provider value={stores.background}>
         <SearchContext.Provider value={stores.search}>
           <TopSitesContext.Provider value={stores.topSites}>
-            <VpnContext.Provider value={stores.vpn}>
               <RewardsContext.Provider value={stores.rewards}>
                 <div style={{ position: 'absolute', inset: 0 }}>
                   <App />
                 </div>
               </RewardsContext.Provider>
-            </VpnContext.Provider>
           </TopSitesContext.Provider>
         </SearchContext.Provider>
       </BackgroundContext.Provider>

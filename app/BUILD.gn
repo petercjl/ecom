@@ -4,13 +4,13 @@
 # You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import("//brave/browser/shell_integrations/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/containers/buildflags/buildflags.gni")
 import("//brave/components/playlist/core/common/buildflags/buildflags.gni")
 import("//brave/components/request_otr/common/buildflags/buildflags.gni")
 import("//brave/components/speedreader/common/buildflags/buildflags.gni")
 import("//brave/components/text_recognition/common/buildflags/buildflags.gni")
 import("//brave/components/traffic_control/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 import("//brave/resources/brave_grit.gni")
 import("//build/config/features.gni")
 import("//build/config/locales.gni")
@@ -140,9 +140,7 @@ source_set("unit_tests") {
   if (!is_android) {
     sources += [ "command_utils_unittest.cc" ]
   }
-  if (enable_brave_vpn_v2_apps) {
-    sources += [ "vpn_apps_branding_unittest.cc" ]
-  }
+
   deps = [
     "//base",
     "//base/test:test_support",
@@ -246,9 +244,7 @@ source_set("unit_tests") {
   if (enable_extensions_core) {
     deps += [ "//extensions/common" ]
   }
-  if (enable_brave_vpn_v2_apps) {
-    deps += [ "//brave/components/brave_vpn/app/v2/shared" ]
-  }
+
   if (enable_pdf) {
     deps += [ "//pdf:features" ]
   }

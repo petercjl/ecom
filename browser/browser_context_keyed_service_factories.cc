@@ -31,7 +31,6 @@
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
 #include "brave/components/brave_perf_predictor/browser/named_third_party_registry_factory.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/commander/common/buildflags/buildflags.h"
 #include "brave/components/containers/buildflags/buildflags.h"
@@ -60,9 +59,6 @@
 #include "brave/browser/brave_rewards/rewards_service_factory.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/brave_vpn/brave_vpn_service_factory.h"
-#endif
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "brave/browser/ui/commands/accelerator_service_factory.h"
@@ -188,9 +184,6 @@ void EnsureBrowserContextKeyedServiceFactoriesBuilt() {
   EphemeralStorageServiceFactory::GetInstance();
   PermissionLifetimeManagerFactory::GetInstance();
   skus::SkusServiceFactory::GetInstance();
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  brave_vpn::BraveVpnServiceFactory::GetInstance();
-#endif
 #if BUILDFLAG(ENABLE_PLAYLIST)
   // Always instantiate the factory so Playlist prefs are registered, even when
   // the feature flag is off. The factory itself returns null from

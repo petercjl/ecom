@@ -4,12 +4,12 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import("//brave/components/ai_chat/core/common/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wallet/common/buildflags/buildflags.gni")
 import("//brave/components/playlist/core/common/buildflags/buildflags.gni")
 import("//brave/components/speedreader/common/buildflags/buildflags.gni")
 import("//brave/components/tor/buildflags/buildflags.gni")
 import("//brave/components/web_discovery/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 import("//third_party/widevine/cdm/widevine.gni")
 
 brave_chrome_renderer_sources = [
@@ -29,7 +29,6 @@ brave_chrome_renderer_deps = [
   "//brave/components/brave_search/common",
   "//brave/components/brave_search/renderer",
   "//brave/components/brave_shields/core/common",
-  "//brave/components/brave_vpn/common/buildflags",
   "//brave/components/brave_wallet/common/buildflags",
   "//brave/components/cosmetic_filters/renderer",
   "//brave/components/misc_metrics/renderer",
@@ -62,10 +61,6 @@ if (enable_speedreader) {
     "//brave/components/speedreader/common",
     "//brave/components/speedreader/renderer",
   ]
-}
-
-if (enable_brave_vpn) {
-  brave_chrome_renderer_deps += [ "//brave/components/brave_vpn/common" ]
 }
 
 if (enable_brave_wallet) {

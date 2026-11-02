@@ -12,7 +12,6 @@
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -36,9 +35,6 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "ui/webui/mojo_web_ui_controller.h"
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/mojom/brave_vpn.mojom.h"
-#endif
 
 #if BUILDFLAG(ENABLE_AI_CHAT)
 namespace ai_chat {
@@ -95,10 +91,6 @@ class BraveNewTabPageUI : public ui::MojoWebUIController,
       mojo::PendingReceiver<brave_news::mojom::BraveNewsController> receiver);
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  void BindInterface(
-      mojo::PendingReceiver<brave_vpn::mojom::ServiceHandler> receiver);
-#endif
 
   // Returns a reference to the owned contextual search session handle for
   // `realbox_handler_`.

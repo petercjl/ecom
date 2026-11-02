@@ -931,9 +931,7 @@
         <part file="customize_chrome_ui_strings.grdp" />
         <part file="customize_toolbar_ui_strings.grdp" />
       </if>
-      <if expr="enable_brave_vpn">
-        <part file="brave_vpn_strings.grdp" />
-      </if>
+
       <part file="omnibox_strings.grdp" />
       <part file="playlist_strings.grdp" />
       <if expr="enable_containers">

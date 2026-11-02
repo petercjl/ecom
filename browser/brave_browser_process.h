@@ -13,7 +13,6 @@
 
 #include "brave/browser/brave_stats/buildflags.h"
 #include "brave/components/brave_ads/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/request_otr/common/buildflags/buildflags.h"
 #include "brave/components/speedreader/common/buildflags/buildflags.h"
 #include "brave/components/tor/buildflags/buildflags.h"
@@ -25,11 +24,6 @@ class BraveReferralsService;
 class URLSanitizerComponentInstaller;
 }  // namespace brave
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN_V1)
-namespace brave_vpn {
-class BraveVPNConnectionManager;
-}  // namespace brave_vpn
-#endif
 
 namespace brave_component_updater {
 class LocalDataFilesService;
@@ -124,10 +118,6 @@ class BraveBrowserProcess {
 #if BUILDFLAG(ENABLE_SPEEDREADER)
   virtual speedreader::SpeedreaderRewriterService*
   speedreader_rewriter_service() = 0;
-#endif
-#if BUILDFLAG(ENABLE_BRAVE_VPN_V1)
-  virtual brave_vpn::BraveVPNConnectionManager*
-  brave_vpn_connection_manager() = 0;
 #endif
   virtual misc_metrics::ProcessMiscMetrics* process_misc_metrics() = 0;
 };

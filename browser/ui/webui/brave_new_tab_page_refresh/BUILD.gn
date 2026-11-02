@@ -8,8 +8,8 @@ import("//brave/components/brave_ads/buildflags/buildflags.gni")
 import("//brave/components/brave_news/common/buildflags/buildflags.gni")
 import("//brave/components/brave_rewards/core/buildflags/buildflags.gni")
 import("//brave/components/brave_talk/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/ntp_background_images/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 
 assert(!is_android)
@@ -17,10 +17,7 @@ assert(enable_custom_background)
 
 mojom("mojom") {
   sources = [ "brave_new_tab_page.mojom" ]
-  deps = [
-    "//brave/components/brave_ads/core/mojom",
-    "//brave/components/brave_vpn/common/mojom",
-  ]
+  deps = [ "//brave/components/brave_ads/core/mojom" ]
   enabled_features = []
   if (enable_brave_talk) {
     enabled_features += [ "enable_brave_talk" ]
@@ -45,8 +42,6 @@ source_set("brave_new_tab_page_refresh") {
     "top_sites_facade.h",
     "update_observer.cc",
     "update_observer.h",
-    "vpn_facade.cc",
-    "vpn_facade.h",
   ]
 
   deps = [
@@ -78,7 +73,6 @@ source_set("brave_new_tab_page_refresh") {
     "//brave/components/brave_search/common",
     "//brave/components/brave_search_conversion",
     "//brave/components/brave_talk/buildflags",
-    "//brave/components/brave_vpn/common/buildflags",
     "//brave/components/constants",
     "//brave/components/misc_metrics",
     "//brave/components/ntp_background_images/browser",
@@ -135,14 +129,6 @@ source_set("brave_new_tab_page_refresh") {
     deps += [ "//brave/browser/brave_ads" ]
   }
 
-  if (enable_brave_vpn) {
-    deps += [
-      "//brave/browser/ui/brave_vpn",
-      "//brave/components/brave_vpn/browser",
-      "//brave/components/brave_vpn/common",
-    ]
-  }
-
   if (enable_brave_talk) {
     deps += [ "//brave/components/brave_talk" ]
   }
@@ -171,7 +157,6 @@ source_set("browser_tests") {
     "//brave/components/brave_ads/buildflags",
     "//brave/components/brave_news/common/buildflags",
     "//brave/components/brave_rewards/core/buildflags",
-    "//brave/components/brave_vpn/common/buildflags",
     "//chrome/browser/ui",
     "//chrome/common",
     "//chrome/test:test_support",

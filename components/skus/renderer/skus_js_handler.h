@@ -9,7 +9,6 @@
 #include <memory>
 #include <string>
 
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/skus/common/skus_sdk.mojom.h"
 #include "content/public/renderer/render_frame.h"
 #include "content/public/renderer/render_frame_observer.h"
@@ -17,9 +16,6 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "v8/include/v8.h"
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/mojom/brave_vpn.mojom.h"
-#endif
 
 namespace skus {
 
@@ -96,9 +92,6 @@ class SkusJSHandler final : public gin::Wrappable<SkusJSHandler>,
                            skus::mojom::SkusResultPtr response);
 
   mojo::Remote<skus::mojom::SkusService> skus_service_;
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  mojo::Remote<brave_vpn::mojom::ServiceHandler> vpn_service_;
-#endif
 };
 
 }  // namespace skus

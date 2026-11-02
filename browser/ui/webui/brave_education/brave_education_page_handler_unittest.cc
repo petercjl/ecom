@@ -13,7 +13,6 @@
 #include "brave/browser/ui/webui/brave_browser_command/brave_browser_command_handler.h"
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_education/education_urls.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
@@ -37,7 +36,6 @@ class TestDelegate : public BraveBrowserCommandHandler::Delegate {
   }
 
   void OpenRewardsPanel() override { add_action_.Run("open-rewards-panel"); }
-  void OpenVPNPanel() override { add_action_.Run("open-vpn-panel"); }
 #if BUILDFLAG(ENABLE_AI_CHAT)
   void OpenAIChat() override { add_action_.Run("open-ai-chat"); }
 #endif
@@ -69,7 +67,6 @@ class BraveEducationPageHandlerTest : public testing::Test {
 #if BUILDFLAG(ENABLE_BRAVE_WALLET)
          brave_browser_command::mojom::Command::kOpenWalletOnboarding,
 #endif
-         brave_browser_command::mojom::Command::kOpenVPNOnboarding,
 #if BUILDFLAG(ENABLE_AI_CHAT)
          brave_browser_command::mojom::Command::kOpenAIChat
 #endif
@@ -119,16 +116,10 @@ TEST_F(BraveEducationPageHandlerTest, VPNCommandsExecuted) {
   base::test::TestFuture<bool> future;
 
   handler->ExecuteCommand(
-      brave_browser_command::mojom::Command::kOpenVPNOnboarding,
       future.GetCallback());
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  ASSERT_TRUE(future.Get());
-  EXPECT_EQ(actions()[0], "open-vpn-panel");
-#else
   ASSERT_FALSE(future.Get());
   EXPECT_TRUE(actions().empty());
-#endif
 }
 
 #if BUILDFLAG(ENABLE_AI_CHAT)
@@ -170,7 +161,6 @@ TEST_F(BraveEducationPageHandlerTest, OffTheRecordProfile) {
   ASSERT_FALSE(future.Get());
 
   handler->CanExecuteCommand(
-      brave_browser_command::mojom::Command::kOpenVPNOnboarding,
       future.GetCallback());
   ASSERT_FALSE(future.Get());
 

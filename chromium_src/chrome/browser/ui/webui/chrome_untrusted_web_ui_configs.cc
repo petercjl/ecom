@@ -8,7 +8,6 @@
 #include "base/feature_list.h"
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/local_ai/buildflags/buildflags.h"
 #include "brave/components/playlist/core/common/buildflags/buildflags.h"
@@ -40,12 +39,6 @@
 #include "brave/components/brave_news/common/features.h"
 #endif  // BUILDFLAG(ENABLE_BRAVE_NEWS) && !BUILDFLAG(IS_ANDROID)
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#if !BUILDFLAG(IS_ANDROID)
-#include "brave/browser/ui/webui/brave_vpn/vpn_panel_ui.h"
-#endif  // !BUILDFLAG(IS_ANDROID)
-#include "brave/components/brave_vpn/common/brave_vpn_utils.h"
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 
 #if BUILDFLAG(ENABLE_PLAYLIST_WEBUI)
 #include "brave/browser/ui/webui/playlist_ui.h"
@@ -94,12 +87,6 @@ void RegisterChromeUntrustedWebUIConfigs() {
   }
 #endif
 #if !BUILDFLAG(IS_ANDROID)
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  if (brave_vpn::IsBraveVPNFeatureEnabled()) {
-    content::WebUIConfigMap::GetInstance().AddUntrustedWebUIConfig(
-        std::make_unique<UntrustedVPNPanelUIConfig>());
-  }
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 #if BUILDFLAG(ENABLE_PLAYLIST_WEBUI)
   if (base::FeatureList::IsEnabled(playlist::features::kPlaylist)) {
     content::WebUIConfigMap::GetInstance().AddUntrustedWebUIConfig(

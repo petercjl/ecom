@@ -27,7 +27,6 @@ export interface ProductFeatures {
   aiChat: ProductFeature
   wallet: ProductFeature
   rewards: ProductFeature
-  vpn: ProductFeature
 }
 
 // Returns information about the features that can be shown to the user on the
@@ -38,7 +37,6 @@ export function useProductFeatures(): ProductFeatures {
   const aiChatAvailable = api.useAiChatFeatureEnabledData()
   const walletAvailable = api.useWalletFeatureEnabledData()
   const rewardsAvailable = api.useRewardsFeatureEnabledData()
-  const vpnAvailable = api.useVpnFeatureEnabledData()
 
   const visibility = api.useGetFeatureVisibilityData()
 
@@ -64,18 +62,12 @@ export function useProductFeatures(): ProductFeatures {
         visible: visibility.rewards,
         setVisible: visibilitySetter(Feature.kRewards),
       },
-      vpn: {
-        available: vpnAvailable,
-        visible: visibility.vpn,
-        setVisible: visibilitySetter(Feature.kVPN),
-      },
     }
   }, [
     api,
     aiChatAvailable,
     walletAvailable,
     rewardsAvailable,
-    vpnAvailable,
     visibility,
   ])
 }

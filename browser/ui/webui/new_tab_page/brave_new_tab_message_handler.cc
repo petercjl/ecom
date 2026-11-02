@@ -26,7 +26,6 @@
 #include "brave/components/brave_perf_predictor/common/pref_names.h"
 #include "brave/components/brave_search_conversion/pref_names.h"
 #include "brave/components/brave_talk/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/ntp_background_images/browser/url_constants.h"
 #include "brave/components/ntp_background_images/browser/view_counter_service.h"
@@ -124,9 +123,6 @@ base::DictValue GetPreferencesDictionary(PrefService* prefs) {
                 prefs->GetBoolean(brave_talk::prefs::kNewTabPageShowBraveTalk));
   pref_data.Set("isBraveTalkDisabledByPolicy",
                 prefs->GetBoolean(brave_talk::prefs::kDisabledByPolicy));
-#endif
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  pref_data.Set("showBraveVPN", prefs->GetBoolean(kNewTabPageShowBraveVPN));
 #endif
   pref_data.Set(
       "showSearchBox",
@@ -361,12 +357,6 @@ void BraveNewTabMessageHandler::OnJavascriptAllowed() {
       base::BindRepeating(&BraveNewTabMessageHandler::OnPreferencesChanged,
                           base::Unretained(this)));
 #endif
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  pref_change_registrar_.Add(
-      kNewTabPageShowBraveVPN,
-      base::BindRepeating(&BraveNewTabMessageHandler::OnPreferencesChanged,
-                          base::Unretained(this)));
-#endif
   pref_change_registrar_.Add(
       kNewTabPageHideAllWidgets,
       base::BindRepeating(&BraveNewTabMessageHandler::OnPreferencesChanged,
@@ -478,10 +468,6 @@ void BraveNewTabMessageHandler::HandleSaveNewTabPagePref(
 #if BUILDFLAG(ENABLE_BRAVE_TALK)
   } else if (settings_key_input == "showBraveTalk") {
     settings_key = brave_talk::prefs::kNewTabPageShowBraveTalk;
-#endif
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  } else if (settings_key_input == "showBraveVPN") {
-    settings_key = kNewTabPageShowBraveVPN;
 #endif
   } else if (settings_key_input == "showSearchBox") {
     settings_key = brave_search_conversion::prefs::kShowNTPSearchBox;

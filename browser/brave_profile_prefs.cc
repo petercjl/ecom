@@ -36,7 +36,6 @@
 #include "brave/components/brave_shields/core/common/pref_names.h"
 #include "brave/components/brave_sync/brave_sync_prefs.h"
 #include "brave/components/brave_talk/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/brave_wayback_machine/buildflags/buildflags.h"
 #include "brave/components/constants/pref_names.h"
@@ -509,9 +508,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterBooleanPref(brave_talk::prefs::kDisabledByPolicy, false);
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  registry->RegisterBooleanPref(kNewTabPageShowBraveVPN, true);
-#endif
 
 // Private New Tab Page
 #if !BUILDFLAG(IS_ANDROID)

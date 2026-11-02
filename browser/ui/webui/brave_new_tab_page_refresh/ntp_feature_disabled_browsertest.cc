@@ -9,7 +9,6 @@
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/chrome_test_utils.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -135,21 +134,6 @@ IN_PROC_BROWSER_TEST_F(NTPRewardsDisabledByPolicyTest,
 
 // --- VPN disabled by policy ---
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-class NTPVPNDisabledByPolicyTest : public NTPFeatureDisabledTestBase {
- protected:
-  void SetUpInProcessBrowserTestFixture() override {
-    NTPFeatureDisabledTestBase::SetUpInProcessBrowserTestFixture();
-    SetPolicy(policy::key::kBraveVPNDisabled, base::Value(true));
-  }
-};
-
-IN_PROC_BROWSER_TEST_F(NTPVPNDisabledByPolicyTest, PageLoadsAndWidgetHidden) {
-  NavigateToNewTab();
-  WaitForPageLayout();
-  ExpectElementNotPresent("vpn-widget-tab");
-}
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 
 // --- AI Chat disabled by policy ---
 

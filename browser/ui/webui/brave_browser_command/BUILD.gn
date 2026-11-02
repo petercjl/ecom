@@ -6,8 +6,8 @@
 import("//brave/build/config.gni")
 import("//brave/components/ai_chat/core/common/buildflags/buildflags.gni")
 import("//brave/components/brave_rewards/core/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wallet/common/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 import("//build/config/features.gni")
 import("//chrome/common/features.gni")
 
@@ -22,7 +22,6 @@ source_set("brave_browser_command") {
     "//brave/components/ai_chat/core/common/buildflags",
     "//brave/components/brave_education",
     "//brave/components/brave_rewards/core/buildflags",
-    "//brave/components/brave_vpn/common/buildflags",
     "//brave/components/brave_wallet/common/buildflags",
     "//brave/components/constants",
     "//brave/ui/webui/resources/js/brave_browser_command:mojo_bindings",
@@ -45,9 +44,5 @@ source_set("brave_browser_command") {
 
   if (enable_brave_rewards) {
     deps += [ "//brave/browser/brave_rewards" ]
-  }
-
-  if (enable_brave_vpn) {
-    deps += [ "//brave/browser/brave_vpn" ]
   }
 }

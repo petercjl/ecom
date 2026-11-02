@@ -54,11 +54,6 @@
 #include "url/gurl.h"
 #include "url/origin.h"
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/brave_vpn/brave_vpn_service_factory.h"
-#include "brave/browser/ui/brave_vpn/brave_vpn_controller.h"
-#include "brave/components/brave_vpn/browser/brave_vpn_service.h"
-#endif
 
 namespace {
 
@@ -333,34 +328,6 @@ void BraveNewTabPageHandler::SearchWhatYouTyped(const std::string& host,
   web_contents_->OpenURL(params, /*navigation_handle_callback=*/{});
 }
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-void BraveNewTabPageHandler::RefreshVPNState() {
-  auto* vpn_service =
-      brave_vpn::BraveVpnServiceFactory::GetForProfile(profile_);
-  vpn_service->ReloadPurchasedState();
-}
-
-void BraveNewTabPageHandler::LaunchVPNPanel() {
-  auto* tab = tabs::TabInterface::GetFromContents(web_contents_);
-  CHECK(tab);
-  BraveVPNController::From(tab->GetBrowserWindowInterface())
-      ->ShowBraveVPNBubble(/* show_select */ true);
-}
-
-void BraveNewTabPageHandler::OpenVPNAccountPage(
-    brave_vpn::mojom::ManageURLType type) {
-  auto* tab = tabs::TabInterface::GetFromContents(web_contents_);
-  CHECK(tab);
-  BraveVPNController::From(tab->GetBrowserWindowInterface())
-      ->OpenVPNAccountPage(type);
-}
-
-void BraveNewTabPageHandler::ReportVPNWidgetUsage() {
-  auto* vpn_service =
-      brave_vpn::BraveVpnServiceFactory::GetForProfile(profile_);
-  vpn_service->RecordWidgetUsageMetrics(true);
-}
-#endif
 
 bool BraveNewTabPageHandler::IsCustomBackgroundImageEnabled() const {
   if (profile_->GetPrefs()->IsManagedPreference(

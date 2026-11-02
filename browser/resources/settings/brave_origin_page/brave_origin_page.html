@@ -170,14 +170,7 @@
     </origin-toggle-button>
   </if>
 
-  <if expr="enable_brave_vpn">
-    <origin-toggle-button id="toggleVpnButton"
-        policy-key="BraveVPNDisabled"
-        inverted
-        label="$i18n{braveOriginVpnToggleTitle}"
-        icon="product-vpn">
-    </origin-toggle-button>
-  </if>
+
 
   <if expr="enable_brave_wallet">
     <origin-toggle-button id="toggleWalletButton"
@@ -201,7 +194,7 @@
         policy-key="EmailAliasesEnabled"
         label="$i18n{braveEmailAliasesToggleTitle}"
         icon="email-shield">
-    </origin-toggle-button> 
+    </origin-toggle-button>
   </if>
 
   <if expr="enable_psst">
@@ -211,7 +204,7 @@
           label="$i18n{bravePsstToggleTitle}"
           sub-label="$i18n{bravePsstToggleSubLabel}"
           icon="psst">
-      </origin-toggle-button> 
+      </origin-toggle-button>
     </template>
   </if>
 

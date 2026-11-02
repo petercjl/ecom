@@ -11,7 +11,6 @@
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_education/education_urls.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/constants/webui_url_constants.h"
 #include "chrome/common/webui_url_constants.h"
@@ -125,22 +124,6 @@ IN_PROC_BROWSER_TEST_F(BraveEducationPageUIBrowserTest, OpenRewardsOnboarding) {
 }
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-
-IN_PROC_BROWSER_TEST_F(BraveEducationPageUIBrowserTest, OpenVPNOnboarding) {
-  NavigateToEducationPage(EducationPageType::kGettingStarted);
-
-  content::WebContentsAddedObserver added_observer;
-
-  PostMessageFromIFrame(R"(
-      {messageType: 'browser-command',
-       command: 'open-vpn-onboarding'})");
-
-  auto* new_web_contents = added_observer.GetWebContents();
-  EXPECT_EQ(new_web_contents->GetVisibleURL(), GURL(kVPNPanelURL));
-}
-
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 
 #if BUILDFLAG(ENABLE_AI_CHAT)
 IN_PROC_BROWSER_TEST_F(BraveEducationPageUIBrowserTest, OpenAPIChat) {

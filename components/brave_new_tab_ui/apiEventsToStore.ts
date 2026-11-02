@@ -56,9 +56,6 @@ export function wireApiEventsToStore () {
     getNTPBrowserAPI().addBackgroundUpdatedListener(onBackgroundUpdated)
     getNTPBrowserAPI().addCustomImageBackgroundsUpdatedListener(onCustomImageBackgroundsUpdated)
     getNTPBrowserAPI().addSearchPromotionDisabledListener(() => getActions().searchPromotionDisabled())
-    if (loadTimeData.getBoolean('vpnWidgetSupported')) {
-      getActions().braveVPN.initialize(initialData.purchasedState)
-    }
   })
   .catch(e => {
     console.error('New Tab Page fatal error:', e)

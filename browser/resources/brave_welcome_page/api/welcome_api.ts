@@ -42,7 +42,6 @@ export const featureVisibilityKeys: Record<Feature, keyof FeatureVisibility> = {
   [Feature.kAIChat]: 'aiChat',
   [Feature.kWallet]: 'wallet',
   [Feature.kRewards]: 'rewards',
-  [Feature.kVPN]: 'vpn',
 }
 
 // Type returned from requestDefaultBrowserState message.
@@ -100,7 +99,6 @@ interface ApiInit {
   aiChatFeatureEnabled: boolean
   walletFeatureEnabled: boolean
   rewardsFeatureEnabled: boolean
-  vpnFeatureEnabled: boolean
 }
 
 function defaultInit(): ApiInit {
@@ -159,7 +157,6 @@ function defaultInit(): ApiInit {
     aiChatFeatureEnabled: loadTimeData.getBoolean('aiChatFeatureEnabled'),
     walletFeatureEnabled: loadTimeData.getBoolean('walletFeatureEnabled'),
     rewardsFeatureEnabled: loadTimeData.getBoolean('rewardsFeatureEnabled'),
-    vpnFeatureEnabled: loadTimeData.getBoolean('vpnFeatureEnabled'),
   }
 }
 
@@ -198,7 +195,6 @@ export function createWelcomeApi(init = defaultInit()) {
             aiChat: true,
             wallet: true,
             rewards: true,
-            vpn: true,
           },
         },
         setFeatureVisible: {
@@ -246,7 +242,6 @@ export function createWelcomeApi(init = defaultInit()) {
       aiChatFeatureEnabled: state(init.aiChatFeatureEnabled),
       walletFeatureEnabled: state(init.walletFeatureEnabled),
       rewardsFeatureEnabled: state(init.rewardsFeatureEnabled),
-      vpnFeatureEnabled: state(init.vpnFeatureEnabled),
     },
 
     actions: {

@@ -13,7 +13,6 @@
 #include "brave/components/brave_rewards/core/features.h"
 #include "brave/components/brave_search_conversion/features.h"
 #include "brave/components/brave_shields/core/common/features.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/debounce/core/common/features.h"
 #include "brave/components/email_aliases/buildflags/buildflags.h"
@@ -29,9 +28,6 @@
 #include "brave/components/brave_ads/core/public/ad_units/new_tab_page_ad/new_tab_page_ad_feature.h"
 #endif  // BUILDFLAG(ENABLE_BRAVE_ADS)
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/features.h"
-#endif
 
 #if BUILDFLAG(ENABLE_BRAVE_WALLET)
 #include "brave/components/brave_wallet/common/features.h"
@@ -64,13 +60,8 @@
 #define BRAVE_WEB_DISCOVERY_FLAG
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-// CHROMIUM_SRC_INTERNAL_USE
-#define BRAVE_VPN_FLAG &brave_vpn::features::kBraveVPNLinkSubscriptionAndroidUI,
-#else
 // CHROMIUM_SRC_INTERNAL_USE
 #define BRAVE_VPN_FLAG
-#endif
 
 #if BUILDFLAG(ENABLE_EMAIL_ALIASES)
 // CHROMIUM_SRC_INTERNAL_USE

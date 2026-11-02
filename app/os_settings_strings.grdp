@@ -4394,12 +4394,6 @@ Press an assigned switch or key to remove assignment.
   <message name="IDS_SETTINGS_INTERNET_ADD_CONNECTION_NOT_ALLOWED" desc="Settings &gt; Internet &gt; Message when Add connection is not allowed.">
     Add connection is disabled by your administrator
   </message>
-  <message name="IDS_SETTINGS_INTERNET_ADD_THIRD_PARTY_VPN" desc="Settings &gt; Internet &gt; Add third party (Extension or ARC) VPN label">
-    Add <ph name="PROVIDER_NAME">$1<ex>VPN Demo</ex></ph>...
-  </message>
-  <message name="IDS_SETTINGS_INTERNET_ADD_VPN" desc="Settings &gt; Internet &gt; Add VPN label.">
-    Add built-in VPN...
-  </message>
   <message name="IDS_SETTINGS_INTERNET_ADD_WIFI" desc="Settings &gt; Internet &gt; Add Wi-Fi label.">
     Add Wi-Fi...
   </message>
@@ -4423,9 +4417,6 @@ Press an assigned switch or key to remove assignment.
   </message>
   <message name="IDS_SETTINGS_INTERNET_INSTANT_TETHERING_DETAILS" desc="Name of the settings page which displays details about an Instant Tethering network (i.e., using a phone's internet through the Instant Tethering feature).">
     Instant Tethering details
-  </message>
-  <message name="IDS_SETTINGS_INTERNET_VPN_DETAILS" desc="Name of the settings page which displays details about a VPN connection.">
-    VPN details
   </message>
   <message name="IDS_SETTINGS_INTERNET_HOTSPOT_DETAILS" desc="Name of the settings page which displays details about Hotspot.">
     Hotspot details
@@ -4618,27 +4609,6 @@ Press an assigned switch or key to remove assignment.
   </message>
   <message name="IDS_SETTINGS_SETTINGS_NETWORK_ALLOW_DATA_ROAMING_DISABLED" desc="Settings &gt; Internet &gt; Network details: Toggle sublabel when roaming is not allowed.">
     Off
-  </message>
-  <message name="IDS_SETTINGS_INTERNET_NETWORK_VPN_PREFERENCES" desc="Settings &gt; Internet &gt; VPN: Title of preferences group.">
-    VPN Preferences
-  </message>
-  <message name="IDS_SETTINGS_INTERNET_NETWORK_ALWAYS_ON_VPN" desc="Settings &gt; Internet &gt; Network details: Label for the checkbox determining that all internet traffic has to go through this VPN (virtual private network), and all other network connections are blocked.">
-    Always connect through this VPN
-  </message>
-  <message name="IDS_SETTINGS_INTERNET_NETWORK_ALWAYS_ON_VPN_ENABLE_LABEL" desc="Settings &gt; Internet &gt; VPN: Toggle label to enable always-on VPN.">
-    Always-on VPN
-  </message>
-  <message name="IDS_SETTINGS_INTERNET_NETWORK_ALWAYS_ON_VPN_ENABLE_SUBLABEL" desc="Settings &gt; Internet &gt; VPN: Toggle sublabel to enable always-on VPN.">
-    Automatically connects when you log in
-  </message>
-  <message name="IDS_SETTINGS_INTERNET_NETWORK_ALWAYS_ON_VPN_LOCKDOWN_LABEL" desc="Settings &gt; Internet &gt; VPN: Label for the toggle that enables always-on VPN lockdown.">
-    Block traffic without VPN
-  </message>
-  <message name="IDS_SETTINGS_INTERNET_NETWORK_ALWAYS_ON_VPN_LOCKDOWN_SUBLABEL" desc="Settings &gt; Internet &gt; VPN: Sublabel for the toggle that enables always-on VPN lockdown.">
-    Brave browser and Android traffic will be blocked unless a VPN is connected
-  </message>
-  <message name="IDS_SETTINGS_INTERNET_NETWORK_ALWAYS_ON_VPN_SERVICE" desc="Settings &gt; Internet &gt; VPN: Label for the dropdown menu determining which VPN client will be automatically started on login.">
-    VPN service
   </message>
   <message name="IDS_SETTINGS_INTERNET_NETWORK_HIDDEN" desc="Settings &gt; Internet &gt; Network details: Label for the checkbox to set a wi-fi network as hidden.">
     Hidden network

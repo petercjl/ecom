@@ -22,7 +22,6 @@ struct ReportInfo {
   string? ad_block_list_names;
   string? languages;
   string? language_farbling;
-  string? brave_vpn_connected;
   string? category;
   string? details;
   string? contact;

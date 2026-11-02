@@ -7,7 +7,6 @@ import("//brave/components/ai_chat/core/common/buildflags/buildflags.gni")
 import("//brave/components/brave_ads/buildflags/buildflags.gni")
 import("//brave/components/brave_news/common/buildflags/buildflags.gni")
 import("//brave/components/brave_rewards/core/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wallet/common/buildflags/buildflags.gni")
 import("//brave/components/containers/buildflags/buildflags.gni")
 import("//brave/components/email_aliases/buildflags/buildflags.gni")
@@ -16,6 +15,7 @@ import("//brave/components/playlist/core/common/buildflags/buildflags.gni")
 import("//brave/components/psst/buildflags/buildflags.gni")
 import("//brave/components/speedreader/common/buildflags/buildflags.gni")
 import("//brave/components/tor/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 import("//brave/resources/brave_grit.gni")
 import("//build/config/locales.gni")
 import("//extensions/buildflags/buildflags.gni")
@@ -191,13 +191,6 @@ repack("resources") {
   if (enable_brave_wallet) {
     deps += [ "//brave/components/brave_wallet/resources:ethereum_provider_generated_resources" ]
     sources += [ "$root_gen_dir/brave/components/brave_wallet/resources/brave_wallet_script_generated.pak" ]
-  }
-
-  if (enable_brave_vpn_panel) {
-    deps += [ "//brave/components/brave_vpn/resources/panel:resources" ]
-    sources += [
-      "$root_gen_dir/brave/components/brave_vpn/brave_vpn_panel_resources.pak",
-    ]
   }
 
   if (enable_playlist_webui) {

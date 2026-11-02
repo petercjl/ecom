@@ -9,7 +9,6 @@ import("//chrome/browser/resources/settings/settings.gni")
 settings_namespace_rewrites = [
   "settings.BraveAppearanceBrowserProxyImpl|BraveAppearanceBrowserProxyImpl",
   "settings.BraveLeoAssistantBrowserProxyImpl|BraveLeoAssistantBrowserProxyImpl",
-  "settings.BraveVPNBrowserProxyImpl|BraveVPNBrowserProxyImpl",
   "settings.BraveWalletBrowserProxyImpl|BraveWalletBrowserProxyImpl",
   "settings.BraveDefaultExtensionsBrowserProxyImpl|BraveDefaultExtensionsBrowserProxyImpl",
   "settings.BraveNewTabBrowserProxyImpl|BraveNewTabBrowserProxyImpl",

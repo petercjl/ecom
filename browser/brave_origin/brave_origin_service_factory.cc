@@ -43,9 +43,6 @@
 #include "brave/components/speedreader/speedreader_pref_names.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/pref_names.h"
-#endif
 
 #if BUILDFLAG(ENABLE_AI_CHAT)
 #include "brave/components/ai_chat/core/common/pref_names.h"
@@ -206,13 +203,6 @@ constexpr auto kBraveOriginProfileMetadata =
              /*user_settable=*/false)},
 #endif  // BUILDFLAG(ENABLE_BRAVE_NEWS)
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-        // Brave VPN preferences
-        {brave_vpn::prefs::kManagedBraveVPNDisabled,
-         BraveOriginServiceFactory::BraveOriginPrefMetadata(
-             true,
-             /*user_settable=*/false)},
-#endif
 
 #if BUILDFLAG(ENABLE_BRAVE_TALK)
         // Brave Talk preferences

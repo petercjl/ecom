@@ -35,9 +35,6 @@ inline constexpr char kBraveNewsURL[] = "chrome-untrusted://news/";
 inline constexpr char kBraveNewsInternalsHost[] = "news-internals";
 inline constexpr char kBraveUIAdblockURL[] = "chrome://adblock/";
 inline constexpr char kBraveUIWebcompatReporterURL[] = "chrome://webcompat/";
-inline constexpr char kVPNPanelURL[] =
-    "chrome-untrusted://vpn-panel.top-chrome/";
-inline constexpr char kVPNPanelHost[] = "vpn-panel.top-chrome";
 inline constexpr char kExtensionSettingsURL[] = "brave://settings/extensions";
 inline constexpr char kBraveSyncPath[] = "braveSync";
 inline constexpr char kBraveSyncSetupPath[] = "braveSync/setup";

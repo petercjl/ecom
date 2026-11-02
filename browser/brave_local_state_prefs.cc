@@ -26,7 +26,6 @@
 #include "brave/components/brave_search_conversion/p3a.h"
 #include "brave/components/brave_shields/content/browser/ad_block_service.h"
 #include "brave/components/brave_shields/core/browser/brave_shields_p3a.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/l10n/common/prefs.h"
@@ -99,9 +98,6 @@
 #include "brave/components/sidebar/browser/pref_names.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/brave_vpn_utils.h"
-#endif
 
 #if BUILDFLAG(ENABLE_WEB_DISCOVERY_NATIVE)
 #include "brave/components/web_discovery/browser/web_discovery_service.h"
@@ -161,9 +157,6 @@ void RegisterLocalStatePrefsForMigration(PrefRegistrySimple* registry) {
   brave_ads::RegisterLocalStatePrefsForMigration(registry);
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  brave_vpn::RegisterLocalStatePrefsForMigration(registry);
-#endif
 
   ntp_background_images::NTPBackgroundImagesService::
       RegisterLocalStatePrefsForMigration(registry);
@@ -244,9 +237,6 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
       brave_search::prefs::kNewTabV1SourceEnabledAtFirstRun, false);
   registry->RegisterStringPref(brave_search::prefs::kNewTabV1SourceSuffix, "");
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  brave_vpn::RegisterLocalStatePrefs(registry);
-#endif
 
 #if BUILDFLAG(ENABLE_AI_CHAT)
   ai_chat::prefs::RegisterLocalStatePrefs(registry);
@@ -258,7 +248,6 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
   DayZeroBrowserUIExptManager::RegisterLocalStatePrefs(registry);
 #endif
 
-  registry->RegisterStringPref(::prefs::kBraveVpnDnsConfig, std::string());
 
 #if BUILDFLAG(ENABLE_BRAVE_WALLET)
   brave_wallet::RegisterLocalStatePrefs(registry);

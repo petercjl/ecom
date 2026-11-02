@@ -12,7 +12,6 @@
 #include "base/memory/raw_ptr.h"
 #include "brave/components/brave_new_tab_ui/brave_new_tab_page.mojom.h"
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
 #include "components/regional_capabilities/regional_capabilities_service.h"
 #include "content/public/browser/web_ui_controller.h"
@@ -25,9 +24,6 @@
 #include "brave/components/brave_news/common/brave_news.mojom.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/mojom/brave_vpn.mojom.h"  // nogncheck
-#endif  // BUILDFLAG(ENABLE_BRAVE_VPN)
 
 namespace brave_ads {
 class AdsService;
@@ -76,10 +72,6 @@ class BraveNewTabUI : public ui::MojoWebUIController,
   void BindInterface(mojo::PendingReceiver<searchbox::mojom::PageHandlerFactory>
                          pending_receiver);
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  void BindInterface(mojo::PendingReceiver<brave_vpn::mojom::ServiceHandler>
-                         pending_vpn_service_handler);
-#endif
 
   // Returns a reference to the owned contextual search session handle for
   // `realbox_handler_`.

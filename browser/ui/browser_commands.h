@@ -59,10 +59,6 @@ void CloseWalletBubble(BrowserWindowInterface* browser);
 #endif
 
 void MaybeDistillAndShowSpeedreaderBubble(BrowserWindowInterface* browser);
-void ShowBraveVPNBubble(BrowserWindowInterface* browser);
-void ToggleBraveVPNButton(BrowserWindowInterface* browser);
-void ToggleBraveVPNTrayIcon();
-void OpenBraveVPNUrls(BrowserWindowInterface* browser, int command_id);
 // Copies an url sanitized by URLSanitizerService.
 void CopySanitizedURL(BrowserWindowInterface* browser, const GURL& url);
 // Copies an url cleared through:

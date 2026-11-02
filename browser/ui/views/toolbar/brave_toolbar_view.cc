@@ -32,7 +32,6 @@
 #include "brave/browser/ui/views/workspaces/workspaces_bubble_controller.h"
 #include "brave/browser/workspaces/features.h"
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/vector_icons/vector_icons.h"
@@ -75,11 +74,6 @@
 #include "brave/browser/ui/screenshot/features.h"
 #include "brave/browser/ui/views/toolbar/screenshot_button.h"
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/brave_vpn/brave_vpn_service_factory.h"
-#include "brave/browser/ui/views/toolbar/brave_vpn_button.h"
-#include "brave/components/brave_vpn/common/pref_names.h"
-#endif
 
 #if BUILDFLAG(IS_LINUX)
 #include "chrome/common/pref_names.h"
@@ -449,22 +443,6 @@ void BraveToolbarView::Init() {
     screenshot_button_->SetVisible(show_screenshot_button_.GetValue());
   }
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  if (brave_vpn::BraveVpnServiceFactory::GetForProfile(profile)) {
-    brave_vpn_ = AddChildViewAt(std::make_unique<BraveVPNButton>(browser()),
-                                *GetIndexOf(app_menu_button_) - 1);
-    SetBraveButtonFlexBehavior(brave_vpn_);
-    show_brave_vpn_button_.Init(
-        brave_vpn::prefs::kBraveVPNShowButton, profile->GetPrefs(),
-        base::BindRepeating(&BraveToolbarView::OnVPNButtonVisibilityChanged,
-                            base::Unretained(this)));
-    hide_brave_vpn_button_by_policy_.Init(
-        brave_vpn::prefs::kManagedBraveVPNDisabled, profile->GetPrefs(),
-        base::BindRepeating(&BraveToolbarView::OnVPNButtonVisibilityChanged,
-                            base::Unretained(this)));
-    brave_vpn_->SetVisible(IsBraveVPNButtonVisible());
-  }
-#endif
 
   // Make sure that avatar button is located right before the app menu.
   if (auto* avatar_button = static_cast<AvatarToolbarButton*>(
@@ -480,16 +458,6 @@ void BraveToolbarView::Init() {
   UpdateHorizontalPadding();
 }
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-bool BraveToolbarView::IsBraveVPNButtonVisible() const {
-  return show_brave_vpn_button_.GetValue() &&
-         !hide_brave_vpn_button_by_policy_.GetValue();
-}
-void BraveToolbarView::OnVPNButtonVisibilityChanged() {
-  DCHECK(brave_vpn_);
-  brave_vpn_->SetVisible(IsBraveVPNButtonVisible());
-}
-#endif
 
 void BraveToolbarView::OnEditBookmarksEnabledChanged() {
   DCHECK_EQ(DisplayMode::kNormal, display_mode_);

@@ -5,12 +5,12 @@
 
 import("//brave/components/ai_chat/core/common/buildflags/buildflags.gni")
 import("//brave/components/brave_news/common/buildflags/buildflags.gni")
-import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wallet/common/buildflags/buildflags.gni")
 import("//brave/components/email_aliases/buildflags/buildflags.gni")
 import("//brave/components/playlist/core/common/buildflags/buildflags.gni")
 import("//brave/components/psst/buildflags/buildflags.gni")
 import("//brave/components/speedreader/common/buildflags/buildflags.gni")
+import("//brave/ecom/removed-features.gni")
 
 group("storybook_deps") {
   # Depend on any generated JS output that will
@@ -26,7 +26,6 @@ group("storybook_deps") {
     "//brave/components/brave_rewards/core/mojom:mojom_js",
     "//brave/components/brave_rewards/core/mojom:webui_js",
     "//brave/components/brave_shields/core/common:mojom_js",
-    "//brave/components/brave_vpn/common/mojom:mojom_js",
     "//brave/components/brave_welcome_ui:welcome_background",
     "//brave/components/brave_welcome_ui:welcome_hill",
     "//brave/components/brave_welcome_ui:welcome_logo",

@@ -61,11 +61,6 @@
 #include "brave/components/brave_news/common/features.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/brave_vpn/brave_vpn_service_factory.h"
-#include "brave/components/brave_vpn/browser/brave_vpn_service.h"
-#include "brave/components/brave_vpn/common/brave_vpn_utils.h"
-#endif
 
 using ntp_background_images::NTPCustomImagesSource;
 
@@ -145,13 +140,6 @@ BraveNewTabUI::BraveNewTabUI(
   source->AddString("newTabTakeoverLearnMoreLinkUrl",
                     ntp_background_images::kNewTabTakeoverLearnMoreLinkUrl);
 
-  source->AddBoolean("vpnWidgetSupported",
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-                     brave_vpn::IsBraveVPNEnabled(profile->GetPrefs())
-#else
-                     false
-#endif
-  );
 
   web_ui->AddMessageHandler(base::WrapUnique(
       BraveNewTabMessageHandler::Create(source, profile, was_restored)));
@@ -220,18 +208,6 @@ void BraveNewTabUI::BindInterface(
   searchbox_page_factory_receiver_.Bind(std::move(pending_receiver));
 }
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-void BraveNewTabUI::BindInterface(
-    mojo::PendingReceiver<brave_vpn::mojom::ServiceHandler>
-        pending_vpn_service_handler) {
-  auto* profile = Profile::FromWebUI(web_ui());
-  CHECK(profile);
-  auto* vpn_service = brave_vpn::BraveVpnServiceFactory::GetForProfile(profile);
-  if (vpn_service) {
-    vpn_service->BindInterface(std::move(pending_vpn_service_handler));
-  }
-}
-#endif
 
 contextual_search::ContextualSearchSessionHandle*
 BraveNewTabUI::GetContextualSessionHandle() {

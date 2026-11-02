@@ -26,7 +26,6 @@ class BraveEducationPageDelegateDesktop
 
   void OpenURL(const GURL& url, WindowOpenDisposition disposition) override;
   void OpenRewardsPanel() override;
-  void OpenVPNPanel() override;
 #if BUILDFLAG(ENABLE_AI_CHAT)
   void OpenAIChat() override;
 #endif

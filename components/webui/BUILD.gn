@@ -22,7 +22,6 @@ static_library("webui") {
 
   deps = [
     "//base",
-    "//brave/components/brave_vpn/common/buildflags",
     "//brave/components/constants",
     "//brave/components/resources:static_resources",
     "//brave/components/resources:strings_grit",

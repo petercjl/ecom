@@ -32,7 +32,6 @@
 #include "brave/components/brave_shields/core/browser/ad_block_component_service_manager.h"
 #include "brave/components/brave_shields/core/browser/filter_list_catalog_entry.h"
 #include "brave/components/brave_shields/core/common/pref_names.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/webcompat_reporter/browser/fields.h"
 #include "brave/components/webcompat_reporter/browser/webcompat_reporter_service.h"
 #include "brave/components/webcompat_reporter/browser/webcompat_reporter_utils.h"
@@ -55,10 +54,6 @@
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/brave_vpn/brave_vpn_service_factory.h"
-#include "brave/components/brave_vpn/browser/brave_vpn_service.h"
-#endif
 
 namespace webcompat_reporter {
 
@@ -166,13 +161,6 @@ WebcompatReporterDOMHandler::WebcompatReporterDOMHandler(Profile* profile)
 }
 
 void WebcompatReporterDOMHandler::InitAdditionalParameters(Profile* profile) {
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  auto* vpn_service = brave_vpn::BraveVpnServiceFactory::GetForProfile(profile);
-  if (vpn_service != nullptr) {
-    pending_report_->brave_vpn_connected =
-        BoolToString(vpn_service->IsConnected());
-  }
-#endif
 
   PrefService* profile_prefs = profile->GetPrefs();
   pending_report_->languages =

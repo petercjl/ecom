@@ -18,7 +18,7 @@
 #include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/tor/buildflags/buildflags.h"
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN_V1)
+#if 0
 #include "brave/components/brave_vpn/browser/connection/brave_vpn_connection_manager.h"
 #endif
 
@@ -168,7 +168,7 @@ TestingBraveBrowserProcess::speedreader_rewriter_service() {
 }
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN_V1)
+#if 0
 brave_vpn::BraveVPNConnectionManager*
 TestingBraveBrowserProcess::brave_vpn_connection_manager() {
   return brave_vpn_connection_manager_.get();

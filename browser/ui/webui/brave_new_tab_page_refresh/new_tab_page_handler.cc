@@ -18,7 +18,6 @@
 #include "brave/browser/ui/webui/brave_new_tab_page_refresh/custom_image_chooser.h"
 #include "brave/browser/ui/webui/brave_new_tab_page_refresh/sponsored_sites_facade.h"
 #include "brave/browser/ui/webui/brave_new_tab_page_refresh/top_sites_facade.h"
-#include "brave/browser/ui/webui/brave_new_tab_page_refresh/vpn_facade.h"
 #include "brave/components/brave_ads/buildflags/buildflags.h"
 #include "brave/components/brave_perf_predictor/common/pref_names.h"
 #include "brave/components/brave_search/common/brave_search_utils.h"
@@ -82,7 +81,6 @@ NewTabPageHandler::NewTabPageHandler(
     std::unique_ptr<BackgroundFacade> background_facade,
     std::unique_ptr<SponsoredSitesFacade> sponsored_sites_facade,
     std::unique_ptr<TopSitesFacade> top_sites_facade,
-    std::unique_ptr<VPNFacade> vpn_facade,
     std::unique_ptr<ChromeAutocompleteSchemeClassifier> scheme_classifier,
     content::WebContents& web_contents,
     PrefService& pref_service,
@@ -96,7 +94,6 @@ NewTabPageHandler::NewTabPageHandler(
       background_facade_(std::move(background_facade)),
       sponsored_sites_facade_(std::move(sponsored_sites_facade)),
       top_sites_facade_(std::move(top_sites_facade)),
-      vpn_facade_(std::move(vpn_facade)),
       scheme_classifier_(std::move(scheme_classifier)),
       web_contents_(web_contents),
       pref_service_(pref_service),
@@ -107,7 +104,6 @@ NewTabPageHandler::NewTabPageHandler(
   CHECK(background_facade_);
   CHECK(sponsored_sites_facade_);
   CHECK(top_sites_facade_);
-  CHECK(vpn_facade_);
   CHECK(scheme_classifier_);
 
   if (page_metrics) {
@@ -603,45 +599,17 @@ void NewTabPageHandler::SetShowRewardsWidget(
   std::move(callback).Run();
 }
 
-void NewTabPageHandler::GetShowVPNWidget(GetShowVPNWidgetCallback callback) {
-  if (std::optional<std::string> pref_name = vpn_facade_->GetWidgetPrefName()) {
-    std::move(callback).Run(pref_service_->GetBoolean(*pref_name));
-  } else {
-    std::move(callback).Run(false);
-  }
-}
 
-void NewTabPageHandler::SetShowVPNWidget(bool show_vpn_widget,
-                                         SetShowVPNWidgetCallback callback) {
-  if (std::optional<std::string> pref_name = vpn_facade_->GetWidgetPrefName()) {
-    pref_service_->SetBoolean(*pref_name, show_vpn_widget);
-  }
-  std::move(callback).Run();
-}
 
-void NewTabPageHandler::ReloadVPNPurchasedState(
-    ReloadVPNPurchasedStateCallback callback) {
-  vpn_facade_->ReloadPurchasedState();
-  std::move(callback).Run();
-}
 
-void NewTabPageHandler::OpenVPNPanel(OpenVPNPanelCallback callback) {
-  vpn_facade_->OpenPanel();
-  std::move(callback).Run();
-}
 
-void NewTabPageHandler::OpenVPNAccountPage(
-    brave_vpn::mojom::ManageURLType url_type,
-    OpenVPNAccountPageCallback callback) {
-  vpn_facade_->OpenAccountPage(url_type);
-  std::move(callback).Run();
-}
 
-void NewTabPageHandler::ReportVPNWidgetUsage(
-    ReportVPNWidgetUsageCallback callback) {
-  vpn_facade_->RecordWidgetUsage();
-  std::move(callback).Run();
-}
+
+
+
+
+
+
 
 void NewTabPageHandler::OnCustomBackgroundsSelected(
     ShowCustomBackgroundChooserCallback callback,
@@ -685,9 +653,6 @@ void NewTabPageHandler::OnUpdate(UpdateObserver::Source update_source) {
 #endif
     case UpdateObserver::Source::kRewards:
       page_->OnRewardsStateUpdated();
-      break;
-    case UpdateObserver::Source::kVPN:
-      page_->OnVPNStateUpdated();
       break;
   }
 }

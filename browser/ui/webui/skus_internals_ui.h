@@ -37,7 +37,6 @@ class SkusInternalsUI : public content::WebUIController,
   // skus::mojom::SkusInternals overrides:
   void GetEventLog(GetEventLogCallback callback) override;
   void GetSkusState(GetSkusStateCallback callback) override;
-  void GetVpnState(GetVpnStateCallback callback) override;
   void GetLeoState(GetLeoStateCallback callback) override;
   void ResetSkusState() override;
   void CopySkusStateToClipboard() override;
@@ -50,7 +49,6 @@ class SkusInternalsUI : public content::WebUIController,
   void FileSelected(const ui::SelectedFileInfo& file, int index) override;
   void FileSelectionCanceled() override;
 
-  std::string GetLastVPNConnectionError() const;
   base::DictValue GetOrderInfo(const std::string& location) const;
   std::string GetSkusStateAsString() const;
 

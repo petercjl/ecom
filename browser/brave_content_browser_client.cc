@@ -72,7 +72,6 @@
 #include "brave/components/brave_shields/core/common/features.h"
 #include "brave/components/brave_shields/core/common/shields_settings.mojom.h"
 #include "brave/components/brave_user_agent/browser/brave_user_agent_exceptions.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/constants/webui_url_constants.h"
@@ -304,12 +303,6 @@ using extensions::ChromeContentBrowserClientExtensionsPart;
 #include "brave/browser/brave_drm_tab_helper.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/browser/brave_vpn/brave_vpn_service_factory.h"
-#include "brave/browser/ui/webui/brave_vpn/vpn_panel_ui.h"
-#include "brave/components/brave_vpn/common/brave_vpn_utils.h"
-#include "brave/components/brave_vpn/common/mojom/brave_vpn.mojom.h"
-#endif
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/files/memory_mapped_file.h"
@@ -487,19 +480,6 @@ void BindOriginIAPSubscription(
 }
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-void MaybeBindBraveVpnImpl(
-    content::RenderFrameHost* const frame_host,
-    mojo::PendingReceiver<brave_vpn::mojom::ServiceHandler> receiver) {
-  const GURL& frame_host_url = frame_host->GetLastCommittedURL();
-  if (!skus::IsSafeOrigin(frame_host_url)) {
-    return;
-  }
-  auto* context = frame_host->GetBrowserContext();
-  brave_vpn::BraveVpnServiceFactory::BindForContext(context,
-                                                    std::move(receiver));
-}
-#endif
 void MaybeBindSkusSdkImpl(
     content::RenderFrameHost* const frame_host,
     mojo::PendingReceiver<skus::mojom::SkusService> receiver) {
@@ -813,12 +793,6 @@ void BraveContentBrowserClient::RegisterTrustedWebUIInterfaceBrokers(
   }
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  if (brave_vpn::IsBraveVPNFeatureEnabled()) {
-    ntp_refresh_registration.Add<brave_vpn::mojom::ServiceHandler>();
-    ntp_registration.Add<brave_vpn::mojom::ServiceHandler>();
-  }
-#endif
 
   if (base::FeatureList::IsEnabled(features::kBraveNtpSearchWidget)) {
     ntp_refresh_registration.Add<searchbox::mojom::PageHandlerFactory>();
@@ -879,12 +853,6 @@ void BraveContentBrowserClient::RegisterUntrustedWebUIInterfaceBrokers(
     content::WebUIBrowserInterfaceBrokerRegistry& registry) {
   ChromeContentBrowserClient::RegisterUntrustedWebUIInterfaceBrokers(registry);
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN) && !BUILDFLAG(IS_ANDROID)
-  if (brave_vpn::IsBraveVPNFeatureEnabled()) {
-    registry.ForWebUI<VPNPanelUI>()
-        .Add<brave_vpn::mojom::PanelHandlerFactory>();
-  }
-#endif
 
 #if BUILDFLAG(ENABLE_PLAYLIST_WEBUI)
   if (base::FeatureList::IsEnabled(playlist::features::kPlaylist)) {
@@ -1074,10 +1042,6 @@ void BraveContentBrowserClient::RegisterBrowserInterfaceBindersForFrame(
         local_ai::mojom::SpeechRecognitionFactoryHost,
         local_ai::UntrustedOnDeviceSpeechRecognitionWorkerUI>(map);
   }
-#endif
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-  map->Add<brave_vpn::mojom::ServiceHandler>(
-      base::BindRepeating(&MaybeBindBraveVpnImpl));
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)

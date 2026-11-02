@@ -10,7 +10,6 @@
 #include "brave/components/brave_news/common/pref_names.h"
 #include "brave/components/brave_rewards/core/pref_names.h"
 #include "brave/components/brave_talk/buildflags/buildflags.h"
-#include "brave/components/brave_vpn/common/buildflags/buildflags.h"
 #include "brave/components/brave_wallet/browser/pref_names.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/email_aliases/buildflags/buildflags.h"
@@ -24,9 +23,6 @@
 #include "brave/components/brave_talk/pref_names.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-#include "brave/components/brave_vpn/common/pref_names.h"
-#endif
 
 #if BUILDFLAG(ENABLE_EMAIL_ALIASES)
 #include "brave/components/email_aliases/pref_names.h"
@@ -62,13 +58,6 @@ inline constexpr PolicyToPreferenceMapEntry kBraveSimplePolicyMap[] = {
         brave_news::prefs::kBraveNewsDisabledByPolicy,
         base::Value::Type::BOOLEAN,
     },
-#if BUILDFLAG(ENABLE_BRAVE_VPN)
-    {
-        policy::key::kBraveVPNDisabled,
-        brave_vpn::prefs::kManagedBraveVPNDisabled,
-        base::Value::Type::BOOLEAN,
-    },
-#endif
     {
         policy::key::kBraveP3AEnabled,
         p3a::kP3AEnabled,
