@@ -3,7 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import {fail,exists,privatePath,writeNew} from './common.mjs';
-import {discover,requestInConnection,registeredReadInConnection,callMailbox,resolveContainer} from './browser.mjs';
+import {discover,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,callMailbox,resolveContainer} from './browser.mjs';
 import {listOperations,operationRegistry,getService,validateOperationParams} from './sycm-vendor/operation-registry.mjs';
 import {businessCapabilities,mutationCapabilities} from './sycm-vendor/business-capabilities.mjs';
 
@@ -29,14 +29,14 @@ const resolveOperation=id=>{
   return found;
 };
 
-const sensitive=/token|cookie|csrf|password|passwd|authorization|secret|sessionid|credential|api[-_]?key/i;
+const sensitive=/token|cookie|csrf|password|passwd|authorization|secret|sessionid|credential|api[-_]?key|^__d?tk$|^session$|^loginpointid$/i;
 export function assertPublicParams(value) {
   if(Array.isArray(value)){for(const child of value)assertPublicParams(child);return;}
   if(value&&typeof value==='object')for(const [key,child]of Object.entries(value)) {
     if(sensitive.test(key)||['__proto__','constructor','prototype'].includes(key))throw fail('CREDENTIAL_INPUT_REJECTED','Use browser-managed authentication; credential or prototype fields are forbidden');
     assertPublicParams(child);
   }
-  if(typeof value==='string'&&/(?:token|cookie|csrf|password|authorization)=/i.test(value))throw fail('CREDENTIAL_INPUT_REJECTED','Credential-bearing strings are forbidden');
+  if(typeof value==='string'&&/(?:token|cookie|csrf(?:id)?|password|authorization|__tk|__dtk|loginpointid)=/i.test(value))throw fail('CREDENTIAL_INPUT_REJECTED','Credential-bearing strings are forbidden');
 }
 export function paramsObject(value) {
   if(value===undefined)return {};
@@ -86,7 +86,7 @@ export function buildRead(id,params) {
 function sanitized(value) {
   if(Array.isArray(value))return value.map(sanitized);
   if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([key,child])=>[key,sensitive.test(key)?'[REDACTED]':sanitized(child)]));
-  if(typeof value==='string'&&/(?:token|cookie|csrf|password|authorization)=/i.test(value))return '[REDACTED]';
+  if(typeof value==='string'&&/(?:token|cookie|csrf(?:id)?|password|authorization|__tk|__dtk|loginpointid)=/i.test(value))return '[REDACTED]';
   return value;
 }
 export function businessResponse(value) {
@@ -117,6 +117,10 @@ export async function runRead(options,deps={}) {
   try {
     return {...result,operation:op.id,service:op.service,data:businessResponse(result.data),businessStatus:'success',fetchedAt:new Date().toISOString(),dataDateVerification:'caller-must-check-requested-period-and-platform-update-time'};
   }catch(error){error.operationId=result.operationId;throw error;}
+}
+export async function openOperation(options,deps={}) {
+  const op=operationSchema(options.operation),connection=(deps.discover??discover)(options);
+  return (deps.open??openBusinessPageInConnection)(connection,options,op.id,op.entryUrl,nativeRegistryHash());
 }
 async function account(connection,selector) {
   const list=await callMailbox(connection,{method:'shops.list'});

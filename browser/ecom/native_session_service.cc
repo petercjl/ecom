@@ -88,7 +88,8 @@ bool SensitiveKey(const std::string& name) {
          key.find("cookie") != std::string::npos ||
          key.find("csrf") != std::string::npos ||
          key.find("password") != std::string::npos || key == "authorization" ||
-         key == "secret" || key == "sessionid";
+         key == "secret" || key == "sessionid" || key == "session" ||
+         key == "__tk" || key == "__dtk" || key == "loginpointid";
 }
 
 void Redact(base::Value& value) {
@@ -107,7 +108,12 @@ void Redact(base::Value& value) {
   } else if (value.is_string()) {
     const auto lower = base::ToLowerASCII(value.GetString());
     if (lower.find("token=") != std::string::npos ||
-        lower.find("cookie=") != std::string::npos) {
+        lower.find("cookie=") != std::string::npos ||
+        lower.find("csrf=") != std::string::npos ||
+        lower.find("csrfid=") != std::string::npos ||
+        lower.find("__tk=") != std::string::npos ||
+        lower.find("__dtk=") != std::string::npos ||
+        lower.find("loginpointid=") != std::string::npos) {
       value = base::Value("[REDACTED_URL]");
     }
   }
@@ -185,6 +191,7 @@ class NativeSessionService final : public ProfileObserver {
     metadata.Set("allowedOrigin", origin_.Serialize());
     if (origin_.Serialize() == "https://sycm.taobao.com") {
       metadata.Set("businessReadProtocol", 1);
+      metadata.Set("businessPageOpenProtocol", 1);
       metadata.Set("businessReadRegistryHash", kSycmReadRegistryHash);
     }
     auto json = base::WriteJson(metadata);

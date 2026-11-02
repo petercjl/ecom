@@ -22,6 +22,8 @@ Input is an Ecom container listing/detail request, an authorized read-only endpo
 
 For business data or mutation-planning requests, read [the business contract](references/sycm.md), then return to main-line target selection. The business registry is bundled with this runtime; no external sycmcli installation, Skill or browser is required. `sycm capabilities --json` exposes the complete imported catalog and native/legacy transport requirements. A registered endpoint is not proof that the current Ecom build can execute it or that its date and permission semantics have been verified. Use `sycm schema --operation ID --json` before execution. Never substitute another date to make a request succeed.
 
+`sycm open --operation ID --container VALUE --json` is the authorized page-preparation branch: background/reuse by default, `--foreground` for explicit visible login/verification. Opening is not proof of authentication; resume the same registered read after preparation. Prefer native initialization and preserve the caller’s page-fallback preference.
+
 `sycm run --operation ID --container VALUE --params-json JSON --json` fixes the native instance and container and validates the business envelope. Verify the returned period, platform update time and requested account before reporting metrics. A successful all-zero response is not by itself proof of zero business activity.
 
 Mutation plan/apply commands create local records and return reviewed workflow instructions. They perform no website submission. Report `executed=false` and require actual executor and readback evidence before describing a platform change as completed. Existing authorization can cover the reviewed plan; a development request itself grants no real store mutation authority.

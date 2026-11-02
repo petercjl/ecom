@@ -28,18 +28,19 @@ test('all registered native reads preserve endpoint, defaults and required input
     }else assert.throws(()=>buildRead(op.id,params),e=>e.code==='SERVICE_ADAPTER_REQUIRED');
   }
   assert.throws(()=>buildRead('unregistered',{}));
-  for(const value of ['{"token":"private"}','{"x":{"Cookie":"private"}}','{"x":"https://example.com/?token=private"}','{"__proto__":{"x":1}}','[]'])assert.throws(()=>paramsObject(value));
+  for(const value of ['{"__tk":"private"}','{"loginPointId":"private"}','{"token":"private"}','{"x":{"Cookie":"private"}}','{"x":"https://example.com/?token=private"}','{"__proto__":{"x":1}}','[]'])assert.throws(()=>paramsObject(value));
 });
 test('real CLI parser exposes strict business commands and missing targets fail early',async()=>{
   assert.equal(parse(['sycm','run','--operation','shop.trade-summary','--container','example','--params-json','{}']).command,'sycm run');
-  for(const args of [['sycm','run'],['sycm','run','--operation','shop.trade-summary'],['sycm','mutation','apply','--plan','x','--container','a'],['sycm','schema']])assert.throws(()=>parse(args));
+  for(const args of [['sycm','run'],['sycm','run','--operation','shop.trade-summary'],['sycm','mutation','apply','--plan','x','--container','a'],['sycm','schema'],['sycm','open'],['sycm','open','--operation','alimama.access']])assert.throws(()=>parse(args));
+  assert.equal(parse(['sycm','open','--operation','alimama.access','--container','example','--foreground']).options.foreground,true);
   const result=await main(['sycm','operations','--json']);assert.equal(result.count,135);
 });
 test('business errors and credential fields do not become false successes or leak diagnostics',async()=>{
   for(const body of [{content:{code:5810,data:null,message:'请登录'}},{hasError:true,content:{data:null}}, {code:5810,message:'请登录 https://example.com/?token=private'},{success:false,info:{message:'无权限'}},{code:1,message:'滑块验证'}])assert.throws(()=>businessResponse(body),e=>e.executed===true&&!e.message.includes('private'));
   assert.throws(()=>businessResponse({}),e=>e.code==='BUSINESS_RESPONSE_INVALID');
   assert.equal(businessResponse({content:{code:0,data:{category:3}},hasError:false}).content.data.category,3);
-  const clean=businessResponse({code:0,data:{secret:'private',value:3,url:'https://example.com/?token=private'}});assert.ok(!JSON.stringify(clean).includes('private'));assert.equal(clean.data.value,3);
+  const clean=businessResponse({code:0,data:{secret:'private',loginPointId:'private',__tk:'private',value:3,url:'https://example.com/?token=private'}});assert.ok(!JSON.stringify(clean).includes('private'));assert.equal(clean.data.value,3);
   const connection={endpoint:{instanceId:'same'}},deps={discover:()=>connection,request:async(c,o)=>{assert.equal(c,connection);assert.equal(o.container,'account-a');return {operationId:'operation-a',instance:{id:'same'},container:{id:'account-a'},data:{code:5810,message:'登录'}};}};
   await assert.rejects(runRead({operation:'shop.trade-summary',container:'account-a','params-json':'{"dateRange":"2026-11-01|2026-11-01"}'},deps),e=>e.code==='AUTH_REQUIRED'&&e.operationId==='operation-a');
 });

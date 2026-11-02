@@ -338,7 +338,16 @@
         "BUSINESS_READ_TIMEOUT",
         "BUSINESS_RESPONSE_INVALID",
         "PROTOCOL_MISMATCH"
-      ]
+      ],
+      "errorDiagnostics": {
+        "phase": "bounded native stage",
+        "netError": "Chromium network code",
+        "bodyKind": "json/html/text/none",
+        "matchingTabFound": "boolean",
+        "entryCookieCount": "count only; does not prove authentication",
+        "failureClass": "safe fixed classification",
+        "publicScripts": "optional sanitized public CDN scripts; credentials excluded"
+      }
     },
     "sycm mutation plan": {
       "options": {
@@ -406,6 +415,47 @@
       },
       "sideEffects": "local-write",
       "authorization": "Registered reads only, or local mutation-plan/confirmation records; no automatic platform writes. Credentials stay native."
+    },
+    "sycm open": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--operation": {
+          "type": "string",
+          "required": true
+        },
+        "--foreground": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "sideEffects": "browser-navigation",
+      "authorization": "Explicit page navigation or an authorized recovery fallback; fixed registered entry in the selected container. Background/reuse by default, foreground only when selected.",
+      "output": {
+        "navigation": "started or reused, not login success",
+        "container": "stable ID and current name",
+        "requestedUrl": "compiled registered entry",
+        "background": "boolean",
+        "authentication": "not-verified"
+      },
+      "errors": [
+        "BROWSER_UPGRADE_REQUIRED",
+        "BUSINESS_PAGE_UNSUPPORTED",
+        "CONTAINER_NOT_FOUND",
+        "CONTAINER_AMBIGUOUS",
+        "PROTOCOL_MISMATCH"
+      ]
     }
   },
   "transport": {
@@ -564,7 +614,7 @@
     "enabledByDefault": true,
     "intervalHours": 24,
     "timeoutMs": 1500,
-    "trigger": "containers list, containers inspect and session request task entry, sycm run, sycm mutation plan/apply",
+    "trigger": "containers list, containers inspect and session request task entry, sycm run, sycm mutation plan/apply, sycm open",
     "configuration": "Stable latest channel; detection only. Explicit update activates only the selected target runtime and Skill together.",
     "disable": "ECOM_CLI_UPDATE_CHECK=0",
     "recovery": "Offline checks retain installed runtime; local edit/ownership conflicts stop replacement; prior target kept as backup. Use recorded candidate and inspect target status before retrying.",
@@ -619,6 +669,12 @@
     "requiredNativeProtocol": 1,
     "registryHashAgreementRequired": true,
     "containerBinding": "Stable Ecom container ID, browser-owned session and native account verification; no separate Chrome store profile",
-    "nativeRegistryHash": "26d302541c1641b00ce45c6df4ae32bbb90e2b21352fe5f91e3cfedb21e35d5e"
+    "nativeRegistryHash": "26d302541c1641b00ce45c6df4ae32bbb90e2b21352fe5f91e3cfedb21e35d5e",
+    "pageFallback": {
+      "command": "sycm open --operation ID --container VALUE",
+      "requiredNativeCapability": "businessPageOpenProtocol=1",
+      "default": "background and reuse",
+      "strategy": "Native HTTP and private auth initialization first. Open the registered container entry only when needed and authorized; verify data again afterward."
+    }
   }
 }

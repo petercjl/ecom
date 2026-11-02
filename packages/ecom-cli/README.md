@@ -47,3 +47,5 @@ The browser owns sessions, containers and authorization. This package owns disco
 > 使用 Ecom CLI，为指定账号生成商品草稿的操作计划，供我审查。
 
 开发者通过 `sycm operations`、`sycm schema --operation ID`、`sycm run --operation ID --container VALUE --params-json JSON` 发现和调用原子取数能力；`sycm mutation plan/show/apply` 承接计划与确认。所有命令均支持结构化 JSON。
+
+取数优先使用后台原生请求。需要准备平台会话时，当前 Agent 可通过 `sycm open --operation ID --container VALUE` 在该容器打开注册入口，默认后台打开或复用；`--foreground` 用于明确需要前台的登录与验证。登录完成后继续调用原生接口，保留账号已设置的首页。

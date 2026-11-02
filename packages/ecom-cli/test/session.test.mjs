@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {inspectInConnection,requestInConnection,registeredReadInConnection,validateReadUrl,resolveContainer} from '../lib/browser.mjs';
+import {inspectInConnection,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,validateReadUrl,resolveContainer} from '../lib/browser.mjs';
 import {parse} from '../lib/cli.mjs';
 const origin='https://example.com';
 const accounts=[{id:'account-a',name:'示例甲'},{id:'account-b',name:'示例乙'}];
@@ -30,7 +30,7 @@ test('inspect/request parser rejects unsupported or incomplete inputs before dis
   assert.equal(parse(['session','request','--container','account-a','--url',origin+'/data','--method','GET']).options.method,'GET');
   for(const args of [['containers','inspect'],['session','request','--container','account-a'],['session','request','--container','a','--url',origin,'--body','x'],['containers','inspect','--container','a','--container','b']])assert.throws(()=>parse(args));
   for(const url of ['http://example.com/data','https://user:pass@example.com/','file:///tmp/data',origin+'/#fragment'])assert.throws(()=>validateReadUrl(url));
-  for(const key of ['token','Cookie','_csrf','api_key','accessKey','password'])assert.throws(()=>validateReadUrl(origin+'/?'+key+'=private'),e=>e.code==='CREDENTIAL_INPUT_REJECTED');
+  for(const key of ['token','Cookie','_csrf','api_key','accessKey','password','__tk','__dtk','loginPointId','session'])assert.throws(()=>validateReadUrl(origin+'/?'+key+'=private'),e=>e.code==='CREDENTIAL_INPUT_REJECTED');
   assert.throws(()=>validateReadUrl(origin,'POST'),e=>e.code==='METHOD_UNSUPPORTED');
   assert.throws(()=>resolveContainer([{id:'a',name:'same'},{id:'b',name:'same'}],'same'),e=>e.code==='CONTAINER_AMBIGUOUS');
   assert.throws(()=>resolveContainer(accounts,'missing'),e=>e.code==='CONTAINER_NOT_FOUND');
@@ -102,5 +102,26 @@ test('native auth diagnostics expose bounded context and public assets without s
       assert.deepEqual(error.diagnostics,{phase:'auth-dmp-context',netError:-2,bodyKind:'html',matchingTabFound:false,publicScripts:['https://g.alicdn.com/dmp/app.js']});
       assert.ok(!JSON.stringify(error.diagnostics).includes('private'));return error.code==='AUTH_CONTEXT_REQUIRED';
     });
+  }finally{f.close();}
+});
+
+test('registered page fallback pins the container, defaults to background and never rewrites account settings',{skip:process.platform==='win32'},async()=>{
+  const hash='a'.repeat(64);let foreground=false,bad=false;
+  const f=fixture(message=>{
+    if(message.method==='containers.list')return {ok:true,containers:accounts};
+    assert.equal(message.method,'shops.open');assert.equal(message.businessOperation,'alimama.member-config');
+    assert.equal(message.containerId,'account-a');assert.equal(message.background,!foreground);assert.equal(message.reuse,!foreground);
+    assert.equal(message.homeUrl,undefined);assert.equal(message.url,undefined);
+    return {ok:true,containerId:'account-a',requestedUrl:bad?'https://other.example/':'https://one.alimama.com/',navigation:'started'};
+  });
+  try {
+    Object.assign(f.connection.endpoint,{businessReadRegistryHash:hash,businessPageOpenProtocol:1});
+    fs.writeFileSync(path.join(f.connection.folder,'endpoint.json'),JSON.stringify(f.connection.endpoint),{mode:0o600});
+    const a=await openBusinessPageInConnection(f.connection,{container:'示例甲'},'alimama.member-config','https://one.alimama.com/',hash);
+    assert.equal(a.background,true);assert.equal(a.authentication,'not-verified');
+    foreground=true;
+    const b=await openBusinessPageInConnection(f.connection,{container:'account-a',foreground:true},'alimama.member-config','https://one.alimama.com/',hash);assert.equal(b.background,false);
+    bad=true;
+    await assert.rejects(openBusinessPageInConnection(f.connection,{container:'account-a',foreground:true},'alimama.member-config','https://one.alimama.com/',hash),e=>e.code==='PROTOCOL_MISMATCH');
   }finally{f.close();}
 });

@@ -24,6 +24,7 @@
 #include "base/timer/timer.h"
 #include "base/uuid.h"
 #include "base/values.h"
+#include "brave/browser/ecom/business_read_service.h"
 #include "brave/browser/ecom/shop_identity_parser.h"
 #include "brave/browser/ecom/shop_manager_ui.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
@@ -42,8 +43,10 @@
 #include "components/embedder_support/user_agent_utils.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/storage_partition_config.h"
+#include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_message_handler.h"
 #include "net/base/load_flags.h"
@@ -429,11 +432,19 @@ class ShopService final : public base::SupportsUserData::Data,
       return;
     }
     if (method == "shops.open") {
-      const auto service = Field(request, "service");
+      auto service = Field(request, "service");
       std::string url;
       const auto* metadata = Metadata().FindDict(id);
       const auto platform_id = Field(*metadata, "platform");
-      if (service.empty() || service == "home") {
+      if (const auto* operation = request.FindString("businessOperation")) {
+        const auto page = GetBusinessReadPage(*operation);
+        if (!page || platform_id != "taobao") {
+          Send(std::move(callback), Error("BUSINESS_PAGE_UNSUPPORTED"));
+          return;
+        }
+        service = page->service;
+        url = page->entry_url;
+      } else if (service.empty() || service == "home") {
         url = HomeUrl(*metadata);
         if (!SafeEntry(url)) {
           Send(std::move(callback), Error("INVALID_HOME_URL"));
@@ -463,8 +474,44 @@ class ShopService final : public base::SupportsUserData::Data,
         Send(std::move(callback), Error("SERVICE_UNSUPPORTED"));
         return;
       }
+      const bool background = request.FindBool("background").value_or(false);
+      if (background && request.FindBool("reuse").value_or(false)) {
+        bool reused = false;
+        const GURL target(url);
+        ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+            [&](BrowserWindowInterface* browser) {
+              if (browser->GetProfile() == profile_) {
+                auto* tabs = browser->GetTabStripModel();
+                for (int i = 0; tabs && i < tabs->count(); ++i) {
+                  auto* contents = tabs->GetWebContentsAt(i);
+                  const auto& current = contents->GetLastCommittedURL();
+                  if (containers::GetContainerIdForWebContents(contents) ==
+                          id &&
+                      url::Origin::Create(current) ==
+                          url::Origin::Create(target) &&
+                      current.path() == target.path()) {
+                    contents->GetController().LoadIfNecessary();
+                    reused = true;
+                    return false;
+                  }
+                }
+              }
+              return true;
+            });
+        if (reused) {
+          Send(std::move(callback), base::DictValue()
+                                        .Set("ok", true)
+                                        .Set("containerId", id)
+                                        .Set("service", service)
+                                        .Set("requestedUrl", url)
+                                        .Set("navigation", "reused"));
+          return;
+        }
+      }
       NavigateParams params(profile_, GURL(url), ui::PAGE_TRANSITION_FROM_API);
-      params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+      params.disposition = background
+                               ? WindowOpenDisposition::NEW_BACKGROUND_TAB
+                               : WindowOpenDisposition::NEW_FOREGROUND_TAB;
       params.storage_partition_config = content::StoragePartitionConfig::Create(
           profile_, containers::kContainersStoragePartitionDomain, id, false);
       Navigate(&params);

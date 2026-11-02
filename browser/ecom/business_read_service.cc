@@ -15,7 +15,6 @@
 #include "base/memory/weak_ptr.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_util.h"
-#include "base/strings/utf_string_conversions.h"
 #include "base/timer/timer.h"
 #include "brave/browser/ecom/shop_identity_parser.h"
 #include "brave/browser/ecom/sycm_read_registry.h"
@@ -26,7 +25,6 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/common/chrome_isolated_world_ids.h"
 #include "components/embedder_support/user_agent_utils.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/storage_partition.h"
@@ -49,7 +47,6 @@
 #include "services/network/public/mojom/cookie_manager.mojom.h"
 #include "services/network/public/mojom/fetch_api.mojom.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
-#include "third_party/re2/src/re2/re2.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -75,7 +72,9 @@ bool CredentialInput(const base::Value& value) {
           lower.find("credential") != std::string::npos ||
           lower.find("api_key") != std::string::npos ||
           lower.find("api-key") != std::string::npos || lower == "apikey" ||
-          lower == "sessionid" || lower.find("secret") != std::string::npos ||
+          lower == "sessionid" || lower == "session" || lower == "__tk" ||
+          lower == "__dtk" || lower == "loginpointid" ||
+          lower.find("secret") != std::string::npos ||
           lower == "authorization" || CredentialInput(child)) {
         return true;
       }
@@ -145,17 +144,7 @@ class Read final : public BusinessRead {
       Network(GURL("https://sycm.taobao.com/portal/home.htm"), "GET", "",
               Stage::kSycm);
     } else if (service == "alimama") {
-      if (operation_ == "alimama.access") {
-        Submit();
-      } else {
-        auto access = base::DictValue()
-                          .Set("bizCode", Field(*spec_, "accessBizCode").empty()
-                                              ? "universalBP"
-                                              : Field(*spec_, "accessBizCode"))
-                          .Set("r", "mx_13");
-        Network(GURL("https://one.alimama.com/member/checkAccess.json"), "POST",
-                base::WriteJson(access).value_or("{}"), Stage::kAccess);
-      }
+      ReadAlimamaContext();
     } else if (service == "dmp" || service == "coupon") {
       ReadCookie();
     } else {
@@ -164,7 +153,60 @@ class Read final : public BusinessRead {
   }
 
  private:
-  enum class Stage { kSycm, kAccess, kDmp, kResult };
+  enum class Stage { kSycm, kAccess, kDmpUser, kResult };
+  void ReadAlimamaContext() {
+    phase_ = "auth-cookie-metadata";
+    auto* partition = Partition();
+    if (!partition) {
+      Fail("CONTAINER_NOT_FOUND");
+      return;
+    }
+    partition->GetCookieManagerForBrowserProcess()->GetCookieList(
+        GURL(Field(*spec_, "entryUrl")), net::CookieOptions::MakeAllInclusive(),
+        net::CookiePartitionKeyCollection(),
+        base::BindOnce(&Read::AlimamaContextRead, weak_.GetWeakPtr()));
+  }
+  void AlimamaContextRead(const net::CookieAccessResultList& included,
+                          const net::CookieAccessResultList&) {
+    entry_cookie_count_ = static_cast<int>(included.size());
+    if (operation_ == "alimama.access") {
+      Submit();
+      return;
+    }
+    auto access = base::DictValue()
+                      .Set("bizCode", Field(*spec_, "accessBizCode").empty()
+                                          ? "universalBP"
+                                          : Field(*spec_, "accessBizCode"))
+                      .Set("r", "mx_13");
+    Network(GURL("https://one.alimama.com/member/checkAccess.json"), "POST",
+            base::WriteJson(access).value_or("{}"), Stage::kAccess);
+  }
+  content::RenderFrameHost* FindServiceFrame() {
+    const GURL entry(Field(*spec_, "entryUrl"));
+    content::RenderFrameHost* found = nullptr;
+    ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+        [&](BrowserWindowInterface* browser) {
+          if (browser->GetProfile() == profile_) {
+            auto* tabs = browser->GetTabStripModel();
+            for (int i = 0; tabs && i < tabs->count(); ++i) {
+              auto* contents = tabs->GetWebContentsAt(i);
+              auto* frame = contents->GetPrimaryMainFrame();
+              if (frame &&
+                  containers::GetContainerIdForWebContents(contents) ==
+                      container_ &&
+                  frame->GetLastCommittedURL().SchemeIs("https") &&
+                  frame->GetLastCommittedURL().host() == entry.host()) {
+                found = frame;
+                return false;
+              }
+            }
+          }
+          return true;
+        });
+    if (found)
+      matching_tab_found_ = true;
+    return found;
+  }
   content::StoragePartition* Partition() {
     if (!containers::GetContainerFromPrefs(*profile_->GetPrefs(), container_)) {
       return nullptr;
@@ -182,7 +224,8 @@ class Read final : public BusinessRead {
                            .Set("netError", net_error_)
                            .Set("bodyKind", body_kind_)
                            .Set("matchingTabFound", matching_tab_found_)
-                           .Set("publicScripts", public_scripts_.Clone());
+                           .Set("entryCookieCount", entry_cookie_count_)
+                           .Set("failureClass", failure_class_);
     std::move(callback_).Run(
         base::DictValue()
             .Set("ok", false)
@@ -206,6 +249,7 @@ class Read final : public BusinessRead {
   }
   void CookieRead(const net::CookieAccessResultList& included,
                   const net::CookieAccessResultList&) {
+    entry_cookie_count_ = static_cast<int>(included.size());
     for (const auto& item : included) {
       if (item.cookie.Name() == "_tb_token_") {
         params_.Set("_tb_token_", item.cookie.Value());
@@ -217,89 +261,17 @@ class Read final : public BusinessRead {
       return;
     }
     if (Field(*spec_, "service") == "dmp") {
-      Network(GURL("https://dmp.taobao.com/index_new.html"), "GET", "",
-              Stage::kDmp);
+      // The current first-party DMP prepare/service modules bootstrap ordinary
+      // merchant accounts through api_2/login/loginuserinfo before API reads.
+      auto user_url = net::AppendQueryParameter(
+          GURL("https://dmp.taobao.com/api_2/login/loginuserinfo"), "bizCode",
+          "dmp");
+      user_url = net::AppendQueryParameter(user_url, "_tb_token_",
+                                           Field(params_, "_tb_token_"));
+      Network(user_url, "GET", "", Stage::kDmpUser);
     } else {
       Submit();
     }
-  }
-  void DmpContext(std::string html) {
-    phase_ = "auth-dmp-context";
-    re2::StringPiece scripts(html);
-    const re2::RE2 script_pattern(
-        R"re((?i)<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'])re");
-    std::string src;
-    while (public_scripts_.size() < 20 &&
-           re2::RE2::FindAndConsume(&scripts, script_pattern, &src)) {
-      AddPublicScript(src);
-    }
-    std::string csrf;
-    if (re2::RE2::PartialMatch(
-            html, R"re(["']csrfId["']\s*:\s*["']([^"']+)["'])re", &csrf)) {
-      params_.Set("bizCode", "dmp");
-      params_.Set("_csrf", csrf);
-      params_.Set("csrfId", csrf);
-      Submit();
-      return;
-    }
-    // Read only first-party inline configuration from an existing container
-    // tab. No tab is created, navigated or activated; page globals are not
-    // exposed.
-    content::RenderFrameHost* frame = nullptr;
-    ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
-        [&](BrowserWindowInterface* browser) {
-          if (browser->GetProfile() == profile_) {
-            auto* tabs = browser->GetTabStripModel();
-            for (int i = 0; tabs && i < tabs->count(); ++i) {
-              auto* contents = tabs->GetWebContentsAt(i);
-              if (containers::GetContainerIdForWebContents(contents) ==
-                      container_ &&
-                  contents->GetLastCommittedURL().SchemeIs("https") &&
-                  contents->GetLastCommittedURL().host() == "dmp.taobao.com") {
-                frame = contents->GetPrimaryMainFrame();
-                return false;
-              }
-            }
-          }
-          return true;
-        });
-    if (!frame) {
-      Fail("AUTH_CONTEXT_REQUIRED");
-      return;
-    }
-    matching_tab_found_ = true;
-    frame->ExecuteJavaScriptInIsolatedWorld(
-        uR"js((()=>{if(location.origin!=='https://dmp.taobao.com')return null;
-          const s=Array.from(document.scripts).slice(0,100)
-            .map(x=>(x.textContent||'').slice(0,131072)).join('\n').slice(0,2097152);
-          const m=s.match(/["']csrfId["']\s*:\s*["']([^"']+)["']/);
-          return {context:m?m[1]:'',scripts:Array.from(document.scripts)
-            .slice(0,100).map(x=>x.src).filter(Boolean)};})())js",
-        base::BindOnce(&Read::DmpDomContext, weak_.GetWeakPtr()),
-        ISOLATED_WORLD_ID_BRAVE_INTERNAL);
-  }
-  void DmpDomContext(base::Value value) {
-    phase_ = "auth-dmp-dom";
-    if (!value.is_dict()) {
-      Fail("AUTH_CONTEXT_REQUIRED");
-      return;
-    }
-    if (const auto* scripts = value.GetDict().FindList("scripts")) {
-      for (const auto& src : *scripts) {
-        if (src.is_string()) {
-          AddPublicScript(src.GetString());
-        }
-      }
-    }
-    const auto context = Field(value.GetDict(), "context");
-    if (context.empty() || context.size() > 4096) {
-      Fail("AUTH_CONTEXT_REQUIRED");
-      return;
-    }
-    params_.Set("bizCode", "dmp");
-    params_.Set("_csrf", context);
-    params_.Set("csrfId", context);
-    Submit();
   }
   void Network(const GURL& url,
                const std::string& method,
@@ -310,11 +282,14 @@ class Read final : public BusinessRead {
       Fail("CONTAINER_NOT_FOUND");
       return;
     }
-    const GURL entry(Field(*spec_, "entryUrl"));
-    phase_ = stage == Stage::kSycm     ? "auth-sycm-home"
-             : stage == Stage::kAccess ? "auth-alimama-access"
-             : stage == Stage::kDmp    ? "auth-dmp-portal"
-                                       : "business-read";
+    GURL entry(Field(*spec_, "entryUrl"));
+    if (auto* frame = FindServiceFrame()) {
+      entry = frame->GetLastCommittedURL().GetWithoutRef();
+    }
+    phase_ = stage == Stage::kSycm      ? "auth-sycm-home"
+             : stage == Stage::kAccess  ? "auth-alimama-access"
+             : stage == Stage::kDmpUser ? "auth-dmp-user"
+                                        : "business-read";
     last_status_ = 0;
     net_error_ = 0;
     body_kind_ = "none";
@@ -334,7 +309,9 @@ class Read final : public BusinessRead {
                             ? GURL("https://sycm.taobao.com/portal/home.htm")
                             : entry;
     request->load_flags = net::LOAD_BYPASS_CACHE | net::LOAD_DISABLE_CACHE;
-    request->headers.SetHeader("Accept", "application/json,text/html");
+    request->headers.SetHeader(
+        "Accept", stage == Stage::kSycm ? "text/html,application/xhtml+xml"
+                                        : "application/json, text/plain, */*");
     request->headers.SetHeader("User-Agent", embedder_support::GetUserAgent());
     constexpr auto annotation =
         net::DefineNetworkTrafficAnnotation("ecom_registered_business_read", R"(
@@ -367,6 +344,19 @@ class Read final : public BusinessRead {
             : 0;
     last_status_ = status;
     net_error_ = loader_->NetError();
+    failure_class_ = "unclassified";
+    if (status != 200 && body) {
+      const auto text = base::ToLowerASCII(body->substr(0, 8192));
+      if (text.find("cors") != std::string::npos)
+        failure_class_ = "cors-rejected";
+      else if (text.find("csrf") != std::string::npos)
+        failure_class_ = "csrf-rejected";
+      else if (text.find("captcha") != std::string::npos ||
+               text.find("x5sec") != std::string::npos)
+        failure_class_ = "verification-required";
+      else if (text.find("forbidden") != std::string::npos)
+        failure_class_ = "forbidden";
+    }
     if (body) {
       std::string prefix = base::ToLowerASCII(body->substr(0, 256));
       base::TrimWhitespaceASCII(prefix, base::TRIM_ALL, &prefix);
@@ -380,10 +370,6 @@ class Read final : public BusinessRead {
         loader_->NetError() == net::OK && status == 200 && body;
     loader_.reset();
     if (!success) {
-      if (stage == Stage::kDmp) {
-        DmpContext("");
-        return;
-      }
       Fail(status == 401 || status == 403 ? "AUTH_OR_RISK_CHALLENGE"
                                           : "REQUEST_FAILED");
       return;
@@ -393,13 +379,30 @@ class Read final : public BusinessRead {
       Submit();
       return;
     }
-    if (stage == Stage::kDmp) {
-      DmpContext(std::move(*body));
-      return;
-    }
     auto json = base::JSONReader::Read(*body, base::JSON_PARSE_RFC);
     if (!json || !json->is_dict()) {
       Fail("NON_JSON_RESPONSE");
+      return;
+    }
+    if (stage == Stage::kDmpUser) {
+      const auto* data = json->GetDict().FindDict("data");
+      const auto* access = data ? data->FindDict("accessInfo") : nullptr;
+      const auto csrf = data && !Field(*data, "csrfId").empty()
+                            ? Field(*data, "csrfId")
+                        : access ? Field(*access, "csrfId")
+                                 : "";
+      if (!data || csrf.empty()) {
+        Fail("AUTH_CONTEXT_REQUIRED");
+        return;
+      }
+      if (data->FindBool("availableUser") == false) {
+        Fail("PERMISSION_REQUIRED");
+        return;
+      }
+      params_.Set("bizCode", "dmp");
+      params_.Set("csrfId", csrf);
+      params_.Set("_csrf", csrf);
+      Submit();
       return;
     }
     if (stage == Stage::kAccess) {
@@ -476,19 +479,6 @@ class Read final : public BusinessRead {
             Stage::kResult);
   }
 
-  void AddPublicScript(const std::string& value) {
-    const GURL url = GURL(Field(*spec_, "entryUrl")).Resolve(value);
-    if (public_scripts_.size() >= 20 || !url.SchemeIs("https") ||
-        url.host() != "g.alicdn.com" || !url.path().ends_with(".js") ||
-        url.has_username() || url.has_password()) {
-      return;
-    }
-    GURL::Replacements clean;
-    clean.ClearQuery();
-    clean.ClearRef();
-    public_scripts_.Append(url.ReplaceComponents(clean).spec());
-  }
-
   const raw_ptr<Profile> profile_;
   const std::string container_;
   const std::string operation_;
@@ -498,16 +488,25 @@ class Read final : public BusinessRead {
   bool submitted_ = false;
   int last_status_ = 0;
   int net_error_ = 0;
+  int entry_cookie_count_ = -1;
+  std::string failure_class_ = "unclassified";
   std::string phase_ = "validation";
   std::string body_kind_ = "none";
   bool matching_tab_found_ = false;
-  base::ListValue public_scripts_;
   base::OnceCallback<void(base::DictValue)> callback_;
   std::unique_ptr<network::SimpleURLLoader> loader_;
   base::OneShotTimer timer_;
   base::WeakPtrFactory<Read> weak_{this};
 };
 }  // namespace
+
+std::optional<BusinessPage> GetBusinessReadPage(const std::string& operation) {
+  const auto* spec = Spec(operation);
+  if (!spec) {
+    return std::nullopt;
+  }
+  return BusinessPage{Field(*spec, "service"), Field(*spec, "entryUrl")};
+}
 
 std::unique_ptr<BusinessRead> CreateBusinessRead(
     Profile* profile,

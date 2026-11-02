@@ -27,7 +27,7 @@ export function discover({profile,instance}={}) {
   return candidates[0];
 }
 const instanceOf=({endpoint,channel})=>({id:endpoint.instanceId,pid:endpoint.pid,channel});
-const credentialKey=/token|cookie|csrf|password|authorization|secret|sessionid|api[-_]?key|access[-_]?key|credential/i;
+const credentialKey=/token|cookie|csrf|password|authorization|secret|sessionid|api[-_]?key|access[-_]?key|credential|^__d?tk$|^session$|^loginpointid$/i;
 function homeUrl(value) {
   try {
     const url=new URL(value);if(url.protocol!=='https:')return null;
@@ -91,6 +91,14 @@ export async function registeredReadInConnection(connection,options,operation,pa
   if(body.containerId!==container.id||body.businessOperation!==operation||body.httpStatus!==200||!Object.hasOwn(body,'data'))throw fail('PROTOCOL_MISMATCH','Registered response differs from the pinned container or operation',{operationId:body.operationId,executed:'unknown'});
   return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,httpStatus:body.httpStatus,data:body.data,transport:'native-business-read',identityBinding:'container-bound-account',registryHash};
 }
+export async function openBusinessPageInConnection(connection,options,operation,entryUrl,registryHash) {
+  if(connection.endpoint.businessPageOpenProtocol!==1||connection.endpoint.businessReadRegistryHash!==registryHash)throw fail('BROWSER_UPGRADE_REQUIRED','Update Ecom to the matching registered-page navigation capability');
+  const listed=await readMailbox(connection),container=resolveContainer(listed.containers,options.container);
+  const background=!options.foreground;
+  const body=await callMailbox(connection,{method:'shops.open',containerId:container.id,businessOperation:operation,background,reuse:background});
+  if(body.containerId!==container.id||!['started','reused'].includes(body.navigation)||body.requestedUrl!==entryUrl)throw fail('PROTOCOL_MISMATCH','Navigation target differs from the registered container or entry page',{operationId:body.operationId,executed:'unknown'});
+  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,requestedUrl:body.requestedUrl,navigation:body.navigation,background,authentication:'not-verified'};
+}
 function safeDiagnostics(value) {
   if(!value||typeof value!=='object')return undefined;
   const result={};
@@ -98,6 +106,8 @@ function safeDiagnostics(value) {
   if(Number.isInteger(value.netError)&&value.netError<=0&&value.netError>=-9999)result.netError=value.netError;
   if(['json','html','text','none'].includes(value.bodyKind))result.bodyKind=value.bodyKind;
   if(typeof value.matchingTabFound==='boolean')result.matchingTabFound=value.matchingTabFound;
+  if(Number.isInteger(value.entryCookieCount)&&value.entryCookieCount>=0&&value.entryCookieCount<=100000)result.entryCookieCount=value.entryCookieCount;
+  if(['unclassified','cors-rejected','csrf-rejected','verification-required','forbidden'].includes(value.failureClass))result.failureClass=value.failureClass;
   if(Array.isArray(value.publicScripts))result.publicScripts=value.publicScripts.slice(0,20).filter(url=>{
     try{const item=new URL(url);return item.protocol==='https:'&&item.hostname==='g.alicdn.com'&&!item.username&&!item.password&&!item.search&&!item.hash&&item.pathname.endsWith('.js')&&url.length<2048;}catch{return false;}
   });

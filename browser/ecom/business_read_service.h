@@ -5,6 +5,7 @@
 #define BRAVE_BROWSER_ECOM_BUSINESS_READ_SERVICE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -13,6 +14,12 @@
 class Profile;
 
 namespace ecom {
+struct BusinessPage {
+  std::string service;
+  std::string entry_url;
+};
+std::optional<BusinessPage> GetBusinessReadPage(const std::string& operation);
+
 // Owned by the native service and cancelled before Profile shutdown.
 class BusinessRead {
  public:

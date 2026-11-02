@@ -27,6 +27,12 @@ Private plan state lives beneath the configured CLI state directory and is exclu
 
 ## Native service context
 
-SYCM uses its own homepage request token; Alimama uses its fixed checkAccess handshake; coupon reads use the container entry page cookie context; DMP uses container cookies and inline first-party configuration from its authenticated portal or an already-open matching container tab. DMP fallback reads configuration in a browser-owned isolated world and never opens or activates a tab. Credentials are not passed through the CLI.
+SYCM uses its own homepage request token; Alimama uses its fixed checkAccess handshake; coupon reads use the container entry page cookie context; DMP uses container cookies and its fixed read-only user-info initialization endpoint, then retains the returned request context inside the browser. Website account creation and account switching remain user/platform actions. Native data requests do not create or activate tabs. Credentials are not passed through the CLI.
 
 `AUTH_CONTEXT_REQUIRED` can indicate an adapter-context gap even when the visible service is logged in. Preserve the existing login and report the exact failure; repeated user login is not the default recovery. `BROWSER_UPGRADE_REQUIRED` requires matching browser and CLI catalogs. Per-endpoint business permission and actual dates remain separate acceptance checks. Read parameter JSON is limited to 24 KiB; results to 2 MiB; the client waits up to 75 seconds.
+
+## Authorized page fallback
+
+Prefer native reads and native service initialization. If an entry must prepare a service session and the caller authorizes page fallback, use `sycm open --operation ID --container ID --instance INSTANCE --json`. It selects the compiled first-party entry, preserves the account homepage and container ID, and opens/reuses a background container tab. `--foreground` explicitly opens a foreground tab when the user needs to log in or verify. No arbitrary URL, browser profile or JavaScript input is accepted by this command.
+
+A navigation result is not a login check. Preserve the original target and let the platform finish loading; the user handles any login, authorization or CAPTCHA. Resume the registered read only after the required preparation. Do not use a different container or copy credentials. Once a valid service session is established, native requests continue without routine page opening. An HTTP/context failure does not automatically prove expiration: inspect the bounded phase/network diagnostics before requesting another login.
