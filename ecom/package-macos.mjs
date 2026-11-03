@@ -112,6 +112,23 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   const stage = path.join(output, 'dmg-root'); fs.mkdirSync(stage);
   const app = path.join(stage, 'Ecom.app');
   run('/usr/bin/ditto', [sourceApp, app]);
+  const removedLocales = path.join(output, 'excluded-locales');
+  function retainSimplifiedChinese(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const child = path.join(directory, entry.name);
+      if (entry.name.endsWith('.lproj') && entry.name !== 'Base.lproj' &&
+          !/^zh_CN(?:_(?:FEMININE|MASCULINE|NEUTER))?\.lproj$/.test(entry.name)) {
+        const backup = path.join(removedLocales, path.relative(app, child));
+        fs.mkdirSync(path.dirname(backup), { recursive: true });
+        if (fs.existsSync(backup)) throw new Error('Locale backup already exists');
+        fs.renameSync(child, backup);
+      } else {
+        retainSimplifiedChinese(child);
+      }
+    }
+  }
+  retainSimplifiedChinese(app);
   await shareHelperResources(app, output, metadata.CFBundleShortVersionString);
   const resources = path.join(app, 'Contents/Frameworks/Ecom Framework.framework/Versions',
                               metadata.CFBundleShortVersionString, 'Resources');
@@ -124,7 +141,7 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   const plist = path.join(app, 'Contents/Info.plist');
   fs.copyFileSync(plist, path.join(output, 'original-Info.plist'), fs.constants.COPYFILE_EXCL);
   // This is a newly created packaging copy; the build output stays intact.
-  const packagedInfo = { ...metadata, EcomReleaseVersion: config.version, EcomSourceRevision: sourceRevision, EcomUpdateProtocol: config.updateProtocol, EcomUpdatePackage: config.packageName, EcomUpdateChannel: config.channel };
+  const packagedInfo = { ...metadata, CFBundleDevelopmentRegion: 'zh_CN', EcomReleaseVersion: config.version, EcomSourceRevision: sourceRevision, EcomUpdateProtocol: config.updateProtocol, EcomUpdatePackage: config.packageName, EcomUpdateChannel: config.channel };
   fs.writeFileSync(plist, JSON.stringify(packagedInfo));
   run('/usr/bin/plutil', ['-convert', 'xml1', plist]);
   const helpers = path.join(app, 'Contents/Helpers'); fs.mkdirSync(helpers, { recursive: true });

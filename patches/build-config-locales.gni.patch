@@ -19,11 +19,3 @@ index 736f5f1d23e7e4abe8ee939cf36da6dcb7870acb..fb45a49a6cbd392b8a8ec7b3ac2dbb23
  platform_pak_locales = all_chrome_locales
  if (is_android) {
    platform_pak_locales -= _non_android_locales
-@@ -255,2 +255,7 @@
-+if (is_mac || is_win || is_linux) {
-+  platform_pak_locales = []
-+  platform_pak_locales = [ "zh-CN" ] + pseudolocales
-+}
-+
- locales_without_pseudolocales = platform_pak_locales - pseudolocales
- locales_with_pseudolocales = platform_pak_locales
