@@ -87,6 +87,8 @@ source_set("core") {
     sources += [
       "ecom/business_read_service.cc",
       "ecom/business_read_service.h",
+      "ecom/container_password_store.cc",
+      "ecom/container_password_store.h",
       "ecom/native_session_service.cc",
       "ecom/native_session_service.h",
       "ecom/shop_container_service.cc",
@@ -109,6 +111,7 @@ source_set("core") {
       "//brave/components/containers/core/browser",
       "//components/embedder_support:user_agent",
       "//components/os_crypt/async/browser",
+      "//components/password_manager/core/browser/password_store:password_store_impl",
     ]
   }
   if (!is_android) {

@@ -26,6 +26,7 @@
 #include "base/uuid.h"
 #include "base/values.h"
 #include "brave/browser/ecom/business_read_service.h"
+#include "brave/browser/ecom/container_password_store.h"
 #include "brave/browser/ecom/shop_identity_parser.h"
 #include "brave/browser/ecom/shop_manager_ui.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
@@ -647,6 +648,7 @@ class ShopService final : public base::SupportsUserData::Data,
                       : base::DictValue().Set("state", "unconfigured");
       item.Remove("encryptedCredentials");
       item.Remove("credentialOrigin");
+      item.Remove("credentialImported");
       item.Set("verificationSupported", SupportsVerification(item));
       item.Set("homeUrl", HomeUrl(item));
       item.Set("id", c->id);
@@ -1275,6 +1277,12 @@ class ShopSettingsHandler final : public content::WebUIMessageHandler {
     auto* shop = update->EnsureDict(id);
     shop->Set("credentialOrigin", origin);
     shop->Set("encryptedCredentials", base::Base64Encode(ciphertext));
+    shop->Set("credentialImported", true);
+    auto data = base::JSONReader::ReadDict(payload, base::JSON_PARSE_RFC);
+    if (data && data->FindString("username") && data->FindString("password")) {
+      AddContainerPassword(profile, id, origin, *data->FindString("username"),
+                           *data->FindString("password"));
+    }
     ResolveJavascriptCallback(
         reply, base::Value(base::DictValue().Set("ok", true).Set("origin", origin)));
   }
