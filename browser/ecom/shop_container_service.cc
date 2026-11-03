@@ -817,7 +817,7 @@ class ShopService final : public base::SupportsUserData::Data,
           globalThis.ecomLoginSubmitted = true;
           buttons[0].click();
           return 'clicked';
-        })()JS" + base::UTF8ToUTF16(*arguments) + u"))",
+        })()JS" + base::UTF8ToUTF16(*arguments) + u")",
         base::BindOnce(
             [](Reply reply, std::string container_id, base::Value result) {
               if (!result.is_string()) {
