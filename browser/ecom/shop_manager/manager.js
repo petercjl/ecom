@@ -371,7 +371,12 @@ function syncPlatformFields(edit = false) {
   if (!homeDirty[edit ? 'edit' : 'create']) {
     const base =
       platforms.find((item) => item.id === platformId)?.entryUrl || ''
-    const url = (!edit && homePresets.find((item) => item.id === selector.value)?.url) || base
+    const option = selector.selectedOptions[0]
+    const url = edit
+      ? base
+      : option?.dataset.homepage ||
+        homePresets.find((item) => item.id === selector.value)?.url ||
+        base
     setHomeField(prefix, url)
   }
   if (edit)
@@ -455,10 +460,69 @@ async function loadPlatforms() {
       ['pinduoduo', 'pinduoduo', '拼多多商家后台', 'Pinduoduo Merchant'],
       ['jd', 'jd', '京东商家后台', 'JD Merchant'],
       ['douyin', 'douyin', '抖店后台', 'Douyin Merchant'],
-      ['xiaohongshu', 'xiaohongshu', '小红书商家后台', 'Xiaohongshu Merchant'],
+      ['xiaohongshu', 'xiaohongshu', '小红书千帆后台', 'Xiaohongshu Merchant'],
+      ['1688-seller', 'custom', '1688卖家后台', '1688 Seller', 'https://work.1688.com/home/seller.htm'],
+      ['jd-insight', 'custom', '京东商智后台', 'JD Business Intelligence', 'https://sz.jd.com/'],
+      ['kuaishou-shop', 'custom', '快手小店后台', 'Kuaishou Shop', 'https://s.kwaixiaodian.com/'],
+      ['temu', 'custom', 'Temu拼多多跨境卖家中心', 'Temu Seller Center', 'https://seller.temu.com/seller/login'],
+      ['tiktok-shop', 'custom', 'TikTok商家后台', 'TikTok Shop Seller Center', ''],
+      ['taofactory', 'custom', '淘工厂后台', 'Taobao Factory', ''],
+      ['shein', 'custom', 'SHEIN全球商家中心', 'SHEIN Seller Center', 'https://sbn-prod01.sheincorp.cn/'],
+      ['amazon-seller', 'custom', '亚马逊卖家后台', 'Amazon Seller Central', ''],
+      ['ebay', 'custom', 'eBay', 'eBay', 'https://www.ebay.com/'],
+      ['ozon', 'custom', 'Ozon', 'Ozon', 'https://www.ozon.ru/'],
+      ['shopee', 'custom', 'Shopee', 'Shopee', ''],
+      ['lazada', 'custom', 'Lazada', 'Lazada', ''],
+      ['emag', 'custom', 'eMAG', 'eMAG', 'https://www.emag.ro/'],
+      ['meituan-seller', 'custom', '美团外卖商家端', 'Meituan Merchant', ''],
+      ['eleme-seller', 'custom', '饿了么零售商家端', 'Ele.me Retail Merchant', ''],
+      ['jd-now', 'custom', '京东秒送商家端', 'JD Now Merchant', ''],
+      ['meituan-qnh', 'custom', '美团牵牛花系统', 'Meituan Qianniuhua', ''],
+      ['walmart', 'custom', '沃尔玛', 'Walmart', 'https://www.walmart.com/'],
+      ['depop', 'custom', 'Depop', 'Depop', 'https://www.depop.com/'],
+      ['mercari', 'custom', 'Mercari', 'Mercari', ''],
+      ['coupang', 'custom', 'Coupang', 'Coupang', 'https://www.coupang.com/'],
+      ['dewu', 'custom', '得物', 'Dewu', 'https://www.dewu.com/'],
+      ['aliexpress-seller', 'custom', '速卖通后台', 'AliExpress Seller', ''],
+      ['jd-jingmai', 'custom', '京东京麦工作台', 'JD Jingmai', 'https://shop.jd.com/jdm/home'],
+      ['alibaba', 'custom', '阿里巴巴', 'Alibaba.com', 'https://www.alibaba.com/'],
+      ['wechat-shop', 'custom', '微信小店', 'WeChat Shop', ''],
+      ['vip', 'custom', '唯品会', 'VIP.com', 'https://www.vip.com/'],
     ]],
     [chinese ? '电商前台' : 'Storefronts', [
       ['taobao', 'taobao', '淘宝首页', 'Taobao'],
+      ['tmall', 'custom', '天猫前台', 'Tmall', 'https://www.tmall.com/'],
+      ['jd-home', 'custom', '京东前台', 'JD Storefront', 'https://www.jd.com/'],
+      ['1688-home', 'custom', '1688前台', '1688 Storefront', 'https://www.1688.com/'],
+      ['amazon-home', 'custom', '亚马逊前台', 'Amazon Storefront', 'https://www.amazon.com/'],
+    ]],
+    [chinese ? '社媒' : 'Social media', [
+      ['douyin-home', 'custom', '抖音', 'Douyin', 'https://www.douyin.com/'],
+      ['rednote', 'custom', '小红书', 'RedNote', 'https://www.xiaohongshu.com/'],
+      ['kuaishou', 'custom', '快手', 'Kuaishou', 'https://www.kuaishou.com/'],
+      ['zhihu', 'custom', '知乎', 'Zhihu', 'https://www.zhihu.com/'],
+      ['baijiahao', 'custom', '百家号', 'Baijiahao', 'https://baijiahao.baidu.com/'],
+      ['ixigua', 'custom', '西瓜视频', 'Xigua Video', 'https://www.ixigua.com/'],
+      ['haokan', 'custom', '好看视频', 'Haokan Video', 'https://haokan.baidu.com/'],
+      ['douban', 'custom', '豆瓣', 'Douban', 'https://www.douban.com/'],
+      ['jianshu', 'custom', '简书', 'Jianshu', 'https://www.jianshu.com/'],
+      ['weibo', 'custom', '微博', 'Weibo', 'https://weibo.com/'],
+    ]],
+    [chinese ? '邮箱' : 'Email', [
+      ['qq-mail', 'custom', '腾讯QQ邮箱', 'QQ Mail', 'https://mail.qq.com/'],
+      ['qq-enterprise', 'custom', '腾讯企业邮箱', 'Tencent Exmail', 'https://exmail.qq.com/'],
+      ['163', 'custom', '网易163邮箱', '163 Mail', 'https://mail.163.com/'],
+      ['126', 'custom', '网易126邮箱', '126 Mail', 'https://mail.126.com/'],
+      ['yeah', 'custom', '网易yeah邮箱', 'Yeah Mail', 'https://www.yeah.net/'],
+      ['sohu', 'custom', '搜狐邮箱', 'Sohu Mail', 'https://mail.sohu.com/'],
+      ['sina', 'custom', '新浪邮箱', 'Sina Mail', 'https://mail.sina.com.cn/'],
+      ['189', 'custom', '189邮箱', '189 Mail', 'https://mail.189.cn/'],
+      ['139', 'custom', '139邮箱', '139 Mail', 'https://mail.10086.cn/'],
+      ['ali-mail', 'custom', '阿里个人邮箱', 'AliMail', 'https://mail.aliyun.com/'],
+      ['ali-enterprise', 'custom', '阿里企业邮箱', 'Alibaba Enterprise Mail', 'https://qiye.aliyun.com/'],
+      ['gmail', 'custom', 'Gmail邮箱', 'Gmail', 'https://mail.google.com/'],
+      ['outlook', 'custom', 'Outlook邮箱', 'Outlook', 'https://outlook.live.com/'],
+      ['zoho', 'custom', 'Zoho邮箱', 'Zoho Mail', 'https://mail.zoho.com/'],
     ]],
     [chinese ? '自定义平台' : 'Custom platforms', [
       ['custom', 'custom', '自定义平台', 'Custom platform'],
@@ -467,11 +531,13 @@ async function loadPlatforms() {
   for (const [label, entries] of groups) {
     const group = node('optgroup')
     group.label = label
-    for (const [id, platform, zhLabel, enLabel] of entries) {
+    for (const [id, platform, zhLabel, enLabel, homepage] of entries) {
       if (!platforms.some((item) => item.id === platform)) continue
       const option = node('option', chinese ? zhLabel : enLabel)
       option.value = id
       option.dataset.platform = platform
+      if (homepage) option.dataset.homepage = homepage
+      if (platform === 'custom' && id !== 'custom') option.dataset.platformName = option.textContent
       group.append(option)
     }
     if (group.children.length) $('platform').append(group)
@@ -482,6 +548,7 @@ async function loadPlatforms() {
 }
 $('platform').addEventListener('change', () => {
   homeDirty.create = false
+  $('custom-platform-name').value = $('platform').selectedOptions[0]?.dataset.platformName || ''
   syncPlatformFields()
 })
 $('edit-platform').addEventListener('change', () => syncPlatformFields(true))
