@@ -108,6 +108,7 @@ source_set("core") {
       "//brave/browser/ecom/shop_manager:resources",
       "//brave/components/containers/core/browser",
       "//components/embedder_support:user_agent",
+      "//components/os_crypt/async/browser",
     ]
   }
   if (!is_android) {

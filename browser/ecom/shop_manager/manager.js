@@ -15,6 +15,14 @@ import {
 } from './model.js'
 
 const zh = {
+  credentials: '登录账号密码',
+  credentialSite: '实际登录页 HTTPS 地址',
+  credentialUsername: '登录账号',
+  credentialPassword: '登录密码',
+  credentialSave: '加密保存凭证',
+  credentialSaved: '凭证已保存',
+  INVALID_CREDENTIALS: '请输入登录页地址、账号和密码',
+  ENCRYPTION_UNAVAILABLE: '系统加密不可用，凭证未保存',
   workspace: '我的工作空间',
   title: '店铺管理',
   intro: '管理平台账号与登录状态，在同一个浏览器中切换店铺。',
@@ -88,6 +96,14 @@ const zh = {
   BUSY: '该容器正在核验，请等待完成。',
 }
 const en = {
+  credentials: 'Login credentials',
+  credentialSite: 'HTTPS sign-in page URL',
+  credentialUsername: 'Username',
+  credentialPassword: 'Password',
+  credentialSave: 'Save encrypted credentials',
+  credentialSaved: 'Credentials saved',
+  INVALID_CREDENTIALS: 'Enter the sign-in URL, username and password',
+  ENCRYPTION_UNAVAILABLE: 'System encryption is unavailable. Credentials were not saved.',
   workspace: 'MY WORKSPACE',
   title: 'Shop manager',
   intro: 'Manage accounts and sign-in status in one browser.',
@@ -648,7 +664,14 @@ async function runAction(action, row) {
     $('edit-color').value = row.color || '#007f83'
     previewAppearance('edit')
     $('edit-error').textContent = ''
+    $('credential-site').value = ''
+    $('credential-status').textContent = ''
     $('edit-dialog').showModal()
+    const result = await sendWithPromise('ecomShopCredentials', row.id, '', '', '')
+    if ($('edit-dialog').open && editId === row.id && result.origin) {
+      $('credential-site').value ||= result.origin
+      $('credential-status').textContent = text('credentialSaved')
+    }
     return
   }
   if (action === 'delete') {
@@ -811,6 +834,35 @@ try {
   showError(error)
 }
 
+function clearCredentialInputs() {
+  $('credential-username').value = ''
+  $('credential-password').value = ''
+}
+$('edit-dialog').addEventListener('close', clearCredentialInputs)
+$('credential-save').addEventListener('click', async () => {
+  if (busy) return
+  const site = $('credential-site').value
+  const username = $('credential-username').value
+  const password = $('credential-password').value
+  if (!site || !username || !password) {
+    $('credential-status').textContent = text('INVALID_CREDENTIALS')
+    return
+  }
+  setBusy(true)
+  try {
+    const result = await sendWithPromise(
+      'ecomShopCredentials', editId, site, username, password,
+    )
+    if (!result.ok) throw new Error(result.error?.code || 'SHOP_ERROR')
+    clearCredentialInputs()
+    $('credential-site').value = result.origin
+    $('credential-status').textContent = text('credentialSaved')
+  } catch (error) {
+    showError(error, 'credential-status')
+  } finally {
+    setBusy(false)
+  }
+})
 $('edit-form').addEventListener('submit', async (event) => {
   event.preventDefault()
   if (busy) return

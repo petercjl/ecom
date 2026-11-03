@@ -10,6 +10,7 @@
 #include <string_view>
 #include <utility>
 
+#include "base/base64.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
@@ -33,6 +34,7 @@
 #include "brave/components/containers/core/browser/prefs.h"
 #include "brave/components/containers/core/common/features.h"
 #include "brave/components/containers/core/mojom/containers.mojom.h"
+#include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_observer.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -41,6 +43,8 @@
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "components/embedder_support/user_agent_utils.h"
+#include "components/os_crypt/async/browser/os_crypt_async.h"
+#include "components/os_crypt/async/common/encryptor.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "content/public/browser/navigation_controller.h"
@@ -641,6 +645,8 @@ class ShopService final : public base::SupportsUserData::Data,
       auto item = Metadata().FindDict(c->id)
                       ? Metadata().FindDict(c->id)->Clone()
                       : base::DictValue().Set("state", "unconfigured");
+      item.Remove("encryptedCredentials");
+      item.Remove("credentialOrigin");
       item.Set("verificationSupported", SupportsVerification(item));
       item.Set("homeUrl", HomeUrl(item));
       item.Set("id", c->id);
@@ -1185,10 +1191,94 @@ class ShopSettingsHandler final : public content::WebUIMessageHandler {
     web_ui()->RegisterMessageCallback(
         "ecomShopCommand", base::BindRepeating(&ShopSettingsHandler::Handle,
                                                base::Unretained(this)));
+    web_ui()->RegisterMessageCallback(
+        "ecomShopCredentials",
+        base::BindRepeating(&ShopSettingsHandler::HandleCredentials,
+                            base::Unretained(this)));
   }
   void OnJavascriptDisallowed() override { weak_.InvalidateWeakPtrs(); }
 
  private:
+  void HandleCredentials(const base::ListValue& args) {
+    if (args.size() != 5 ||
+        !std::all_of(args.begin(), args.end(),
+                     [](const base::Value& value) { return value.is_string(); })) {
+      return;
+    }
+    AllowJavascript();
+    auto* profile = Profile::FromWebUI(web_ui());
+    const auto& id = args[1].GetString();
+    auto reply = args[0].Clone();
+    if (profile->IsOffTheRecord() ||
+        !base::Uuid::ParseLowercase(id).is_valid() ||
+        !containers::GetContainerFromPrefs(*profile->GetPrefs(), id)) {
+      ResolveJavascriptCallback(reply, base::Value(Error("CONTAINER_NOT_FOUND")));
+      return;
+    }
+    const auto* shop = profile->GetPrefs()
+                           ->GetDict(containers::prefs::kShopContainers)
+                           .FindDict(id);
+    if (args[2].GetString().empty() && args[3].GetString().empty() &&
+        args[4].GetString().empty()) {
+      const auto* origin = shop ? shop->FindString("credentialOrigin") : nullptr;
+      ResolveJavascriptCallback(
+          reply, base::Value(base::DictValue().Set("ok", true).Set(
+                     "origin", origin ? *origin : "")));
+      return;
+    }
+    const auto& site = args[2].GetString();
+    const auto& username = args[3].GetString();
+    const auto& password = args[4].GetString();
+    if (site.size() > 2048 || !SafeEntry(site) || username.empty() ||
+        username.size() > 1024 || password.empty() || password.size() > 4096) {
+      ResolveJavascriptCallback(reply, base::Value(Error("INVALID_CREDENTIALS")));
+      return;
+    }
+    auto* crypto = g_browser_process->os_crypt_async();
+    if (!crypto) {
+      ResolveJavascriptCallback(reply, base::Value(Error("ENCRYPTION_UNAVAILABLE")));
+      return;
+    }
+    const auto origin = url::Origin::Create(GURL(site)).Serialize();
+    auto payload = base::WriteJson(base::DictValue()
+                                       .Set("containerId", id)
+                                       .Set("origin", origin)
+                                       .Set("username", username)
+                                       .Set("password", password));
+    if (!payload) {
+      ResolveJavascriptCallback(reply, base::Value(Error("INVALID_CREDENTIALS")));
+      return;
+    }
+    crypto->GetInstance(base::BindOnce(
+        &ShopSettingsHandler::SaveCredentials, weak_.GetWeakPtr(),
+        std::move(reply), id, origin, std::move(*payload)));
+  }
+
+  void SaveCredentials(base::Value reply,
+                       std::string id,
+                       std::string origin,
+                       std::string payload,
+                       scoped_refptr<os_crypt_async::Encryptor> encryptor) {
+    auto* profile = Profile::FromWebUI(web_ui());
+    if (!containers::GetContainerFromPrefs(*profile->GetPrefs(), id)) {
+      ResolveJavascriptCallback(reply, base::Value(Error("CONTAINER_NOT_FOUND")));
+      return;
+    }
+    std::string ciphertext;
+    if (!encryptor || !encryptor->IsEncryptionAvailable() ||
+        !encryptor->EncryptString(payload, &ciphertext)) {
+      ResolveJavascriptCallback(reply, base::Value(Error("ENCRYPTION_UNAVAILABLE")));
+      return;
+    }
+    ScopedDictPrefUpdate update(profile->GetPrefs(),
+                                containers::prefs::kShopContainers);
+    auto* shop = update->EnsureDict(id);
+    shop->Set("credentialOrigin", origin);
+    shop->Set("encryptedCredentials", base::Base64Encode(ciphertext));
+    ResolveJavascriptCallback(
+        reply, base::Value(base::DictValue().Set("ok", true).Set("origin", origin)));
+  }
+
   void Handle(const base::ListValue& args) {
     if (args.size() != 2 || !args[0].is_string() || !args[1].is_string()) {
       return;
