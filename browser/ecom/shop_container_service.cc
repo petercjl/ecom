@@ -20,6 +20,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/supports_user_data.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
@@ -46,6 +47,9 @@
 #include "components/embedder_support/user_agent_utils.h"
 #include "components/os_crypt/async/browser/os_crypt_async.h"
 #include "components/os_crypt/async/common/encryptor.h"
+#include "components/password_manager/core/browser/password_form_digest.h"
+#include "components/password_manager/core/browser/password_store/password_store_consumer.h"
+#include "components/password_manager/core/browser/password_store/password_store_interface.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "content/public/browser/navigation_controller.h"
@@ -1215,6 +1219,44 @@ class ShopService final : public base::SupportsUserData::Data,
   base::RepeatingTimer timer_;
   base::WeakPtrFactory<ShopService> weak_{this};
 };
+class StoredUsernameLookup final : public password_manager::PasswordStoreConsumer {
+ public:
+  StoredUsernameLookup(std::string realm,
+                       base::OnceCallback<void(std::string)> callback)
+      : realm_(std::move(realm)), callback_(std::move(callback)) {}
+
+  void Start(password_manager::PasswordStoreInterface& store, const GURL& url) {
+    store.GetLogins({password_manager::PasswordForm::Scheme::kHtml, realm_, url},
+                    weak_.GetWeakPtr());
+  }
+
+  void OnGetPasswordStoreResultsOrErrorFrom(
+      password_manager::PasswordStoreInterface*,
+      base::expected<std::vector<password_manager::StoredCredential>,
+                     password_manager::PasswordStoreBackendError> results) override {
+    std::u16string username;
+    if (results.has_value()) {
+      for (const auto& login : *results) {
+        if (login.signon_realm != realm_ || login.username_value.empty() ||
+            login.blocked_by_user) {
+          continue;
+        }
+        if (!username.empty() && username != login.username_value) {
+          username.clear();
+          break;
+        }
+        username = login.username_value;
+      }
+    }
+    std::move(callback_).Run(base::UTF16ToUTF8(username));
+  }
+
+ private:
+  std::string realm_;
+  base::OnceCallback<void(std::string)> callback_;
+  base::WeakPtrFactory<StoredUsernameLookup> weak_{this};
+};
+
 class ShopSettingsHandler final : public content::WebUIMessageHandler {
  public:
   void RegisterMessages() override {
@@ -1320,7 +1362,33 @@ class ShopSettingsHandler final : public content::WebUIMessageHandler {
         }
       }
     }
+    if (!result.FindString("username") && current && *current == encrypted) {
+      const GURL origin(Field(result, "origin"));
+      auto* store = GetContainerPasswordStore(Profile::FromWebUI(web_ui()), id);
+      if (store && origin.SchemeIs("https")) {
+        auto lookup = std::make_unique<StoredUsernameLookup>(
+            origin.spec(),
+            base::BindOnce(&ShopSettingsHandler::FinishUsernameLookup,
+                           weak_.GetWeakPtr(), std::move(reply),
+                           std::move(result)));
+        auto* pending = lookup.get();
+        username_lookup_ = std::move(lookup);
+        pending->Start(*store, origin);
+        return;
+      }
+    }
     ResolveJavascriptCallback(reply, base::Value(std::move(result)));
+  }
+
+  void FinishUsernameLookup(base::Value reply,
+                            base::DictValue result,
+                            std::string username) {
+    if (IsJavascriptAllowed()) {
+      if (!username.empty()) {
+        result.Set("username", std::move(username));
+      }
+      ResolveJavascriptCallback(reply, base::Value(std::move(result)));
+    }
   }
 
   void SaveCredentials(base::Value reply,
@@ -1368,6 +1436,7 @@ class ShopSettingsHandler final : public content::WebUIMessageHandler {
       ResolveJavascriptCallback(id, base::Value(value));
     }
   }
+  std::unique_ptr<StoredUsernameLookup> username_lookup_;
   base::WeakPtrFactory<ShopSettingsHandler> weak_{this};
 };
 }  // namespace
