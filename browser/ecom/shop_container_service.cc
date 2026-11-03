@@ -1251,9 +1251,19 @@ class ShopSettingsHandler final : public content::WebUIMessageHandler {
     if (args[2].GetString().empty() && args[3].GetString().empty() &&
         args[4].GetString().empty()) {
       const auto* origin = shop ? shop->FindString("credentialOrigin") : nullptr;
-      ResolveJavascriptCallback(
-          reply, base::Value(base::DictValue().Set("ok", true).Set(
-                     "origin", origin ? *origin : "")));
+      auto result = base::DictValue().Set("ok", true).Set(
+          "origin", origin ? *origin : "");
+      const auto* encrypted =
+          shop ? shop->FindString("encryptedCredentials") : nullptr;
+      result.Set("hasPassword", encrypted && !encrypted->empty());
+      auto* crypto = g_browser_process->os_crypt_async();
+      if (crypto && origin && encrypted) {
+        crypto->GetInstance(base::BindOnce(
+            &ShopSettingsHandler::ReadCredentialUsername, weak_.GetWeakPtr(),
+            std::move(reply), id, *encrypted, std::move(result)));
+      } else {
+        ResolveJavascriptCallback(reply, base::Value(std::move(result)));
+      }
       return;
     }
     const auto& site = args[2].GetString();
@@ -1282,6 +1292,35 @@ class ShopSettingsHandler final : public content::WebUIMessageHandler {
     crypto->GetInstance(base::BindOnce(
         &ShopSettingsHandler::SaveCredentials, weak_.GetWeakPtr(),
         std::move(reply), id, origin, std::move(*payload)));
+  }
+
+  void ReadCredentialUsername(
+      base::Value reply,
+      std::string id,
+      std::string encrypted,
+      base::DictValue result,
+      scoped_refptr<os_crypt_async::Encryptor> encryptor) {
+    if (!IsJavascriptAllowed()) {
+      return;
+    }
+    const auto* shop = Profile::FromWebUI(web_ui())->GetPrefs()
+                           ->GetDict(containers::prefs::kShopContainers)
+                           .FindDict(id);
+    const auto* current = shop ? shop->FindString("encryptedCredentials") : nullptr;
+    std::string ciphertext;
+    std::string plaintext;
+    if (current && *current == encrypted && encryptor &&
+        base::Base64Decode(encrypted, &ciphertext) &&
+        encryptor->DecryptString(ciphertext, &plaintext)) {
+      auto data = base::JSONReader::ReadDict(plaintext, base::JSON_PARSE_RFC);
+      if (data && data->FindString("containerId") &&
+          *data->FindString("containerId") == id) {
+        if (const auto* username = data->FindString("username")) {
+          result.Set("username", *username);
+        }
+      }
+    }
+    ResolveJavascriptCallback(reply, base::Value(std::move(result)));
   }
 
   void SaveCredentials(base::Value reply,

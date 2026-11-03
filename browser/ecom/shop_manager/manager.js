@@ -41,7 +41,7 @@ const zh = {
   credentialUsername: '登录账号',
   credentialPassword: '登录密码',
   credentialSave: '加密保存凭证',
-  credentialSaved: '凭证已保存，账号密码框可留空',
+  credentialSaved: '密码已保存，留空可保留原密码',
   credentialEmpty: '尚未保存凭证',
   credentialHint: '保存后会显示登录站点和保存状态。账号密码框用于录入或更新。',
   INVALID_CREDENTIALS: '请输入登录页地址、账号和密码',
@@ -147,7 +147,7 @@ const en = {
   credentialUsername: 'Username',
   credentialPassword: 'Password',
   credentialSave: 'Save encrypted credentials',
-  credentialSaved: 'Credentials saved. Leave the fields blank to keep them.',
+  credentialSaved: 'Password saved. Leave it blank to keep it.',
   credentialEmpty: 'No credentials saved',
   credentialHint: 'Saved status and sign-in site are shown here. Use the fields to add or replace credentials.',
   INVALID_CREDENTIALS: 'Enter the sign-in URL, username and password',
@@ -911,13 +911,20 @@ async function runAction(action, row) {
       if (value) details.append(node('div', text(key), 'description-label'), node('div', String(value)))
     }
     $('edit-error').textContent = ''
+    clearCredentialInputs()
+    const readGeneration = ++credentialReadGeneration
     $('credential-site').value = ''
     $('credential-saved-state').textContent = ''
     $('edit-more').open = !row.homeUrl || row.platform === 'custom'
     $('edit-appearance-settings').open = true
     $('edit-dialog').showModal()
     const result = await sendWithPromise('ecomShopCredentials', row.id, '', '', '')
-    if ($('edit-dialog').open && editId === row.id) {
+    if ($('edit-dialog').open && readGeneration === credentialReadGeneration) {
+      const username = $('credential-username')
+      const savedUsername = result.username || ''
+      if (!username.value) username.value = savedUsername
+      username.defaultValue = savedUsername
+      $('credential-password').placeholder = result.hasPassword ? '••••••••' : ''
       if (result.origin) $('credential-site').value ||= result.origin
       $('credential-saved-state').textContent = result.origin
         ? text('credentialSaved') + ' · ' + result.origin
@@ -1130,7 +1137,10 @@ try {
   showError(error)
 }
 
+let credentialReadGeneration = 0
 function clearCredentialInputs() {
+  $('credential-username').defaultValue = ''
+  $('credential-password').placeholder = ''
   $('credential-username').value = ''
   $('credential-password').value = ''
 }
@@ -1162,7 +1172,9 @@ async function saveCredentials() {
     editId, normalizeHomeUrl(site.includes('://') ? site : 'https://' + site),
     username, password,
   )
-  clearCredentialInputs()
+  $('credential-username').defaultValue = username
+  $('credential-password').value = ''
+  $('credential-password').placeholder = '••••••••'
   $('credential-site').value = result.origin
   $('credential-saved-state').textContent = text('credentialSaved') + ' · ' + result.origin
 }
@@ -1188,7 +1200,8 @@ $('edit-form').addEventListener('submit', async (event) => {
       request.customPlatformName = $('edit-custom-platform-name').value
       request.entryUrl = request.homeUrl
     }
-    if ($('credential-username').value || $('credential-password').value)
+    if ($('credential-username').value !== $('credential-username').defaultValue ||
+        $('credential-password').value)
       await saveCredentials()
     await command(request)
     setBusy(false)
