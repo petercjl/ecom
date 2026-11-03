@@ -171,11 +171,11 @@
             <p class="dialog-intro" data-text="createHint"></p>
             <div class="platform-picker">
               <label id="platform-picker-label" for="platform-picker-button" data-text="platform"></label>
-              <button id="platform-picker-button" type="button" popovertarget="platform-picker-menu"
+              <button id="platform-picker-button" type="button" aria-expanded="false" aria-controls="platform-picker-menu"
                 aria-labelledby="platform-picker-label platform-picker-value">
                 <span id="platform-picker-value"></span><span aria-hidden="true">⌄</span>
               </button>
-              <div id="platform-picker-menu" popover>
+              <div id="platform-picker-menu" hidden>
                 <div id="platform-category" aria-label="平台分类"></div>
                 <div id="platform-options" aria-label="所属平台"></div>
               </div>

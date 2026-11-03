@@ -597,7 +597,7 @@ function buildPlatformPicker() {
       item.addEventListener('click', () => {
         select.value = option.value
         select.dispatchEvent(new Event('change'))
-        $('platform-picker-menu').hidePopover()
+        setOpen(false)
         $('platform-picker-button').focus()
       })
       options.append(item)
@@ -611,12 +611,24 @@ function buildPlatformPicker() {
     categories.append(item)
   }
   show(null, categories.firstElementChild)
-  $('platform-picker-button').addEventListener('click', () => {
-    const rect = $('platform-picker-button').getBoundingClientRect()
-    const menu = $('platform-picker-menu')
-    menu.style.left = Math.max(8, Math.min(rect.left, innerWidth - Math.min(470, innerWidth - 16) - 8)) + 'px'
-    menu.style.top = Math.min(rect.bottom + 6, innerHeight - Math.min(320, innerHeight / 2) - 8) + 'px'
+  const trigger = $('platform-picker-button')
+  const menu = $('platform-picker-menu')
+  function setOpen(open) {
+    menu.hidden = !open
+    trigger.setAttribute('aria-expanded', String(open))
+  }
+  trigger.addEventListener('click', () => setOpen(menu.hidden))
+  $('create-dialog').addEventListener('click', (event) => {
+    if (!event.target.closest('.platform-picker')) setOpen(false)
   })
+  $('create-dialog').addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !menu.hidden) {
+      event.preventDefault()
+      setOpen(false)
+      trigger.focus()
+    }
+  })
+  $('create-dialog').addEventListener('close', () => setOpen(false))
 }
 $('edit-platform').addEventListener('change', () => syncPlatformFields(true))
 function previewAppearance(prefix) {

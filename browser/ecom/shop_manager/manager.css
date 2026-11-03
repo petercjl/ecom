@@ -759,14 +759,19 @@ button.danger {
   margin: 0;
 }
 
+.platform-picker {
+  position: relative;
+}
 #platform-picker-button {
   display: flex;
   justify-content: space-between;
   width: 100%;
 }
 #platform-picker-menu {
-  position: fixed;
-  inset: auto;
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 4px);
+  left: 0;
   margin: 0;
   width: min(470px, calc(100vw - 16px));
   height: min(320px, 50vh);
@@ -777,7 +782,7 @@ button.danger {
   background: var(--panel);
   color: inherit;
 }
-#platform-picker-menu:popover-open {
+#platform-picker-menu:not([hidden]) {
   display: grid;
   grid-template-columns: minmax(110px, 2fr) minmax(0, 3fr);
 }
