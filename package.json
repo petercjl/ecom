@@ -105,6 +105,7 @@
     "gn": {
       "args": {
         "enable_ai_chat": false,
+        "enable_brave_talk": false,
         "enable_brave_news": false,
         "enable_brave_wallet": false,
         "enable_brave_rewards": false,

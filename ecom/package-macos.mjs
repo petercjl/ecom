@@ -77,6 +77,28 @@ export function signMacBundle(app, sourceRoot = root) {
   run('/usr/bin/codesign', ['--force', '--sign', '-', '--entitlements', path.join(chromiumApp, 'app-entitlements.plist'), app]);
   run('/usr/bin/codesign', ['--verify', '--deep', '--strict', app]);
 }
+async function shareHelperResources(app, output, version) {
+  const framework = path.join(app, 'Contents/Frameworks/Ecom Framework.framework/Versions', version);
+  const resource = 'brave_resources.pak';
+  const canonical = path.join(framework, 'Resources', resource);
+  const helpers = path.join(framework, 'Helpers');
+  const original = fs.lstatSync(canonical);
+  const hash = await sha256(canonical);
+  for (const helper of fs.readdirSync(helpers)) {
+    if (!/^Ecom Helper \(Aperitif(?: Alerts| GPU| Renderer)?\)\.app$/.test(helper)) continue;
+    const copy = path.join(helpers, helper, 'Contents/Resources', resource);
+    const info = fs.lstatSync(copy);
+    if (!original.isFile() || !info.isFile() || info.size !== original.size ||
+        info.mode !== original.mode || await sha256(copy) !== hash) {
+      throw new Error('Unexpected helper resource: ' + helper);
+    }
+    if (info.ino === original.ino && info.dev === original.dev) continue;
+    // Keep the helper's bundle-relative path while sharing the sealed bytes.
+    fs.renameSync(copy, path.join(output, helper + '.' + resource));
+    fs.linkSync(canonical, copy);
+  }
+}
+
 export async function packageMacos({ sourceApp, output, sourceRevision, sourceRoot = root }) {
   if (process.platform !== 'darwin' || process.arch !== 'arm64') throw new Error('Currently verified target: macOS arm64');
   const config = validateRelease(JSON.parse(fs.readFileSync(path.join(sourceRoot, 'ecom/release-config.json'), 'utf8')));
@@ -90,6 +112,7 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   const stage = path.join(output, 'dmg-root'); fs.mkdirSync(stage);
   const app = path.join(stage, 'Ecom.app');
   run('/usr/bin/ditto', [sourceApp, app]);
+  await shareHelperResources(app, output, metadata.CFBundleShortVersionString);
   const plist = path.join(app, 'Contents/Info.plist');
   fs.copyFileSync(plist, path.join(output, 'original-Info.plist'), fs.constants.COPYFILE_EXCL);
   // This is a newly created packaging copy; the build output stays intact.

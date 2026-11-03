@@ -167,15 +167,13 @@ void BravePrivacyHandler::AddLoadTimeData(content::WebUIDataSource* data_source,
   // builds. Hide their settings unconditionally so they don't briefly appear on
   // first launch before the disabling policy is applied (brave-browser#56166).
   data_source->AddBoolean("isStatsReportingEnabledManaged", true);
-  data_source->AddBoolean("isP3AEnabledManaged", true);
 #else
   auto* local_state = g_browser_process->local_state();
   data_source->AddBoolean(
       "isStatsReportingEnabledManaged",
       local_state->IsManagedPreference(kStatsReportingEnabled));
-  data_source->AddBoolean("isP3AEnabledManaged",
-                          local_state->IsManagedPreference(p3a::kP3AEnabled));
 #endif
+  data_source->AddBoolean("isP3AEnabledManaged", true);
 
 #if BUILDFLAG(IS_WIN)
   {

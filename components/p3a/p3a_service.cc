@@ -93,8 +93,7 @@ P3AService::~P3AService() = default;
 
 void P3AService::RegisterPrefs(PrefRegistrySimple* registry, bool first_run) {
   MessageManager::RegisterPrefs(registry);
-  registry->RegisterBooleanPref(kP3AEnabled,
-                                !BUILDFLAG(IS_BRAVE_ORIGIN_BRANDED));
+  registry->RegisterBooleanPref(kP3AEnabled, false);
   // New users are shown the P3A notice via the welcome page.
   registry->RegisterBooleanPref(kP3ANoticeAcknowledged, first_run);
 
@@ -111,6 +110,9 @@ void P3AService::InitCallback(std::string_view histogram_name) {
 }
 
 void P3AService::InitCallbacks() {
+  if (!IsP3AEnabled()) {
+    return;
+  }
   for (const auto& [histogram_name, _] : kCollectedTypicalHistograms) {
     InitCallback(histogram_name);
   }
@@ -136,6 +138,9 @@ void P3AService::StartTeardown() {
 void P3AService::RegisterDynamicMetric(const std::string& histogram_name,
                                        MetricLogType log_type,
                                        bool should_be_on_ui_thread) {
+  if (!IsP3AEnabled()) {
+    return;
+  }
   if (should_be_on_ui_thread) {
     DCheckCurrentlyOnUIThread();
   }
@@ -178,7 +183,7 @@ base::CallbackListSubscription P3AService::RegisterMetricCycledCallback(
 }
 
 bool P3AService::IsP3AEnabled() const {
-  return local_state_->GetBoolean(kP3AEnabled);
+  return false;
 }
 
 void P3AService::Init(
