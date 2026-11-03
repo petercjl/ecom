@@ -117,7 +117,8 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
                               metadata.CFBundleShortVersionString, 'Resources');
   const locales = fs.readdirSync(resources).filter(name =>
     name.endsWith('.lproj') && fs.existsSync(path.join(resources, name, 'locale.pak')));
-  if (locales.length !== 1 || locales[0] !== 'zh_CN.lproj') {
+  if (!locales.includes('zh_CN.lproj') ||
+      locales.some(name => !/^zh_CN(?:_(?:FEMININE|MASCULINE|NEUTER))?\.lproj$/.test(name))) {
     throw new Error('Expected only the Simplified Chinese interface locale');
   }
   const plist = path.join(app, 'Contents/Info.plist');
