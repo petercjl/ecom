@@ -13,7 +13,6 @@
 #include "base/strings/strcat.h"
 #include "brave/browser/new_tab/new_tab_shows_options.h"
 #include "brave/browser/ntp_background/brave_ntp_custom_background_service_factory.h"
-#include "brave/browser/resources/brave_new_tab_page_refresh/grit/brave_new_tab_page_refresh_generated_map.h"
 #include "brave/browser/ui/brave_ui_features.h"
 #include "brave/browser/ui/webui/brave_sanitized_image_source.h"
 #include "brave/browser/ui/webui/brave_webui_source.h"
@@ -105,12 +104,7 @@ void NewTabPageInitializer::Initialize() {
   source_ = content::WebUIDataSource::CreateAndAdd(GetProfile(),
                                                    chrome::kChromeUINewTabHost);
 
-  if (brave::ShouldNewTabShowBlankpage(GetProfile())) {
-    source_->SetDefaultResource(IDR_BRAVE_BLANK_NEW_TAB_HTML);
-  } else {
-    webui::SetupWebUIDataSource(source_, kBraveNewTabPageRefreshGenerated,
-                                IDR_BRAVE_NEW_TAB_PAGE_HTML);
-  }
+  source_->SetDefaultResource(IDR_BRAVE_BLANK_NEW_TAB_HTML);
 
   AddBackgroundColorToSource(source_, web_ui_->GetWebContents());
   AddCSPOverrides();

@@ -1,0 +1,15 @@
+diff --git a/ui/base/l10n/l10n_util.cc b/ui/base/l10n/l10n_util.cc
+--- a/ui/base/l10n/l10n_util.cc
++++ b/ui/base/l10n/l10n_util.cc
+@@ -271,7 +271,11 @@
+ 
+ std::string GetApplicationLocale(std::string_view pref_locale,
+                                  bool set_icu_locale) {
++#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
++  const std::string locale = "zh-CN";
++#else
+   const std::string locale = GetApplicationLocaleInternal(pref_locale);
++#endif
+   if (set_icu_locale && !locale.empty()) {
+     std::optional<LanguageTag> language_tag = GetLanguageTagFromString(locale);
+     if (language_tag) {

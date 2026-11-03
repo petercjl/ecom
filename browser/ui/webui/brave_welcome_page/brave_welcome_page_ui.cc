@@ -14,7 +14,6 @@
 #include "base/memory/weak_ptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
-#include "brave/browser/resources/brave_welcome_page/grit/brave_welcome_page_generated_map.h"
 #include "brave/browser/ui/webui/brave_webui_source.h"
 #include "brave/browser/ui/webui/brave_welcome_page/brave_welcome_page.mojom.h"
 #include "brave/browser/ui/webui/brave_welcome_page/brave_welcome_page_prefs.h"
@@ -61,26 +60,6 @@ namespace {
 
 inline constexpr char kBraveWelcomePageHost[] = "welcome-new";
 
-inline constexpr char kJapanWelcomeURL[] =
-    "https://brave.com/ja/desktop-ntp-tutorial";
-
-void OpenJapanWelcomePage(base::WeakPtr<content::WebContents> web_contents) {
-  if (!web_contents) {
-    return;
-  }
-  web_contents->OpenURL(
-      content::OpenURLParams(GURL(kJapanWelcomeURL), content::Referrer(),
-                             WindowOpenDisposition::NEW_BACKGROUND_TAB,
-                             ui::PAGE_TRANSITION_AUTO_TOPLEVEL, false),
-      /*navigation_handle_callback=*/{});
-}
-
-bool IsJapanCountryId(PrefService* prefs) {
-  auto country_id = country_codes::CountryId::Deserialize(
-      prefs->GetInteger(regional_capabilities::prefs::kCountryIDAtInstall));
-  return country_id == country_codes::CountryId("JP");
-}
-
 }  // namespace
 
 BraveWelcomePageUI::BraveWelcomePageUI(content::WebUI* web_ui)
@@ -89,57 +68,8 @@ BraveWelcomePageUI::BraveWelcomePageUI(content::WebUI* web_ui)
   content::WebUIDataSource* source =
       content::WebUIDataSource::CreateAndAdd(profile, kBraveWelcomePageHost);
 
-  webui::SetupWebUIDataSource(source, kBraveWelcomePageGenerated,
-                              IDR_BRAVE_WELCOME_PAGE_HTML);
+  source->SetDefaultResource(IDR_ECOM_WELCOME_HTML);
 
-  AddBackgroundColorToSource(source, web_ui->GetWebContents());
-
-  // Serves chrome://theme/colors.css, which the browser preview uses to match
-  // the colors of the surrounding browser chrome.
-  content::URLDataSource::Add(profile, std::make_unique<ThemeSource>(profile));
-
-  web_ui->AddMessageHandler(
-      std::make_unique<settings::BraveImportBulkDataHandler>());
-  web_ui->AddMessageHandler(
-      std::make_unique<settings::DefaultBrowserHandler>());
-
-  source->AddLocalizedStrings(webui::kBraveWelcomePageStrings);
-
-  PrefService* local_state = g_browser_process->local_state();
-  source->AddBoolean("isCrashReportingPrefManaged",
-                     local_state->IsManagedPreference(
-                         metrics::prefs::kMetricsReportingEnabled));
-  source->AddBoolean("isP3APrefManaged",
-                     local_state->IsManagedPreference(p3a::kP3AEnabled));
-#if BUILDFLAG(ENABLE_WEB_DISCOVERY)
-  source->AddBoolean(
-      "isWebDiscoveryPrefManaged",
-      profile->GetPrefs()->IsManagedPreference(kWebDiscoveryEnabled));
-#else
-  source->AddBoolean("isWebDiscoveryPrefManaged", false);
-#endif  // BUILDFLAG(ENABLE_WEB_DISCOVERY)
-  source->AddBoolean("webDiscoveryFeatureEnabled",
-                     BUILDFLAG(ENABLE_WEB_DISCOVERY));
-
-  using brave_welcome_page::mojom::Feature;
-  auto features = brave_welcome_page::GetAvailableFeatures(profile);
-  source->AddBoolean("aiChatFeatureEnabled",
-                     features.contains(Feature::kAIChat));
-  source->AddBoolean("walletFeatureEnabled",
-                     features.contains(Feature::kWallet));
-  source->AddBoolean("rewardsFeatureEnabled",
-                     features.contains(Feature::kRewards));
-
-  PrefService* prefs = profile->GetPrefs();
-  if (!prefs->GetBoolean(brave_welcome_page::prefs::kHasSeenBraveWelcomePage) &&
-      IsJapanCountryId(prefs)) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(&OpenJapanWelcomePage,
-                       web_ui->GetWebContents()->GetWeakPtr()),
-        base::Seconds(3));
-  }
-  prefs->SetBoolean(brave_welcome_page::prefs::kHasSeenBraveWelcomePage, true);
 }
 
 BraveWelcomePageUI::~BraveWelcomePageUI() = default;

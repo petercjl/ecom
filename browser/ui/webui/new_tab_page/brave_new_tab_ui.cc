@@ -22,7 +22,6 @@
 #include "brave/browser/ui/webui/new_tab_page/brave_new_tab_page_handler.h"
 #include "brave/browser/ui/webui/new_tab_page/top_sites_message_handler.h"
 #include "brave/components/brave_ads/core/browser/service/ads_service.h"
-#include "brave/components/brave_new_tab/resources/grit/brave_new_tab_generated_map.h"
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
 #include "brave/components/constants/webui_url_constants.h"
 #include "brave/components/misc_metrics/new_tab_metrics.h"
@@ -75,102 +74,11 @@ BraveNewTabUI::BraveNewTabUI(
           true /* Needed for legacy non-mojom message handler */),
       page_factory_receiver_(this),
       regional_capabilities_(regional_capabilities) {
-  content::WebContents* web_contents = web_ui->GetWebContents();
-  CHECK(web_contents);
-
-  content::NavigationEntry* navigation_entry =
-      web_contents->GetController().GetLastCommittedEntry();
-  const bool was_restored = navigation_entry && navigation_entry->IsRestored();
-
-  Profile* profile = Profile::FromWebUI(web_ui);
+  auto* source = content::WebUIDataSource::CreateAndAdd(
+      Profile::FromWebUI(web_ui), std::string(name));
+  source->SetDefaultResource(IDR_BRAVE_BLANK_NEW_TAB_HTML);
+  AddBackgroundColorToSource(source, web_ui->GetWebContents());
   web_ui->OverrideTitle(l10n_util::GetStringUTF16(IDS_NEW_TAB_TITLE));
-
-  if (brave::ShouldNewTabShowBlankpage(profile)) {
-    content::WebUIDataSource* source =
-        content::WebUIDataSource::CreateAndAdd(profile, std::string(name));
-    source->SetDefaultResource(IDR_BRAVE_BLANK_NEW_TAB_HTML);
-    AddBackgroundColorToSource(source, web_contents);
-    return;
-  }
-
-  // Non blank NTP.
-  content::WebUIDataSource* source = CreateAndAddWebUIDataSource(
-      web_ui, name, kBraveNewTabGenerated, IDR_BRAVE_NEW_TAB_HTML);
-
-  web_ui->AddRequestableScheme(content::kChromeUIUntrustedScheme);
-
-  AddBackgroundColorToSource(source, web_contents);
-
-  // Lottie animations tick on a worker thread and requires the document CSP to
-  // be set to "worker-src blob: 'self';".
-  source->OverrideContentSecurityPolicy(
-      network::mojom::CSPDirectiveName::WorkerSrc,
-      "worker-src blob: chrome://resources 'self';");
-
-  source->OverrideContentSecurityPolicy(
-      network::mojom::CSPDirectiveName::TrustedTypes,
-      "trusted-types static-types lottie-worker-script-loader "
-      "lit-html-desktop brave-news-opml;");
-
-  source->AddBoolean("featureCustomBackgroundEnabled",
-                     !profile->GetPrefs()->IsManagedPreference(
-                         prefs::kNtpCustomBackgroundDict));
-
-  // Let frontend know about feature flags
-#if BUILDFLAG(ENABLE_BRAVE_NEWS)
-  source->AddBoolean("featureFlagBraveNewsPromptEnabled",
-                     base::FeatureList::IsEnabled(
-                         brave_news::features::kBraveNewsCardPeekFeature));
-
-  source->AddBoolean(
-      "featureFlagBraveNewsFeedV2Enabled",
-      base::FeatureList::IsEnabled(brave_news::features::kBraveNewsFeedUpdate));
-#else
-  source->AddBoolean("featureFlagBraveNewsPromptEnabled", false);
-  source->AddBoolean("featureFlagBraveNewsFeedV2Enabled", false);
-#endif
-
-  source->AddBoolean(
-      "featureFlagSearchWidget",
-      base::FeatureList::IsEnabled(features::kBraveNtpSearchWidget));
-  source->AddString(
-      "searchWidgetDefaultHost",
-      brave_new_tab_page_refresh::GetSearchDefaultHost(regional_capabilities_));
-
-  source->AddString("newTabTakeoverLearnMoreLinkUrl",
-                    ntp_background_images::kNewTabTakeoverLearnMoreLinkUrl);
-
-
-  web_ui->AddMessageHandler(base::WrapUnique(
-      BraveNewTabMessageHandler::Create(source, profile, was_restored)));
-  web_ui->AddMessageHandler(std::make_unique<TopSitesMessageHandler>(profile));
-
-  // For custom background images.
-  if (auto* ntp_custom_background_images_service =
-          BraveNTPCustomBackgroundServiceFactory::GetForContext(profile)) {
-    content::URLDataSource::Add(profile,
-                                std::make_unique<NTPCustomImagesSource>(
-                                    ntp_custom_background_images_service));
-  }
-
-  source->OverrideContentSecurityPolicy(
-      network::mojom::CSPDirectiveName::FrameSrc,
-      absl::StrFormat("frame-src %s;", kNTPDynamicNewTabTakeoverUrl));
-  source->AddString("ntpNewTabTakeoverDynamicContentUrl",
-                    kNTPDynamicNewTabTakeoverUrl);
-
-  sponsored_content_ad_event_handler_ = std::make_unique<
-      ntp_background_images::NTPDynamicNewTabTakeoverAdEventHandler>(
-      ads_service);
-
-  source->AddLocalizedStrings(webui::kBraveNewsStrings);
-
-  // Add a SanitizedImageSource to allow fetching images for Brave News.
-  content::URLDataSource::Add(profile,
-                              std::make_unique<BraveSanitizedImageSource>(
-                                  profile, /*serve_untrusted=*/false));
-
-  content::URLDataSource::Add(profile, std::make_unique<ThemeSource>(profile));
 }
 
 BraveNewTabUI::~BraveNewTabUI() = default;
