@@ -498,22 +498,22 @@ dialog label select {
   color: var(--danger);
   line-height: 1.8;
 }
-dl {
+.account-description {
   margin: 24px 0;
   background: var(--input);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 18px;
 }
-dt {
+.description-label {
   font-size: 11px;
   color: var(--muted);
   margin: 13px 0 5px;
 }
-dt:first-child {
+.description-label:first-child {
   margin-top: 0;
 }
-dd {
+.account-description > :nth-child(even) {
   margin: 0;
   font-size: 14px;
   overflow-wrap: anywhere;
@@ -844,4 +844,91 @@ button.danger {
 .appearance-option img {
   width: 23px;
   height: 23px;
+}
+
+
+.account-editor-grid {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) 245px;
+  gap: 16px;
+  align-items: start;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+.editor-navigation,
+.editor-summary {
+  position: sticky;
+  top: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.editor-navigation button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  padding: 10px 8px;
+}
+.editor-summary h3 {
+  margin: 0 0 14px;
+}
+.editor-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-wrap: anywhere;
+}
+.editor-summary p {
+  color: var(--muted);
+}
+.editor-sections .create-card {
+  max-width: none;
+}
+.editor-fields label,
+.editor-fields .platform-picker {
+  display: grid;
+  grid-template-columns: minmax(90px, 135px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.editor-fields .platform-picker {
+  margin-top: 14px;
+}
+.editor-fields .platform-picker > label {
+  display: block;
+  margin: 0;
+}
+.editor-fields #platform-picker-menu {
+  left: 147px;
+  max-width: calc(100% - 147px);
+}
+@media (max-width: 1000px) {
+  .account-editor-grid {
+    grid-template-columns: 145px minmax(0, 1fr);
+  }
+  .editor-summary {
+    display: none;
+  }
+}
+@media (max-width: 640px) {
+  .account-editor-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .editor-navigation {
+    position: static;
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .editor-navigation button {
+    width: auto;
+  }
+  .editor-fields label,
+  .editor-fields .platform-picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .editor-fields #platform-picker-menu {
+    left: 0;
+    max-width: 100%;
+  }
 }

@@ -166,7 +166,15 @@
           <h2 id="create-title" data-text="add"></h2>
         </header>
         <div class="create-body">
-          <section class="create-card" aria-labelledby="create-info-title">
+          <div class="account-editor-grid">
+            <nav class="editor-navigation" aria-label="Account sections">
+              <button type="button" data-section="create-info" data-text="accountInfo"></button>
+              <button type="button" data-section="create-environment" data-text="browserEnvironment"></button>
+              <button type="button" data-section="create-appearance-settings" data-text="browserAppearance"></button>
+              <button type="button" data-section="create-more" data-text="moreSettings"></button>
+            </nav>
+            <div class="editor-sections">
+          <section class="create-card editor-fields" id="create-info" aria-labelledby="create-info-title">
             <h3 id="create-info-title" data-text="accountInfo"></h3>
             <p class="dialog-intro" data-text="createHint"></p>
             <div class="platform-picker">
@@ -176,8 +184,8 @@
                 <span id="platform-picker-value"></span><span aria-hidden="true">⌄</span>
               </button>
               <div id="platform-picker-menu" hidden>
-                <div id="platform-category" aria-label="平台分类"></div>
-                <div id="platform-options" aria-label="所属平台"></div>
+                <div id="platform-category" role="group" aria-label="平台分类"></div>
+                <div id="platform-options" role="group" aria-label="所属平台"></div>
               </div>
               <select id="platform" hidden></select>
             </div>
@@ -208,8 +216,12 @@
             </label>
             <p class="dialog-intro" data-text="createCredentialHint"></p>
           </section>
-          <details class="create-card">
-            <summary data-text="appearance"></summary>
+          <details class="create-card" id="create-environment">
+            <summary data-text="browserEnvironment"></summary>
+            <p class="dialog-intro" data-text="containerEnvironmentHint"></p>
+          </details>
+          <details class="create-card" id="create-appearance-settings">
+            <summary data-text="browserAppearance"></summary>
             <div class="appearance-picker" id="create-appearance">
               <input type="hidden" id="create-color" value="#ff3c36">
               <input type="hidden" id="create-icon" value="0">
@@ -223,6 +235,20 @@
               </fieldset>
             </div>
           </details>
+          <details class="create-card" id="create-more">
+            <summary data-text="moreSettings"></summary>
+            <p class="dialog-intro" data-text="createHint"></p>
+          </details>
+            </div>
+            <aside class="editor-summary">
+              <h3 data-text="containerSummary"></h3>
+              <div class="editor-preview">
+                <span class="shop-avatar" id="create-summary-avatar"><img alt="" id="create-summary-icon" src="icons/0.svg"></span>
+                <span id="create-summary-name"></span>
+              </div>
+              <p id="create-summary-platform"></p>
+            </aside>
+          </div>
         </div>
         <footer class="create-footer">
           <p id="create-error" class="error" role="alert"></p>
@@ -260,7 +286,7 @@
         class="dialog-intro"
         data-text="confirmHint"
       ></p>
-      <dl id="identity-details"></dl>
+      <div class="account-description" id="identity-details"></div>
       <p
         id="identity-error"
         class="error"
@@ -289,7 +315,15 @@
           <h2 id="edit-title" data-text="editTitle"></h2>
         </header>
         <div class="create-body">
-          <section class="create-card" aria-labelledby="edit-info-title">
+          <div class="account-editor-grid">
+            <nav class="editor-navigation" aria-label="Account sections">
+              <button type="button" data-section="edit-info" data-text="accountInfo"></button>
+              <button type="button" data-section="edit-environment" data-text="browserEnvironment"></button>
+              <button type="button" data-section="edit-appearance-settings" data-text="browserAppearance"></button>
+              <button type="button" data-section="edit-more" data-text="moreSettings"></button>
+            </nav>
+            <div class="editor-sections">
+          <section class="create-card editor-fields" id="edit-info" aria-labelledby="edit-info-title">
             <h3 id="edit-info-title" data-text="accountInfo"></h3>
         <label
           ><span data-text="platform"></span
@@ -324,8 +358,12 @@
           </label>
             <p id="credential-saved-state" role="status"></p>
           </section>
-          <details class="create-card">
-            <summary data-text="appearance"></summary>
+          <details class="create-card" id="edit-environment">
+            <summary data-text="browserEnvironment"></summary>
+            <p class="dialog-intro" data-text="containerEnvironmentHint"></p>
+          </details>
+          <details class="create-card" id="edit-appearance-settings">
+            <summary data-text="browserAppearance"></summary>
         <div class="appearance-picker" id="edit-appearance">
               <input type="hidden" id="edit-color" value="#ff3c36">
               <input type="hidden" id="edit-icon" value="0">
@@ -339,8 +377,8 @@
               </fieldset>
             </div>
           </details>
-          <details class="create-card" id="edit-site-settings">
-            <summary data-text="siteSettings"></summary>
+          <details class="create-card" id="edit-more">
+            <summary data-text="moreSettings"></summary>
         <div class="homepage-fields">
           <label
             ><span data-text="homePreset"></span
@@ -365,8 +403,18 @@
           </details>
           <details class="create-card">
             <summary data-text="accountDetails"></summary>
-            <dl id="edit-account-details"></dl>
+            <div class="account-description" id="edit-account-details"></div>
           </details>
+            </div>
+            <aside class="editor-summary">
+              <h3 data-text="containerSummary"></h3>
+              <div class="editor-preview">
+                <span class="shop-avatar" id="edit-summary-avatar"><img alt="" id="edit-summary-icon" src="icons/0.svg"></span>
+                <span id="edit-summary-name"></span>
+              </div>
+              <p id="edit-summary-platform"></p>
+            </aside>
+          </div>
         </div>
         <footer class="create-footer">
           <p id="edit-error" class="error" role="alert"></p>
@@ -398,7 +446,7 @@
         class="dialog-intro"
         data-text="deleteHint"
       ></p>
-      <dl id="delete-details"></dl>
+      <div class="account-description" id="delete-details"></div>
       <p
         id="delete-error"
         class="error"

@@ -15,6 +15,11 @@ import {
 } from './model.js'
 
 const zh = {
+  browserEnvironment: '浏览器环境配置',
+  browserAppearance: '浏览器外观设置',
+  moreSettings: '更多设置',
+  containerSummary: '容器预览',
+  containerEnvironmentHint: '每个账号使用独立的容器会话和密码库。',
   back: '返回',
   accountInfo: '账号信息',
   siteSettings: '首页与登录站点',
@@ -108,6 +113,11 @@ const zh = {
   BUSY: '该容器正在核验，请等待完成。',
 }
 const en = {
+  browserEnvironment: 'Browser environment',
+  browserAppearance: 'Browser appearance',
+  moreSettings: 'More settings',
+  containerSummary: 'Container preview',
+  containerEnvironmentHint: 'Each account uses a separate container session and password store.',
   back: 'Back',
   accountInfo: 'Account information',
   siteSettings: 'Homepage and sign-in site',
@@ -407,6 +417,7 @@ function syncPlatformFields(edit = false) {
         base
     setHomeField(prefix, url)
   }
+  updateEditorSummary(edit ? 'edit' : 'create')
   if (edit)
     selector.disabled =
       busy || Boolean(rows.find((row) => row.id === editId)?.platform)
@@ -646,6 +657,9 @@ const appearancePalette = [
 ]
 function previewAppearance(prefix) {
   const color = $(prefix + '-color').value
+  $(prefix + '-summary-avatar').style.backgroundColor = color
+  $(prefix + '-summary-icon').src = 'icons/' + $(prefix + '-icon').value + '.svg'
+  updateEditorSummary(prefix)
   const colors = $(prefix + '-colors')
   const legacy = colors.querySelector('.legacy-swatch')
   legacy.hidden = appearancePalette.some(([value]) => value === color)
@@ -658,6 +672,25 @@ function previewAppearance(prefix) {
     button.setAttribute('aria-pressed', String(button.dataset.value === $(prefix + '-icon').value))
   }
 }
+function updateEditorSummary(prefix) {
+  const editing = prefix === 'edit'
+  $(prefix + '-summary-name').textContent =
+    $(editing ? 'edit-name' : 'shop-name').value.trim() || text('namePlaceholder')
+  $(prefix + '-summary-platform').textContent =
+    $(editing ? 'edit-platform' : 'platform').selectedOptions[0]?.textContent || ''
+}
+
+for (const [prefix, id] of [['create', 'shop-name'], ['edit', 'edit-name']]) {
+  $(id).addEventListener('input', () => updateEditorSummary(prefix))
+}
+for (const button of document.querySelectorAll('[data-section]')) {
+  button.addEventListener('click', () => {
+    const section = $(button.dataset.section)
+    if (section.tagName === 'DETAILS') section.open = true
+    section.scrollIntoView({ block: 'start' })
+  })
+}
+
 function appearanceOption(prefix, type, value, label) {
   const option = node('button', undefined, 'appearance-option')
   option.type = 'button'
@@ -823,7 +856,7 @@ function showCandidate(row) {
     ['shopId', row.candidate.shopId],
     ['accountId', row.candidate.accountId],
   ]) {
-    $('identity-details').append(node('dt', text(key)), node('dd', value))
+    $('identity-details').append(node('div', text(key), 'description-label'), node('div', value))
   }
   $('identity-error').textContent = ''
   if (!$('identity-dialog').open) $('identity-dialog').showModal()
@@ -856,12 +889,12 @@ async function runAction(action, row) {
       ['validity', text(row.expiry?.kind === 'session' ? 'sessionExpiry' : 'platformExpiry')],
       ['cookieReference', row.expiry?.cookieExpiresAt && date(row.expiry.cookieExpiresAt)],
     ]) {
-      if (value) details.append(node('dt', text(key)), node('dd', String(value)))
+      if (value) details.append(node('div', text(key), 'description-label'), node('div', String(value)))
     }
     $('edit-error').textContent = ''
     $('credential-site').value = ''
     $('credential-saved-state').textContent = ''
-    $('edit-site-settings').open = !row.homeUrl || row.platform === 'custom'
+    $('edit-more').open = !row.homeUrl || row.platform === 'custom'
     $('edit-dialog').showModal()
     const result = await sendWithPromise('ecomShopCredentials', row.id, '', '', '')
     if ($('edit-dialog').open && editId === row.id) {
@@ -882,7 +915,7 @@ async function runAction(action, row) {
         ['displayName', deletionPlan.name],
         ['openTabs', String(deletionPlan.openTabs)],
       ])
-        $('delete-details').append(node('dt', text(key)), node('dd', value))
+        $('delete-details').append(node('div', text(key), 'description-label'), node('div', value))
       $('delete-error').textContent =
         deletionPlan.openTabs > 0 ? text('CONTAINER_IN_USE') : ''
       setBusy(false)
