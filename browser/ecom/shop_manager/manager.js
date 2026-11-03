@@ -631,27 +631,62 @@ function buildPlatformPicker() {
   $('create-dialog').addEventListener('close', () => setOpen(false))
 }
 $('edit-platform').addEventListener('change', () => syncPlatformFields(true))
+// Brave's eight Leo primitive-60 colors, in container picker order.
+const appearancePalette = [
+  ['#ff3c36', '红色', 'Red'],
+  ['#f45202', '橙色', 'Orange'],
+  ['#b08c00', '黄色', 'Yellow'],
+  ['#2fab5f', '绿色', 'Green'],
+  ['#35a0b4', '青色', 'Teal'],
+  ['#488cff', '蓝色', 'Blue'],
+  ['#9973f8', '紫色', 'Purple'],
+  ['#ff1593', '粉色', 'Pink'],
+]
 function previewAppearance(prefix) {
-  $(prefix + '-preview').style.backgroundColor = $(prefix + '-color').value
-  $(prefix + '-preview-icon').src =
-    'icons/' + $(prefix + '-icon').value + '.svg'
+  const color = $(prefix + '-color').value
+  const colors = $(prefix + '-colors')
+  const legacy = colors.querySelector('.legacy-swatch')
+  legacy.hidden = appearancePalette.some(([value]) => value === color)
+  legacy.dataset.value = color
+  legacy.style.backgroundColor = color
+  for (const button of colors.children)
+    button.setAttribute('aria-pressed', String(button.dataset.value === color))
+  for (const button of $(prefix + '-icons').children) {
+    button.style.backgroundColor = color
+    button.setAttribute('aria-pressed', String(button.dataset.value === $(prefix + '-icon').value))
+  }
+}
+function appearanceOption(prefix, type, value, label) {
+  const option = node('button', undefined, 'appearance-option')
+  option.type = 'button'
+  option.dataset.value = value
+  option.title = label
+  option.setAttribute('aria-label', label)
+  option.addEventListener('click', () => {
+    $(prefix + '-' + type).value = option.dataset.value
+    previewAppearance(prefix)
+  })
+  return option
 }
 for (const prefix of ['create', 'edit']) {
+  for (const [value, zhLabel, enLabel] of appearancePalette) {
+    const option = appearanceOption(prefix, 'color', value, copy === zh ? zhLabel : enLabel)
+    option.style.backgroundColor = value
+    $(prefix + '-colors').append(option)
+  }
+  const legacy = appearanceOption(prefix, 'color', '', copy === zh ? '原有颜色' : 'Existing color')
+  legacy.classList.add('legacy-swatch')
+  $(prefix + '-colors').append(legacy)
   iconNames.forEach((names, index) => {
-    const option = document.createElement('option')
-    option.value = index
-    option.textContent = names[copy === zh ? 0 : 1]
-    $(prefix + '-icon').append(option)
+    const option = appearanceOption(prefix, 'icon', String(index), names[copy === zh ? 0 : 1])
+    const image = node('img')
+    image.src = 'icons/' + index + '.svg'
+    image.alt = ''
+    option.append(image)
+    $(prefix + '-icons').append(option)
   })
-  $(prefix + '-icon').value = '2'
-  $(prefix + '-icon').addEventListener('change', () =>
-    previewAppearance(prefix),
-  )
-  $(prefix + '-color').addEventListener('input', () =>
-    previewAppearance(prefix),
-  )
+  previewAppearance(prefix)
 }
-previewAppearance('create')
 
 function node(tag, value, className) {
   const result = document.createElement(tag)

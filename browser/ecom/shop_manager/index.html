@@ -210,10 +210,17 @@
           </section>
           <details class="create-card">
             <summary data-text="appearance"></summary>
-            <div class="appearance-fields">
-              <label><span data-text="icon"></span><select id="create-icon"></select></label>
-              <label><span data-text="themeColor"></span><input type="color" id="create-color" value="#007f83"></label>
-              <span class="appearance-preview" id="create-preview"><img id="create-preview-icon" src="icons/2.svg" alt=""></span>
+            <div class="appearance-picker" id="create-appearance">
+              <input type="hidden" id="create-color" value="#ff3c36">
+              <input type="hidden" id="create-icon" value="0">
+              <fieldset>
+                <legend data-text="themeColor"></legend>
+                <div class="appearance-options" id="create-colors"></div>
+              </fieldset>
+              <fieldset>
+                <legend data-text="icon"></legend>
+                <div class="appearance-options" id="create-icons"></div>
+              </fieldset>
             </div>
           </details>
         </div>
@@ -337,24 +344,18 @@
             maxlength="60"
             autocomplete="off"
         /></label>
-        <div class="appearance-fields">
-          <label
-            ><span data-text="icon"></span
-            ><select id="edit-icon"></select></label
-          ><label
-            ><span data-text="themeColor"></span
-            ><input
-              type="color"
-              id="edit-color" /></label
-          ><span
-            class="appearance-preview"
-            id="edit-preview"
-            ><img
-              id="edit-preview-icon"
-              src="icons/2.svg"
-              alt=""
-          /></span>
-        </div>
+        <div class="appearance-picker" id="edit-appearance">
+              <input type="hidden" id="edit-color" value="#ff3c36">
+              <input type="hidden" id="edit-icon" value="0">
+              <fieldset>
+                <legend data-text="themeColor"></legend>
+                <div class="appearance-options" id="edit-colors"></div>
+              </fieldset>
+              <fieldset>
+                <legend data-text="icon"></legend>
+                <div class="appearance-options" id="edit-icons"></div>
+              </fieldset>
+            </div>
         <details>
           <summary><span data-text="credentials"></span> <span id="credential-saved-state"></span></summary>
           <p class="dialog-intro" data-text="credentialHint"></p>
