@@ -11,6 +11,7 @@
 #if BUILDFLAG(IS_MAC)
 #include "base/feature_list.h"
 #include "brave/browser/ecom/container_password_store.h"
+#include "brave/components/containers/core/browser/pref_names.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "brave/components/containers/core/common/features.h"
 
@@ -41,3 +42,32 @@
 
 #undef ECOM_CONTAINER_PROFILE_PASSWORD_STORE
 #undef ECOM_CONTAINER_ACCOUNT_PASSWORD_STORE
+
+bool ChromePasswordManagerClient::CanAutofillConfiguredContainerLogin(
+    const url::Origin& origin) const {
+#if BUILDFLAG(IS_MAC)
+  auto* profile = GetProfile();
+  if (profile->IsOffTheRecord() ||
+      !base::FeatureList::IsEnabled(containers::features::kContainers)) {
+    return false;
+  }
+  const auto id = containers::GetContainerIdForWebContents(web_contents());
+  if (id.empty()) {
+    return false;
+  }
+  const auto* shop = profile->GetPrefs()
+                         ->GetDict(containers::prefs::kShopContainers)
+                         .FindDict(id);
+  const auto* saved_origin = shop ? shop->FindString("credentialOrigin") : nullptr;
+  if (!saved_origin || origin.Serialize() != *saved_origin ||
+      !shop->FindString("encryptedCredentials")) {
+    return false;
+  }
+  const auto top = GetLastCommittedOrigin();
+  return top == origin ||
+         (*saved_origin == "https://havanalogin.taobao.com" &&
+          top.Serialize() == "https://loginmyseller.taobao.com");
+#else
+  return false;
+#endif
+}
