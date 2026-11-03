@@ -233,6 +233,33 @@
           </details>
           <details class="create-card" id="create-environment">
             <summary data-text="browserEnvironment"></summary>
+            <label for="create-language" data-text="browserLanguage"></label>
+            <select id="create-language">
+              <option value="inherit" data-text="environmentInherit"></option>
+              <option value="zh-CN">简体中文</option>
+              <option value="zh-TW">繁體中文</option>
+              <option value="en-US">English (US)</option>
+              <option value="en-GB">English (UK)</option>
+              <option value="ja-JP">日本語</option>
+              <option value="ko-KR">한국어</option>
+              <option value="de-DE">Deutsch</option>
+              <option value="fr-FR">Français</option>
+            </select>
+            <label for="create-timezone" data-text="browserTimezone"></label>
+            <select id="create-timezone">
+              <option value="inherit" data-text="environmentInherit"></option>
+              <option value="Asia/Shanghai">Asia/Shanghai</option>
+              <option value="Asia/Hong_Kong">Asia/Hong_Kong</option>
+              <option value="Asia/Tokyo">Asia/Tokyo</option>
+              <option value="Asia/Seoul">Asia/Seoul</option>
+              <option value="Asia/Singapore">Asia/Singapore</option>
+              <option value="Europe/London">Europe/London</option>
+              <option value="Europe/Paris">Europe/Paris</option>
+              <option value="America/New_York">America/New_York</option>
+              <option value="America/Los_Angeles">America/Los_Angeles</option>
+              <option value="UTC">UTC</option>
+            </select>
+            <p class="dialog-intro" data-text="localeRestartHint"></p>
             <label for="create-webrtc-policy" data-text="webRtcPolicy"></label>
             <select id="create-webrtc-policy" aria-describedby="create-webrtc-hint">
               <option value="inherit" data-text="webRtcInherit"></option>
@@ -381,6 +408,33 @@
           </details>
           <details class="create-card" id="edit-environment">
             <summary data-text="browserEnvironment"></summary>
+            <label for="edit-language" data-text="browserLanguage"></label>
+            <select id="edit-language">
+              <option value="inherit" data-text="environmentInherit"></option>
+              <option value="zh-CN">简体中文</option>
+              <option value="zh-TW">繁體中文</option>
+              <option value="en-US">English (US)</option>
+              <option value="en-GB">English (UK)</option>
+              <option value="ja-JP">日本語</option>
+              <option value="ko-KR">한국어</option>
+              <option value="de-DE">Deutsch</option>
+              <option value="fr-FR">Français</option>
+            </select>
+            <label for="edit-timezone" data-text="browserTimezone"></label>
+            <select id="edit-timezone">
+              <option value="inherit" data-text="environmentInherit"></option>
+              <option value="Asia/Shanghai">Asia/Shanghai</option>
+              <option value="Asia/Hong_Kong">Asia/Hong_Kong</option>
+              <option value="Asia/Tokyo">Asia/Tokyo</option>
+              <option value="Asia/Seoul">Asia/Seoul</option>
+              <option value="Asia/Singapore">Asia/Singapore</option>
+              <option value="Europe/London">Europe/London</option>
+              <option value="Europe/Paris">Europe/Paris</option>
+              <option value="America/New_York">America/New_York</option>
+              <option value="America/Los_Angeles">America/Los_Angeles</option>
+              <option value="UTC">UTC</option>
+            </select>
+            <p class="dialog-intro" data-text="localeRestartHint"></p>
             <label for="edit-webrtc-policy" data-text="webRtcPolicy"></label>
             <select id="edit-webrtc-policy" aria-describedby="edit-webrtc-hint">
               <option value="inherit" data-text="webRtcInherit"></option>

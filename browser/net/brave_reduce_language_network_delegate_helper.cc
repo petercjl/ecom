@@ -32,6 +32,7 @@
 
 #if BUILDFLAG(ENABLE_CONTAINERS)
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
+#include "brave/components/containers/core/browser/pref_names.h"
 #include "brave/components/containers/core/common/features.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
@@ -121,6 +122,17 @@ int OnBeforeStartTransaction_ReduceLanguageWork(
               content::WebContents::FromRenderFrameHost(rfh)) {
         additional_entropy =
             containers::GetContainerIdForWebContents(web_contents);
+        if (!additional_entropy.empty() && !profile->IsOffTheRecord() &&
+            profile->GetPrefs()->FindPreference(containers::prefs::kShopContainers)) {
+          const auto* shop = profile->GetPrefs()
+                                 ->GetDict(containers::prefs::kShopContainers)
+                                 .FindDict(additional_entropy);
+          const auto* language = shop ? shop->FindString("browserLanguage") : nullptr;
+          if (language && *language != "inherit") {
+            // The container's NetworkContext supplies the selected language.
+            return net::OK;
+          }
+        }
       }
     }
   }

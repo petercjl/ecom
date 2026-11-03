@@ -15,7 +15,7 @@ diff --git a/chrome/browser/ui/prefs/prefs_tab_helper.cc b/chrome/browser/ui/pre
  #include "chrome/browser/renderer_preferences_util.h"
  #include "chrome/browser/ui/prefs/pref_watcher.h"
  #include "chrome/common/chrome_features.h"
-@@ -486,7 +493,26 @@
+@@ -486,7 +493,30 @@
  void PrefsTabHelper::UpdateRendererPreferences() {
    blink::RendererPreferences* prefs =
        GetWebContents().GetMutableRendererPrefs();
@@ -31,6 +31,10 @@ diff --git a/chrome/browser/ui/prefs/prefs_tab_helper.cc b/chrome/browser/ui/pre
 +      profile_prefs->FindPreference(containers::prefs::kShopContainers)) {
 +    const auto* shop =
 +        profile_prefs->GetDict(containers::prefs::kShopContainers).FindDict(id);
++    const auto* language = shop ? shop->FindString("browserLanguage") : nullptr;
++    if (language && *language != "inherit") {
++      prefs->accept_languages = *language;
++    }
 +    const auto* policy = shop ? shop->FindString("webRtcPolicy") : nullptr;
 +    if (policy && *policy == "disable-non-proxied-udp") {
 +      prefs->webrtc_ip_handling_policy =

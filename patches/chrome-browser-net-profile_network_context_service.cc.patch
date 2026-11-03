@@ -1,8 +1,62 @@
 diff --git a/chrome/browser/net/profile_network_context_service.cc b/chrome/browser/net/profile_network_context_service.cc
-index 028fe9924cdbfe586c8a0029ac27d53746f995ff..1d3b26208f7c83f0b57f7d806e4f0da34e01b493 100644
 --- a/chrome/browser/net/profile_network_context_service.cc
 +++ b/chrome/browser/net/profile_network_context_service.cc
-@@ -737,6 +737,7 @@ network::mojom::CTPolicyPtr ProfileNetworkContextService::GetCTPolicy() {
+@@ -3,6 +3,13 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/net/profile_network_context_service.h"
++
++#include "brave/components/containers/buildflags/buildflags.h"
++#if BUILDFLAG(ENABLE_CONTAINERS)
++#include "brave/components/containers/content/browser/storage_partition_utils.h"
++#include "brave/components/containers/core/browser/pref_names.h"
++#include "brave/components/containers/core/common/features.h"
++#endif
+ 
+ #include <memory>
+ #include <string>
+@@ -691,12 +698,39 @@
+   g_browser_process->system_network_context_manager()->DisableQuic();
+ }
+ 
++namespace {
++
++std::string PartitionAcceptLanguage(Profile* profile,
++                                    content::StoragePartition* partition,
++                                    const std::string& fallback) {
++#if BUILDFLAG(ENABLE_CONTAINERS)
++  if (base::FeatureList::IsEnabled(containers::features::kContainers) &&
++      !profile->IsOffTheRecord() &&
++      profile->GetPrefs()->FindPreference(containers::prefs::kShopContainers)) {
++    const auto id =
++        containers::GetContainerIdFromStoragePartitionConfig(partition->GetConfig());
++    if (!id.empty()) {
++      const auto* shop = profile->GetPrefs()
++                             ->GetDict(containers::prefs::kShopContainers)
++                             .FindDict(id);
++      const auto* language = shop ? shop->FindString("browserLanguage") : nullptr;
++      if (language && *language != "inherit") {
++        return ComputeAcceptLanguageFromPref(*language);
++      }
++    }
++  }
++#endif
++  return fallback;
++}
++
++}  // namespace
++
+ void ProfileNetworkContextService::UpdateAcceptLanguage() {
+   const std::string accept_language = ComputeAcceptLanguage();
+   profile_->ForEachLoadedStoragePartition(
+       [&](content::StoragePartition* storage_partition) {
+         storage_partition->GetNetworkContext()->SetAcceptLanguage(
+-            accept_language);
++            PartitionAcceptLanguage(profile_, storage_partition, accept_language));
+       });
+ }
+ 
+@@ -737,6 +771,7 @@
    std::vector<std::string> excluded_spkis(
        TranslateStringArray(ct_excluded_spkis));
  

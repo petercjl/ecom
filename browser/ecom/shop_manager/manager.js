@@ -19,6 +19,10 @@ const zh = {
   browserAppearance: '浏览器外观设置',
   moreSettings: '更多设置',
   containerSummary: '容器预览',
+  browserLanguage: '网页语言',
+  browserTimezone: '时区',
+  environmentInherit: '跟随浏览器环境',
+  localeRestartHint: '保存语言或时区后，请重启 Ecom 以应用完整设置。',
   webRtcPolicy: 'WebRTC 网络策略',
   webRtcInherit: '跟随浏览器',
   webRtcRestricted: '限制非代理 UDP',
@@ -121,6 +125,10 @@ const en = {
   browserAppearance: 'Browser appearance',
   moreSettings: 'More settings',
   containerSummary: 'Container preview',
+  browserLanguage: 'Website language',
+  browserTimezone: 'Time zone',
+  environmentInherit: 'Follow browser environment',
+  localeRestartHint: 'Restart Ecom after saving language or time zone to apply all changes.',
   webRtcPolicy: 'WebRTC network policy',
   webRtcInherit: 'Follow browser',
   webRtcRestricted: 'Restrict non-proxied UDP',
@@ -874,6 +882,8 @@ async function runAction(action, row) {
   if (action === 'edit') {
     editId = row.id
     $('edit-name').value = row.name
+    $('edit-language').value = row.browserLanguage || 'inherit'
+    $('edit-timezone').value = row.browserTimezone || 'inherit'
     $('edit-webrtc-policy').value = row.webRtcPolicy || 'inherit'
     $('edit-platform').value = row.platform || ''
     $('edit-custom-platform-name').value = row.customPlatformName || ''
@@ -1053,6 +1063,8 @@ $('create-form').addEventListener('submit', async (event) => {
     const result = await command({
       method: 'shops.create',
       webRtcPolicy: $('create-webrtc-policy').value,
+      browserLanguage: $('create-language').value,
+      browserTimezone: $('create-timezone').value,
       platform: $('platform').selectedOptions[0]?.dataset.platform,
       name,
       icon: Number($('create-icon').value),
@@ -1168,6 +1180,8 @@ $('edit-form').addEventListener('submit', async (event) => {
       $('edit-color').value,
     )
     if ($('edit-platform').value) request.platform = $('edit-platform').value
+    request.browserLanguage = $('edit-language').value
+    request.browserTimezone = $('edit-timezone').value
     request.webRtcPolicy = $('edit-webrtc-policy').value
     request.homeUrl = normalizeHomeUrl($('edit-home-url').value)
     if (request.platform === 'custom') {

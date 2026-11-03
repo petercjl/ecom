@@ -302,6 +302,16 @@ class ShopService final : public base::SupportsUserData::Data,
       Send(std::move(callback), List());
       return;
     }
+    for (const auto& [key, values] :
+         {std::pair<const char*, std::initializer_list<std::string_view>>{
+              "browserLanguage", {"inherit", "zh-CN", "zh-TW", "en-US", "en-GB", "ja-JP", "ko-KR", "de-DE", "fr-FR"}},
+          {"browserTimezone", {"inherit", "Asia/Shanghai", "Asia/Hong_Kong", "Asia/Tokyo", "Asia/Seoul", "Asia/Singapore", "Europe/London", "Europe/Paris", "America/New_York", "America/Los_Angeles", "UTC"}}}) {
+      if (request.Find(key) &&
+          std::ranges::find(values, Field(request, key)) == values.end()) {
+        Send(std::move(callback), Error("INVALID_BROWSER_ENVIRONMENT"));
+        return;
+      }
+    }
     if (request.Find("webRtcPolicy") &&
         Field(request, "webRtcPolicy") != "inherit" &&
         Field(request, "webRtcPolicy") != "disable-non-proxied-udp") {
@@ -368,7 +378,8 @@ class ShopService final : public base::SupportsUserData::Data,
       }
       if (request.FindString("platform") || request.Find("accountType") ||
           request.Find("homeUrl") || request.Find("customPlatformName") ||
-          request.Find("entryUrl") || request.Find("webRtcPolicy")) {
+          request.Find("entryUrl") || request.Find("webRtcPolicy") ||
+          request.Find("browserLanguage") || request.Find("browserTimezone")) {
         const auto error = UpdateMetadata(id, request);
         if (!error.empty()) {
           Send(std::move(callback), Error(error));
@@ -591,7 +602,8 @@ class ShopService final : public base::SupportsUserData::Data,
     const auto* old = Metadata().FindDict(id);
     auto updated = old ? old->Clone() : base::DictValue();
     for (const char* key : {"platform", "accountType", "customPlatformName",
-                            "entryUrl", "homeUrl", "webRtcPolicy"}) {
+                            "entryUrl", "homeUrl", "webRtcPolicy", "browserLanguage",
+                            "browserTimezone"}) {
       if (const auto* value = request.Find(key)) {
         updated.Set(key, value->Clone());
       }
@@ -647,8 +659,11 @@ class ShopService final : public base::SupportsUserData::Data,
                    .spec());
     }
     item.Set("homeUrl", HomeUrl(request));
-    if (request.FindString("webRtcPolicy")) {
-      item.Set("webRtcPolicy", Field(request, "webRtcPolicy"));
+    for (const char* key :
+         {"webRtcPolicy", "browserLanguage", "browserTimezone"}) {
+      if (const auto* value = request.FindString(key)) {
+        item.Set(key, *value);
+      }
     }
     Store(id, std::move(item));
   }

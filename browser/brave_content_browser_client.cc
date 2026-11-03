@@ -248,6 +248,7 @@ using extensions::ChromeContentBrowserClientExtensionsPart;
 
 #if BUILDFLAG(ENABLE_CONTAINERS)
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
+#include "brave/components/containers/core/browser/pref_names.h"
 #include "brave/components/containers/core/common/features.h"
 #include "brave/components/containers/core/mojom/containers.mojom.h"
 #endif
@@ -1128,6 +1129,26 @@ void BraveContentBrowserClient::AppendExtraCommandLineSwitches(
   std::string process_type =
       command_line->GetSwitchValueASCII(switches::kProcessType);
   if (process_type == switches::kRendererProcess) {
+#if BUILDFLAG(ENABLE_CONTAINERS)
+    if (base::FeatureList::IsEnabled(containers::features::kContainers)) {
+      auto* process = content::RenderProcessHost::FromID(child_process_id);
+      if (process && !process->GetBrowserContext()->IsOffTheRecord()) {
+        const auto id = containers::GetContainerIdFromStoragePartitionConfig(
+            process->GetStoragePartition()->GetConfig());
+        const auto* prefs =
+            Profile::FromBrowserContext(process->GetBrowserContext())->GetPrefs();
+        if (!id.empty() &&
+            prefs->FindPreference(containers::prefs::kShopContainers)) {
+          const auto* shop =
+              prefs->GetDict(containers::prefs::kShopContainers).FindDict(id);
+          const auto* zone = shop ? shop->FindString("browserTimezone") : nullptr;
+          if (zone && *zone != "inherit") {
+            command_line->AppendSwitchASCII("ecom-container-timezone", *zone);
+          }
+        }
+      }
+    }
+#endif
 #if BUILDFLAG(BRAVE_V8_ENABLE_DRUMBRAKE)
     if (base::FeatureList::IsEnabled(features::kBraveWebAssemblyJitless)) {
       content::RenderProcessHost* process =

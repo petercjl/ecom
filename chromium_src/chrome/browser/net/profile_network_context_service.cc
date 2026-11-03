@@ -64,6 +64,16 @@ void ProfileNetworkContextService::ConfigureNetworkContextParams(
       // launches. Expiry, explicit logout and site-data removal remain native.
       network_context_params->persist_session_cookies = true;
       network_context_params->restore_old_session_cookies = true;
+      if (profile_->GetPrefs()->FindPreference(containers::prefs::kShopContainers)) {
+        const auto* shop = profile_->GetPrefs()
+                               ->GetDict(containers::prefs::kShopContainers)
+                               .FindDict(*id);
+        const auto* language = shop ? shop->FindString("browserLanguage") : nullptr;
+        if (language && *language != "inherit") {
+          network_context_params->accept_language =
+              ComputeAcceptLanguageFromPref(*language);
+        }
+      }
       return;
     }
   }
