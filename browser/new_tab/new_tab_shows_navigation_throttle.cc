@@ -8,6 +8,14 @@
 #include <string>
 
 #include "base/functional/bind.h"
+#include "build/build_config.h"
+
+#if BUILDFLAG(IS_MAC)
+#include "base/feature_list.h"
+#include "brave/browser/ecom/shop_container_service.h"
+#include "brave/components/containers/content/browser/storage_partition_utils.h"
+#include "brave/components/containers/core/common/features.h"
+#endif
 #include "base/task/sequenced_task_runner.h"
 #include "brave/browser/new_tab/new_tab_shows_options.h"
 #include "chrome/browser/profiles/profile.h"
@@ -22,7 +30,8 @@ void NewTabShowsNavigationThrottle::MaybeCreateAndAdd(
     content::NavigationThrottleRegistry& registry) {
   auto& navigation_handle = registry.GetNavigationHandle();
   auto* context = navigation_handle.GetWebContents()->GetBrowserContext();
-  if (!Profile::FromBrowserContext(context)->IsRegularProfile() ||
+  if (!navigation_handle.IsInPrimaryMainFrame() ||
+      !Profile::FromBrowserContext(context)->IsRegularProfile() ||
       !NewTabUI::IsNewTab(navigation_handle.GetURL())) {
     return;
   }
@@ -41,16 +50,24 @@ NewTabShowsNavigationThrottle::WillStartRequest() {
   auto* web_contents = navigation_handle()->GetWebContents();
   auto* context = web_contents->GetBrowserContext();
   Profile* profile = Profile::FromBrowserContext(context);
-  if (brave::ShouldUseNewTabURLForNewTab(profile)) {
+  if (!brave::ShouldUseNewTabURLForNewTab(profile)) {
+    new_tab_options_url_ = brave::GetNewTabPageURL(profile);
+  }
+#if BUILDFLAG(IS_MAC)
+  if (new_tab_options_url_.is_empty() &&
+      base::FeatureList::IsEnabled(containers::features::kContainers)) {
+    new_tab_options_url_ = ecom::GetShopHomepage(
+        profile, containers::GetContainerIdForWebContents(web_contents));
+  }
+#endif
+  if (new_tab_options_url_.is_empty()) {
     return content::NavigationThrottle::PROCEED;
   }
-
-  new_tab_options_url_ = brave::GetNewTabPageURL(profile);
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&NewTabShowsNavigationThrottle::LoadNewTabOptionsURL,
                      weak_factory_.GetWeakPtr()));
-  return content::NavigationThrottle::CANCEL;
+  return content::NavigationThrottle::DEFER;
 }
 
 const char* NewTabShowsNavigationThrottle::GetNameForLogging() {

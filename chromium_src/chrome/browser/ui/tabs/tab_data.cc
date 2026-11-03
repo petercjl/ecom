@@ -14,16 +14,13 @@
 #include "brave/components/constants/webui_url_constants.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/common/webui_url_constants.h"
-#include "components/grit/brave_components_scaled_resources.h"
+#include "chrome/grit/theme_resources.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "extensions/buildflags/buildflags.h"
 #include "ui/base/resource/resource_bundle.h"
-#include "ui/color/color_provider.h"
-#include "ui/gfx/color_utils.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -41,18 +38,6 @@ bool IsChromeURLOverridden(const GURL& url, Profile* profile) {
 #else
   return false;
 #endif
-}
-
-// Returns the appropriate favicon for the NTP based on the current theme.
-ui::ImageModel GetThemedNTPFavicon(content::WebContents* contents) {
-  const auto& color_provider = contents->GetColorProvider();
-  const SkColor background_color =
-      color_provider.GetColor(kColorTabBackgroundActiveFrameActive);
-  const bool is_dark = color_utils::IsDark(background_color);
-  const int resource_id =
-      is_dark ? IDR_FAVICON_NTP_DARK : IDR_FAVICON_NTP_LIGHT;
-  return ui::ImageModel::FromImage(
-      ui::ResourceBundle::GetSharedInstance().GetImageNamed(resource_id));
 }
 
 // Returns stored TabData if |tab| is a shared pinned dummy, nullopt otherwise.
@@ -98,7 +83,9 @@ tabs::TabData MaybeApplyBraveTabDataOverrides(tabs::TabInterface* tab,
   if (url.SchemeIs(content::kChromeUIScheme)) {
     if (url.host() == chrome::kChromeUINewTabHost) {
       if (bwi && !IsChromeURLOverridden(url, bwi->GetProfile())) {
-        data.favicon = GetThemedNTPFavicon(contents);
+        data.favicon = ui::ImageModel::FromImage(
+            ui::ResourceBundle::GetSharedInstance().GetImageNamed(
+                IDR_PRODUCT_LOGO_32));
         data.should_themify_favicon = false;
       }
     } else if (url.host() == kWelcomeHost || url.host() == kRewardsPageHost) {

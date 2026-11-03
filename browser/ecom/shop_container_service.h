@@ -6,11 +6,13 @@
 
 #include "base/functional/callback_forward.h"
 
+class GURL;
 class Profile;
 namespace content {
 class WebUIMessageHandler;
 }
 namespace ecom {
+GURL GetShopHomepage(Profile* profile, const std::string& container_id);
 // Both trusted settings UI and authenticated native CLI use this contract.
 void RunShopCommand(Profile* profile,
                     std::string request,

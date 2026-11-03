@@ -516,7 +516,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
 
   registry->RegisterIntegerPref(
       kNewTabPageShowsOptions,
-      static_cast<int>(NewTabPageShowsOptions::kDashboard));
+      static_cast<int>(NewTabPageShowsOptions::kHomepage));
 
 #if BUILDFLAG(ENABLE_CUSTOM_BACKGROUND)
   NTPBackgroundPrefs::RegisterPref(registry);

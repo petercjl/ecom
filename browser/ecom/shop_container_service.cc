@@ -1371,6 +1371,18 @@ class ShopSettingsHandler final : public content::WebUIMessageHandler {
   base::WeakPtrFactory<ShopSettingsHandler> weak_{this};
 };
 }  // namespace
+GURL GetShopHomepage(Profile* profile, const std::string& container_id) {
+  if (!profile->IsRegularProfile() || container_id.empty() ||
+      !profile->GetPrefs()->FindPreference(containers::prefs::kShopContainers)) {
+    return GURL();
+  }
+  const auto* shop = profile->GetPrefs()
+                         ->GetDict(containers::prefs::kShopContainers)
+                         .FindDict(container_id);
+  const auto homepage = shop ? HomeUrl(*shop) : std::string();
+  return SafeEntry(homepage) ? GURL(homepage) : GURL();
+}
+
 void RunShopCommand(Profile* profile, std::string request, Reply callback) {
   if (request.size() > 32768) {
     Send(std::move(callback), Error("INVALID_ARGUMENT"));

@@ -31,32 +31,18 @@ GURL GetNewTabPageURL(Profile* profile) {
 
   auto* prefs = profile->GetPrefs();
 
-  NewTabPageShowsOptions option = static_cast<NewTabPageShowsOptions>(
+  const auto option = static_cast<NewTabPageShowsOptions>(
       prefs->GetInteger(kNewTabPageShowsOptions));
-  if (option == NewTabPageShowsOptions::kHomepage) {
-    if (prefs->GetBoolean(prefs::kHomePageIsNewTabPage)) {
-      return GURL();
-    }
-    return GURL(prefs->GetString(prefs::kHomePage));
-  } else if (option == NewTabPageShowsOptions::kBlankpage) {
-    // NewTab route will handle for blank page.
-    return GURL();
-  } else {
-    DCHECK_EQ(NewTabPageShowsOptions::kDashboard, option);
+  if (option == NewTabPageShowsOptions::kBlankpage ||
+      prefs->GetBoolean(prefs::kHomePageIsNewTabPage)) {
     return GURL();
   }
+  const GURL homepage(prefs->GetString(prefs::kHomePage));
+  return homepage.is_valid() ? homepage : GURL();
 }
 
 base::ListValue GetNewTabShowsOptionsList(Profile* profile) {
   base::ListValue list;
-
-  base::DictValue dashboard_option;
-  dashboard_option.Set("value",
-                       static_cast<int>(NewTabPageShowsOptions::kDashboard));
-  dashboard_option.Set("name",
-                       l10n_util::GetStringUTF8(
-                           IDS_SETTINGS_NEW_TAB_NEW_TAB_PAGE_SHOWS_DASHBOARD));
-  list.Append(std::move(dashboard_option));
 
   base::DictValue homepage_option;
   homepage_option.Set("value",
@@ -83,22 +69,11 @@ bool ShouldUseNewTabURLForNewTab(Profile* profile) {
 }
 
 bool ShouldNewTabShowDashboard(Profile* profile) {
-  auto* prefs = profile->GetPrefs();
-  if (static_cast<NewTabPageShowsOptions>(prefs->GetInteger(
-          kNewTabPageShowsOptions)) == NewTabPageShowsOptions::kBlankpage) {
-    return false;
-  }
-
-  return ShouldUseNewTabURLForNewTab(profile);
+  return false;
 }
 
 bool ShouldNewTabShowBlankpage(Profile* profile) {
-  if (!profile->IsRegularProfile()) {
-    return false;
-  }
-
-  return profile->GetPrefs()->GetInteger(kNewTabPageShowsOptions) ==
-         static_cast<int>(brave::NewTabPageShowsOptions::kBlankpage);
+  return profile->IsRegularProfile();
 }
 
 }  // namespace brave
