@@ -162,17 +162,7 @@ void BravePrivacyHandler::AddLoadTimeData(content::WebUIDataSource* data_source,
       ai_chat::IsAIChatEnabled(profile->GetPrefs()) &&
           ai_chat::features::IsOpenAIChatFromBraveSearchEnabled());
 #endif
-#if BUILDFLAG(IS_BRAVE_ORIGIN_BRANDED)
-  // P3A and usage ping (stats reporting) are disabled for Brave Origin branded
-  // builds. Hide their settings unconditionally so they don't briefly appear on
-  // first launch before the disabling policy is applied (brave-browser#56166).
   data_source->AddBoolean("isStatsReportingEnabledManaged", true);
-#else
-  auto* local_state = g_browser_process->local_state();
-  data_source->AddBoolean(
-      "isStatsReportingEnabledManaged",
-      local_state->IsManagedPreference(kStatsReportingEnabled));
-#endif
   data_source->AddBoolean("isP3AEnabledManaged", true);
 
 #if BUILDFLAG(IS_WIN)

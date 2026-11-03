@@ -106,6 +106,10 @@
       "args": {
         "enable_ai_chat": false,
         "enable_brave_talk": false,
+        "enable_tor": false,
+        "enable_playlist": false,
+        "enable_speedreader": false,
+        "enable_brave_stats_updater": false,
         "enable_brave_news": false,
         "enable_brave_wallet": false,
         "enable_brave_rewards": false,
