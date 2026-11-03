@@ -20,7 +20,9 @@ const zh = {
   credentialUsername: '登录账号',
   credentialPassword: '登录密码',
   credentialSave: '加密保存凭证',
-  credentialSaved: '凭证已保存',
+  credentialSaved: '凭证已保存，账号密码框可留空',
+  credentialEmpty: '尚未保存凭证',
+  credentialHint: '保存后会显示登录站点和保存状态。账号密码框用于录入或更新。',
   INVALID_CREDENTIALS: '请输入登录页地址、账号和密码',
   ENCRYPTION_UNAVAILABLE: '系统加密不可用，凭证未保存',
   workspace: '我的工作空间',
@@ -101,7 +103,9 @@ const en = {
   credentialUsername: 'Username',
   credentialPassword: 'Password',
   credentialSave: 'Save encrypted credentials',
-  credentialSaved: 'Credentials saved',
+  credentialSaved: 'Credentials saved. Leave the fields blank to keep them.',
+  credentialEmpty: 'No credentials saved',
+  credentialHint: 'Saved status and sign-in site are shown here. Use the fields to add or replace credentials.',
   INVALID_CREDENTIALS: 'Enter the sign-in URL, username and password',
   ENCRYPTION_UNAVAILABLE: 'System encryption is unavailable. Credentials were not saved.',
   workspace: 'MY WORKSPACE',
@@ -354,10 +358,11 @@ let platforms = []
 function syncPlatformFields(edit = false) {
   const prefix = edit ? 'edit-' : ''
   const selector = edit ? $('edit-platform') : $('platform')
-  const custom = selector.value === 'custom'
+  const platformId = edit ? selector.value : selector.selectedOptions[0]?.dataset.platform
+  const custom = platformId === 'custom'
   if (!edit)
     $('platform-support-note').textContent =
-      selector.value === 'taobao' ? '' : text('platformPending')
+      platformId === 'taobao' ? '' : text('platformPending')
   $(prefix + 'custom-platform-fields').hidden = !custom
   for (const id of ['custom-platform-name']) {
     $(prefix + id).required = custom
@@ -365,8 +370,8 @@ function syncPlatformFields(edit = false) {
   }
   if (!homeDirty[edit ? 'edit' : 'create']) {
     const base =
-      platforms.find((item) => item.id === selector.value)?.entryUrl || ''
-    const url = base
+      platforms.find((item) => item.id === platformId)?.entryUrl || ''
+    const url = (!edit && homePresets.find((item) => item.id === selector.value)?.url) || base
     setHomeField(prefix, url)
   }
   if (edit)
@@ -425,7 +430,7 @@ async function loadPlatforms() {
   }
   for (const platform of platforms) {
     const label = displayPlatform({ platform: platform.id }, copy === zh)
-    for (const selector of [$('platform'), $('edit-platform')]) {
+    for (const selector of [$('edit-platform')]) {
       const option = node('option', label)
       option.value = platform.id
       selector.append(option)
@@ -441,10 +446,44 @@ async function loadPlatforms() {
     button.append(count)
     $('scopes').append(button)
   }
+  const chinese = copy === zh
+  const groups = [
+    [chinese ? '电商后台' : 'Merchant back offices', [
+      ['sycm', 'taobao', '淘宝生意参谋后台', 'Taobao SYCM'],
+      ['qianniu', 'taobao', '淘宝千牛后台', 'Taobao Qianniu'],
+      ['alimama', 'taobao', '万相台', 'Alimama'],
+      ['pinduoduo', 'pinduoduo', '拼多多商家后台', 'Pinduoduo Merchant'],
+      ['jd', 'jd', '京东商家后台', 'JD Merchant'],
+      ['douyin', 'douyin', '抖店后台', 'Douyin Merchant'],
+      ['xiaohongshu', 'xiaohongshu', '小红书商家后台', 'Xiaohongshu Merchant'],
+    ]],
+    [chinese ? '电商前台' : 'Storefronts', [
+      ['taobao', 'taobao', '淘宝首页', 'Taobao'],
+    ]],
+    [chinese ? '自定义平台' : 'Custom platforms', [
+      ['custom', 'custom', '自定义平台', 'Custom platform'],
+    ]],
+  ]
+  for (const [label, entries] of groups) {
+    const group = node('optgroup')
+    group.label = label
+    for (const [id, platform, zhLabel, enLabel] of entries) {
+      if (!platforms.some((item) => item.id === platform)) continue
+      const option = node('option', chinese ? zhLabel : enLabel)
+      option.value = id
+      option.dataset.platform = platform
+      group.append(option)
+    }
+    if (group.children.length) $('platform').append(group)
+  }
+  $('platform').value = 'qianniu'
   syncPlatformFields()
   syncPlatformFields(true)
 }
-$('platform').addEventListener('change', () => syncPlatformFields())
+$('platform').addEventListener('change', () => {
+  homeDirty.create = false
+  syncPlatformFields()
+})
 $('edit-platform').addEventListener('change', () => syncPlatformFields(true))
 function previewAppearance(prefix) {
   $(prefix + '-preview').style.backgroundColor = $(prefix + '-color').value
@@ -666,11 +705,14 @@ async function runAction(action, row) {
     $('edit-error').textContent = ''
     $('credential-site').value = ''
     $('credential-status').textContent = ''
+    $('credential-saved-state').textContent = ''
     $('edit-dialog').showModal()
     const result = await sendWithPromise('ecomShopCredentials', row.id, '', '', '')
-    if ($('edit-dialog').open && editId === row.id && result.origin) {
-      $('credential-site').value ||= result.origin
-      $('credential-status').textContent = text('credentialSaved')
+    if ($('edit-dialog').open && editId === row.id) {
+      if (result.origin) $('credential-site').value ||= result.origin
+      $('credential-saved-state').textContent = result.origin
+        ? text('credentialSaved') + ' · ' + result.origin
+        : text('credentialEmpty')
     }
     return
   }
@@ -784,7 +826,7 @@ $('create-form').addEventListener('submit', async (event) => {
   try {
     const result = await command({
       method: 'shops.create',
-      platform: $('platform').value,
+      platform: $('platform').selectedOptions[0]?.dataset.platform,
       name,
       icon: Number($('create-icon').value),
       color: $('create-color').value,
@@ -839,28 +881,30 @@ function clearCredentialInputs() {
   $('credential-password').value = ''
 }
 $('edit-dialog').addEventListener('close', clearCredentialInputs)
-$('credential-save').addEventListener('click', async () => {
-  if (busy) return
+async function saveCredentials() {
   const site = $('credential-site').value.trim()
   const username = $('credential-username').value
   const password = $('credential-password').value
-  if (!site || !username || !password) {
-    $('credential-status').textContent = text('INVALID_CREDENTIALS')
-    return
-  }
+  if (!site || !username || !password) throw new Error('INVALID_CREDENTIALS')
+  const result = await sendWithPromise(
+    'ecomShopCredentials',
+    editId,
+    normalizeHomeUrl(site.includes('://') ? site : 'https://' + site),
+    username,
+    password,
+  )
+  if (!result.ok) throw new Error(result.error?.code || 'SHOP_ERROR')
+  clearCredentialInputs()
+  $('credential-site').value = result.origin
+  $('credential-saved-state').textContent = text('credentialSaved') + ' · ' + result.origin
+  $('credential-status').textContent = ''
+}
+
+$('credential-save').addEventListener('click', async () => {
+  if (busy) return
   setBusy(true)
   try {
-    const result = await sendWithPromise(
-      'ecomShopCredentials',
-      editId,
-      normalizeHomeUrl(site.includes('://') ? site : 'https://' + site),
-      username,
-      password,
-    )
-    if (!result.ok) throw new Error(result.error?.code || 'SHOP_ERROR')
-    clearCredentialInputs()
-    $('credential-site').value = result.origin
-    $('credential-status').textContent = text('credentialSaved')
+    await saveCredentials()
   } catch (error) {
     showError(error, 'credential-status')
   } finally {
@@ -885,6 +929,8 @@ $('edit-form').addEventListener('submit', async (event) => {
       request.customPlatformName = $('edit-custom-platform-name').value
       request.entryUrl = request.homeUrl
     }
+    if ($('credential-username').value || $('credential-password').value)
+      await saveCredentials()
     await command(request)
     setBusy(false)
     $('edit-dialog').close()
