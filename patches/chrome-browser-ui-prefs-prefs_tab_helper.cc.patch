@@ -1,0 +1,44 @@
+diff --git a/chrome/browser/ui/prefs/prefs_tab_helper.cc b/chrome/browser/ui/prefs/prefs_tab_helper.cc
+--- a/chrome/browser/ui/prefs/prefs_tab_helper.cc
++++ b/chrome/browser/ui/prefs/prefs_tab_helper.cc
+@@ -24,6 +24,13 @@
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/font_pref_change_notifier_factory.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "base/feature_list.h"
++#include "brave/components/containers/buildflags/buildflags.h"
++#if BUILDFLAG(ENABLE_CONTAINERS)
++#include "brave/components/containers/content/browser/storage_partition_utils.h"
++#include "brave/components/containers/core/browser/pref_names.h"
++#include "brave/components/containers/core/common/features.h"
++#endif
+ #include "chrome/browser/renderer_preferences_util.h"
+ #include "chrome/browser/ui/prefs/pref_watcher.h"
+ #include "chrome/common/chrome_features.h"
+@@ -486,7 +493,26 @@
+ void PrefsTabHelper::UpdateRendererPreferences() {
+   blink::RendererPreferences* prefs =
+       GetWebContents().GetMutableRendererPrefs();
++  prefs->webrtc_ip_handling_urls.clear();
+   renderer_preferences_util::UpdateFromSystemSettings(prefs, profile_);
++#if BUILDFLAG(ENABLE_CONTAINERS)
++  const auto id =
++      base::FeatureList::IsEnabled(containers::features::kContainers)
++          ? containers::GetContainerIdForWebContents(&GetWebContents())
++          : std::string();
++  const auto* profile_prefs = profile_->GetPrefs();
++  if (!id.empty() &&
++      profile_prefs->FindPreference(containers::prefs::kShopContainers)) {
++    const auto* shop =
++        profile_prefs->GetDict(containers::prefs::kShopContainers).FindDict(id);
++    const auto* policy = shop ? shop->FindString("webRtcPolicy") : nullptr;
++    if (policy && *policy == "disable-non-proxied-udp") {
++      prefs->webrtc_ip_handling_policy =
++          blink::mojom::WebRtcIpHandlingPolicy::kDisableNonProxiedUdp;
++      prefs->webrtc_ip_handling_urls.clear();
++    }
++  }
++#endif
+   GetWebContents().SyncRendererPrefs();
+ }
+ 

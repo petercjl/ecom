@@ -302,6 +302,12 @@ class ShopService final : public base::SupportsUserData::Data,
       Send(std::move(callback), List());
       return;
     }
+    if (request.Find("webRtcPolicy") &&
+        Field(request, "webRtcPolicy") != "inherit" &&
+        Field(request, "webRtcPolicy") != "disable-non-proxied-udp") {
+      Send(std::move(callback), Error("INVALID_WEBRTC_POLICY"));
+      return;
+    }
     if (method == "shops.create") {
       auto name = Field(request, "name");
       base::TrimWhitespaceASCII(name, base::TRIM_ALL, &name);
@@ -362,7 +368,7 @@ class ShopService final : public base::SupportsUserData::Data,
       }
       if (request.FindString("platform") || request.Find("accountType") ||
           request.Find("homeUrl") || request.Find("customPlatformName") ||
-          request.Find("entryUrl")) {
+          request.Find("entryUrl") || request.Find("webRtcPolicy")) {
         const auto error = UpdateMetadata(id, request);
         if (!error.empty()) {
           Send(std::move(callback), Error(error));
@@ -585,7 +591,7 @@ class ShopService final : public base::SupportsUserData::Data,
     const auto* old = Metadata().FindDict(id);
     auto updated = old ? old->Clone() : base::DictValue();
     for (const char* key : {"platform", "accountType", "customPlatformName",
-                            "entryUrl", "homeUrl"}) {
+                            "entryUrl", "homeUrl", "webRtcPolicy"}) {
       if (const auto* value = request.Find(key)) {
         updated.Set(key, value->Clone());
       }
@@ -641,6 +647,9 @@ class ShopService final : public base::SupportsUserData::Data,
                    .spec());
     }
     item.Set("homeUrl", HomeUrl(request));
+    if (request.FindString("webRtcPolicy")) {
+      item.Set("webRtcPolicy", Field(request, "webRtcPolicy"));
+    }
     Store(id, std::move(item));
   }
   base::DictValue List() {

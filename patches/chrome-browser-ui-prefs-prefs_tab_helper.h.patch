@@ -1,0 +1,23 @@
+diff --git a/chrome/browser/ui/prefs/prefs_tab_helper.h b/chrome/browser/ui/prefs/prefs_tab_helper.h
+--- a/chrome/browser/ui/prefs/prefs_tab_helper.h
++++ b/chrome/browser/ui/prefs/prefs_tab_helper.h
+@@ -39,6 +39,9 @@
+                                    const std::string& locale);
+   static void GetServiceInstance();
+ 
++  // Update the WebContents's blink::RendererPreferences.
++  void UpdateRendererPreferences();
++
+  protected:
+   // Update the RenderView's WebPreferences. Exposed as protected for testing.
+   virtual void UpdateWebPreferences();
+@@ -50,9 +53,6 @@
+ 
+   // ThemeServiceObserver overrides:
+   void OnThemeChanged() override;
+-
+-  // Update the WebContents's blink::RendererPreferences.
+-  void UpdateRendererPreferences();
+ 
+   void OnFontFamilyPrefChanged(const std::string& pref_name);
+   void OnWebPrefChanged(const std::string& pref_name);

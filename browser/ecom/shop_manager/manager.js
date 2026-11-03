@@ -19,6 +19,10 @@ const zh = {
   browserAppearance: '浏览器外观设置',
   moreSettings: '更多设置',
   containerSummary: '容器预览',
+  webRtcPolicy: 'WebRTC 网络策略',
+  webRtcInherit: '跟随浏览器',
+  webRtcRestricted: '限制非代理 UDP',
+  webRtcHint: '仅作用于此容器。保存后重新打开容器标签页即可应用，部分实时通话可能受影响。',
   containerEnvironmentHint: '每个账号使用独立的容器会话和密码库。',
   back: '返回',
   accountInfo: '账号信息',
@@ -117,6 +121,10 @@ const en = {
   browserAppearance: 'Browser appearance',
   moreSettings: 'More settings',
   containerSummary: 'Container preview',
+  webRtcPolicy: 'WebRTC network policy',
+  webRtcInherit: 'Follow browser',
+  webRtcRestricted: 'Restrict non-proxied UDP',
+  webRtcHint: 'Applies to this container. Reopen its tabs after saving. Some real-time calls may be affected.',
   containerEnvironmentHint: 'Each account uses a separate container session and password store.',
   back: 'Back',
   accountInfo: 'Account information',
@@ -866,6 +874,7 @@ async function runAction(action, row) {
   if (action === 'edit') {
     editId = row.id
     $('edit-name').value = row.name
+    $('edit-webrtc-policy').value = row.webRtcPolicy || 'inherit'
     $('edit-platform').value = row.platform || ''
     $('edit-custom-platform-name').value = row.customPlatformName || ''
     homeDirty.edit = Boolean(row.homeUrl)
@@ -1043,6 +1052,7 @@ $('create-form').addEventListener('submit', async (event) => {
     }
     const result = await command({
       method: 'shops.create',
+      webRtcPolicy: $('create-webrtc-policy').value,
       platform: $('platform').selectedOptions[0]?.dataset.platform,
       name,
       icon: Number($('create-icon').value),
@@ -1158,6 +1168,7 @@ $('edit-form').addEventListener('submit', async (event) => {
       $('edit-color').value,
     )
     if ($('edit-platform').value) request.platform = $('edit-platform').value
+    request.webRtcPolicy = $('edit-webrtc-policy').value
     request.homeUrl = normalizeHomeUrl($('edit-home-url').value)
     if (request.platform === 'custom') {
       request.customPlatformName = $('edit-custom-platform-name').value

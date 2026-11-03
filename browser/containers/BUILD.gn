@@ -26,6 +26,7 @@ source_set("containers") {
     "//brave/components/containers/core/browser",
     "//brave/components/containers/core/common",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/ui/prefs",
     "//chrome/browser/ui/tab_contents",
     "//chrome/browser/ui/tabs",
     "//chrome/common",

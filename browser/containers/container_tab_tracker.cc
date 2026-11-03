@@ -11,6 +11,7 @@
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "brave/components/containers/core/browser/containers_service.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/prefs/prefs_tab_helper.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
@@ -47,17 +48,21 @@ void ContainerTabTracker::OnDiscardContents(
 
 void ContainerTabTracker::DidStartNavigation(
     content::NavigationHandle* navigation_handle) {
-  if (tracked_) {
-    return;
-  }
   if (!navigation_handle->IsInPrimaryMainFrame()) {
     return;
   }
 
+  auto* contents = navigation_handle->GetWebContents();
+  const std::string container_id = GetContainerIdForWebContents(contents);
+  if (!container_id.empty()) {
+    if (auto* prefs = PrefsTabHelper::FromWebContents(contents)) {
+      prefs->UpdateRendererPreferences();
+    }
+  }
+  if (tracked_) {
+    return;
+  }
   tracked_ = true;
-
-  const std::string container_id =
-      GetContainerIdForWebContents(navigation_handle->GetWebContents());
   if (container_id.empty()) {
     return;
   }
