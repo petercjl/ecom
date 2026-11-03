@@ -8,6 +8,9 @@
 #include <optional>
 
 #include "base/check_is_test.h"
+#include "base/feature_list.h"
+#include "brave/components/containers/content/browser/storage_partition_utils.h"
+#include "brave/components/containers/core/common/features.h"
 #include "base/memory/ptr_util.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/email_aliases/buildflags/buildflags.h"
@@ -89,6 +92,10 @@ class BraveChromeAutofillClient : public ChromeAutofillClient {
   }
 
   bool IsAutocompleteEnabled() const override {
+    if (base::FeatureList::IsEnabled(containers::features::kContainers) &&
+        !containers::GetContainerIdForWebContents(web_contents()).empty()) {
+      return false;
+    }
     auto enabled = ChromeAutofillClient::IsAutocompleteEnabled();
     if (!IsPrivateProfile(web_contents())) {
       return enabled;

@@ -1,0 +1,23 @@
+diff --git a/components/autofill/core/browser/foundations/browser_autofill_manager.cc b/components/autofill/core/browser/foundations/browser_autofill_manager.cc
+--- a/components/autofill/core/browser/foundations/browser_autofill_manager.cc
++++ b/components/autofill/core/browser/foundations/browser_autofill_manager.cc
+@@ -632,7 +632,9 @@
+         client.GetPaymentsAutofillClient()->IsAutofillPaymentMethodsEnabled(),
+         ukm_source_id);
+   }
+-  client.GetSingleFieldFillRouter().OnWillSubmitForm(form.ToFormData(), &form);
++  if (client.IsAutocompleteEnabled()) {
++    client.GetSingleFieldFillRouter().OnWillSubmitForm(form.ToFormData(), &form);
++  }
+ }
+ 
+ // Generates a compose suggestion for the given `form` and `field` if conditions
+@@ -959,7 +961,7 @@
+ 
+   if (!submitted_form) {
+     // We always give Autocomplete a chance to save the data.
+-    if (!client().IsOffTheRecord()) {
++    if (!client().IsOffTheRecord() && client().IsAutocompleteEnabled()) {
+       client().GetSingleFieldFillRouter().OnWillSubmitForm(form, nullptr);
+     }
+     return;
