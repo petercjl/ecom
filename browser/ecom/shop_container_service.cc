@@ -367,6 +367,89 @@ class ShopService final : public base::SupportsUserData::Data,
       Send(std::move(callback), Error("CONTAINER_NOT_FOUND"));
       return;
     }
+    if (method == "shops.submit-login") {
+      const auto* shop = Metadata().FindDict(id);
+      const auto* saved_origin = shop ? shop->FindString("credentialOrigin") : nullptr;
+      if (!shop || Field(*shop, "platform") != "taobao" ||
+          !saved_origin || *saved_origin != "https://havanalogin.taobao.com" ||
+          !shop->FindString("encryptedCredentials")) {
+        Send(std::move(callback), Error("SUPPORTED_LOGIN_CREDENTIAL_REQUIRED"));
+        return;
+      }
+      content::RenderFrameHost* target = nullptr;
+      size_t matches = 0;
+      ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+          [&](BrowserWindowInterface* browser) {
+            if (browser->GetProfile() != profile_) {
+              return true;
+            }
+            auto* tabs = browser->GetTabStripModel();
+            auto* contents = tabs ? tabs->GetActiveWebContents() : nullptr;
+            if (!contents || contents->IsLoading() ||
+                contents->GetPrimaryMainFrame()->GetLastCommittedOrigin().Serialize() !=
+                    "https://loginmyseller.taobao.com" ||
+                containers::GetContainerIdForWebContents(contents) != id) {
+              return true;
+            }
+            auto* main = contents->GetPrimaryMainFrame();
+            main->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
+              if (frame->GetParent() == main && frame->IsRenderFrameLive() &&
+                  frame->GetLastCommittedOrigin().Serialize() == *saved_origin &&
+                  frame->GetLastCommittedURL().path() == "/mini_login.htm") {
+                target = frame;
+                ++matches;
+              }
+            });
+            return true;
+          });
+      if (matches != 1) {
+        Send(std::move(callback), Error("UNIQUE_QIANNIU_LOGIN_FORM_REQUIRED"));
+        return;
+      }
+      target->ExecuteJavaScriptInIsolatedWorld(
+          uR"JS((() => {
+            if (location.origin !== 'https://havanalogin.taobao.com' ||
+                location.pathname !== '/mini_login.htm')
+              return 'wrong-page';
+            const visible = element => element && element.getClientRects().length &&
+                getComputedStyle(element).visibility === 'visible';
+            if ([...document.querySelectorAll(
+                '[id^="nocaptcha"], .nc-container, iframe[src*="captcha"], input[autocomplete="one-time-code"]'
+              )].some(visible))
+              return 'manual-verification-required';
+            const username = document.querySelector('#fm-login-id');
+            const password = document.querySelector('#fm-login-password[type=password]');
+            const form = username?.form;
+            if (!form || password?.form !== form ||
+                !visible(username) || !visible(password))
+              return 'password-form-unavailable';
+            const buttons = [...form.querySelectorAll('button[type=submit]')]
+                .filter(button => visible(button) && !button.disabled);
+            if (buttons.length !== 1)
+              return 'password-form-unavailable';
+            if (!username.value || !password.value)
+              return 'credentials-not-filled';
+            if (globalThis.ecomLoginSubmitted)
+              return 'already-submitted';
+            globalThis.ecomLoginSubmitted = true;
+            buttons[0].click();
+            return 'clicked';
+          })())JS",
+          base::BindOnce(
+              [](Reply reply, std::string container_id, base::Value result) {
+                if (!result.is_string()) {
+                  Send(std::move(reply), Error("LOGIN_OUTCOME_UNKNOWN"));
+                  return;
+                }
+                Send(std::move(reply), base::DictValue()
+                          .Set("ok", true)
+                          .Set("containerId", container_id)
+                          .Set("status", result.GetString()));
+              },
+              std::move(callback), id),
+          ISOLATED_WORLD_ID_BRAVE_INTERNAL);
+      return;
+    }
     if (method == "shops.submit-login-fixture") {
       content::WebContents* target = nullptr;
       ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
