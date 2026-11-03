@@ -585,6 +585,8 @@ function buildPlatformPicker() {
   const groups = [...select.children]
   const categories = $('platform-category')
   const options = $('platform-options')
+  categories.setAttribute('aria-label', text('platformCategory'))
+  options.setAttribute('aria-label', text('platform'))
   function show(group, active) {
     for (const item of categories.children)
       item.setAttribute('aria-pressed', String(item === active))
@@ -941,7 +943,7 @@ $('create-form').addEventListener('submit', async (event) => {
     const option = $('platform').selectedOptions[0]
     const custom = !$('custom-platform-fields').hidden
     const loginSites = {
-      qianniu: 'https://havanlogin.taobao.com/',
+      qianniu: 'https://havanalogin.taobao.com/',
       sycm: 'https://login.taobao.com/',
       taobao: 'https://login.taobao.com/',
       tmall: 'https://login.taobao.com/',
