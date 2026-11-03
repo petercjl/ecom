@@ -161,123 +161,64 @@
       aria-labelledby="create-title"
     >
       <form id="create-form">
-        <div class="dialog-heading">
-          <div>
-            <div
-              class="eyebrow"
-              data-text="newAccount"
-            ></div>
-            <h2
-              id="create-title"
-              data-text="add"
-            ></h2>
+        <header class="create-header">
+          <button type="button" data-close="create-dialog" data-text="back"></button>
+          <h2 id="create-title" data-text="add"></h2>
+        </header>
+        <div class="create-body">
+          <section class="create-card" aria-labelledby="create-info-title">
+            <h3 id="create-info-title" data-text="accountInfo"></h3>
+            <p class="dialog-intro" data-text="createHint"></p>
+            <div class="create-platform-row">
+              <label><span data-text="platformCategory"></span>
+                <select id="platform-category"></select>
+              </label>
+              <label><span data-text="platform"></span>
+                <select id="platform" required></select>
+              </label>
+            </div>
+            <p id="platform-support-note" class="dialog-intro"></p>
+            <div id="custom-platform-fields" hidden>
+              <label><span data-text="customPlatformName"></span>
+                <input id="custom-platform-name" maxlength="40" autocomplete="off">
+              </label>
+            </div>
+            <label><span data-text="shopName"></span>
+              <input id="shop-name" maxlength="60" required autocomplete="off" data-placeholder="namePlaceholder">
+            </label>
+            <label><span data-text="credentialUsername"></span>
+              <input id="create-credential-username" maxlength="256" autocomplete="off">
+            </label>
+            <label><span data-text="credentialPassword"></span>
+              <input id="create-credential-password" type="password" maxlength="1024" autocomplete="new-password">
+            </label>
+            <label><span data-text="credentialSite"></span>
+              <input id="create-credential-site" inputmode="url" maxlength="2048" autocomplete="off" placeholder="login.taobao.com">
+            </label>
+            <p class="dialog-intro" data-text="createCredentialHint"></p>
+            <div class="homepage-fields">
+              <label><span data-text="homePreset"></span><select id="home-preset"></select></label>
+              <label><span data-text="homeUrl"></span>
+                <input id="home-url" type="url" required placeholder="https://" autocomplete="off">
+              </label>
+            </div>
+          </section>
+          <details class="create-card">
+            <summary data-text="appearance"></summary>
+            <div class="appearance-fields">
+              <label><span data-text="icon"></span><select id="create-icon"></select></label>
+              <label><span data-text="themeColor"></span><input type="color" id="create-color" value="#007f83"></label>
+              <span class="appearance-preview" id="create-preview"><img id="create-preview-icon" src="icons/2.svg" alt=""></span>
+            </div>
+          </details>
+        </div>
+        <footer class="create-footer">
+          <p id="create-error" class="error" role="alert"></p>
+          <div class="dialog-actions">
+            <button type="button" data-close="create-dialog" data-text="cancel"></button>
+            <button type="submit" class="primary" data-text="confirm"></button>
           </div>
-          <button
-            type="button"
-            class="close"
-            data-close="create-dialog"
-            aria-label="关闭"
-          >
-            ×
-          </button>
-        </div>
-        <p
-          class="dialog-intro"
-          data-text="createHint"
-        ></p>
-        <label
-          ><span data-text="platform"></span
-          ><select
-            id="platform"
-            required
-          ></select
-        ></label>
-        <p
-          id="platform-support-note"
-          class="dialog-intro"
-        ></p>
-        <div
-          id="custom-platform-fields"
-          hidden
-        >
-          <label
-            ><span data-text="customPlatformName"></span
-            ><input
-              id="custom-platform-name"
-              maxlength="40"
-              autocomplete="off"
-          /></label>
-        </div>
-        <div class="homepage-fields">
-          <label
-            ><span data-text="homePreset"></span
-            ><select id="home-preset"></select></label
-          ><label
-            ><span data-text="homeUrl"></span
-            ><input
-              id="home-url"
-              type="url"
-              required
-              placeholder="https://"
-              autocomplete="off"
-          /></label>
-          <p
-            class="dialog-intro"
-            data-text="homeHint"
-          ></p>
-        </div>
-        <label
-          ><span data-text="shopName"></span
-          ><input
-            id="shop-name"
-            maxlength="60"
-            required
-            autocomplete="off"
-            data-placeholder="namePlaceholder"
-        /></label>
-        <div class="appearance-fields">
-          <label
-            ><span data-text="icon"></span
-            ><select id="create-icon"></select
-          ></label>
-          <label
-            ><span data-text="themeColor"></span
-            ><input
-              type="color"
-              id="create-color"
-              value="#007f83"
-          /></label>
-          <span
-            class="appearance-preview"
-            id="create-preview"
-            ><img
-              id="create-preview-icon"
-              src="icons/2.svg"
-              alt=""
-          /></span>
-        </div>
-        <div class="steps">
-          <span>1 <b data-text="stepCreate"></b></span
-          ><span>2 <b data-text="stepLogin"></b></span
-          ><span>3 <b data-text="stepVerify"></b></span>
-        </div>
-        <p
-          id="create-error"
-          class="error"
-          role="alert"
-        ></p>
-        <div class="dialog-actions">
-          <button
-            type="button"
-            data-close="create-dialog"
-            data-text="cancel"
-          ></button
-          ><button
-            type="submit"
-            class="primary"
-            data-text="createLogin"
-          ></button>
-        </div>
+        </footer>
       </form>
     </dialog>
     <dialog

@@ -697,3 +697,64 @@ button.danger {
   text-align: left;
   border: 0;
 }
+
+
+#create-dialog {
+  box-sizing: border-box;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+#create-form {
+  display: grid;
+  height: 100%;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.create-header, .create-footer {
+  padding: 12px clamp(16px, 4vw, 56px);
+  background: var(--panel);
+}
+.create-header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+.create-header h2 {
+  margin: 0;
+}
+.create-body {
+  overflow: auto;
+  padding: 16px clamp(16px, 4vw, 56px);
+}
+.create-card {
+  max-width: 850px;
+  margin: 0 auto 12px;
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.create-card h3 {
+  margin: 0;
+}
+.create-card summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.create-platform-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 12px;
+}
+.create-footer {
+  border-top: 1px solid var(--line);
+}
+.create-footer .dialog-actions {
+  margin: 0;
+}

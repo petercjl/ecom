@@ -15,6 +15,12 @@ import {
 } from './model.js'
 
 const zh = {
+  back: '返回',
+  accountInfo: '账号信息',
+  platformCategory: '平台分类',
+  allPlatforms: '全部平台',
+  appearance: '容器外观',
+  createCredentialHint: '账号密码选填。填写凭证时，请同时填写实际登录站点。',
   credentials: '登录账号密码',
   credentialSite: '实际登录页 HTTPS 地址',
   credentialUsername: '登录账号',
@@ -100,6 +106,12 @@ const zh = {
   BUSY: '该容器正在核验，请等待完成。',
 }
 const en = {
+  back: 'Back',
+  accountInfo: 'Account information',
+  platformCategory: 'Platform category',
+  allPlatforms: 'All platforms',
+  appearance: 'Container appearance',
+  createCredentialHint: 'Credentials are optional. Enter the actual sign-in site when adding credentials.',
   credentials: 'Login credentials',
   credentialSite: 'HTTPS sign-in page URL',
   credentialUsername: 'Username',
@@ -532,6 +544,10 @@ async function loadPlatforms() {
       ['custom', 'custom', '自定义平台', 'Custom platform'],
     ]],
   ]
+  const categories = $('platform-category')
+  const all = node('option', text('allPlatforms'))
+  all.value = ''
+  categories.replaceChildren(all)
   for (const [label, entries] of groups) {
     const group = node('optgroup')
     group.label = label
@@ -544,7 +560,12 @@ async function loadPlatforms() {
       if (platform === 'custom' && id !== 'custom') option.dataset.platformName = option.textContent
       group.append(option)
     }
-    if (group.children.length) $('platform').append(group)
+    if (group.children.length) {
+      $('platform').append(group)
+      const option = node('option', label)
+      option.value = label
+      categories.append(option)
+    }
   }
   $('platform').value = 'qianniu'
   syncPlatformFields()
@@ -554,6 +575,18 @@ $('platform').addEventListener('change', () => {
   homeDirty.create = false
   $('custom-platform-name').value = $('platform').selectedOptions[0]?.dataset.platformName || ''
   syncPlatformFields()
+})
+$('platform-category').addEventListener('change', () => {
+  const select = $('platform')
+  const category = $('platform-category').value
+  for (const group of select.children) {
+    group.hidden = Boolean(category && group.label !== category)
+    group.disabled = group.hidden
+  }
+  if (select.selectedOptions[0]?.parentElement.disabled) {
+    select.value = [...select.children].find((group) => !group.disabled)?.firstElementChild.value || ''
+    select.dispatchEvent(new Event('change'))
+  }
 })
 $('edit-platform').addEventListener('change', () => syncPlatformFields(true))
 function previewAppearance(prefix) {
@@ -847,7 +880,7 @@ $('add').addEventListener('click', () => {
   if (busy) return
   $('create-error').textContent = ''
   $('create-dialog').showModal()
-  $('shop-name').focus()
+  $('platform-category').focus()
 })
 document.querySelectorAll('[data-close]').forEach((control) =>
   control.addEventListener('click', () => {
@@ -859,6 +892,10 @@ document.querySelectorAll('dialog').forEach((dialog) =>
     if (busy) event.preventDefault()
   }),
 )
+$('create-dialog').addEventListener('close', () => {
+  for (const field of ['site', 'username', 'password'])
+    $('create-credential-' + field).value = ''
+})
 $('create-form').addEventListener('submit', async (event) => {
   event.preventDefault()
   if (busy) return
@@ -867,7 +904,19 @@ $('create-form').addEventListener('submit', async (event) => {
   setBusy(true)
   $('create-error').textContent = ''
   let created
+  let credentials
   try {
+    const username = $('create-credential-username').value
+    const password = $('create-credential-password').value
+    const site = $('create-credential-site').value.trim()
+    if (username || password || site) {
+      if (!username || !password || !site) throw new Error('INVALID_CREDENTIALS')
+      credentials = {
+        site: normalizeHomeUrl(site.includes('://') ? site : 'https://' + site),
+        username,
+        password,
+      }
+    }
     const result = await command({
       method: 'shops.create',
       platform: $('platform').selectedOptions[0]?.dataset.platform,
@@ -880,6 +929,8 @@ $('create-form').addEventListener('submit', async (event) => {
     })
     created = result.shops.find((row) => row.id === result.createdContainerId)
     if (!created) throw new Error('CONTAINER_NOT_FOUND')
+    if (credentials)
+      await writeCredentials(created.id, credentials.site, credentials.username, credentials.password)
     render()
     $('shop-name').value = ''
     $('create-dialog').close()
@@ -887,7 +938,19 @@ $('create-form').addEventListener('submit', async (event) => {
     setBusy(false)
   } catch (error) {
     setBusy(false)
-    showError(error, created ? 'message' : 'create-error')
+    if (created && $('create-dialog').open) {
+      $('create-dialog').close()
+      $('shop-name').value = ''
+      await runAction('edit', created)
+      if (credentials) {
+        $('credential-site').value = credentials.site
+        $('credential-username').value = credentials.username
+        $('credential-password').value = credentials.password
+      }
+      showError(error, 'edit-error')
+    } else {
+      showError(error, created ? 'message' : 'create-error')
+    }
   }
   render()
 })
@@ -925,19 +988,21 @@ function clearCredentialInputs() {
   $('credential-password').value = ''
 }
 $('edit-dialog').addEventListener('close', clearCredentialInputs)
+async function writeCredentials(id, site, username, password) {
+  const result = await sendWithPromise('ecomShopCredentials', id, site, username, password)
+  if (!result.ok) throw new Error(result.error?.code || 'SHOP_ERROR')
+  return result
+}
+
 async function saveCredentials() {
   const site = $('credential-site').value.trim()
   const username = $('credential-username').value
   const password = $('credential-password').value
   if (!site || !username || !password) throw new Error('INVALID_CREDENTIALS')
-  const result = await sendWithPromise(
-    'ecomShopCredentials',
-    editId,
-    normalizeHomeUrl(site.includes('://') ? site : 'https://' + site),
-    username,
-    password,
+  const result = await writeCredentials(
+    editId, normalizeHomeUrl(site.includes('://') ? site : 'https://' + site),
+    username, password,
   )
-  if (!result.ok) throw new Error(result.error?.code || 'SHOP_ERROR')
   clearCredentialInputs()
   $('credential-site').value = result.origin
   $('credential-saved-state').textContent = text('credentialSaved') + ' · ' + result.origin
