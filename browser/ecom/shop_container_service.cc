@@ -413,78 +413,14 @@ class ShopService final : public base::SupportsUserData::Data,
         Send(std::move(callback), Error("SUPPORTED_LOGIN_CREDENTIAL_REQUIRED"));
         return;
       }
-      content::RenderFrameHost* target = nullptr;
-      size_t matches = 0;
-      ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
-          [&](BrowserWindowInterface* browser) {
-            if (browser->GetProfile() != profile_) {
-              return true;
-            }
-            auto* tabs = browser->GetTabStripModel();
-            auto* contents = tabs ? tabs->GetActiveWebContents() : nullptr;
-            if (!contents || contents->IsLoading() ||
-                contents->GetPrimaryMainFrame()->GetLastCommittedOrigin().Serialize() !=
-                    "https://loginmyseller.taobao.com" ||
-                containers::GetContainerIdForWebContents(contents) != id) {
-              return true;
-            }
-            auto* main = contents->GetPrimaryMainFrame();
-            main->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
-              if (frame->GetParent() == main && frame->IsRenderFrameLive() &&
-                  frame->GetLastCommittedOrigin().Serialize() == *saved_origin &&
-                  frame->GetLastCommittedURL().path() == "/mini_login.htm") {
-                target = frame;
-                ++matches;
-              }
-            });
-            return true;
-          });
-      if (matches != 1) {
-        Send(std::move(callback), Error("UNIQUE_QIANNIU_LOGIN_FORM_REQUIRED"));
+      auto* crypto = g_browser_process->os_crypt_async();
+      if (!crypto) {
+        Send(std::move(callback), Error("ENCRYPTION_UNAVAILABLE"));
         return;
       }
-      target->ExecuteJavaScriptInIsolatedWorld(
-          uR"JS((() => {
-            if (location.origin !== 'https://havanalogin.taobao.com' ||
-                location.pathname !== '/mini_login.htm')
-              return 'wrong-page';
-            const visible = element => element && element.getClientRects().length &&
-                getComputedStyle(element).visibility === 'visible';
-            if ([...document.querySelectorAll(
-                '[id^="nocaptcha"], .nc-container, iframe[src*="captcha"], input[autocomplete="one-time-code"]'
-              )].some(visible))
-              return 'manual-verification-required';
-            const username = document.querySelector('#fm-login-id');
-            const password = document.querySelector('#fm-login-password[type=password]');
-            const form = username?.form;
-            if (!form || password?.form !== form ||
-                !visible(username) || !visible(password))
-              return 'password-form-unavailable';
-            const buttons = [...form.querySelectorAll('button[type=submit]')]
-                .filter(button => visible(button) && !button.disabled);
-            if (buttons.length !== 1)
-              return 'password-form-unavailable';
-            if (!username.value || !password.value)
-              return 'credentials-not-filled';
-            if (globalThis.ecomLoginSubmitted)
-              return 'already-submitted';
-            globalThis.ecomLoginSubmitted = true;
-            buttons[0].click();
-            return 'clicked';
-          })())JS",
-          base::BindOnce(
-              [](Reply reply, std::string container_id, base::Value result) {
-                if (!result.is_string()) {
-                  Send(std::move(reply), Error("LOGIN_OUTCOME_UNKNOWN"));
-                  return;
-                }
-                Send(std::move(reply), base::DictValue()
-                          .Set("ok", true)
-                          .Set("containerId", container_id)
-                          .Set("status", result.GetString()));
-              },
-              std::move(callback), id),
-          ISOLATED_WORLD_ID_BRAVE_INTERNAL);
+      crypto->GetInstance(base::BindOnce(
+          &ShopService::SubmitQianniuLogin, weak_.GetWeakPtr(), id,
+          *shop->FindString("encryptedCredentials"), std::move(callback)));
       return;
     }
     if (method == "shops.submit-login-fixture") {
@@ -775,6 +711,128 @@ class ShopService final : public base::SupportsUserData::Data,
   }
 
  private:
+  void SubmitQianniuLogin(
+      std::string id,
+      std::string encrypted,
+      Reply callback,
+      scoped_refptr<os_crypt_async::Encryptor> encryptor) {
+    const auto* shop = Metadata().FindDict(id);
+    const auto* saved_origin = shop ? shop->FindString("credentialOrigin") : nullptr;
+    const auto* current = shop ? shop->FindString("encryptedCredentials") : nullptr;
+    std::string ciphertext;
+    std::string plaintext;
+    if (!current || *current != encrypted || !saved_origin ||
+        *saved_origin != "https://havanalogin.taobao.com" ||
+        Field(*shop, "platform") != "taobao" || !encryptor ||
+        !base::Base64Decode(encrypted, &ciphertext) ||
+        !encryptor->DecryptString(ciphertext, &plaintext)) {
+      Send(std::move(callback), Error("SUPPORTED_LOGIN_CREDENTIAL_REQUIRED"));
+      return;
+    }
+    const auto data = base::JSONReader::ReadDict(plaintext, base::JSON_PARSE_RFC);
+    const auto* username = data ? data->FindString("username") : nullptr;
+    const auto* password = data ? data->FindString("password") : nullptr;
+    if (!username || username->empty() || !password || password->empty() ||
+        Field(*data, "containerId") != id ||
+        Field(*data, "origin") != *saved_origin) {
+      Send(std::move(callback), Error("SUPPORTED_LOGIN_CREDENTIAL_REQUIRED"));
+      return;
+    }
+    const auto arguments =
+        base::WriteJson(base::ListValue().Append(*username).Append(*password));
+    if (!arguments) {
+      Send(std::move(callback), Error("SUPPORTED_LOGIN_CREDENTIAL_REQUIRED"));
+      return;
+    }
+    content::RenderFrameHost* target = nullptr;
+    size_t matches = 0;
+    ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+        [&](BrowserWindowInterface* browser) {
+          if (browser->GetProfile() != profile_) {
+            return true;
+          }
+          auto* tabs = browser->GetTabStripModel();
+          auto* contents = tabs ? tabs->GetActiveWebContents() : nullptr;
+          if (!contents || contents->IsLoading() ||
+              contents->GetPrimaryMainFrame()->GetLastCommittedOrigin().Serialize() !=
+                  "https://loginmyseller.taobao.com" ||
+              containers::GetContainerIdForWebContents(contents) != id) {
+            return true;
+          }
+          auto* main = contents->GetPrimaryMainFrame();
+          main->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
+            if (frame->GetParent() == main && frame->IsRenderFrameLive() &&
+                frame->GetLastCommittedOrigin().Serialize() == *saved_origin &&
+                frame->GetLastCommittedURL().path() == "/mini_login.htm") {
+              target = frame;
+              ++matches;
+            }
+          });
+          return true;
+        });
+    if (matches != 1) {
+      Send(std::move(callback), Error("UNIQUE_QIANNIU_LOGIN_FORM_REQUIRED"));
+      return;
+    }
+    target->ExecuteJavaScriptInIsolatedWorld(
+        uR"JS(((credentials) => {
+          if (location.origin !== 'https://havanalogin.taobao.com' ||
+              location.pathname !== '/mini_login.htm')
+            return 'wrong-page';
+          const visible = element => element && element.getClientRects().length &&
+              getComputedStyle(element).visibility === 'visible';
+          if ([...document.querySelectorAll(
+              '[id^="nocaptcha"], .nc-container, iframe[src*="captcha"], input[autocomplete="one-time-code"]'
+            )].some(visible))
+            return 'manual-verification-required';
+          const username = document.querySelector('#fm-login-id');
+          const password = document.querySelector('#fm-login-password[type=password]');
+          const form = username?.form;
+          if (!form || password?.form !== form ||
+              !visible(username) || !visible(password))
+            return 'password-form-unavailable';
+          const buttons = [...form.querySelectorAll('button[type=submit]')]
+              .filter(button => visible(button) && !button.disabled);
+          if (buttons.length !== 1)
+            return 'password-form-unavailable';
+          if (globalThis.ecomLoginSubmitted)
+            return 'already-submitted';
+          if (new URL(form.action).origin !== location.origin)
+            return 'wrong-page';
+          if ((username.value && username.value !== credentials[0]) ||
+              (password.value && password.value !== credentials[1]))
+            return 'credentials-not-filled';
+          const setValue = Object.getOwnPropertyDescriptor(
+              HTMLInputElement.prototype, 'value').set;
+          for (const [field, value] of [[username, credentials[0]],
+                                        [password, credentials[1]]]) {
+            setValue.call(field, value);
+            field.dispatchEvent(new Event('input', {bubbles: true}));
+            field.dispatchEvent(new Event('change', {bubbles: true}));
+          }
+          if (!buttons[0].isConnected || buttons[0].disabled ||
+              username.value !== credentials[0] ||
+              password.value !== credentials[1])
+            return 'credentials-not-filled';
+          globalThis.ecomLoginSubmitted = true;
+          buttons[0].click();
+          return 'clicked';
+        })()JS" + base::UTF8ToUTF16(*arguments) + u"))",
+        base::BindOnce(
+            [](Reply reply, std::string container_id, base::Value result) {
+              if (!result.is_string()) {
+                Send(std::move(reply), Error("LOGIN_OUTCOME_UNKNOWN"));
+                return;
+              }
+              Send(std::move(reply), base::DictValue()
+                        .Set("ok", true)
+                        .Set("containerId", container_id)
+                        .Set("status", result.GetString()));
+            },
+            std::move(callback), id),
+        ISOLATED_WORLD_ID_BRAVE_INTERNAL);
+  }
+
   const base::DictValue& Metadata() {
     return profile_->GetPrefs()->GetDict(containers::prefs::kShopContainers);
   }
