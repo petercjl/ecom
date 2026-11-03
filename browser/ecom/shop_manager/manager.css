@@ -699,7 +699,7 @@ button.danger {
 }
 
 
-#create-dialog {
+#create-dialog, #edit-dialog {
   box-sizing: border-box;
   inset: 0;
   width: 100vw;
@@ -711,7 +711,7 @@ button.danger {
   border: 0;
   border-radius: 0;
 }
-#create-form {
+#create-form, #edit-form {
   display: grid;
   height: 100%;
   grid-template-rows: auto minmax(0, 1fr) auto;

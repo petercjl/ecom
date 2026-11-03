@@ -284,24 +284,13 @@
       aria-labelledby="edit-title"
     >
       <form id="edit-form">
-        <div class="dialog-heading">
-          <h2
-            id="edit-title"
-            data-text="editTitle"
-          ></h2>
-          <button
-            type="button"
-            class="close"
-            data-close="edit-dialog"
-            aria-label="关闭"
-          >
-            ×
-          </button>
-        </div>
-        <p
-          class="dialog-intro"
-          data-text="editHint"
-        ></p>
+        <header class="create-header">
+          <button type="button" data-close="edit-dialog" data-text="back"></button>
+          <h2 id="edit-title" data-text="editTitle"></h2>
+        </header>
+        <div class="create-body">
+          <section class="create-card" aria-labelledby="edit-info-title">
+            <h3 id="edit-info-title" data-text="accountInfo"></h3>
         <label
           ><span data-text="platform"></span
           ><select id="edit-platform"></select
@@ -318,6 +307,40 @@
               autocomplete="off"
           /></label>
         </div>
+        <label
+          ><span data-text="shopName"></span
+          ><input
+            id="edit-name"
+            required
+            maxlength="60"
+            autocomplete="off"
+        /></label>
+          <p class="dialog-intro" data-text="credentialHint"></p>
+          <label><span data-text="credentialUsername"></span>
+            <input id="credential-username" autocomplete="off" maxlength="256">
+          </label>
+          <label><span data-text="credentialPassword"></span>
+            <input id="credential-password" type="password" autocomplete="new-password" maxlength="1024">
+          </label>
+            <p id="credential-saved-state" role="status"></p>
+          </section>
+          <details class="create-card">
+            <summary data-text="appearance"></summary>
+        <div class="appearance-picker" id="edit-appearance">
+              <input type="hidden" id="edit-color" value="#ff3c36">
+              <input type="hidden" id="edit-icon" value="0">
+              <fieldset>
+                <legend data-text="themeColor"></legend>
+                <div class="appearance-options" id="edit-colors"></div>
+              </fieldset>
+              <fieldset>
+                <legend data-text="icon"></legend>
+                <div class="appearance-options" id="edit-icons"></div>
+              </fieldset>
+            </div>
+          </details>
+          <details class="create-card" id="edit-site-settings">
+            <summary data-text="siteSettings"></summary>
         <div class="homepage-fields">
           <label
             ><span data-text="homePreset"></span
@@ -336,62 +359,22 @@
             data-text="homeHint"
           ></p>
         </div>
-        <label
-          ><span data-text="shopName"></span
-          ><input
-            id="edit-name"
-            required
-            maxlength="60"
-            autocomplete="off"
-        /></label>
-        <div class="appearance-picker" id="edit-appearance">
-              <input type="hidden" id="edit-color" value="#ff3c36">
-              <input type="hidden" id="edit-icon" value="0">
-              <fieldset>
-                <legend data-text="themeColor"></legend>
-                <div class="appearance-options" id="edit-colors"></div>
-              </fieldset>
-              <fieldset>
-                <legend data-text="icon"></legend>
-                <div class="appearance-options" id="edit-icons"></div>
-              </fieldset>
-            </div>
-        <details>
-          <summary><span data-text="credentials"></span> <span id="credential-saved-state"></span></summary>
-          <p class="dialog-intro" data-text="credentialHint"></p>
           <label><span data-text="credentialSite"></span>
             <input id="credential-site" type="text" inputmode="url" placeholder="login.taobao.com" autocomplete="off" maxlength="2048">
           </label>
-          <label><span data-text="credentialUsername"></span>
-            <input id="credential-username" autocomplete="off" maxlength="256">
-          </label>
-          <label><span data-text="credentialPassword"></span>
-            <input id="credential-password" type="password" autocomplete="new-password" maxlength="1024">
-          </label>
-          <button type="button" id="credential-save" data-text="credentialSave"></button>
-          <p id="credential-status" role="status"></p>
-        </details>
-        <details>
-          <summary data-text="accountDetails"></summary>
-          <dl id="edit-account-details"></dl>
-        </details>
-        <p
-          class="error"
-          id="edit-error"
-          role="alert"
-        ></p>
-        <div class="dialog-actions">
-          <button
-            type="button"
-            data-close="edit-dialog"
-            data-text="cancel"
-          ></button
-          ><button
-            type="submit"
-            class="primary"
-            data-text="save"
-          ></button>
+          </details>
+          <details class="create-card">
+            <summary data-text="accountDetails"></summary>
+            <dl id="edit-account-details"></dl>
+          </details>
         </div>
+        <footer class="create-footer">
+          <p id="edit-error" class="error" role="alert"></p>
+          <div class="dialog-actions">
+            <button type="button" data-close="edit-dialog" data-text="cancel"></button>
+            <button type="submit" class="primary" data-text="save"></button>
+          </div>
+        </footer>
       </form>
     </dialog>
     <dialog

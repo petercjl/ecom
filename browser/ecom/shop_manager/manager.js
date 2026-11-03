@@ -17,6 +17,7 @@ import {
 const zh = {
   back: '返回',
   accountInfo: '账号信息',
+  siteSettings: '首页与登录站点',
   platformWebsite: '平台官网',
   platformIconUrl: '图标链接（选填）',
   platformCategory: '平台分类',
@@ -109,6 +110,7 @@ const zh = {
 const en = {
   back: 'Back',
   accountInfo: 'Account information',
+  siteSettings: 'Homepage and sign-in site',
   platformWebsite: 'Platform website',
   platformIconUrl: 'Icon URL (optional)',
   platformCategory: 'Platform category',
@@ -858,8 +860,8 @@ async function runAction(action, row) {
     }
     $('edit-error').textContent = ''
     $('credential-site').value = ''
-    $('credential-status').textContent = ''
     $('credential-saved-state').textContent = ''
+    $('edit-site-settings').open = !row.homeUrl || row.platform === 'custom'
     $('edit-dialog').showModal()
     const result = await sendWithPromise('ecomShopCredentials', row.id, '', '', '')
     if ($('edit-dialog').open && editId === row.id) {
@@ -989,16 +991,10 @@ $('create-form').addEventListener('submit', async (event) => {
     const homepage = normalizeHomeUrl($('home-url').value)
     const option = $('platform').selectedOptions[0]
     const custom = !$('custom-platform-fields').hidden
-    const loginSites = {
-      qianniu: 'https://havanalogin.taobao.com/',
-      sycm: 'https://login.taobao.com/',
-      taobao: 'https://login.taobao.com/',
-      tmall: 'https://login.taobao.com/',
-    }
     const customSite = custom ? $('create-credential-site').value.trim() : ''
     const site = customSite
       ? normalizeHomeUrl(customSite.includes('://') ? customSite : 'https://' + customSite)
-      : loginSites[option.value] || homepage
+      : presetLoginSite(option.value, homepage)
     const iconUrl = custom && $('create-platform-icon-url').value
       ? normalizeHomeUrl($('create-platform-icon-url').value)
       : ''
@@ -1082,6 +1078,16 @@ function clearCredentialInputs() {
   $('credential-password').value = ''
 }
 $('edit-dialog').addEventListener('close', clearCredentialInputs)
+function presetLoginSite(preset, homepage) {
+  const loginSites = {
+      qianniu: 'https://havanalogin.taobao.com/',
+      sycm: 'https://login.taobao.com/',
+      taobao: 'https://login.taobao.com/',
+      tmall: 'https://login.taobao.com/',
+    }
+  return loginSites[preset] || homepage
+}
+
 async function writeCredentials(id, site, username, password) {
   const result = await sendWithPromise('ecomShopCredentials', id, site, username, password)
   if (!result.ok) throw new Error(result.error?.code || 'SHOP_ERROR')
@@ -1089,7 +1095,9 @@ async function writeCredentials(id, site, username, password) {
 }
 
 async function saveCredentials() {
+  const homepage = normalizeHomeUrl($('edit-home-url').value)
   const site = $('credential-site').value.trim()
+    || presetLoginSite($('edit-home-preset').value, homepage)
   const username = $('credential-username').value
   const password = $('credential-password').value
   if (!site || !username || !password) throw new Error('INVALID_CREDENTIALS')
@@ -1100,20 +1108,8 @@ async function saveCredentials() {
   clearCredentialInputs()
   $('credential-site').value = result.origin
   $('credential-saved-state').textContent = text('credentialSaved') + ' · ' + result.origin
-  $('credential-status').textContent = ''
 }
 
-$('credential-save').addEventListener('click', async () => {
-  if (busy) return
-  setBusy(true)
-  try {
-    await saveCredentials()
-  } catch (error) {
-    showError(error, 'credential-status')
-  } finally {
-    setBusy(false)
-  }
-})
 $('edit-form').addEventListener('submit', async (event) => {
   event.preventDefault()
   if (busy) return
