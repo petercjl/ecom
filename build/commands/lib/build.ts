@@ -21,6 +21,7 @@ export async function build(
   config.update(options)
   buildUtils.checkVersionsMatch()
 
+  await util.applyPatches()
   util.touchOverriddenFiles()
   branding.update()
   buildUtils.ensureVsFilesMount()

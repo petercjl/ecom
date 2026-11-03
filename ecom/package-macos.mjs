@@ -113,6 +113,13 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   const app = path.join(stage, 'Ecom.app');
   run('/usr/bin/ditto', [sourceApp, app]);
   await shareHelperResources(app, output, metadata.CFBundleShortVersionString);
+  const resources = path.join(app, 'Contents/Frameworks/Ecom Framework.framework/Versions',
+                              metadata.CFBundleShortVersionString, 'Resources');
+  const locales = fs.readdirSync(resources).filter(name =>
+    name.endsWith('.lproj') && fs.existsSync(path.join(resources, name, 'locale.pak')));
+  if (locales.length !== 1 || locales[0] !== 'zh_CN.lproj') {
+    throw new Error('Expected only the Simplified Chinese interface locale');
+  }
   const plist = path.join(app, 'Contents/Info.plist');
   fs.copyFileSync(plist, path.join(output, 'original-Info.plist'), fs.constants.COPYFILE_EXCL);
   // This is a newly created packaging copy; the build output stays intact.
