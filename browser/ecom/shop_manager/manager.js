@@ -44,6 +44,8 @@ const zh = {
   status: '登录 / 核验状态',
   checked: '上次核验',
   actions: '操作',
+  moreActions: '更多操作',
+  accountDetails: '平台与登录详情',
   empty: '暂无匹配的店铺',
   emptyHint: '添加店铺，或调整搜索和筛选条件。',
   tabHint: '同店共用会话 · 不同店铺独立标签标识',
@@ -127,6 +129,8 @@ const en = {
   status: 'Sign-in / verification',
   checked: 'Last verified',
   actions: 'Actions',
+  moreActions: 'More actions',
+  accountDetails: 'Platform and sign-in details',
   empty: 'No matching shops',
   emptyHint: 'Add a shop or adjust your search and filters.',
   tabHint: 'Shared shop session · Distinct container tabs',
@@ -652,85 +656,41 @@ function render() {
     first.append(shop)
     tr.append(first)
     tr.append(node('td', displayPlatform(row, copy === zh)))
-    const identity = row.identity || row.candidate
-    const account = node('td')
-    account.append(
-      node(
-        'div',
-        identity?.platformName || text('noIdentity'),
-      ),
-    )
-    if (identity) {
-      account.append(
-        node('div', `${text('shopId')}: ${identity.shopId}`, 'secondary'),
-      )
-      account.append(
-        node('div', `${text('accountId')}: ${identity.accountId}`, 'secondary'),
-      )
-    }
-    if (identity && row.state !== 'ready')
-      account.append(node('div', text('boundIdentityHint'), 'secondary'))
-    if (row.authentication)
-      account.append(node('div', text('loginService'), 'secondary'))
-    tr.append(account)
     const status = node('td')
-    status.append(
-      node(
-        'span',
-        text(row.state),
-        'badge ' + row.state,
-      ),
-    )
-    if (row.checking) status.append(node('div', text('checking'), 'secondary'))
+    status.append(node('span', text(row.state), 'badge ' + row.state))
+    if (row.checking) status.title = text('checking')
     tr.append(status)
-    const checkedAt = row.checkedAt || identity?.verifiedAt
-    const checked = checkedAt
-      ? new Date(Number(checkedAt) * 1000).toLocaleString()
-      : text('never')
-    tr.append(node('td', checked))
-    const validity = node(
-      'td',
-      !row.platform
-        ? text('never')
-        : row.expiry?.kind === 'session'
-          ? text('sessionExpiry')
-          : text('platformExpiry'),
-      'validity-cell',
-    )
-    if (row.expiry?.cookieExpiresAt)
-      validity.append(
-        node(
-          'div',
-          text('cookieReference')
-            + ': '
-            + new Date(
-              Number(row.expiry.cookieExpiresAt) * 1000,
-            ).toLocaleString(),
-          'secondary',
-        ),
-      )
-    tr.append(validity)
-    const actions = node('td'),
-      group = node('div', undefined, 'row-actions')
+
+    const actions = node('td')
+    const group = node('div', undefined, 'row-actions')
     if (row.platform) {
-      const homepage = node(
-        'span',
-        homeLabel(row.homeUrl, copy === zh),
-        'home-entry',
-      )
-      homepage.title = row.homeUrl || ''
-      group.append(
-        homepage,
-        button('open', 'open', row, 'open'),
-        ...((row.verificationSupported ?? false)
-          ? [button('verify', 'verify', row)]
-          : []),
-      )
-      if (row.state === 'awaiting-confirmation' && row.candidate)
-        group.append(button('finish', 'candidate', row))
-    } else group.append(button('configure', 'edit', row))
-    if (row.platform) group.append(button('edit', 'edit', row))
-    group.append(button('delete', 'delete', row, 'delete-action'))
+      const open = button('open', 'open', row, 'open')
+      open.title = homeLabel(row.homeUrl, copy === zh)
+      group.append(open)
+    }
+    if (row.state === 'awaiting-confirmation' && row.candidate)
+      group.append(button('finish', 'candidate', row))
+
+    const more = node('button', '⋯', 'more-actions')
+    more.disabled = busy
+    more.setAttribute('aria-label', text('moreActions') + ' · ' + row.name)
+    const menu = node('div', undefined, 'account-menu')
+    menu.popover = 'auto'
+    more.popoverTargetElement = menu
+    more.addEventListener('click', () => {
+      const rect = more.getBoundingClientRect()
+      menu.style.right = Math.max(8, innerWidth - rect.right) + 'px'
+      menu.style.top = Math.min(rect.bottom + 4, innerHeight - 132) + 'px'
+    })
+    if (row.verificationSupported) menu.append(button('verify', 'verify', row))
+    menu.append(
+      button(row.platform ? 'edit' : 'configure', 'edit', row),
+      button('delete', 'delete', row, 'delete-action'),
+    )
+    menu.addEventListener('click', (event) => {
+      if (event.target.closest('button')) menu.hidePopover()
+    }, { capture: true })
+    group.append(more, menu)
     actions.append(group)
     tr.append(actions)
     fragment.append(tr)
@@ -769,6 +729,23 @@ async function runAction(action, row) {
     $('edit-icon').value = String(row.icon ?? 2)
     $('edit-color').value = row.color || '#007f83'
     previewAppearance('edit')
+    const identity = row.identity || row.candidate
+    const date = (value) => value
+      ? new Date(Number(value) * 1000).toLocaleString()
+      : text('never')
+    const details = $('edit-account-details')
+    details.replaceChildren()
+    for (const [key, value] of [
+      ['account', identity?.platformName || text('noIdentity')],
+      ['shopId', identity?.shopId],
+      ['accountId', identity?.accountId],
+      ['status', text(row.state)],
+      ['checked', date(row.checkedAt || identity?.verifiedAt)],
+      ['validity', text(row.expiry?.kind === 'session' ? 'sessionExpiry' : 'platformExpiry')],
+      ['cookieReference', row.expiry?.cookieExpiresAt && date(row.expiry.cookieExpiresAt)],
+    ]) {
+      if (value) details.append(node('dt', text(key)), node('dd', String(value)))
+    }
     $('edit-error').textContent = ''
     $('credential-site').value = ''
     $('credential-status').textContent = ''

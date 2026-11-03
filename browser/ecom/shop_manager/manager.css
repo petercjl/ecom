@@ -273,7 +273,7 @@ table {
   border-collapse: collapse;
   width: 100%;
   text-align: left;
-  min-width: 790px;
+  min-width: 480px;
 }
 th {
   font-size: 11px;
@@ -284,7 +284,7 @@ th {
   border-bottom: 1px solid var(--line);
 }
 td {
-  padding: 23px 19px;
+  padding: 8px 19px;
   border-bottom: 1px solid var(--line);
   font-size: 12px;
 }
@@ -305,8 +305,8 @@ tbody tr:hover {
   min-width: 150px;
 }
 .shop-avatar {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -648,11 +648,10 @@ button.danger {
   line-height: 1.7;
 }
 .row-actions {
-  flex-wrap: wrap;
-  min-width: 280px;
-  max-width: 360px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
-.row-actions .delete-action {
+.account-menu .delete-action {
   color: var(--danger);
 }
 
@@ -679,3 +678,22 @@ button.danger {
 .sidebar-bottom { flex-wrap: wrap; }
 #plugin-guide-open { width: 100%; margin-bottom: 12px; }
 .plugin-prompt { width: 100%; min-height: 66px; resize: vertical; padding: 12px; box-sizing: border-box; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 8px; font: inherit; }
+
+
+.account-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  min-width: 120px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: inherit;
+}
+.account-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+}
