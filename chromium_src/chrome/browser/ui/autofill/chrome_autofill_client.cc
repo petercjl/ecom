@@ -9,10 +9,9 @@
 
 #include "base/check_is_test.h"
 #include "base/feature_list.h"
-#include "brave/components/containers/content/browser/storage_partition_utils.h"
-#include "brave/components/containers/core/common/features.h"
 #include "base/memory/ptr_util.h"
 #include "brave/components/constants/pref_names.h"
+#include "brave/components/containers/buildflags/buildflags.h"
 #include "brave/components/email_aliases/buildflags/buildflags.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/autofill/autofill_suggestion_controller_utils.h"
@@ -29,6 +28,11 @@
 #include "components/strike_database/strike_database.h"
 #include "mojo/public/cpp/bindings/associated_receiver.h"
 #include "ui/base/l10n/l10n_util.h"
+
+#if BUILDFLAG(ENABLE_CONTAINERS)
+#include "brave/components/containers/content/browser/storage_partition_utils.h"
+#include "brave/components/containers/core/common/features.h"
+#endif
 
 #if BUILDFLAG(ENABLE_EMAIL_ALIASES)
 #include "brave/browser/email_aliases/email_aliases_service_factory.h"
@@ -92,10 +96,12 @@ class BraveChromeAutofillClient : public ChromeAutofillClient {
   }
 
   bool IsAutocompleteEnabled() const override {
+#if BUILDFLAG(ENABLE_CONTAINERS)
     if (base::FeatureList::IsEnabled(containers::features::kContainers) &&
         !containers::GetContainerIdForWebContents(web_contents()).empty()) {
       return false;
     }
+#endif
     auto enabled = ChromeAutofillClient::IsAutocompleteEnabled();
     if (!IsPrivateProfile(web_contents())) {
       return enabled;
