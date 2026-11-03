@@ -36,21 +36,22 @@ export async function verifyPayload(repositoryRoot, version, tgz, tag = 'latest'
   const managerOnly = file => verificationOnly.has(file) || file.startsWith('docs/') || file.startsWith('packages/ecom-cli/') || file.startsWith('ecom/releases/') || file === 'AGENTS.md' || file === '.github/workflows/ecom-macos-publish.yml' || file === 'ecom/verify-release-payload.mjs';
   if (changes.some(file => !managerOnly(file))) throw new Error('Native inputs changed after the verified artifact; build again');
   if (!tgz) return { ok: true, version, record, artifactVerified: false };
+  if (fs.statSync(tgz).size > 390_000_000) throw new Error('Payload exceeds npm CLI publication size budget');
   if (await sha256(tgz) !== record.tarballSha256) throw new Error('Payload differs from the committed artifact');
   const tar = args => {
     const r = spawnSync('/usr/bin/tar', args, { encoding: 'utf8', maxBuffer: 1_000_000 });
     if (r.error || r.status !== 0) throw new Error('Invalid payload archive'); return r.stdout;
   };
   const entries = tar(['-tzf', tgz]).trim().split('\n').sort();
-  if (JSON.stringify(entries) !== JSON.stringify(['package/Ecom.zip', 'package/LICENSE', 'package/artifact.json', 'package/package.json'].sort())) throw new Error('Unexpected package contents');
+  if (JSON.stringify(entries) !== JSON.stringify(['package/Ecom.tar.xz', 'package/LICENSE', 'package/artifact.json', 'package/package.json'].sort())) throw new Error('Unexpected package contents');
   const pkg = JSON.parse(tar(['-xOzf', tgz, 'package/package.json']));
   if (pkg.name !== config.packageName || pkg.version !== config.version || pkg.scripts || pkg.dependencies) throw new Error('Unexpected package identity or executable scripts');
   const manifest = JSON.parse(tar(['-xOzf', tgz, 'package/artifact.json']));
   for (const [key, value] of Object.entries(config)) if (manifest[key] !== value) throw new Error('Artifact contract differs: ' + key);
-  if (manifest.sourceRevision !== record.sourceRevision || manifest.archive !== 'Ecom.zip' || !/^[a-f0-9]{64}$/.test(manifest.archiveSha256) || !Number.isSafeInteger(manifest.archiveBytes) || manifest.archiveBytes <= 0) throw new Error('Invalid native artifact identity');
+  if (manifest.sourceRevision !== record.sourceRevision || manifest.archive !== 'Ecom.tar.xz' || !/^[a-f0-9]{64}$/.test(manifest.archiveSha256) || !Number.isSafeInteger(manifest.archiveBytes) || manifest.archiveBytes <= 0) throw new Error('Invalid native artifact identity');
   const checksum = crypto.createHash('sha256'); let bytes = 0;
   await new Promise((resolve, reject) => {
-    const child = spawn('/usr/bin/tar', ['-xOzf', tgz, 'package/Ecom.zip'], { stdio: ['ignore', 'pipe', 'ignore'] });
+    const child = spawn('/usr/bin/tar', ['-xOzf', tgz, 'package/Ecom.tar.xz'], { stdio: ['ignore', 'pipe', 'ignore'] });
     child.stdout.on('data', chunk => { checksum.update(chunk); bytes += chunk.length; });
     child.once('error', reject); child.once('exit', code => code === 0 ? resolve() : reject(new Error('Cannot read application archive')));
   });

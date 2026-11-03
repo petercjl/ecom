@@ -1,11 +1,11 @@
 {
   "name": "@petercjl/ecom-macos-arm64",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Ecom native macOS arm64 application payload",
   "license": "MPL-2.0",
   "os": ["darwin"],
   "cpu": ["arm64"],
-  "files": ["Ecom.zip", "artifact.json", "LICENSE"],
+  "files": ["Ecom.tar.xz", "artifact.json", "LICENSE"],
   "publishConfig": { "access": "public" },
   "repository": { "type": "git", "url": "git+https://github.com/petercjl/ecom.git" }
 }

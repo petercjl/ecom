@@ -20,9 +20,9 @@ export async function sha256(file) {
 export function artifactManifest(config, sourceRevision, archiveSha256, archiveBytes) {
   validateRelease(config);
   if (!/^[a-f0-9]{40}$/.test(sourceRevision) || !/^[a-f0-9]{64}$/.test(archiveSha256) || !Number.isSafeInteger(archiveBytes) || archiveBytes <= 0) throw new Error('Invalid artifact identity');
-  return { ...config, sourceRevision, archive: 'Ecom.zip', archiveSha256, archiveBytes };
+  return { ...config, sourceRevision, archive: 'Ecom.tar.xz', archiveSha256, archiveBytes };
 }
 export function payloadPackage(config) {
   validateRelease(config);
-  return { name: config.packageName, version: config.version, description: 'Ecom native macOS arm64 application payload', license: 'MPL-2.0', os: ['darwin'], cpu: ['arm64'], files: ['Ecom.zip', 'artifact.json', 'LICENSE'], publishConfig: { access: 'public' }, repository: { type: 'git', url: 'git+https://github.com/petercjl/ecom.git' } };
+  return { name: config.packageName, version: config.version, description: 'Ecom native macOS arm64 application payload', license: 'MPL-2.0', os: ['darwin'], cpu: ['arm64'], files: ['Ecom.tar.xz', 'artifact.json', 'LICENSE'], publishConfig: { access: 'public' }, repository: { type: 'git', url: 'git+https://github.com/petercjl/ecom.git' } };
 }

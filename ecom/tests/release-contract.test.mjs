@@ -20,7 +20,7 @@ test('release artifact pins native source, payload hash and supported target', (
 });
 test('binary payload has an explicit allowlist and no install scripts or runtime dependency', () => {
   const pkg = payloadPackage(config);
-  assert.deepEqual(pkg.files, ['Ecom.zip', 'artifact.json', 'LICENSE']);
+  assert.deepEqual(pkg.files, ['Ecom.tar.xz', 'artifact.json', 'LICENSE']);
   assert.equal(pkg.scripts, undefined); assert.equal(pkg.dependencies, undefined);
   assert.deepEqual(pkg.os, ['darwin']); assert.deepEqual(pkg.cpu, ['arm64']);
   assert.equal(pkg.publishConfig.access, 'public');
@@ -73,12 +73,12 @@ test('publication verifies an actual tarball and rejects changed transport bytes
     const sourceRevision = run('git', ['rev-parse', 'HEAD']);
     const stage = path.join(dir, 'stage'), pkg = path.join(stage, 'package'); fs.mkdirSync(pkg, { recursive: true });
     // Transport-only fixture: these bytes are not a native application.
-    const zip = path.join(pkg, 'Ecom.zip'); fs.writeFileSync(zip, 'archive fixture', { flag: 'wx' });
+    const zip = path.join(pkg, 'Ecom.tar.xz'); fs.writeFileSync(zip, 'archive fixture', { flag: 'wx' });
     fs.writeFileSync(path.join(pkg, 'package.json'), JSON.stringify(payloadPackage(config)), { flag: 'wx' });
     fs.writeFileSync(path.join(pkg, 'artifact.json'), JSON.stringify(artifactManifest(config, sourceRevision, await sha256(zip), fs.statSync(zip).size)), { flag: 'wx' });
     fs.writeFileSync(path.join(pkg, 'LICENSE'), 'fixture', { flag: 'wx' });
     const tgz = path.join(dir, 'payload.tgz');
-    run('/usr/bin/tar', ['-czf', tgz, '-C', stage, 'package/Ecom.zip', 'package/LICENSE', 'package/artifact.json', 'package/package.json']);
+    run('/usr/bin/tar', ['-czf', tgz, '-C', stage, 'package/Ecom.tar.xz', 'package/LICENSE', 'package/artifact.json', 'package/package.json']);
     const evidencePath = 'docs/ecom/release-evidence/fixture.md'; write(evidencePath, 'Transport fixture source: ' + sourceRevision);
     write('ecom/releases/macos-arm64/' + config.version + '.json', JSON.stringify({ version: config.version, packageName: config.packageName, platform: 'darwin', arch: 'arm64', sourceRevision, tarballSha256: await sha256(tgz), nativeSmokeTest: true, localUpdateRecoveryVerified: true, updateRoundTripVerified: true, evidencePath }));
     run('git', ['add', '.']); run('git', ['commit', '-m', 'Fixture evidence']);
@@ -133,11 +133,11 @@ test('native npm payload packs in its own package context', { skip: process.plat
   try {
     const payload = path.join(dir, 'payload'); fs.mkdirSync(payload);
     fs.writeFileSync(path.join(payload, 'package.json'), JSON.stringify(payloadPackage(config)), { flag: 'wx' });
-    for (const name of ['Ecom.zip', 'artifact.json', 'LICENSE']) fs.writeFileSync(path.join(payload, name), 'fixture', { flag: 'wx' });
+    for (const name of ['Ecom.tar.xz', 'artifact.json', 'LICENSE']) fs.writeFileSync(path.join(payload, name), 'fixture', { flag: 'wx' });
     packNativePayload(payload, dir);
     const tarball = path.join(dir, 'petercjl-ecom-macos-arm64-' + config.version + '.tgz');
     const result = spawnSync('/usr/bin/tar', ['-tzf', tarball], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(result.stdout.trim().split('\n').sort(), ['package/Ecom.zip', 'package/LICENSE', 'package/artifact.json', 'package/package.json'].sort());
+    assert.deepEqual(result.stdout.trim().split('\n').sort(), ['package/Ecom.tar.xz', 'package/LICENSE', 'package/artifact.json', 'package/package.json'].sort());
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

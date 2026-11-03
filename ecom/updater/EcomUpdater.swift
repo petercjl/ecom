@@ -109,7 +109,7 @@ struct Artifact: Decodable {
     let bundleId: String, appName: String, signing: String, notarized: Bool
     let sourceRevision: String, archive: String, archiveSha256: String, archiveBytes: Int
     func validate(version expected: String) throws {
-        try require(schemaVersion == 1 && updateProtocol == 1 && packageName == "@petercjl/ecom-macos-arm64" && version == expected && channel == "latest" && platform == "darwin" && arch == "arm64" && bundleId == "app.ecom.browser" && appName == "Ecom.app" && archive == "Ecom.zip" && signing == "ad-hoc" && !notarized && sourceRevision.range(of: "^[a-f0-9]{40}$", options: .regularExpression) != nil && archiveSha256.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil && archiveBytes > 0, "artifact contract")
+        try require(schemaVersion == 1 && updateProtocol == 1 && packageName == "@petercjl/ecom-macos-arm64" && version == expected && channel == "latest" && platform == "darwin" && arch == "arm64" && bundleId == "app.ecom.browser" && appName == "Ecom.app" && archive == "Ecom.tar.xz" && signing == "ad-hoc" && !notarized && sourceRevision.range(of: "^[a-f0-9]{40}$", options: .regularExpression) != nil && archiveSha256.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil && archiveBytes > 0, "artifact contract")
     }
 }
 final class RegistrySession: NSObject, URLSessionTaskDelegate {
@@ -180,24 +180,24 @@ final class Updater {
         let size = try tgz.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
         try require(size > 0 && size <= 1_500_000_000 && "sha512-" + (try digest(tgz, sha512: true)) == integrity, "tarball checksum")
         let entries = try run("/usr/bin/tar", ["-tzf", tgz.path]).split(separator: "\n").map(String.init)
-        let expected = Set(["package/package.json", "package/artifact.json", "package/Ecom.zip", "package/LICENSE"])
+        let expected = Set(["package/package.json", "package/artifact.json", "package/Ecom.tar.xz", "package/LICENSE"])
         try require(Set(entries) == expected && entries.count == expected.count, "package contents")
-        for name in ["artifact.json", "Ecom.zip", "package.json"] {
+        for name in ["artifact.json", "Ecom.tar.xz", "package.json"] {
             try run("/usr/bin/tar", ["-xOzf", tgz.path, "package/" + name], output: work.appendingPathComponent(name))
         }
         let manifest = try JSONDecoder().decode(Artifact.self, from: Data(contentsOf: work.appendingPathComponent("artifact.json")))
         try manifest.validate(version: version)
         let packed = try JSONSerialization.jsonObject(with: Data(contentsOf: work.appendingPathComponent("package.json"))) as? [String: Any]
         try require(packed?["name"] as? String == manifest.packageName && packed?["version"] as? String == version, "packed identity")
-        let zip = work.appendingPathComponent("Ecom.zip")
-        try require(try digest(zip) == manifest.archiveSha256 && zip.resourceValues(forKeys: [.fileSizeKey]).fileSize == manifest.archiveBytes, "archive checksum")
-        try safeArchivePaths(run("/usr/bin/unzip", ["-Z1", zip.path]), prefix: "Ecom.app/")
+        let archive = work.appendingPathComponent("Ecom.tar.xz")
+        try require(try digest(archive) == manifest.archiveSha256 && archive.resourceValues(forKeys: [.fileSizeKey]).fileSize == manifest.archiveBytes, "archive checksum")
+        try safeArchivePaths(run("/usr/bin/tar", ["-tf", archive.path]), prefix: "Ecom.app/")
         let parent = app.deletingLastPathComponent()
         try require(fm.isWritableFile(atPath: parent.path) && !app.path.hasPrefix("/Volumes/"), "install Ecom into a writable Applications directory")
         let staging = parent.appendingPathComponent(".ecom-stage-" + UUID().uuidString)
         try fm.createDirectory(at: staging, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
         defer { try? fm.removeItem(at: staging) }
-        try run("/usr/bin/ditto", ["-xk", zip.path, staging.path])
+        try run("/usr/bin/tar", ["-xf", archive.path, "-C", staging.path])
         let candidate = staging.appendingPathComponent("Ecom.app")
         try validateBundleLinks(candidate)
         guard let bundle = Bundle(url: candidate) else { throw UpdateFailure.invalid("candidate bundle") }

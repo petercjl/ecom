@@ -106,9 +106,9 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   signMacBundle(app, sourceRoot);
   await auditMacBundle(app);
   const payload = path.join(output, 'npm'); fs.mkdirSync(payload);
-  const zip = path.join(payload, 'Ecom.zip');
-  run('/usr/bin/ditto', ['-c', '-k', '--keepParent', app, zip]);
-  const manifest = artifactManifest(config, sourceRevision, await sha256(zip), fs.statSync(zip).size);
+  const archive = path.join(payload, 'Ecom.tar.xz');
+  run('/usr/bin/tar', ['-cJf', archive, '-C', stage, config.appName]);
+  const manifest = artifactManifest(config, sourceRevision, await sha256(archive), fs.statSync(archive).size);
   writeNew(path.join(payload, 'artifact.json'), JSON.stringify(manifest, null, 2) + '\n');
   writeNew(path.join(payload, 'package.json'), JSON.stringify(payloadPackage(config), null, 2) + '\n');
   fs.copyFileSync(path.join(sourceRoot, 'LICENSE'), path.join(payload, 'LICENSE'), fs.constants.COPYFILE_EXCL);
@@ -119,6 +119,7 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   if (fs.existsSync(tarball)) throw new Error('Native npm payload already exists');
   packNativePayload(payload, output);
   if (!fs.statSync(tarball).isFile()) throw new Error('npm pack did not produce the expected payload');
+  if (fs.statSync(tarball).size > 390_000_000) throw new Error('Payload exceeds npm CLI publication size budget');
   const receipt = { ...manifest, dmg: path.basename(dmg), dmgSha256: await sha256(dmg), tarball: path.basename(tarball), tarballSha256: await sha256(tarball), buildEnvironment: { node: process.version, xcode: run('/usr/bin/xcodebuild', ['-version']).split('\n')[0], sdk: run('/usr/bin/xcrun', ['--sdk', 'macosx', '--show-sdk-version']), argsSha256: await sha256(path.resolve(sourceRoot, '../out/Release_arm64/args_generated.gni')) }, updaterSelfTest: true, localUpdateRecoveryVerified: true, codesignVerified: true, nativeSmokeTest: false, updateRoundTripVerified: false, published: false };
   writeNew(path.join(output, 'release-receipt.json'), JSON.stringify(receipt, null, 2) + '\n');
   return { output, payload, dmg, tarball, receipt };
