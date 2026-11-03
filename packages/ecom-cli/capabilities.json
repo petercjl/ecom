@@ -6,6 +6,75 @@
     "ecom-cli"
   ],
   "commandContracts": {
+    "shops open": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--service": {
+          "type": "string",
+          "required": true
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "navigation",
+      "authorization": "Open the registered Qianniu entry in a foreground tab in the selected container"
+    },
+    "shops login-status": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--service": {
+          "type": "string",
+          "required": true
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Read the active Qianniu tab state without navigating; backend-page describes navigation only"
+    },
+    "shops submit-login": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--service": {
+          "type": "string",
+          "required": true
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "website-login",
+      "authorization": "With explicit login intent, submit a ready native-filled Qianniu password form once"
+    },
     "help": {
       "options": {
         "--json": {

@@ -367,6 +367,43 @@ class ShopService final : public base::SupportsUserData::Data,
       Send(std::move(callback), Error("CONTAINER_NOT_FOUND"));
       return;
     }
+    if (method == "shops.login-status") {
+      std::string status = "page-unavailable";
+      size_t matches = 0;
+      ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+          [&](BrowserWindowInterface* browser) {
+            if (browser->GetProfile() != profile_) {
+              return true;
+            }
+            auto* tabs = browser->GetTabStripModel();
+            auto* contents = tabs ? tabs->GetActiveWebContents() : nullptr;
+            if (!contents ||
+                containers::GetContainerIdForWebContents(contents) != id) {
+              return true;
+            }
+            const auto origin = contents->GetPrimaryMainFrame()
+                                    ->GetLastCommittedOrigin().Serialize();
+            if (origin != "https://loginmyseller.taobao.com" &&
+                origin != "https://myseller.taobao.com") {
+              return true;
+            }
+            ++matches;
+            if (contents->IsLoading() ||
+                contents->GetController().GetPendingEntry()) {
+              status = "loading";
+            } else if (origin == "https://loginmyseller.taobao.com") {
+              status = "login-page";
+            } else {
+              status = "backend-page";
+            }
+            return true;
+          });
+      Send(std::move(callback), base::DictValue()
+                                    .Set("ok", true)
+                                    .Set("containerId", id)
+                                    .Set("status", matches > 1 ? "ambiguous" : status));
+      return;
+    }
     if (method == "shops.submit-login") {
       const auto* shop = Metadata().FindDict(id);
       const auto* saved_origin = shop ? shop->FindString("credentialOrigin") : nullptr;

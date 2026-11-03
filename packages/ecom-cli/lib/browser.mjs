@@ -76,6 +76,26 @@ export async function inspectInConnection(connection,selector) {
     login:{state:string(row.state)??'unconfigured',service:string(row.authentication?.service),authenticationState:string(row.authentication?.state),verificationSupported:row.verificationSupported===true,checking:row.checking===true,checkedAt:string(row.checkedAt),identityBound:!!row.identity,identityConfirmed:row.state==='ready'&&!!row.identity,expiry:row.expiry?{kind:string(row.expiry.kind),cookieExpiresAt:string(row.expiry.cookieExpiresAt)}:null}};
   return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container};
 }
+export async function qianniuLoginStep(action, options) {
+  const connection=discover(options);
+  const listed=await readMailbox(connection);
+  const container=resolveContainer(listed.containers,options.container);
+  const body=await callMailbox(connection,{method:'shops.'+action,containerId:container.id,
+    ...(action==='open'?{service:'qianniu'}:{})});
+  const statuses={
+    open:['started'],
+    'login-status':['page-unavailable','loading','login-page','backend-page','ambiguous'],
+    'submit-login':['wrong-page','manual-verification-required','password-form-unavailable',
+      'credentials-not-filled','already-submitted','clicked'],
+  };
+  const status=action==='open'?body.navigation:body.status;
+  if(body.containerId!==container.id||!statuses[action].includes(status)||
+      (action==='open'&&(body.service!=='qianniu'||body.requestedUrl!=='https://myseller.taobao.com/'))) {
+    throw fail('PROTOCOL_MISMATCH','Unexpected Qianniu response',{operationId:body.operationId,executed:'unknown'});
+  }
+  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),
+    container,service:'qianniu',status};
+}
 export async function requestSession(options={}) {
   if(!options.container||!options.url)throw fail('INVALID_ARGUMENT','session request requires --container and --url');
   const url=validateReadUrl(options.url,options.method??'GET');

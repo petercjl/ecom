@@ -1,6 +1,6 @@
 ---
 name: ecom-cli
-description: Use Ecom account containers for registered Shengyicanmou data reads, local mutation planning and confirmation, account inspection, native-session requests, or CLI and companion Skill maintenance. Business analysis and operating decisions belong to the caller.
+description: Use Ecom account containers for registered Shengyicanmou data reads, local mutation planning and confirmation, account inspection, authorized Qianniu login recovery, native-session requests, or CLI and companion Skill maintenance. Business analysis and operating decisions belong to the caller.
 ---
 
 # Ecom CLI
@@ -17,6 +17,14 @@ Input is an Ecom container listing/detail request, an authorized read-only endpo
 4. For account details, run `containers inspect --container VALUE --json`. Report platform, saved homepage and timestamped service-login status. `identityBound` records a saved binding; `identityConfirmed` requires the native ready state. Cookie expiry is a reference, not proof of current service access. Account names are labels and do not grant or remove capabilities. Credential-like homepage fields are redacted.
 5. For a session request, require an explicit authorized read-only endpoint from the user or a trusted business capability’s registered operation. Business selection, endpoint semantics, date/metrics and interpretation belong to that caller. Run `session request --container VALUE --url HTTPS_URL --method GET --json`. GET alone does not prove an endpoint has no side effects; resolve unclear endpoint intent before submission. The CLI pins one instance and container across discovery and execution. Credentials remain native; header/body/credential inputs, redirects and HTML are unsupported. The enabled origin is controlled by Ecom, not expanded by the CLI.
 6. Require `ok=true`, protocol version 1, operation ID and matching instance/container IDs. For requests, require the JSON response contract and distinguish HTTP success from business success: `businessStatus=not-evaluated` requires the caller’s platform-specific check. Preserve structured errors and executed status. These operations do not navigate or activate tabs.
+
+## Qianniu login recovery
+
+Use this branch for an explicit request to sign in to Qianniu or restore its session. Apply main-line target selection and pin the exact container ID and instance ID. Use `--container ID --instance INSTANCE --service qianniu --json` for every step below. The browser owns credentials and form interaction.
+
+1. Run `shops login-status`. If the target tab is unavailable, call `shops open` once and wait for navigation by polling the read-only status for at most 20 seconds. This opens a foreground tab. Stop on ambiguity or an instance change.
+2. On `login-page`, call `shops submit-login` once. If credentials have not filled, the form is unavailable, or manual verification is required, report that exact result and ask the user to finish in the original tab. An unknown outcome or `already-submitted` goes directly to status inspection. Do not resubmit automatically.
+3. After `clicked`, poll status for at most 20 seconds. `backend-page` means the active tab reached the Qianniu backend origin. Report that page evidence separately from authenticated account identity, which this check cannot establish. If the login page remains, report submission attempted and login unconfirmed. Stop for manual verification when required. Resume with status inspection after user handoff. Shengyicanmou verification is a separate operation.
 
 ## Registered business operations
 
