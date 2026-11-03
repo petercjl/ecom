@@ -841,7 +841,7 @@ function clearCredentialInputs() {
 $('edit-dialog').addEventListener('close', clearCredentialInputs)
 $('credential-save').addEventListener('click', async () => {
   if (busy) return
-  const site = $('credential-site').value
+  const site = $('credential-site').value.trim()
   const username = $('credential-username').value
   const password = $('credential-password').value
   if (!site || !username || !password) {
@@ -851,7 +851,11 @@ $('credential-save').addEventListener('click', async () => {
   setBusy(true)
   try {
     const result = await sendWithPromise(
-      'ecomShopCredentials', editId, site, username, password,
+      'ecomShopCredentials',
+      editId,
+      normalizeHomeUrl(site.includes('://') ? site : 'https://' + site),
+      username,
+      password,
     )
     if (!result.ok) throw new Error(result.error?.code || 'SHOP_ERROR')
     clearCredentialInputs()
