@@ -17,9 +17,11 @@ import {
 const zh = {
   back: '返回',
   accountInfo: '账号信息',
+  platformWebsite: '平台官网',
+  platformIconUrl: '图标链接（选填）',
   platformCategory: '平台分类',
   allPlatforms: '全部平台',
-  createCredentialHint: '账号密码选填。填写凭证时，请同时填写实际登录站点。',
+  createCredentialHint: '账号密码选填。预设平台会自动绑定登录站点。',
   credentials: '登录账号密码',
   credentialSite: '实际登录页 HTTPS 地址',
   credentialUsername: '登录账号',
@@ -107,9 +109,11 @@ const zh = {
 const en = {
   back: 'Back',
   accountInfo: 'Account information',
+  platformWebsite: 'Platform website',
+  platformIconUrl: 'Icon URL (optional)',
   platformCategory: 'Platform category',
   allPlatforms: 'All platforms',
-  createCredentialHint: 'Credentials are optional. Enter the actual sign-in site when adding credentials.',
+  createCredentialHint: 'Credentials are optional. Presets supply the sign-in site.',
   credentials: 'Login credentials',
   credentialSite: 'HTTPS sign-in page URL',
   credentialUsername: 'Username',
@@ -373,19 +377,27 @@ function syncPlatformFields(edit = false) {
   const prefix = edit ? 'edit-' : ''
   const selector = edit ? $('edit-platform') : $('platform')
   const platformId = edit ? selector.value : selector.selectedOptions[0]?.dataset.platform
+  const option = selector.selectedOptions[0]
   const custom = platformId === 'custom'
+  const needsSetup = custom && (edit || !option?.dataset.homepage)
+  if (!edit) {
+    $('platform-picker-value').textContent = option?.textContent || ''
+    for (const id of ['home-url', 'create-platform-icon-url', 'create-credential-site']) {
+      $(id).disabled = busy || !needsSetup
+    }
+    $('home-url').required = needsSetup
+  }
   if (!edit)
     $('platform-support-note').textContent =
       platformId === 'taobao' ? '' : text('platformPending')
-  $(prefix + 'custom-platform-fields').hidden = !custom
+  $(prefix + 'custom-platform-fields').hidden = !needsSetup
   for (const id of ['custom-platform-name']) {
-    $(prefix + id).required = custom
-    $(prefix + id).disabled = busy || !custom
+    $(prefix + id).required = needsSetup
+    $(prefix + id).disabled = busy || !needsSetup
   }
   if (!homeDirty[edit ? 'edit' : 'create']) {
     const base =
       platforms.find((item) => item.id === platformId)?.entryUrl || ''
-    const option = selector.selectedOptions[0]
     const url = edit
       ? base
       : option?.dataset.homepage ||
@@ -542,10 +554,6 @@ async function loadPlatforms() {
       ['custom', 'custom', '自定义平台', 'Custom platform'],
     ]],
   ]
-  const categories = $('platform-category')
-  const all = node('option', text('allPlatforms'))
-  all.value = ''
-  categories.replaceChildren(all)
   for (const [label, entries] of groups) {
     const group = node('optgroup')
     group.label = label
@@ -558,34 +566,56 @@ async function loadPlatforms() {
       if (platform === 'custom' && id !== 'custom') option.dataset.platformName = option.textContent
       group.append(option)
     }
-    if (group.children.length) {
-      $('platform').append(group)
-      const option = node('option', label)
-      option.value = label
-      categories.append(option)
-    }
+    if (group.children.length) $('platform').append(group)
   }
+  buildPlatformPicker()
   $('platform').value = 'qianniu'
   syncPlatformFields()
   syncPlatformFields(true)
 }
 $('platform').addEventListener('change', () => {
   homeDirty.create = false
+  $('create-credential-site').value = ''
+  $('create-platform-icon-url').value = ''
   $('custom-platform-name').value = $('platform').selectedOptions[0]?.dataset.platformName || ''
   syncPlatformFields()
 })
-$('platform-category').addEventListener('change', () => {
+function buildPlatformPicker() {
   const select = $('platform')
-  const category = $('platform-category').value
-  for (const group of select.children) {
-    group.hidden = Boolean(category && group.label !== category)
-    group.disabled = group.hidden
+  const groups = [...select.children]
+  const categories = $('platform-category')
+  const options = $('platform-options')
+  function show(group, active) {
+    for (const item of categories.children)
+      item.setAttribute('aria-pressed', String(item === active))
+    options.replaceChildren()
+    for (const option of group ? group.children : select.options) {
+      const item = node('button', option.textContent)
+      item.type = 'button'
+      item.addEventListener('click', () => {
+        select.value = option.value
+        select.dispatchEvent(new Event('change'))
+        $('platform-picker-menu').hidePopover()
+        $('platform-picker-button').focus()
+      })
+      options.append(item)
+    }
+    options.scrollTop = 0
   }
-  if (select.selectedOptions[0]?.parentElement.disabled) {
-    select.value = [...select.children].find((group) => !group.disabled)?.firstElementChild.value || ''
-    select.dispatchEvent(new Event('change'))
+  for (const group of [null, ...groups]) {
+    const item = node('button', (group?.label || text('allPlatforms')) + ' ›')
+    item.type = 'button'
+    item.addEventListener('click', () => show(group, item))
+    categories.append(item)
   }
-})
+  show(null, categories.firstElementChild)
+  $('platform-picker-button').addEventListener('click', () => {
+    const rect = $('platform-picker-button').getBoundingClientRect()
+    const menu = $('platform-picker-menu')
+    menu.style.left = Math.max(8, Math.min(rect.left, innerWidth - Math.min(470, innerWidth - 16) - 8)) + 'px'
+    menu.style.top = Math.min(rect.bottom + 6, innerHeight - Math.min(320, innerHeight / 2) - 8) + 'px'
+  })
+}
 $('edit-platform').addEventListener('change', () => syncPlatformFields(true))
 function previewAppearance(prefix) {
   $(prefix + '-preview').style.backgroundColor = $(prefix + '-color').value
@@ -878,7 +908,7 @@ $('add').addEventListener('click', () => {
   if (busy) return
   $('create-error').textContent = ''
   $('create-dialog').showModal()
-  $('platform-category').focus()
+  $('platform-picker-button').focus()
 })
 document.querySelectorAll('[data-close]').forEach((control) =>
   control.addEventListener('click', () => {
@@ -891,6 +921,7 @@ document.querySelectorAll('dialog').forEach((dialog) =>
   }),
 )
 $('create-dialog').addEventListener('close', () => {
+  $('create-platform-icon-url').value = ''
   for (const field of ['site', 'username', 'password'])
     $('create-credential-' + field).value = ''
 })
@@ -906,11 +937,26 @@ $('create-form').addEventListener('submit', async (event) => {
   try {
     const username = $('create-credential-username').value
     const password = $('create-credential-password').value
-    const site = $('create-credential-site').value.trim()
-    if (username || password || site) {
-      if (!username || !password || !site) throw new Error('INVALID_CREDENTIALS')
+    const homepage = normalizeHomeUrl($('home-url').value)
+    const option = $('platform').selectedOptions[0]
+    const custom = !$('custom-platform-fields').hidden
+    const loginSites = {
+      qianniu: 'https://havanlogin.taobao.com/',
+      sycm: 'https://login.taobao.com/',
+      taobao: 'https://login.taobao.com/',
+      tmall: 'https://login.taobao.com/',
+    }
+    const customSite = custom ? $('create-credential-site').value.trim() : ''
+    const site = customSite
+      ? normalizeHomeUrl(customSite.includes('://') ? customSite : 'https://' + customSite)
+      : loginSites[option.value] || homepage
+    const iconUrl = custom && $('create-platform-icon-url').value
+      ? normalizeHomeUrl($('create-platform-icon-url').value)
+      : ''
+    if (username || password) {
+      if (!username || !password) throw new Error('INVALID_CREDENTIALS')
       credentials = {
-        site: normalizeHomeUrl(site.includes('://') ? site : 'https://' + site),
+        site,
         username,
         password,
       }
@@ -922,8 +968,9 @@ $('create-form').addEventListener('submit', async (event) => {
       icon: Number($('create-icon').value),
       color: $('create-color').value,
       customPlatformName: $('custom-platform-name').value,
-      homeUrl: normalizeHomeUrl($('home-url').value),
-      entryUrl: normalizeHomeUrl($('home-url').value),
+      homeUrl: homepage,
+      entryUrl: homepage,
+      ...(iconUrl ? { customPlatformIconUrl: iconUrl } : {}),
     })
     created = result.shops.find((row) => row.id === result.createdContainerId)
     if (!created) throw new Error('CONTAINER_NOT_FOUND')

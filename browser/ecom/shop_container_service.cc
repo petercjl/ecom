@@ -631,6 +631,10 @@ class ShopService final : public base::SupportsUserData::Data,
       auto name = Field(request, "customPlatformName");
       base::TrimWhitespaceASCII(name, base::TRIM_ALL, &name);
       item.Set("customPlatformName", name);
+      const auto icon_url = Field(request, "customPlatformIconUrl");
+      if (icon_url.size() <= 2048 && SafeEntry(icon_url)) {
+        item.Set("customPlatformIconUrl", GURL(icon_url).spec());
+      }
       item.Set("entryUrl",
                GURL(request.FindString("homeUrl") ? Field(request, "homeUrl")
                                                   : Field(request, "entryUrl"))

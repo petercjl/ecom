@@ -169,20 +169,34 @@
           <section class="create-card" aria-labelledby="create-info-title">
             <h3 id="create-info-title" data-text="accountInfo"></h3>
             <p class="dialog-intro" data-text="createHint"></p>
-            <div class="create-platform-row">
-              <label><span data-text="platformCategory"></span>
-                <select id="platform-category"></select>
-              </label>
-              <label><span data-text="platform"></span>
-                <select id="platform" required></select>
-              </label>
+            <div class="platform-picker">
+              <label id="platform-picker-label" for="platform-picker-button" data-text="platform"></label>
+              <button id="platform-picker-button" type="button" popovertarget="platform-picker-menu"
+                aria-labelledby="platform-picker-label platform-picker-value">
+                <span id="platform-picker-value"></span><span aria-hidden="true">⌄</span>
+              </button>
+              <div id="platform-picker-menu" popover>
+                <div id="platform-category" aria-label="平台分类"></div>
+                <div id="platform-options" aria-label="所属平台"></div>
+              </div>
+              <select id="platform" hidden></select>
             </div>
             <p id="platform-support-note" class="dialog-intro"></p>
             <div id="custom-platform-fields" hidden>
               <label><span data-text="customPlatformName"></span>
                 <input id="custom-platform-name" maxlength="40" autocomplete="off">
               </label>
+              <label><span data-text="platformWebsite"></span>
+                <input id="home-url" type="url" placeholder="https://" autocomplete="off">
+              </label>
+              <label><span data-text="platformIconUrl"></span>
+                <input id="create-platform-icon-url" type="url" maxlength="2048" placeholder="https://" autocomplete="off">
+              </label>
+              <label><span data-text="credentialSite"></span>
+                <input id="create-credential-site" inputmode="url" maxlength="2048" autocomplete="off" placeholder="https://">
+              </label>
             </div>
+            <select id="home-preset" hidden></select>
             <label><span data-text="shopName"></span>
               <input id="shop-name" maxlength="60" required autocomplete="off" data-placeholder="namePlaceholder">
             </label>
@@ -192,16 +206,7 @@
             <label><span data-text="credentialPassword"></span>
               <input id="create-credential-password" type="password" maxlength="1024" autocomplete="new-password">
             </label>
-            <label><span data-text="credentialSite"></span>
-              <input id="create-credential-site" inputmode="url" maxlength="2048" autocomplete="off" placeholder="login.taobao.com">
-            </label>
             <p class="dialog-intro" data-text="createCredentialHint"></p>
-            <div class="homepage-fields">
-              <label><span data-text="homePreset"></span><select id="home-preset"></select></label>
-              <label><span data-text="homeUrl"></span>
-                <input id="home-url" type="url" required placeholder="https://" autocomplete="off">
-              </label>
-            </div>
           </section>
           <details class="create-card">
             <summary data-text="appearance"></summary>

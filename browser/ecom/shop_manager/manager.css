@@ -758,3 +758,43 @@ button.danger {
 .create-footer .dialog-actions {
   margin: 0;
 }
+
+#platform-picker-button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+#platform-picker-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: min(470px, calc(100vw - 16px));
+  height: min(320px, 50vh);
+  box-sizing: border-box;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: inherit;
+}
+#platform-picker-menu:popover-open {
+  display: grid;
+  grid-template-columns: minmax(110px, 2fr) minmax(0, 3fr);
+}
+#platform-category, #platform-options {
+  overflow: auto;
+  padding: 5px;
+}
+#platform-category {
+  border-right: 1px solid var(--line);
+}
+#platform-picker-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+}
+#platform-picker-menu button[aria-pressed="true"] {
+  background: var(--wash);
+  color: var(--accent);
+}
