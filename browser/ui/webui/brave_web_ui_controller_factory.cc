@@ -14,7 +14,6 @@
 #include "base/no_destructor.h"
 #include "brave/browser/brave_browser_features.h"
 #include "brave/browser/ntp_background/view_counter_service_factory.h"
-#include "brave/browser/ui/webui/skus_internals_ui.h"
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_ads/buildflags/buildflags.h"
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
@@ -22,7 +21,6 @@
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/constants/webui_url_constants.h"
 #include "brave/components/playlist/core/common/buildflags/buildflags.h"
-#include "brave/components/skus/common/features.h"
 #include "brave/components/tor/buildflags/buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
@@ -97,10 +95,8 @@ WebUIController* NewWebUI(WebUI* web_ui, const GURL& url) {
     return new ecom::ShopManagerUI(web_ui);
   }
 #endif
-  if (host == kSkusInternalsHost) {
-    return new SkusInternalsUI(web_ui, url.host());
 #if BUILDFLAG(ENABLE_BRAVE_REWARDS)
-  } else if (host == kRewardsPageHost &&
+  if (host == kRewardsPageHost &&
              // We don't want to check for supported profile type here because
              // we want private windows to redirect to the regular profile.
              // Additionally, if Rewards aren't supported because of the OFAC
@@ -111,22 +107,26 @@ WebUIController* NewWebUI(WebUI* web_ui, const GURL& url) {
                  profile->GetPrefs(),
                  brave_rewards::IsSupportedOptions::kSkipRegionCheck)) {
     return new brave_rewards::RewardsPageUI(web_ui, url.host());
-  } else if (host == kRewardsInternalsHost &&
+  }
+  if (host == kRewardsInternalsHost &&
              brave_rewards::IsSupportedForProfile(profile)) {
     return new BraveRewardsInternalsUI(web_ui, url.host());
+  }
 #endif  // BUILDFLAG(ENABLE_BRAVE_REWARDS)
 #if !BUILDFLAG(IS_ANDROID)
 #if BUILDFLAG(ENABLE_BRAVE_NEWS)
-  } else if (base::FeatureList::IsEnabled(
+  if (base::FeatureList::IsEnabled(
                  brave_news::features::kBraveNewsFeedUpdate) &&
              host == kBraveNewsInternalsHost) {
     return new BraveNewsInternalsUI(
         web_ui, url.host(),
         brave_news::BraveNewsControllerFactory::GetForBrowserContext(profile));
+  }
 #endif  // BUILDFLAG(ENABLE_BRAVE_NEWS)
-  } else if (host == kWelcomeHost && !profile->IsGuestSession()) {
+  if (host == kWelcomeHost && !profile->IsGuestSession()) {
     return new BraveWelcomeUI(web_ui, url.host());
-  } else if (host == chrome::kChromeUINewTabHost) {
+  }
+  if (host == chrome::kChromeUINewTabHost) {
     // For private profiles the webui handling kChromeUINewTabHost is configured
     // with RegisterChromeWebUIConfigs, so we should not get called here with a
     // private profile.
@@ -158,12 +158,13 @@ WebUIController* NewWebUI(WebUI* web_ui, const GURL& url) {
             profile),
         regional_capabilities::RegionalCapabilitiesServiceFactory::
             GetForProfile(profile));
+  }
 #endif  // !BUILDFLAG(IS_ANDROID)
 #if BUILDFLAG(ENABLE_TOR)
-  } else if (host == kTorInternalsHost) {
+  if (host == kTorInternalsHost) {
     return new TorInternalsUI(web_ui, url.host());
-#endif
   }
+#endif
   return nullptr;
 }
 
@@ -206,8 +207,7 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
 #if BUILDFLAG(ENABLE_BRAVE_REWARDS)
       url.host() == kRewardsPageHost || url.host() == kRewardsInternalsHost ||
 #endif
-      (url.host() == kSkusInternalsHost &&
-       base::FeatureList::IsEnabled(skus::features::kSkusFeature))) {
+      false) {
     return &NewWebUI;
   }
 

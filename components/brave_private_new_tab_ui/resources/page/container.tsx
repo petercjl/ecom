@@ -10,7 +10,6 @@ import getPageHandlerInstance from './api/brave_page_handler'
 import { loadTimeData } from '../../../common/loadTimeData'
 
 import BackgroundView from './components/background-view'
-import SearchBox from './components/search-box'
 import DisclaimerDialog from './components/disclaimer-dialog'
 import BadgeTor from './components/badge-tor'
 import {
@@ -18,12 +17,6 @@ import {
   useHasDisclaimerDismissed,
   useIsTorDisabled
 } from './hooks'
-
-const CenterView = styled.div`
-  width: 100%;
-  max-width: 640px;
-  padding: 0 24px 120px 24px;
-`
 
 const DialogBox = styled.div`
   position: absolute;
@@ -96,10 +89,6 @@ function Container () {
     )
   }
 
-  const handleSearchSubmit = (value: string, openNewTab: boolean) => {
-    getPageHandlerInstance().pageHandler.goToBraveSearch(value, openNewTab)
-  }
-
   const handleDialogClose = () => {
     if (hasDisclaimerDismissed) return
     getPageHandlerInstance().pageHandler.setDisclaimerDismissed(true)
@@ -108,9 +97,6 @@ function Container () {
   return (
     <BackgroundView isTor={isWindowTor}>
       <BadgeBox>{badgeElement}</BadgeBox>
-      <CenterView>
-        <SearchBox onSubmit={handleSearchSubmit} />
-      </CenterView>
       <DialogBox>
         {(hasDisclaimerDismissed != null) && (
           <DisclaimerDialog

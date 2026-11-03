@@ -76,7 +76,7 @@ async function main() {
     if (fs.existsSync(log)) throw new Error('Build log exists');
     const fd = fs.openSync(log, 'wx', 0o600);
     console.log(JSON.stringify({ revision, log, mode: prepareOnly ? 'prepare' : 'build', output: 'Release_arm64', restartsDev: false, rootHasUncommittedChanges: source.rootHasUncommittedChanges }));
-    const buildArgs = [path.join(workspace, 'build/commands/scripts/build.ts'), 'Release', '--target_arch', 'arm64', '--channel', 'release', '--skip_signing', '--use_remoteexec', 'false', '--offline', '--gn', 'is_official_build:false', '--gn', 'chrome_pgo_phase:0', '--gn', 'use_thin_lto:false', '--gn', 'enable_updater:false', '--gn', 'enable_sparkle:false', '--gn', 'enable_update_notifications:false'];
+    const buildArgs = [path.join(workspace, 'build/commands/scripts/build.ts'), 'Release', '--target_arch', 'arm64', '--channel', 'release', '--skip_signing', '--use_remoteexec', 'false', '--offline', '--gn', 'is_official_build:false', '--gn', 'enable_stripping:true', '--gn', 'enable_dsyms:true', '--gn', 'symbol_level:1', '--gn', 'chrome_pgo_phase:0', '--gn', 'use_thin_lto:false', '--gn', 'enable_updater:false', '--gn', 'enable_sparkle:false', '--gn', 'enable_update_notifications:false'];
     if (prepareOnly) buildArgs.push('--prepare_only');
     try {
       await new Promise((resolve, reject) => {
@@ -87,9 +87,23 @@ async function main() {
     } finally { fs.closeSync(fd); }
     if (git(root, ['rev-parse', 'HEAD']) !== revision) return { retry: true };
     if (prepareOnly) { console.log(JSON.stringify({ prepared: true, revision, log, compiled: false })); return; }
-    const result = await packageMacos({ sourceApp: path.join(buildRoot, 'src/out/Release_arm64/Ecom.app'), output: path.join(runDir, 'artifacts'), sourceRevision: revision, sourceRoot: workspace });
+    const buildOutput = path.join(buildRoot, 'src/out/Release_arm64');
+    const sourceApp = path.join(buildOutput, 'Ecom.app');
+    const framework = path.join(sourceApp, 'Contents/Frameworks/Ecom Framework.framework/Ecom Framework');
+    const frameworkDsym = path.join(buildOutput, 'Ecom Framework.dSYM');
+    const uuid = file => {
+      const result = spawnSync('xcrun', ['dwarfdump', '--uuid', file], { encoding: 'utf8' });
+      const match = result.stdout?.match(/^UUID: ([\da-f-]+) \(arm64\)/im);
+      if (result.status !== 0 || !match) throw new Error('Missing arm64 UUID: ' + file);
+      return match[1];
+    };
+    if (uuid(framework) !== uuid(frameworkDsym)) throw new Error('Framework dSYM UUID does not match the release binary');
+    const symbols = path.join(runDir, 'crash-symbols');
+    fs.mkdirSync(symbols, { mode: 0o700 });
+    fs.cpSync(frameworkDsym, path.join(symbols, path.basename(frameworkDsym)), { recursive: true, errorOnExist: true, force: false });
+    const result = await packageMacos({ sourceApp, output: path.join(runDir, 'artifacts'), sourceRevision: revision, sourceRoot: workspace });
     if (git(root, ['rev-parse', 'HEAD']) !== revision) return { retry: true };
-    console.log(JSON.stringify({ ok: true, sourceRevision: revision, ...result }));
+    console.log(JSON.stringify({ ok: true, sourceRevision: revision, symbols, ...result }));
   } finally {
     if (JSON.parse(fs.readFileSync(lock, 'utf8')).id === identity.id) fs.renameSync(lock, path.join(runDir, 'finished-lock.json'));
   }
