@@ -55,7 +55,9 @@ jobs:
         run: node ecom/registry-payload-status.mjs "$RELEASE" "payload-download/petercjl-ecom-macos-arm64-$RELEASE.tgz" "$DIST_TAG" >> "$GITHUB_OUTPUT"
       - name: Publish the exact prebuilt payload through OIDC
         if: ${{ !inputs.validate_only && steps.registry.outputs.exists == 'false' }}
-        run: npm publish "payload-download/petercjl-ecom-macos-arm64-$RELEASE.tgz" --access public --tag "$DIST_TAG"
+        working-directory: ${{ runner.temp }}
+        run: npm publish "$GITHUB_WORKSPACE/payload-download/petercjl-ecom-macos-arm64-$RELEASE.tgz" --access public --tag "$DIST_TAG"
       - name: Promote the byte-identical verified version through OIDC
         if: ${{ !inputs.validate_only && steps.registry.outputs.exists == 'true' }}
+        working-directory: ${{ runner.temp }}
         run: npm dist-tag add "@petercjl/ecom-macos-arm64@$RELEASE" "$DIST_TAG"
