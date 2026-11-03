@@ -44,6 +44,7 @@
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/common/chrome_isolated_world_ids.h"
 #include "components/embedder_support/user_agent_utils.h"
 #include "components/os_crypt/async/browser/os_crypt_async.h"
 #include "components/os_crypt/async/common/encryptor.h"
@@ -53,6 +54,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/storage_partition_config.h"
 #include "content/public/browser/web_contents.h"
@@ -363,6 +365,66 @@ class ShopService final : public base::SupportsUserData::Data,
     auto c = containers::GetContainerFromPrefs(*profile_->GetPrefs(), id);
     if (!c) {
       Send(std::move(callback), Error("CONTAINER_NOT_FOUND"));
+      return;
+    }
+    if (method == "shops.submit-login-fixture") {
+      content::WebContents* target = nullptr;
+      ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+          [&](BrowserWindowInterface* browser) {
+            if (browser->GetProfile() != profile_) {
+              return true;
+            }
+            auto* tabs = browser->GetTabStripModel();
+            auto* contents = tabs ? tabs->GetActiveWebContents() : nullptr;
+            if (!contents || contents->IsLoading() ||
+                contents->GetLastCommittedURL() !=
+                    GURL("http://127.0.0.1:59997/login") ||
+                containers::GetContainerIdForWebContents(contents) != id) {
+              return true;
+            }
+            target = contents;
+            return false;
+          });
+      if (!target) {
+        Send(std::move(callback), Error("LOGIN_FIXTURE_TAB_REQUIRED"));
+        return;
+      }
+      target->GetPrimaryMainFrame()->ExecuteJavaScriptInIsolatedWorld(
+          uR"JS((() => {
+            if (location.href !== 'http://127.0.0.1:59997/login')
+              return 'wrong-page';
+            if (document.querySelector('[data-login-challenge]'))
+              return 'manual-verification-required';
+            const form = document.querySelector('form[data-ecom-login-fixture]');
+            const button = form?.querySelector('button[type=submit]');
+            if (!button || button.disabled || form.method !== 'post' ||
+                form.target || button.hasAttribute('formaction') ||
+                button.hasAttribute('formtarget') ||
+                form.action !== 'http://127.0.0.1:59997/submit')
+              return 'fixture-form-unavailable';
+            if (form.elements.namedItem('username')?.value !== 'fixture-user' ||
+                form.elements.namedItem('password')?.value !== 'fixture-password')
+              return 'fixture-credentials-required';
+            if (globalThis.ecomFixtureSubmitted)
+              return 'already-submitted';
+            globalThis.ecomFixtureSubmitted = true;
+            button.click();
+            return 'clicked';
+          })())JS",
+          base::BindOnce(
+              [](Reply reply, std::string container_id, base::Value result) {
+                if (!result.is_string()) {
+                  Send(std::move(reply), Error("LOGIN_FIXTURE_OUTCOME_UNKNOWN"));
+                  return;
+                }
+                Send(std::move(reply),
+                     base::DictValue().Set("ok", true)
+                         .Set("containerId", container_id)
+                         .Set("status", result.GetString())
+                         .Set("fixtureOnly", true));
+              },
+              std::move(callback), id),
+          ISOLATED_WORLD_ID_BRAVE_INTERNAL);
       return;
     }
     if (method == "shops.update") {
