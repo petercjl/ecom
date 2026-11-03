@@ -11,7 +11,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
-#include "components/grit/brave_components_scaled_resources.h"
+#include "chrome/grit/theme_resources.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/test/browser_test.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -23,7 +23,7 @@ namespace tabs {
 
 class BraveTabDataBrowserTest : public InProcessBrowserTest {};
 
-// Verifies that the NTP tab gets the Brave themed favicon and that favicon
+// Verifies that the NTP tab gets the Ecom product favicon and that favicon
 // themification is disabled so the icon is displayed as-is rather than being
 // tinted by the tab background colour.
 IN_PROC_BROWSER_TEST_F(BraveTabDataBrowserTest, NTPFaviconOverride) {
@@ -37,18 +37,12 @@ IN_PROC_BROWSER_TEST_F(BraveTabDataBrowserTest, NTPFaviconOverride) {
   auto tab_data_observer = std::make_unique<TabDataObserver>(tab_interface);
   const TabData& data = tab_data_observer->tab_data();
 
-  // Brave supplies its own NTP icon and should not tint it.
+  // Ecom supplies its own NTP icon and should not tint it.
   EXPECT_FALSE(data.should_themify_favicon);
 
-  // The favicon must be exactly one of the two Brave NTP variants (light or
-  // dark). ResourceBundle caches images by ID so pointer equality holds.
   auto& rb = ui::ResourceBundle::GetSharedInstance();
-  const ui::ImageModel dark_favicon =
-      ui::ImageModel::FromImage(rb.GetImageNamed(IDR_FAVICON_NTP_DARK));
-  const ui::ImageModel light_favicon =
-      ui::ImageModel::FromImage(rb.GetImageNamed(IDR_FAVICON_NTP_LIGHT));
-
-  EXPECT_TRUE(data.favicon == dark_favicon || data.favicon == light_favicon);
+  EXPECT_EQ(data.favicon,
+            ui::ImageModel::FromImage(rb.GetImageNamed(IDR_PRODUCT_LOGO_32)));
 }
 
 }  // namespace tabs

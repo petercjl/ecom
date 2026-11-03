@@ -6,6 +6,18 @@
 #include <string_view>
 
 #include "brave/browser/ui/brave_ui_features.h"
+#include "build/build_config.h"
+
+#if BUILDFLAG(IS_MAC)
+#include "brave/browser/ecom/shop_container_service.h"
+#include "brave/browser/new_tab/new_tab_shows_options.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/webui/ntp/new_tab_ui.h"
+#include "content/public/browser/storage_partition_config.h"
+#include "content/public/browser/web_contents.h"
+#endif
 #include "brave/components/containers/buildflags/buildflags.h"
 #include "chrome/browser/tab_contents/tab_util.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
@@ -39,6 +51,35 @@ void MaybeOverridePopupDisposition(NavigateParams* params) {
 void UpdateParams(NavigateParams* params) {
   UpdateBraveScheme(params);
   MaybeOverridePopupDisposition(params);
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_CONTAINERS)
+  if (!params->browser || params->contents_to_insert ||
+      params->is_renderer_initiated ||
+      (params->disposition != WindowOpenDisposition::NEW_FOREGROUND_TAB &&
+       params->disposition != WindowOpenDisposition::NEW_BACKGROUND_TAB) ||
+      !NewTabUI::IsNewTab(params->url) ||
+      !brave::ShouldUseNewTabURLForNewTab(params->initiating_profile) ||
+      !base::FeatureList::IsEnabled(containers::features::kContainers)) {
+    return;
+  }
+  auto* source = params->source_contents.get();
+  if (!source) {
+    source = params->browser->GetTabStripModel()->GetActiveWebContents();
+  }
+  if (!source || source->GetBrowserContext() != params->initiating_profile) {
+    return;
+  }
+  const std::string id = params->storage_partition_config
+      ? std::string(containers::GetContainerIdFromStoragePartitionConfig(
+            *params->storage_partition_config))
+      : containers::GetContainerIdForWebContents(source);
+  const auto homepage = ecom::GetShopHomepage(params->initiating_profile, id);
+  if (homepage.is_valid()) {
+    params->storage_partition_config = content::StoragePartitionConfig::Create(
+        params->initiating_profile, containers::kContainersStoragePartitionDomain,
+        id, false);
+    params->url = homepage;
+  }
+#endif
 }
 
 #if BUILDFLAG(ENABLE_CONTAINERS)

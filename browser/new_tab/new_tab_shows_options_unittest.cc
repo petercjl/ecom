@@ -48,7 +48,7 @@ TEST_F(BraveNewTabTest, BasicTest) {
   EXPECT_EQ(GURL(), brave::GetNewTabPageURL(profile));
   EXPECT_EQ(GURL(), brave::GetNewTabPageURL(otr_profile));
   EXPECT_TRUE(brave::ShouldUseNewTabURLForNewTab(profile));
-  EXPECT_TRUE(brave::ShouldNewTabShowDashboard(profile));
+  EXPECT_FALSE(brave::ShouldNewTabShowDashboard(profile));
 
   // Check NTP url is empty when option is HOMEPAGE and kHomePageIsNewTabPage
   // is true.
@@ -60,7 +60,7 @@ TEST_F(BraveNewTabTest, BasicTest) {
   EXPECT_EQ(GURL(), brave::GetNewTabPageURL(profile));
   EXPECT_EQ(GURL(), brave::GetNewTabPageURL(otr_profile));
   EXPECT_TRUE(brave::ShouldUseNewTabURLForNewTab(profile));
-  EXPECT_TRUE(brave::ShouldNewTabShowDashboard(profile));
+  EXPECT_FALSE(brave::ShouldNewTabShowDashboard(profile));
 
   // Check NTP url is configured url when option is HOMEPAGE and
   // kHomePageIsNewTabPage is false.
@@ -70,10 +70,10 @@ TEST_F(BraveNewTabTest, BasicTest) {
   EXPECT_FALSE(brave::ShouldUseNewTabURLForNewTab(profile));
   EXPECT_FALSE(brave::ShouldNewTabShowDashboard(profile));
 
-  // If homepage url is newtab url, dashboard settings should be shown.
+  // An NTP homepage falls back to the blank page.
   prefs->SetString(prefs::kHomePage, "chrome://newtab/");
   EXPECT_TRUE(brave::ShouldUseNewTabURLForNewTab(profile));
-  EXPECT_TRUE(brave::ShouldNewTabShowDashboard(profile));
+  EXPECT_FALSE(brave::ShouldNewTabShowDashboard(profile));
 
   // Check NTP url is used when option is BLANKPAGE.
   // Blank page will go NTP route and BraveNewTabUI will handle it.
