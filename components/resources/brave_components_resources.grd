@@ -37,7 +37,6 @@
       <!-- WebUI newtab resources -->
       <!-- TODO: move to brave_new_tab_ui component -->
       <if expr="not is_android">
-        <include name="IDR_BRAVE_NEW_TAB_HTML" file="../brave_new_tab_ui/brave_new_tab.html" type="BINDATA" />
         <include name="IDR_BRAVE_NEW_TAB_IMG1" file="../img/newtab/bookmarks_btn.svg" type="BINDATA" />
         <include name="IDR_BRAVE_NEW_TAB_IMG4" file="../img/newtab/history_btn.svg" type="BINDATA" />
         <include name="IDR_BRAVE_NEW_TAB_IMG2" file="../img/newtab/settings_prefs_btn.svg" type="BINDATA" />
@@ -90,7 +89,6 @@
       <part file="../skus/browser/resources/skus_internals_resources.grdp" />
       <if expr="not is_android">
         <part file="brave_blank_page_resources.grdp" />
-        <part file="brave_new_tab_page_resources.grdp" />
         <part file="brave_welcome_page_resources.grdp" />
       </if>
       <part file="brave_translate_resources.grdp" />
