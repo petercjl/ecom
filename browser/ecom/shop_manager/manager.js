@@ -895,6 +895,7 @@ async function runAction(action, row) {
     $('credential-site').value = ''
     $('credential-saved-state').textContent = ''
     $('edit-more').open = !row.homeUrl || row.platform === 'custom'
+    $('edit-appearance-settings').open = true
     $('edit-dialog').showModal()
     const result = await sendWithPromise('ecomShopCredentials', row.id, '', '', '')
     if ($('edit-dialog').open && editId === row.id) {
@@ -991,6 +992,7 @@ $('refresh').addEventListener('click', async () => {
 $('add').addEventListener('click', () => {
   if (busy) return
   $('create-error').textContent = ''
+  $('create-appearance-settings').open = true
   $('create-dialog').showModal()
   $('platform-picker-button').focus()
 })

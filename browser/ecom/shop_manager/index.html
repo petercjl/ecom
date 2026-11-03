@@ -169,8 +169,8 @@
           <div class="account-editor-grid">
             <nav class="editor-navigation" aria-label="Account sections">
               <button type="button" data-section="create-info" data-text="accountInfo"></button>
-              <button type="button" data-section="create-environment" data-text="browserEnvironment"></button>
               <button type="button" data-section="create-appearance-settings" data-text="browserAppearance"></button>
+              <button type="button" data-section="create-environment" data-text="browserEnvironment"></button>
               <button type="button" data-section="create-more" data-text="moreSettings"></button>
             </nav>
             <div class="editor-sections">
@@ -216,11 +216,7 @@
             </label>
             <p class="dialog-intro" data-text="createCredentialHint"></p>
           </section>
-          <details class="create-card" id="create-environment">
-            <summary data-text="browserEnvironment"></summary>
-            <p class="dialog-intro" data-text="containerEnvironmentHint"></p>
-          </details>
-          <details class="create-card" id="create-appearance-settings">
+          <details class="create-card" id="create-appearance-settings" open>
             <summary data-text="browserAppearance"></summary>
             <div class="appearance-picker" id="create-appearance">
               <input type="hidden" id="create-color" value="#ff3c36">
@@ -234,6 +230,10 @@
                 <div class="appearance-options" id="create-icons"></div>
               </fieldset>
             </div>
+          </details>
+          <details class="create-card" id="create-environment">
+            <summary data-text="browserEnvironment"></summary>
+            <p class="dialog-intro" data-text="containerEnvironmentHint"></p>
           </details>
           <details class="create-card" id="create-more">
             <summary data-text="moreSettings"></summary>
@@ -318,8 +318,8 @@
           <div class="account-editor-grid">
             <nav class="editor-navigation" aria-label="Account sections">
               <button type="button" data-section="edit-info" data-text="accountInfo"></button>
-              <button type="button" data-section="edit-environment" data-text="browserEnvironment"></button>
               <button type="button" data-section="edit-appearance-settings" data-text="browserAppearance"></button>
+              <button type="button" data-section="edit-environment" data-text="browserEnvironment"></button>
               <button type="button" data-section="edit-more" data-text="moreSettings"></button>
             </nav>
             <div class="editor-sections">
@@ -358,11 +358,7 @@
           </label>
             <p id="credential-saved-state" role="status"></p>
           </section>
-          <details class="create-card" id="edit-environment">
-            <summary data-text="browserEnvironment"></summary>
-            <p class="dialog-intro" data-text="containerEnvironmentHint"></p>
-          </details>
-          <details class="create-card" id="edit-appearance-settings">
+          <details class="create-card" id="edit-appearance-settings" open>
             <summary data-text="browserAppearance"></summary>
         <div class="appearance-picker" id="edit-appearance">
               <input type="hidden" id="edit-color" value="#ff3c36">
@@ -376,6 +372,10 @@
                 <div class="appearance-options" id="edit-icons"></div>
               </fieldset>
             </div>
+          </details>
+          <details class="create-card" id="edit-environment">
+            <summary data-text="browserEnvironment"></summary>
+            <p class="dialog-intro" data-text="containerEnvironmentHint"></p>
           </details>
           <details class="create-card" id="edit-more">
             <summary data-text="moreSettings"></summary>
