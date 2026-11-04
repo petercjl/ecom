@@ -47,7 +47,7 @@ describe('parsePatchedRepositories', () => {
     ).toEqual(['v8', '', 'third_party/ffmpeg'])
   })
 
-  it('ignores comments and blank lines', () => {
+  it.each(['\n', '\r\n'])('ignores comments and blank lines with %j', newline => {
     const contents = [
       '# a leading comment',
       '',
@@ -55,7 +55,7 @@ describe('parsePatchedRepositories', () => {
       '//v8',
       '#//third_party/ffmpeg',
       '   ',
-    ].join('\n')
+    ].join(newline)
     expect(parsePatchedRepositories(contents, filePath)).toEqual(['', 'v8'])
   })
 

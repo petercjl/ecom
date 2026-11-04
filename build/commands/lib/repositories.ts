@@ -61,7 +61,7 @@ export function parsePatchedRepositories(
   filePath: string,
 ): string[] {
   const relativePaths: string[] = []
-  for (const [index, rawLine] of contents.split('\n').entries()) {
+  for (const [index, rawLine] of contents.split(/\r?\n/).entries()) {
     const lineNumber = index + 1
     const line = rawLine.replace(/#.*$/, '').trim() // Removing comments.
     if (line.length === 0) {
