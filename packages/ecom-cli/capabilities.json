@@ -723,7 +723,7 @@
   "businessIntegration": {
     "sourcePackage": "@petercjl/sycmcli",
     "sourceVersion": "0.4.0",
-    "registeredReads": 136,
+    "registeredReads": 137,
     "nativeGetCandidates": 88,
     "serviceAdaptersRequired": 0,
     "mutationWorkflows": 7,
@@ -739,6 +739,7 @@
     "requiredNativeProtocol": 1,
     "registryHashAgreementRequired": "legacy protocol only",
     "businessRouteProtocol": 1,
+    "signedDevRouteProtocol": 1,
     "containerBinding": "Stable Ecom container ID, browser-owned session and native account verification; no separate Chrome store profile",
     "nativeRegistryHash": "26d302541c1641b00ce45c6df4ae32bbb90e2b21352fe5f91e3cfedb21e35d5e",
     "pageFallback": {

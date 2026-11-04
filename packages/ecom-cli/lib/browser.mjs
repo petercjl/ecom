@@ -110,14 +110,15 @@ export async function requestInConnection(connection,options) {
   if(body.containerId!==container.id||body.httpStatus!==200||!Object.hasOwn(body,'data'))throw fail('PROTOCOL_MISMATCH','Session response does not match selected container or JSON response contract',{operationId:body.operationId,executed:'unknown'});
   return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,request:{method:'GET',url},httpStatus:body.httpStatus,data:body.data,businessStatus:'not-evaluated'};
 }
-export async function registeredReadInConnection(connection,options,operation,params,registryHash,route) {
+export async function registeredReadInConnection(connection,options,operation,params,registryHash,route,signedRoute) {
   if(connection.endpoint.businessReadProtocol!==1)throw fail('BROWSER_UPGRADE_REQUIRED','This operation needs an Ecom build with native business read protocol 1');
   const useRoute=connection.endpoint.businessRouteProtocol===1&&route!==undefined;
-  if(!useRoute&&connection.endpoint.businessReadRegistryHash!==registryHash)throw fail('BROWSER_UPGRADE_REQUIRED','Browser and CLI business catalogs differ; update them together');
+  if(signedRoute&&connection.endpoint.signedBusinessRouteProtocol!==1)throw fail('BROWSER_UPGRADE_REQUIRED','This read requires signed route protocol 1');
+  if(!signedRoute&&!useRoute&&connection.endpoint.businessReadRegistryHash!==registryHash)throw fail('BROWSER_UPGRADE_REQUIRED','Browser and CLI business catalogs differ; update them together');
   const listed=await readMailbox(connection),container=resolveContainer(listed.containers,options.container);
-  const body=await callMailbox(connection,{method:'business.read',containerId:container.id,operation,params,...(useRoute?{route}:{})},75000);
+  const body=await callMailbox(connection,{method:'business.read',containerId:container.id,operation,params,...(useRoute?{route}:{}),...(signedRoute?{signedRoute}:{})},75000);
   if(body.containerId!==container.id||body.businessOperation!==operation||body.httpStatus!==200||!Object.hasOwn(body,'data'))throw fail('PROTOCOL_MISMATCH','Registered response differs from the pinned container or operation',{operationId:body.operationId,executed:'unknown'});
-  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,httpStatus:body.httpStatus,data:body.data,...(Array.isArray(body.dataFlows)&&body.dataFlows.length?{dataFlows:body.dataFlows}:{}),transport:'native-business-read',identityBinding:'container-bound-account',...(useRoute?{businessRouteProtocol:1}:{registryHash})};
+  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,httpStatus:body.httpStatus,data:body.data,...(Array.isArray(body.dataFlows)&&body.dataFlows.length?{dataFlows:body.dataFlows}:{}),transport:'native-business-read',identityBinding:'container-bound-account',...(signedRoute?{signedBusinessRouteProtocol:1}:useRoute?{businessRouteProtocol:1}:{registryHash})};
 }
 export async function openBusinessPageInConnection(connection,options,operation,entryUrl,registryHash,route) {
   const useRoute=connection.endpoint.businessRouteProtocol===1&&route!==undefined;

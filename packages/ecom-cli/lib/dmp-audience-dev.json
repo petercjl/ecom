@@ -1,0 +1,4 @@
+{
+  "payload": "{\"version\":1,\"purpose\":\"ecom-dev-dmp-read\",\"id\":\"dmp.competitor-audience\",\"method\":\"POST\",\"path\":\"/api/dmp/insight/tag/chart\",\"expiresAt\":1794376920,\"fields\":{\"appCode\":\"string\",\"needUnknown\":\"boolean\",\"tagId\":\"integer\",\"selectTagOptionSetDTO\":\"dictionary\"}}",
+  "signature": "rysjcVdsMFB+ME+NMLGC10i8VW3SsWZgQ8KpOh3bkgeycfW/+klxmAlDmqFW1JB/ju1xs/SSvGHD8PUd61TRDA=="
+}

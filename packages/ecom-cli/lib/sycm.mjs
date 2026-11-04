@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
+import {fileURLToPath} from 'node:url';
 import {fail,exists,privatePath,writeNew} from './common.mjs';
 import {discover,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,callMailbox,resolveContainer} from './browser.mjs';
 import {listOperations,operationRegistry,getService,validateOperationParams} from './sycm-vendor/operation-registry.mjs';
@@ -30,9 +31,34 @@ const dailyTrade={
   requiredParams:['date'],
   defaultParams:{...operationRegistry['shop.trade-summary'].defaultParams,dateType:'recent1'},
 };
-const allOperations=()=>[...browserOperations(),dailyTrade];
+const audienceEnvelope=JSON.parse(fs.readFileSync(fileURLToPath(new URL('./dmp-audience-dev.json',import.meta.url)),'utf8'));
+const audienceManifest=JSON.parse(audienceEnvelope.payload);
+const competitorAudience={
+  id:audienceManifest.id,service:'dmp',method:audienceManifest.method,path:audienceManifest.path,
+  requiredParams:['itemId'],defaultParams:{days:30,audienceType:'purchase',dimension:'gender'},
+  signedDevRoute:true,sideEffect:'none',
+};
+const audienceTypes={browse:['1','浏览'],favorite:['2','收藏'],cart:['3','加购'],purchase:['4','购买'],search:['5','搜索']};
+const audienceDimensions={gender:114554,age:114555,consumption:163535,city:213510,segments:266238};
+function audienceRequest(params) {
+  const {itemId,days=30,audienceType='purchase',dimension='gender'}=params;
+  if(Object.keys(params).some(key=>!['itemId','days','audienceType','dimension'].includes(key))||
+      typeof itemId!=='string'||!/^[1-9]\d{0,29}$/.test(itemId)||
+      ![7,15,30,90].includes(days)||!Object.hasOwn(audienceTypes,audienceType)||
+      !Object.hasOwn(audienceDimensions,dimension)) {
+    throw fail('INVALID_ARGUMENT','Specify itemId as digits; use days 7/15/30/90, a known audienceType and dimension');
+  }
+  const [behavior,label]=audienceTypes[audienceType];
+  const select=(optionGroupId,values,names)=>({tagId:'283736',optionGroupId,tagName:'同行宝贝行为人群',values,names});
+  return {appCode:'dmpInsight',needUnknown:true,tagId:audienceDimensions[dimension],
+    selectTagOptionSetDTO:{operator:1,selectTagOptionSetDTO:[{operator:1,selects:[
+      select(303279,itemId,itemId),select(303280,behavior,label),select(303281,String(days),'最近'+days+'天'),
+    ]}]}};
+}
+const allOperations=()=>[...browserOperations(),dailyTrade,competitorAudience];
 const resolveOperation=id=>{
   if(id===dailyTrade.id)return dailyTrade;
+  if(id===competitorAudience.id)return competitorAudience;
   const found=legacyReads.find(x=>x.id===id)??(Object.hasOwn(operationRegistry,id)?operationRegistry[id]:null);
   if(!found)throw fail('UNKNOWN_OPERATION','Choose a registered operation from sycm operations');
   return found;
@@ -64,7 +90,7 @@ const transportFor=op=>op.method==='GET'&&getService(op.service).origin===ORIGIN
 export function operationSchema(id) {
   const op=resolveOperation(id), service=getService(op.service);
   return {...op,origin:service.origin,entryUrl:service.entryUrl,tokenStrategy:service.tokenStrategy,transport:'native-business-read',legacyTransport:transportFor(op),runtimeVerified:false,
-    minimumBrowserCapability:'businessReadProtocol=1 with businessRouteProtocol=1 or matching legacy registry hash',limits:'Credentials remain native. Per-endpoint permissions, CSRF, date semantics and service login require real validation.'};
+    minimumBrowserCapability:op.signedDevRoute?'signedBusinessRouteProtocol=1 (Ecom Dev)':'businessReadProtocol=1 with businessRouteProtocol=1 or matching legacy registry hash',limits:'Credentials remain native. Per-endpoint permissions, CSRF, date semantics and service login require real validation.'};
 }
 export function nativeRegistry() {
   return Object.fromEntries(browserOperations().map(({id})=>operationSchema(id)).map(op=>[op.id,{
@@ -156,10 +182,14 @@ export async function runRead(options,deps={}) {
     params.dateType='recent1';
   }
   assertPublicParams(params);validateOperationParams(resolveOperation(browserOperation),params);
+  const signedParams=op.signedDevRoute?audienceRequest(params):null;
   if(Buffer.byteLength(JSON.stringify(params))>24576)throw fail('INVALID_ARGUMENT','Read parameters exceed the native 24 KiB limit');
   const connection=(deps.discover??discover)(options);
   let result;
-  if(connection.endpoint.businessReadProtocol===1) {
+  if(signedParams) {
+    result=await (deps.registeredRequest??registeredReadInConnection)(
+      connection,options,op.id,signedParams,undefined,undefined,audienceEnvelope);
+  } else if(connection.endpoint.businessReadProtocol===1) {
     const supportsRoute=connection.endpoint.businessRouteProtocol===1;
     const effective=supportsRoute?{...op.defaultParams,...params}:params;
     assertPublicParams(effective);
@@ -176,12 +206,18 @@ export async function runRead(options,deps={}) {
   try {
     const data=businessResponse(result.data),flows=result.dataFlows??[];
     const expanded=op.requestShape==='alimama-dynamic-module'&&hasTemplate(data)?resolveModuleResponse(data,flows):undefined;
+    if(signedParams&&(data.info?.ok!==true||
+        !Array.isArray(data.data?.result?.chartDataFull??data.data?.chartDataFull))) {
+      throw fail('BUSINESS_RESPONSE_INVALID','DMP did not return a verified audience chart',{executed:true});
+    }
     const partial=Boolean(expanded&&hasTemplate(expanded));
     return {...result,...(flows.length?{dataFlows:sanitized(flows)}:{}),...(expanded?{resolvedResponse:expanded,completeness:{complete:!partial,scope:'registered-module-response',...(partial?{reason:'Platform data flows returned successfully but some template references have no returned value; inspect resolvedResponse and do not infer missing values.'}:{})}}:{}),operation:op.id,service:op.service,data,businessStatus:partial?'partial':'success',fetchedAt:new Date().toISOString(),dataDateVerification:'caller-must-check-requested-period-and-platform-update-time'};
   }catch(error){error.operationId=result.operationId;throw error;}
 }
 export async function openOperation(options,deps={}) {
-  const op=operationSchema(options.operation),connection=(deps.discover??discover)(options);
+  const op=operationSchema(options.operation);
+  if(op.signedDevRoute)throw fail('BUSINESS_PAGE_UNSUPPORTED','Signed routes support reads only');
+  const connection=(deps.discover??discover)(options);
   const supportsRoute=connection.endpoint.businessRouteProtocol===1;
   const browserOperation=op.browserOperation??op.id;
   const result=await (deps.open??openBusinessPageInConnection)(connection,options,browserOperation,op.entryUrl,
