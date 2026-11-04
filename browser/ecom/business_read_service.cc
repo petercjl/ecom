@@ -585,6 +585,12 @@ private:
     }
     GURL url(Field(*spec_, "origin") + Field(*spec_, "path"));
     const auto method = Field(*spec_, "method");
+    if (signed_spec_ && method == "POST") {
+      for (const auto* key : {"bizCode", "_tb_token_", "_csrf", "csrfId"}) {
+        url = net::AppendQueryParameter(url, key, Field(payload, key));
+        payload.Remove(key);
+      }
+    }
     if (method == "GET") {
       for (auto [key, value] : payload) {
         if (!value.is_none()) {
