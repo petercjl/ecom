@@ -22,8 +22,17 @@ const legacyReads=[
  ['word.related','/mc/mq/mkt/keyword/relate/analysis.json',['keyWord','dateRange'],{cycleFlag:'cycle',order:'desc',orderBy:'seIpvUvHits',rankType:'related',page:1,pageSize:10,device:'0',marketVersion:'free'}],
  ['word.category','/mc/mq/mkt/keyword/cate/analysis.json',['keyWord','dateRange'],{order:'desc',orderBy:'clickHitsRatio',page:1,pageSize:10,device:'0',marketVersion:'free'}]
 ].map(([id,path,requiredParams,defaultParams])=>({id,service:'sycm',method:'GET',path,requiredParams,defaultParams,sideEffect:'none',source:'src/sycm.mjs'}));
-const allOperations=()=>[...listOperations(),...legacyReads];
+const browserOperations=()=>[...listOperations(),...legacyReads];
+const dailyTrade={
+  ...operationRegistry['shop.trade-summary'],
+  id:'shop.trade-daily',
+  browserOperation:'shop.trade-summary',
+  requiredParams:['date'],
+  defaultParams:{...operationRegistry['shop.trade-summary'].defaultParams,dateType:'recent1'},
+};
+const allOperations=()=>[...browserOperations(),dailyTrade];
 const resolveOperation=id=>{
+  if(id===dailyTrade.id)return dailyTrade;
   const found=legacyReads.find(x=>x.id===id)??(Object.hasOwn(operationRegistry,id)?operationRegistry[id]:null);
   if(!found)throw fail('UNKNOWN_OPERATION','Choose a registered operation from sycm operations');
   return found;
@@ -58,7 +67,7 @@ export function operationSchema(id) {
     minimumBrowserCapability:'businessReadProtocol=1 with businessRouteProtocol=1 or matching legacy registry hash',limits:'Credentials remain native. Per-endpoint permissions, CSRF, date semantics and service login require real validation.'};
 }
 export function nativeRegistry() {
-  return Object.fromEntries(inventory().operations.map(op=>[op.id,{
+  return Object.fromEntries(browserOperations().map(({id})=>operationSchema(id)).map(op=>[op.id,{
     id:op.id,service:op.service,method:op.method,path:op.path,origin:op.origin,
     entryUrl:op.entryUrl,tokenStrategy:op.tokenStrategy,requiredParams:op.requiredParams,
     defaultParams:op.defaultParams??{},...(op.encoding?{encoding:op.encoding}:{}),
@@ -135,7 +144,18 @@ export function resolveModuleResponse(response,flows) {
 }
 export async function runRead(options,deps={}) {
   const params=paramsObject(options['params-json']),op=resolveOperation(options.operation);
-  assertPublicParams(params);validateOperationParams(op,params);
+  const browserOperation=op.browserOperation??op.id;
+  if(op.id===dailyTrade.id) {
+    const date=params.date;
+    if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date)||
+        new Date(date).toJSON()?.slice(0,10)!==date||Object.hasOwn(params,'dateRange')) {
+      throw fail('INVALID_ARGUMENT','Specify one valid YYYY-MM-DD date for shop.trade-daily');
+    }
+    delete params.date;
+    params.dateRange=date+'|'+date;
+    params.dateType='recent1';
+  }
+  assertPublicParams(params);validateOperationParams(resolveOperation(browserOperation),params);
   if(Buffer.byteLength(JSON.stringify(params))>24576)throw fail('INVALID_ARGUMENT','Read parameters exceed the native 24 KiB limit');
   const connection=(deps.discover??discover)(options);
   let result;
@@ -145,12 +165,12 @@ export async function runRead(options,deps={}) {
     assertPublicParams(effective);
     if(Buffer.byteLength(JSON.stringify(effective))>24576)throw fail('INVALID_ARGUMENT','Read parameters exceed the native 24 KiB limit');
     result=await (deps.registeredRequest??registeredReadInConnection)(
-      connection,options,op.id,effective,supportsRoute?undefined:nativeRegistryHash(),
-      supportsRoute?browserRoute(op.id):undefined);
+      connection,options,browserOperation,effective,supportsRoute?undefined:nativeRegistryHash(),
+      supportsRoute?browserRoute(browserOperation):undefined);
   }
   else {
     if(transportFor(op)!=='native-session-get')throw fail('BROWSER_UPGRADE_REQUIRED','Upgrade Ecom to native business read protocol 1 for this registered service; keep the existing container login');
-    const built=buildRead(options.operation,params);
+    const built=buildRead(browserOperation,params);
     result=await (deps.request??requestInConnection)(connection,{...options,url:built.url,method:'GET'});
   }
   try {
@@ -163,8 +183,10 @@ export async function runRead(options,deps={}) {
 export async function openOperation(options,deps={}) {
   const op=operationSchema(options.operation),connection=(deps.discover??discover)(options);
   const supportsRoute=connection.endpoint.businessRouteProtocol===1;
-  return (deps.open??openBusinessPageInConnection)(connection,options,op.id,op.entryUrl,
-    supportsRoute?undefined:nativeRegistryHash(),supportsRoute?browserRoute(op.id):undefined);
+  const browserOperation=op.browserOperation??op.id;
+  const result=await (deps.open??openBusinessPageInConnection)(connection,options,browserOperation,op.entryUrl,
+    supportsRoute?undefined:nativeRegistryHash(),supportsRoute?browserRoute(browserOperation):undefined);
+  return {...result,operation:op.id};
 }
 async function account(connection,selector) {
   const list=await callMailbox(connection,{method:'shops.list'});

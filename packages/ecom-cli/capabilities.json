@@ -723,7 +723,7 @@
   "businessIntegration": {
     "sourcePackage": "@petercjl/sycmcli",
     "sourceVersion": "0.4.0",
-    "registeredReads": 135,
+    "registeredReads": 136,
     "nativeGetCandidates": 88,
     "serviceAdaptersRequired": 0,
     "mutationWorkflows": 7,

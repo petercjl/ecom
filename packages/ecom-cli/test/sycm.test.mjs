@@ -12,14 +12,14 @@ import {newerStableVersion} from '../lib/maintenance.mjs';
 test('complete source registry is physically bundled with license and checksum provenance',()=>{
   const dir=path.join(root,'lib/sycm-vendor'),meta=JSON.parse(fs.readFileSync(path.join(dir,'provenance.json')));
   for(const [name,hash]of Object.entries(meta.files))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(dir,name))).digest('hex'),hash);
-  const result=inventory();assert.equal(result.operations.length,135);assert.equal(result.businessCapabilities.length,37);assert.equal(result.mutations.length,7);
-  assert.equal(result.operations.filter(x=>x.legacyTransport==='native-session-get').length,88);
-  assert.equal(result.operations.filter(x=>x.transport==='native-business-read').length,135);
+  const result=inventory();assert.equal(result.operations.length,136);assert.equal(result.businessCapabilities.length,37);assert.equal(result.mutations.length,7);
+  assert.equal(result.operations.filter(x=>!x.browserOperation&&x.legacyTransport==='native-session-get').length,88);
+  assert.equal(result.operations.filter(x=>x.transport==='native-business-read').length,136);
   for(const item of result.operations){assert.equal(item.runtimeVerified,false);assert.ok(item.requiredParams);assert.equal(item.sideEffect,'none');}
   for(const item of result.mutations)assert.equal(item.automaticSubmission,false);
 });
 test('all registered native reads preserve endpoint, defaults and required inputs; unsupported services fail before discovery',()=>{
-  for(const op of inventory().operations){
+  for(const op of inventory().operations.filter(operation=>!operation.browserOperation)){
     const params=Object.fromEntries(op.requiredParams.map(k=>[k,/Time$/.test(k)?'2026-11-01':'sample']));
     if(op.legacyTransport==='native-session-get') {
       const built=buildRead(op.id,params),url=new URL(built.url);assert.equal(url.origin,op.origin);assert.equal(url.pathname,op.path);
@@ -34,7 +34,7 @@ test('real CLI parser exposes strict business commands and missing targets fail 
   assert.equal(parse(['sycm','run','--operation','shop.trade-summary','--container','example','--params-json','{}']).command,'sycm run');
   for(const args of [['sycm','run'],['sycm','run','--operation','shop.trade-summary'],['sycm','mutation','apply','--plan','x','--container','a'],['sycm','schema'],['sycm','open'],['sycm','open','--operation','alimama.access']])assert.throws(()=>parse(args));
   assert.equal(parse(['sycm','open','--operation','alimama.access','--container','example','--foreground']).options.foreground,true);
-  const result=await main(['sycm','operations','--json']);assert.equal(result.count,135);
+  const result=await main(['sycm','operations','--json']);assert.equal(result.count,136);
 });
 test('business errors and credential fields do not become false successes or leak diagnostics',async()=>{
   for(const body of [{content:{code:5810,data:null,message:'请登录'}},{hasError:true,content:{data:null}}, {code:5810,message:'请登录 https://example.com/?token=private'},{success:false,info:{message:'无权限'}},{code:1,message:'滑块验证'}])assert.throws(()=>businessResponse(body),e=>e.executed===true&&!e.message.includes('private'));
@@ -96,7 +96,7 @@ test('new native protocol dispatches every registered service without a Chrome r
     assert.equal(c,connection);assert.equal(options.container,'sample-container');assert.equal(hash,nativeRegistryHash());calls++;
     return {container:{id:'sample-container'},instance:{id:'sample-instance'},operationId:'sample-op',data:{code:0,data:{operation:id}}};
   }};
-  for(const op of inventory().operations){
+  for(const op of inventory().operations.filter(operation=>!operation.browserOperation)){
     const params=Object.fromEntries(op.requiredParams.map(k=>[k,/Time$/.test(k)?'2026-11-01':'sample']));
     const result=await runRead({operation:op.id,container:'sample-container','params-json':JSON.stringify(params)},deps);
     assert.equal(result.businessStatus,'success');assert.equal(result.data.data.operation,op.id);
@@ -118,4 +118,22 @@ test('dynamic-module reads resolve native data flows and reject partial or faile
   const partial=await runRead({operation:'alimama.insight.industry-categories',container:'sample','params-json':'{}'},{...deps,registeredRequest:async()=>({operationId:'partial-op',data:body,dataFlows:emptyFlows})});
   assert.equal(partial.businessStatus,'partial');assert.equal(partial.completeness.complete,false);
   await assert.rejects(runRead({operation:'alimama.insight.industry-categories',container:'sample','params-json':'{}'},{...deps,registeredRequest:async()=>({operationId:'module-op',data:body})}),e=>e.code==='DATA_FLOW_EXPANSION_REQUIRED'&&e.operationId==='module-op');
+});
+
+test('CLI-only daily read selects the approved browser route despite catalog drift',async()=>{
+  const options={operation:'shop.trade-daily',container:'sample','params-json':'{"date":"2026-11-01"}'};
+  const deps={
+    discover:()=>({endpoint:{businessReadProtocol:1,businessRouteProtocol:1,businessReadRegistryHash:'different'}}),
+    registeredRequest:async(_connection,_options,id,params,hash,route)=>{
+      assert.equal(id,'shop.trade-summary');
+      assert.equal(params.dateRange,'2026-11-01|2026-11-01');
+      assert.equal(params.date,undefined);
+      assert.equal(params.dateType,'recent1');
+      assert.equal(hash,undefined);
+      assert.equal(route.path,'/bda/tradinganaly/overview/get_summary.json');
+      return {data:{code:0,data:{}}};
+    },
+  };
+  assert.equal((await runRead(options,deps)).operation,'shop.trade-daily');
+  await assert.rejects(runRead({...options,'params-json':'{"date":"2026-02-30"}'},deps),e=>e.code==='INVALID_ARGUMENT');
 });
