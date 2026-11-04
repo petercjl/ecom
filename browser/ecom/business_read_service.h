@@ -18,6 +18,13 @@ namespace ecom {
 bool MatchesBusinessReadRoute(const std::string& operation,
                               const base::DictValue& route);
 
+// Verifies a Dev route envelope before any authenticated request.
+bool SupportsSignedBusinessRoutes();
+std::optional<base::DictValue> VerifySignedBusinessRoute(
+    const std::string& operation,
+    const base::DictValue& envelope,
+    const base::DictValue& params);
+
 struct BusinessPage {
   std::string service;
   std::string entry_url;
@@ -35,6 +42,7 @@ std::unique_ptr<BusinessRead> CreateBusinessRead(
     std::string container_id,
     std::string operation,
     base::DictValue params,
+    std::optional<base::DictValue> signed_spec,
     base::OnceCallback<void(base::DictValue)> callback);
 }  // namespace ecom
 #endif

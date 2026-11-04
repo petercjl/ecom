@@ -4,6 +4,7 @@
 #include "brave/browser/ecom/business_read_service.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <optional>
@@ -11,7 +12,10 @@
 #include <utility>
 #include <vector>
 
+#include "base/base64.h"
 #include "base/check.h"
+#include "base/command_line.h"
+#include "base/containers/span.h"
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
@@ -54,6 +58,7 @@
 #include "services/network/public/mojom/cookie_manager.mojom.h"
 #include "services/network/public/mojom/fetch_api.mojom.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
+#include "crypto/sign.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -164,13 +169,15 @@ class Read final : public BusinessRead {
 public:
   Read(Profile *profile, std::string container, std::string operation,
        base::DictValue params,
+       std::optional<base::DictValue> signed_spec,
        base::OnceCallback<void(base::DictValue)> callback)
       : profile_(profile), container_(std::move(container)),
-        operation_(std::move(operation)), params_(std::move(params)),
+        operation_(std::move(operation)), signed_spec_(std::move(signed_spec)),
+        params_(std::move(params)),
         callback_(std::move(callback)) {}
 
   void Start() override {
-    spec_ = Spec(operation_);
+    spec_ = signed_spec_ ? &*signed_spec_ : Spec(operation_);
     if (!spec_) {
       Fail("UNKNOWN_OPERATION");
       return;
@@ -598,6 +605,7 @@ private:
   const raw_ptr<Profile> profile_;
   const std::string container_;
   const std::string operation_;
+  const std::optional<base::DictValue> signed_spec_;
   raw_ptr<const base::DictValue> spec_ = nullptr;
   base::DictValue params_;
   base::Value module_response_;
@@ -619,6 +627,85 @@ private:
   base::WeakPtrFactory<Read> weak_{this};
 };
 } // namespace
+
+bool SupportsSignedBusinessRoutes() {
+#if defined(OFFICIAL_BUILD)
+  return false;
+#else
+  return base::CommandLine::ForCurrentProcess()->GetProgram().BaseName()
+             .AsUTF8Unsafe() == "Ecom Dev";
+#endif
+}
+
+std::optional<base::DictValue> VerifySignedBusinessRoute(
+    const std::string& operation,
+    const base::DictValue& envelope,
+    const base::DictValue& params) {
+  if (!SupportsSignedBusinessRoutes() || Spec(operation)) {
+    return std::nullopt;
+  }
+  const auto* payload = envelope.FindString("payload");
+  const auto* encoded_signature = envelope.FindString("signature");
+  std::string signature;
+  if (!payload || payload->size() > 8192 || !encoded_signature ||
+      encoded_signature->size() != 88 ||
+      !base::Base64Decode(*encoded_signature, &signature) ||
+      signature.size() != 64) {
+    return std::nullopt;
+  }
+  constexpr std::array<uint8_t, 32> kDevRouteKey = {
+      0xe3, 0x9b, 0xb6, 0xee, 0x00, 0xfb, 0xc5, 0x23,
+      0x37, 0x41, 0x42, 0x9e, 0xdc, 0x85, 0xf7, 0x5a,
+      0xfb, 0xbc, 0x3d, 0x77, 0x7c, 0x43, 0x96, 0xc2,
+      0xa2, 0xf0, 0xd5, 0x54, 0x5a, 0x0d, 0x59, 0x25
+  };
+  if (!crypto::sign::Verify(
+          crypto::sign::ED25519,
+          crypto::keypair::PublicKey::FromEd25519PublicKey(kDevRouteKey),
+          base::as_byte_span(*payload), base::as_byte_span(signature))) {
+    return std::nullopt;
+  }
+  const auto manifest = base::JSONReader::ReadDict(*payload, base::JSON_PARSE_RFC);
+  if (!manifest || manifest->FindInt("version") != 1 ||
+      Field(*manifest, "id") != operation || !operation.starts_with("dmp.") ||
+      Field(*manifest, "purpose") != "ecom-dev-dmp-read" ||
+      manifest->FindInt("expiresAt").value_or(0) <=
+          base::Time::Now().InSecondsFSinceUnixEpoch()) {
+    return std::nullopt;
+  }
+  const auto path = Field(*manifest, "path");
+  const auto method = Field(*manifest, "method");
+  constexpr char kOrigin[] = "https://dmp.advgateway.taobao.com";
+  const GURL url(kOrigin + path);
+  if (!path.starts_with("/api/") || !url.is_valid() ||
+      url.spec() != kOrigin + path || url.path() != path ||
+      (method != "GET" && method != "POST")) {
+    return std::nullopt;
+  }
+  const auto* fields = manifest->FindDict("fields");
+  if (!fields || fields->size() != params.size() ||
+      CredentialInput(base::Value(params.Clone()))) {
+    return std::nullopt;
+  }
+  base::ListValue required;
+  for (auto [name, type] : *fields) {
+    const auto* value = params.Find(name);
+    if (!value || !type.is_string() ||
+        std::string_view(base::Value::GetTypeName(value->type())) !=
+            type.GetString()) {
+      return std::nullopt;
+    }
+    required.Append(name);
+  }
+  return base::DictValue()
+      .Set("service", "dmp")
+      .Set("origin", kOrigin)
+      .Set("entryUrl", "https://dmp.taobao.com/index_new.html#!/items/shop-insight")
+      .Set("method", method)
+      .Set("path", path)
+      .Set("requiredParams", std::move(required))
+      .Set("defaultParams", base::DictValue());
+}
 
 bool MatchesBusinessReadRoute(const std::string& operation,
                               const base::DictValue& route) {
@@ -643,9 +730,10 @@ std::optional<BusinessPage> GetBusinessReadPage(const std::string &operation) {
 std::unique_ptr<BusinessRead>
 CreateBusinessRead(Profile *profile, std::string container_id,
                    std::string operation, base::DictValue params,
+                   std::optional<base::DictValue> signed_spec,
                    base::OnceCallback<void(base::DictValue)> callback) {
   return std::make_unique<Read>(profile, std::move(container_id),
                                 std::move(operation), std::move(params),
-                                std::move(callback));
+                                std::move(signed_spec), std::move(callback));
 }
 } // namespace ecom

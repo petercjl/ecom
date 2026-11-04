@@ -111,6 +111,7 @@ source_set("core") {
       "//brave/components/containers/core/browser",
       "//components/embedder_support:user_agent",
       "//components/os_crypt/async/browser",
+      "//crypto",
       "//components/password_manager/core/browser/password_store:password_store_impl",
     ]
   }

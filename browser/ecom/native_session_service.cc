@@ -192,6 +192,9 @@ class NativeSessionService final : public ProfileObserver {
     if (origin_.Serialize() == "https://sycm.taobao.com") {
       metadata.Set("businessReadProtocol", 1);
       metadata.Set("businessRouteProtocol", 1);
+      if (SupportsSignedBusinessRoutes()) {
+        metadata.Set("signedBusinessRouteProtocol", 1);
+      }
       metadata.Set("businessPageOpenProtocol", 1);
       metadata.Set("businessReadRegistryHash", kSycmReadRegistryHash);
     }
@@ -388,6 +391,16 @@ class NativeSessionService final : public ProfileObserver {
       Fail(id, "INVALID_ARGUMENT");
       return;
     }
+    std::optional<base::DictValue> signed_spec;
+    if (const auto* envelope = request.Find("signedRoute")) {
+      if (envelope->is_dict() && !request.Find("route")) {
+        signed_spec = VerifySignedBusinessRoute(*operation, envelope->GetDict(), *params);
+      }
+      if (!signed_spec) {
+        Fail(id, "SIGNED_BUSINESS_ROUTE_REJECTED");
+        return;
+      }
+    }
     if (const auto* route = request.Find("route");
         route && (!route->is_dict() ||
                   !MatchesBusinessReadRoute(*operation, route->GetDict()))) {
@@ -412,12 +425,13 @@ class NativeSessionService final : public ProfileObserver {
     RunShopCommand(profile_, base::WriteJson(verify).value_or("{}"),
                    base::BindOnce(&NativeSessionService::BusinessVerified,
                                   weak_.GetWeakPtr(), id, *container,
-                                  *operation, params->Clone()));
+                                  *operation, params->Clone(), std::move(signed_spec)));
   }
   void BusinessVerified(std::string id,
                         std::string container,
                         std::string operation,
                         base::DictValue params,
+                        std::optional<base::DictValue> signed_spec,
                         std::string verification) {
     auto result = base::JSONReader::Read(verification, base::JSON_PARSE_RFC);
     if (!result || !result->is_dict() ||
@@ -428,6 +442,7 @@ class NativeSessionService final : public ProfileObserver {
     }
     business_reads_[id] = CreateBusinessRead(
         profile_, std::move(container), std::move(operation), std::move(params),
+        std::move(signed_spec),
         base::BindOnce(&NativeSessionService::BusinessFinished,
                        weak_.GetWeakPtr(), id));
     business_reads_.at(id)->Start();
