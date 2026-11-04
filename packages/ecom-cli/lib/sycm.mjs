@@ -55,7 +55,7 @@ const transportFor=op=>op.method==='GET'&&getService(op.service).origin===ORIGIN
 export function operationSchema(id) {
   const op=resolveOperation(id), service=getService(op.service);
   return {...op,origin:service.origin,entryUrl:service.entryUrl,tokenStrategy:service.tokenStrategy,transport:'native-business-read',legacyTransport:transportFor(op),runtimeVerified:false,
-    minimumBrowserCapability:'businessReadProtocol=1 with matching registry hash',limits:'Credentials remain native. Per-endpoint permissions, CSRF, date semantics and service login require real validation.'};
+    minimumBrowserCapability:'businessReadProtocol=1 with businessRouteProtocol=1 or matching legacy registry hash',limits:'Credentials remain native. Per-endpoint permissions, CSRF, date semantics and service login require real validation.'};
 }
 export function nativeRegistry() {
   return Object.fromEntries(inventory().operations.map(op=>[op.id,{
@@ -64,6 +64,10 @@ export function nativeRegistry() {
     defaultParams:op.defaultParams??{},...(op.encoding?{encoding:op.encoding}:{}),
     ...(op.requestShape?{requestShape:op.requestShape,moduleId:op.moduleId,bizCode:op.bizCode,accessBizCode:op.accessBizCode}:{})
   }]));
+}
+function browserRoute(id) {
+  const {id: routeId, defaultParams, ...route}=nativeRegistry()[id];
+  return route;
 }
 export const nativeRegistryHash=()=>crypto.createHash('sha256').update(JSON.stringify(nativeRegistry())).digest('hex');
 export function inventory() {
@@ -135,7 +139,15 @@ export async function runRead(options,deps={}) {
   if(Buffer.byteLength(JSON.stringify(params))>24576)throw fail('INVALID_ARGUMENT','Read parameters exceed the native 24 KiB limit');
   const connection=(deps.discover??discover)(options);
   let result;
-  if(connection.endpoint.businessReadProtocol===1)result=await (deps.registeredRequest??registeredReadInConnection)(connection,options,op.id,params,nativeRegistryHash());
+  if(connection.endpoint.businessReadProtocol===1) {
+    const supportsRoute=connection.endpoint.businessRouteProtocol===1;
+    const effective=supportsRoute?{...op.defaultParams,...params}:params;
+    assertPublicParams(effective);
+    if(Buffer.byteLength(JSON.stringify(effective))>24576)throw fail('INVALID_ARGUMENT','Read parameters exceed the native 24 KiB limit');
+    result=await (deps.registeredRequest??registeredReadInConnection)(
+      connection,options,op.id,effective,supportsRoute?undefined:nativeRegistryHash(),
+      supportsRoute?browserRoute(op.id):undefined);
+  }
   else {
     if(transportFor(op)!=='native-session-get')throw fail('BROWSER_UPGRADE_REQUIRED','Upgrade Ecom to native business read protocol 1 for this registered service; keep the existing container login');
     const built=buildRead(options.operation,params);
@@ -150,7 +162,9 @@ export async function runRead(options,deps={}) {
 }
 export async function openOperation(options,deps={}) {
   const op=operationSchema(options.operation),connection=(deps.discover??discover)(options);
-  return (deps.open??openBusinessPageInConnection)(connection,options,op.id,op.entryUrl,nativeRegistryHash());
+  const supportsRoute=connection.endpoint.businessRouteProtocol===1;
+  return (deps.open??openBusinessPageInConnection)(connection,options,op.id,op.entryUrl,
+    supportsRoute?undefined:nativeRegistryHash(),supportsRoute?browserRoute(op.id):undefined);
 }
 async function account(connection,selector) {
   const list=await callMailbox(connection,{method:'shops.list'});

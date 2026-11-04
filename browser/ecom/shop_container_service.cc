@@ -581,6 +581,12 @@ class ShopService final : public base::SupportsUserData::Data,
       const auto* metadata = Metadata().FindDict(id);
       const auto platform_id = Field(*metadata, "platform");
       if (const auto* operation = request.FindString("businessOperation")) {
+        if (const auto* route = request.Find("route");
+            route && (!route->is_dict() ||
+                      !MatchesBusinessReadRoute(*operation, route->GetDict()))) {
+          Send(std::move(callback), Error("BUSINESS_ROUTE_UNSUPPORTED"));
+          return;
+        }
         const auto page = GetBusinessReadPage(*operation);
         if (!page || platform_id != "taobao") {
           Send(std::move(callback), Error("BUSINESS_PAGE_UNSUPPORTED"));

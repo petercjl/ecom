@@ -191,6 +191,7 @@ class NativeSessionService final : public ProfileObserver {
     metadata.Set("allowedOrigin", origin_.Serialize());
     if (origin_.Serialize() == "https://sycm.taobao.com") {
       metadata.Set("businessReadProtocol", 1);
+      metadata.Set("businessRouteProtocol", 1);
       metadata.Set("businessPageOpenProtocol", 1);
       metadata.Set("businessReadRegistryHash", kSycmReadRegistryHash);
     }
@@ -385,6 +386,12 @@ class NativeSessionService final : public ProfileObserver {
     if (origin_.Serialize() != "https://sycm.taobao.com" || !container ||
         !operation || !params) {
       Fail(id, "INVALID_ARGUMENT");
+      return;
+    }
+    if (const auto* route = request.Find("route");
+        route && (!route->is_dict() ||
+                  !MatchesBusinessReadRoute(*operation, route->GetDict()))) {
+      Fail(id, "BUSINESS_ROUTE_UNSUPPORTED");
       return;
     }
     if (requests_.size() + business_reads_.size() >= 2) {

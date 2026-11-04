@@ -110,19 +110,21 @@ export async function requestInConnection(connection,options) {
   if(body.containerId!==container.id||body.httpStatus!==200||!Object.hasOwn(body,'data'))throw fail('PROTOCOL_MISMATCH','Session response does not match selected container or JSON response contract',{operationId:body.operationId,executed:'unknown'});
   return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,request:{method:'GET',url},httpStatus:body.httpStatus,data:body.data,businessStatus:'not-evaluated'};
 }
-export async function registeredReadInConnection(connection,options,operation,params,registryHash) {
+export async function registeredReadInConnection(connection,options,operation,params,registryHash,route) {
   if(connection.endpoint.businessReadProtocol!==1)throw fail('BROWSER_UPGRADE_REQUIRED','This operation needs an Ecom build with native business read protocol 1');
-  if(connection.endpoint.businessReadRegistryHash!==registryHash)throw fail('BROWSER_UPGRADE_REQUIRED','Browser and CLI business catalogs differ; update them together');
+  const useRoute=connection.endpoint.businessRouteProtocol===1&&route!==undefined;
+  if(!useRoute&&connection.endpoint.businessReadRegistryHash!==registryHash)throw fail('BROWSER_UPGRADE_REQUIRED','Browser and CLI business catalogs differ; update them together');
   const listed=await readMailbox(connection),container=resolveContainer(listed.containers,options.container);
-  const body=await callMailbox(connection,{method:'business.read',containerId:container.id,operation,params},75000);
+  const body=await callMailbox(connection,{method:'business.read',containerId:container.id,operation,params,...(useRoute?{route}:{})},75000);
   if(body.containerId!==container.id||body.businessOperation!==operation||body.httpStatus!==200||!Object.hasOwn(body,'data'))throw fail('PROTOCOL_MISMATCH','Registered response differs from the pinned container or operation',{operationId:body.operationId,executed:'unknown'});
-  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,httpStatus:body.httpStatus,data:body.data,...(Array.isArray(body.dataFlows)&&body.dataFlows.length?{dataFlows:body.dataFlows}:{}),transport:'native-business-read',identityBinding:'container-bound-account',registryHash};
+  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,httpStatus:body.httpStatus,data:body.data,...(Array.isArray(body.dataFlows)&&body.dataFlows.length?{dataFlows:body.dataFlows}:{}),transport:'native-business-read',identityBinding:'container-bound-account',...(useRoute?{businessRouteProtocol:1}:{registryHash})};
 }
-export async function openBusinessPageInConnection(connection,options,operation,entryUrl,registryHash) {
-  if(connection.endpoint.businessPageOpenProtocol!==1||connection.endpoint.businessReadRegistryHash!==registryHash)throw fail('BROWSER_UPGRADE_REQUIRED','Update Ecom to the matching registered-page navigation capability');
+export async function openBusinessPageInConnection(connection,options,operation,entryUrl,registryHash,route) {
+  const useRoute=connection.endpoint.businessRouteProtocol===1&&route!==undefined;
+  if(connection.endpoint.businessPageOpenProtocol!==1||(!useRoute&&connection.endpoint.businessReadRegistryHash!==registryHash))throw fail('BROWSER_UPGRADE_REQUIRED','Update Ecom to the matching registered-page navigation capability');
   const listed=await readMailbox(connection),container=resolveContainer(listed.containers,options.container);
   const background=!options.foreground;
-  const body=await callMailbox(connection,{method:'shops.open',containerId:container.id,businessOperation:operation,background,reuse:background});
+  const body=await callMailbox(connection,{method:'shops.open',containerId:container.id,businessOperation:operation,background,reuse:background,...(useRoute?{route}:{})});
   if(body.containerId!==container.id||!['started','reused'].includes(body.navigation)||body.requestedUrl!==entryUrl)throw fail('PROTOCOL_MISMATCH','Navigation target differs from the registered container or entry page',{operationId:body.operationId,executed:'unknown'});
   return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,requestedUrl:body.requestedUrl,navigation:body.navigation,background,authentication:'not-verified'};
 }

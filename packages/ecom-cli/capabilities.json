@@ -737,7 +737,8 @@
     "nativeBusinessReadDefinitions": 135,
     "serviceRuntimeAcceptance": "pending native build and per-service live checks",
     "requiredNativeProtocol": 1,
-    "registryHashAgreementRequired": true,
+    "registryHashAgreementRequired": "legacy protocol only",
+    "businessRouteProtocol": 1,
     "containerBinding": "Stable Ecom container ID, browser-owned session and native account verification; no separate Chrome store profile",
     "nativeRegistryHash": "26d302541c1641b00ce45c6df4ae32bbb90e2b21352fe5f91e3cfedb21e35d5e",
     "pageFallback": {

@@ -620,6 +620,18 @@ private:
 };
 } // namespace
 
+bool MatchesBusinessReadRoute(const std::string& operation,
+                              const base::DictValue& route) {
+  const auto* spec = Spec(operation);
+  if (!spec) {
+    return false;
+  }
+  auto expected = spec->Clone();
+  expected.Remove("id");
+  expected.Remove("defaultParams");
+  return expected == route;
+}
+
 std::optional<BusinessPage> GetBusinessReadPage(const std::string &operation) {
   const auto *spec = Spec(operation);
   if (!spec) {

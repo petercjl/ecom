@@ -38,7 +38,8 @@ Mutation plan/apply commands create local records and return reviewed workflow i
 
 ## Diagnosis and recovery
 
-- BROWSER_UPGRADE_REQUIRED: update the Ecom browser and CLI together; native business protocol 1 requires matching compiled registry hashes. Preserve the account session.
+- BROWSER_UPGRADE_REQUIRED: use a browser supporting the requested route. Legacy browser builds require matching catalog hashes. Preserve the account session.
+- BUSINESS_ROUTE_UNSUPPORTED: the browser does not approve the requested route contract. Report the operation ID and upgrade the browser if the route requires new authorization.
 - AUTH_CONTEXT_REQUIRED: keep the existing login; native service context may need adapter diagnosis even when the page is logged in. Report the gap rather than repeatedly requesting login.
 - SERVICE_ADAPTER_REQUIRED: report the missing native adapter and preserve the selected container. Do not switch to CDP or another browser.
 - AUTH_REQUIRED, PERMISSION_REQUIRED or RISK_VERIFICATION_REQUIRED: complete the required first-party action in this original container, then explicitly resume.

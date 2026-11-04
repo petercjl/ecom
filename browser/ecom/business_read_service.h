@@ -14,6 +14,10 @@
 class Profile;
 
 namespace ecom {
+// Checks the immutable transport contract of a browser-approved route.
+bool MatchesBusinessReadRoute(const std::string& operation,
+                              const base::DictValue& route);
+
 struct BusinessPage {
   std::string service;
   std::string entry_url;

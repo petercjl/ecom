@@ -62,7 +62,7 @@ export async function main(argv) {
     return authorizePlan(options);
   }
   if(command==='doctor') {
-    let instance,error;try{const found=discover(options);instance={id:found.endpoint.instanceId,pid:found.endpoint.pid,channel:found.channel,businessReadProtocol:found.endpoint.businessReadProtocol??0,businessPageOpenProtocol:found.endpoint.businessPageOpenProtocol??0,businessRegistryMatches:found.endpoint.businessReadRegistryHash===nativeRegistryHash()};}catch(e){error={code:e.code,message:e.message};}
+    let instance,error;try{const found=discover(options);instance={id:found.endpoint.instanceId,pid:found.endpoint.pid,channel:found.channel,businessReadProtocol:found.endpoint.businessReadProtocol??0,businessRouteProtocol:found.endpoint.businessRouteProtocol??0,businessPageOpenProtocol:found.endpoint.businessPageOpenProtocol??0,businessRegistryMatches:found.endpoint.businessReadRegistryHash===nativeRegistryHash()};}catch(e){error={code:e.code,message:e.message};}
     return {ok:!error,package:pkg.name,version:pkg.version,node:process.version,platform:process.platform,transport:'private-local-mailbox',debuggingRequired:false,instance,...(error?{error}:{}),skillSource:source().path};
   }
   if(['containers list','containers inspect','session request'].includes(command)) {
