@@ -137,3 +137,21 @@ test('CLI-only daily read selects the approved browser route despite catalog dri
   assert.equal((await runRead(options,deps)).operation,'shop.trade-daily');
   await assert.rejects(runRead({...options,'params-json':'{"date":"2026-02-30"}'},deps),e=>e.code==='INVALID_ARGUMENT');
 });
+
+test('signed DMP audience keeps the operation outside the native registry and requires a chart',async()=>{
+  const options={operation:'dmp.competitor-audience',container:'sample','params-json':'{"itemId":"123","audienceType":"browse","dimension":"age"}'};
+  const deps={
+    discover:()=>({endpoint:{businessReadProtocol:1,signedBusinessRouteProtocol:1}}),
+    registeredRequest:async(_connection,_options,id,params,hash,route,envelope)=>{
+      assert.equal(hash,undefined);
+      assert.equal(route,undefined);
+      assert.equal(JSON.parse(envelope.payload).id,id);
+      assert.equal(params.tagId,114555);
+      assert.equal(params.selectTagOptionSetDTO.selectTagOptionSetDTO[0].selects[1].values,'1');
+      return {data:{info:{ok:true},data:{result:{chartDataFull:[]}}}};
+    },
+  };
+  assert.equal((await runRead(options,deps)).businessStatus,'success');
+  await assert.rejects(runRead({...options,'params-json':'{"itemId":"123","days":14}'},deps),e=>e.code==='INVALID_ARGUMENT');
+  await assert.rejects(runRead(options,{...deps,registeredRequest:async()=>({data:{info:{ok:true},data:{}}})}),e=>e.code==='BUSINESS_RESPONSE_INVALID');
+});
