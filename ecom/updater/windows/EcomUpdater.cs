@@ -285,10 +285,22 @@ namespace EcomUpdate {
       }
     }
     static Process Restart(string app,string profile,string expectedVersion,Action<Process> started=null) {
+      DateTime startedAt=DateTime.UtcNow;
       var process=Process.Start(new ProcessStartInfo(Path.Combine(app,"Ecom.exe"),RelaunchArguments(profile)){UseShellExecute=false});
       if(started!=null)started(process);
       string ready=Path.Combine(State,"running-"+process.Id+".json");var timer=Stopwatch.StartNew();
-      while(timer.Elapsed.TotalSeconds<45) {if(process.HasExited)throw new IOException("Updated Ecom exited before readiness");if(File.Exists(ready)){var info=ReadObject(ready);if(N(info,"pid")==process.Id && S(info,"version")==expectedVersion)return process;}Thread.Sleep(250);}
+      double stableSince=-1;
+      while(timer.Elapsed.TotalSeconds<45) {
+        if(process.HasExited)throw new IOException("Updated Ecom exited before readiness");
+        process.Refresh();bool healthy=false;
+        if(File.Exists(ready)&&File.GetLastWriteTimeUtc(ready)>=startedAt) {
+          var info=ReadObject(ready);
+          healthy=N(info,"pid")==process.Id&&S(info,"version")==expectedVersion&&process.MainWindowHandle!=IntPtr.Zero;
+        }
+        if(healthy){if(stableSince<0)stableSince=timer.Elapsed.TotalSeconds;if(timer.Elapsed.TotalSeconds-stableSince>=10)return process;}
+        else stableSince=-1;
+        Thread.Sleep(250);
+      }
       throw new IOException("Updated Ecom did not report startup readiness; recovery is retained");
     }
     static void Restore(Dictionary<string,object> recovery) {
