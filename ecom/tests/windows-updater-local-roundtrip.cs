@@ -28,8 +28,14 @@ namespace EcomUpdate {
       foreach(string profile in profiles.Keys) {
         string file=Path.Combine(data,profile,"Preferences");if(!File.Exists(file))continue;
         var prefs=Program.ReadObject(file);var brave=(Dictionary<string,object>)prefs["brave"];var containers=(Dictionary<string,object>)brave["containers"];
-        var ids=((System.Collections.IEnumerable)containers["list"]).Cast<Dictionary<string,object>>().Select(v=>Program.S(v,"id")).OrderBy(v=>v).ToArray();
-        result[profile]=Call("HashText",string.Join("\n",ids));
+        // Default container definitions need not be materialized in Preferences.
+        // Include locally used and shop-bound IDs as well as explicit definitions.
+        var ids=new List<string>();object value;
+        if(containers.TryGetValue("list",out value))ids.AddRange(((System.Collections.IEnumerable)value).Cast<Dictionary<string,object>>().Select(v=>"defined:"+Program.S(v,"id")));
+        if(containers.TryGetValue("used",out value))ids.AddRange(((Dictionary<string,object>)value).Keys.Select(id=>"used:"+id));
+        if(prefs.TryGetValue("ecom",out value)) {object shops;if(((Dictionary<string,object>)value).TryGetValue("shop_containers",out shops))ids.AddRange(((Dictionary<string,object>)shops).Keys.Select(id=>"shop:"+id));}
+        Program.Require(ids.Count>0,"No persisted container identity evidence");
+        result[profile]=Call("HashText",string.Join("\n",ids.OrderBy(v=>v)));
       }
       return result;
     }
@@ -53,7 +59,7 @@ namespace EcomUpdate {
         Directory.Delete(work,true);
         var report=new Dictionary<string,object>{{"ok",true},{"transport","local-payload"},{"fromVersion","0.0.0"},{"testedVersion",version},{"restoredVersion","0.0.0"},{"sourceRevision",receipt["sourceRevision"]},{"candidateVisibleWindow",true},{"containerIdentitiesPreserved",true},{"profileCount",before.Count},{"restoredPid",restored["pid"]}};
         using(var stream=new FileStream(args[2],FileMode.CreateNew)){byte[] bytes=Encoding.UTF8.GetBytes(Program.Json.Serialize(report));stream.Write(bytes,0,bytes.Length);}return 0;
-      }catch(Exception e){Console.Error.WriteLine(e.Message);return 1;}
+      }catch(Exception e){Console.Error.WriteLine(e.ToString());return 1;}
     }
   }
 }
