@@ -279,7 +279,7 @@ namespace EcomUpdate {
           if(kind==RegistryValueKind.DWord)value=Convert.ToInt32(value);
           if(kind==RegistryValueKind.QWord)value=Convert.ToInt64(value);
           if(kind==RegistryValueKind.Binary)value=Convert.FromBase64String((string)value);
-          if(kind==RegistryValueKind.MultiString)value=((object[])value).Select(v=>(string)v).ToArray();
+          if(kind==RegistryValueKind.MultiString)value=((System.Collections.IEnumerable)value).Cast<object>().Select(v=>(string)v).ToArray();
           key.SetValue(entry.Key,value,kind);
         }
       }

@@ -28,7 +28,7 @@ namespace EcomUpdate {
       foreach(string profile in profiles.Keys) {
         string file=Path.Combine(data,profile,"Preferences");if(!File.Exists(file))continue;
         var prefs=Program.ReadObject(file);var brave=(Dictionary<string,object>)prefs["brave"];var containers=(Dictionary<string,object>)brave["containers"];
-        var ids=((object[])containers["list"]).Cast<Dictionary<string,object>>().Select(v=>Program.S(v,"id")).OrderBy(v=>v).ToArray();
+        var ids=((System.Collections.IEnumerable)containers["list"]).Cast<Dictionary<string,object>>().Select(v=>Program.S(v,"id")).OrderBy(v=>v).ToArray();
         result[profile]=Call("HashText",string.Join("\n",ids));
       }
       return result;
