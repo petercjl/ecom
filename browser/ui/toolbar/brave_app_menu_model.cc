@@ -121,10 +121,7 @@ void BraveAppMenuModel::Build() {
   if (const auto reading_list_submenu_index =
           bookmark_sub_menu_model()->GetIndexOfCommandId(
               kReadingListMenuPlaceholder)) {
-    auto* reading_list_submenu = bookmark_sub_menu_model()->GetSubmenuModelAt(
-        *reading_list_submenu_index);
-    CHECK(reading_list_submenu);
-    ApplyLeoIcons(static_cast<ui::SimpleMenuModel*>(reading_list_submenu));
+    bookmark_sub_menu_model()->RemoveItemAt(*reading_list_submenu_index);
   }
 }
 

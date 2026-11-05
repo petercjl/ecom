@@ -521,7 +521,6 @@ std::optional<SidebarItem> SidebarService::GetDefaultPanelItem() const {
 #if BUILDFLAG(ENABLE_BRAVE_NEWS)
       SidebarItem::BuiltInItemType::kBraveNews,
 #endif
-      SidebarItem::BuiltInItemType::kReadingList,
       SidebarItem::BuiltInItemType::kBookmarks,
 #if BUILDFLAG(ENABLE_PLAYLIST)
       SidebarItem::BuiltInItemType::kPlaylist,

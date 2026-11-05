@@ -413,11 +413,8 @@ void BraveBrowserCommandController::InitBraveCommandState() {
       ContainersServiceFactory::GetForProfile(browser_->GetProfile()));
 #endif
 
-  if (browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL) {
-    // Delete these when upstream enables by default.
-    UpdateCommandEnabled(IDC_READING_LIST_MENU_ADD_TAB, true);
-    UpdateCommandEnabled(IDC_READING_LIST_MENU_SHOW_UI, true);
-  }
+  UpdateCommandEnabled(IDC_READING_LIST_MENU_ADD_TAB, false);
+  UpdateCommandEnabled(IDC_READING_LIST_MENU_SHOW_UI, false);
 
   UpdateCommandEnabled(IDC_FORCE_PASTE, true);
 
@@ -467,7 +464,7 @@ void BraveBrowserCommandController::UpdateCommandForSidebar() {
     UpdateCommandEnabled(IDC_SIDEBAR_TOGGLE_POSITION, true);
     UpdateCommandEnabled(IDC_TOGGLE_SIDEBAR, true);
     UpdateCommandEnabled(IDC_TOGGLE_BOOKMARKS_SIDE_PANEL, true);
-    UpdateCommandEnabled(IDC_TOGGLE_READING_LIST_SIDE_PANEL, true);
+    UpdateCommandEnabled(IDC_TOGGLE_READING_LIST_SIDE_PANEL, false);
 #if BUILDFLAG(ENABLE_PLAYLIST_WEBUI)
     UpdateCommandEnabled(
         IDC_TOGGLE_PLAYLIST_SIDE_PANEL,
@@ -686,7 +683,6 @@ bool BraveBrowserCommandController::ExecuteBraveCommandWithDisposition(
       brave::ToggleSidePanel(&*browser_, SidePanelEntryId::kBookmarks);
       break;
     case IDC_TOGGLE_READING_LIST_SIDE_PANEL:
-      brave::ToggleSidePanel(&*browser_, SidePanelEntryId::kReadingList);
       break;
     case IDC_TOGGLE_PLAYLIST_SIDE_PANEL:
       brave::ToggleSidePanel(&*browser_, SidePanelEntryId::kPlaylist);

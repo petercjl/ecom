@@ -52,7 +52,6 @@ class SidebarServiceFactory : public BrowserContextKeyedServiceFactory {
           SidebarItem::BuiltInItemType::kWallet,
 #endif
           SidebarItem::BuiltInItemType::kBookmarks,
-          SidebarItem::BuiltInItemType::kReadingList,
           SidebarItem::BuiltInItemType::kHistory,
 #if BUILDFLAG(ENABLE_PLAYLIST)
           SidebarItem::BuiltInItemType::kPlaylist,
