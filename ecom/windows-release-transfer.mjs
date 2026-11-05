@@ -16,6 +16,15 @@ async function waitForPublic(items){
     const results=await Promise.all(items.map(async item=>{
       const metadata=await windowsRegistryStatus(item.version,'next');if(!metadata)return false;
       if(metadata.dist.integrity!==item.integrity)throw new Error('Public immutable payload integrity differs: '+item.version);
+      const url=new URL(metadata.dist.tarball);
+      if(url.protocol!=='https:'||url.hostname!=='registry.npmjs.org'||url.username||url.password||url.port)throw new Error('Unsupported public payload origin');
+      const response=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(30000)});
+      if(response.status===404){await response.arrayBuffer();return false;}
+      if(!response.ok)throw new Error('Cannot read public payload file: '+item.version);
+      // Metadata can precede blob availability at a registry edge. Read an
+      // actual body chunk; complete downloads still verify the pinned hashes.
+      const reader=response.body.getReader();
+      try{const first=await reader.read();if(first.done||!first.value.length)throw new Error('Empty public payload file');}finally{await reader.cancel();}
       return true;
     }));
     if(results.every(Boolean))return;
