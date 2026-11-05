@@ -93,6 +93,9 @@
   "localUpdateRecoveryVerified": true,
   "updateRoundTripVerified": false,
   "rollbackRoundTripVerified": false,
-  "published": false,
-  "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.0.md"
+  "published": true,
+  "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.0.md",
+  "verifiedDistTag": "next",
+  "publicationRun": "https://github.com/petercjl/ecom/actions/runs/42014239489",
+  "registryIntegrityVerifiedAt": "2026-11-05T11:06:14.172043+00:00"
 }
