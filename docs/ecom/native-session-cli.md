@@ -95,3 +95,8 @@ sycmcli ecom run shop.trade-summary --container '<现有容器ID或名称>' \
 ## 尚未验证与缺口
 
 已验证 `shop.trade-summary` 的真实 Cookie-only 单店取数；双容器同一接口已通过交替与同时取数验证，见 [多容器取数测试](multi-container-test-2026-11-02.md)。平台店铺身份独立验证、其他接口适用性、更多店铺并发与跨重启恢复需继续实测。若接口需要额外 CSRF 上下文，先以实际失败证据决定最小浏览器内部扩展。Windows 通信及 ACL、完整 schema/doctor、操作查询/取消、GUI/CLI 全能力覆盖、正式安装分发仍待实现。实现不承诺浏览器退出后仍可读取 Cookie；当前由运行中的 Ecom 网络服务托管会话。
+
+
+## 小红书 Dev 诊断
+
+`node ecom/cli.mjs xhs probe --container VALUE --probe-target search|search-v2|self [--keyword VALUE] --json` 提供三个固定只读接口的 Cookie 请求对照，仅限普通 Ecom Dev。账号凭证由目标原生容器托管，诊断结果只报告 HTTP/业务码或成功数量；业务拒绝使用非零退出码。该入口是开发探针，尚未纳入 npm 产品能力。测试记录与适配缺口见 [小红书会话与搜索对照](xhs-session-probe-2026-11-05.md)。

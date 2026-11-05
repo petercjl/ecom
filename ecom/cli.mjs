@@ -60,7 +60,7 @@ export async function nativeCall(profile,request) {
 async function main() {
   const {positionals,values}=parseArgs({allowPositionals:true,options:{profile:{type:'string'},container:{type:'string'},keyword:{type:'string'},'probe-target':{type:'string'},url:{type:'string'},name:{type:'string'},platform:{type:'string'},service:{type:'string'},'shop-id':{type:'string'},'candidate-id':{type:'string'},icon:{type:'string'},color:{type:'string'},'confirmation-id':{type:'string'},'custom-platform-name':{type:'string'},'entry-url':{type:'string'},'account-type':{type:'string'},'home-url':{type:'string'},'web-rtc-policy':{type:'string'},language:{type:'string'},timezone:{type:'string'},json:{type:'boolean'},help:{type:'boolean'}}});
   const [group,action]=positionals;
-  if(values.help||!group||group==='help') return {ok:true,usage:'node ecom/cli.mjs shops manage|platforms|list|refresh|create|configure|open|verify|confirm|update|delete-preview|delete；containers list | session get --container <ID或名称> --url <HTTPS URL> [--profile <Ecom Dev 数据目录>] [--json]；小红书 Cookie 验证：xhs probe --container <ID或名称> --keyword <关键词>；账号首页：--home-url <HTTPS页面网址>；WebRTC：--web-rtc-policy <inherit|disable-non-proxied-udp>；千牛登录提交：shops submit-login --container <ID或名称>；本地登录模拟：shops submit-login-fixture --container <ID或名称>；容器环境：--language <语言代码|inherit> --timezone <IANA时区|inherit>，保存后重启 Ecom'};
+  if(values.help||!group||group==='help') return {ok:true,usage:'node ecom/cli.mjs shops manage|platforms|list|refresh|create|configure|open|verify|confirm|update|delete-preview|delete；containers list | session get --container <ID或名称> --url <HTTPS URL> [--profile <Ecom Dev 数据目录>] [--json]；小红书 Cookie 验证：xhs probe --container <ID或名称> [--probe-target search|search-v2|self] [--keyword <关键词>]；账号首页：--home-url <HTTPS页面网址>；WebRTC：--web-rtc-policy <inherit|disable-non-proxied-udp>；千牛登录提交：shops submit-login --container <ID或名称>；本地登录模拟：shops submit-login-fixture --container <ID或名称>；容器环境：--language <语言代码|inherit> --timezone <IANA时区|inherit>，保存后重启 Ecom'};
   if(group==='version') return {ok:true,protocolVersion:1,stage:'native-shop-dev'};
   if(group==='capabilities') return {ok:true,protocolVersion:1,commands:['xhs probe','containers list','session get','shops manage','shops platforms','shops list','shops create','shops configure','shops open','shops submit-login','shops submit-login-fixture','shops verify','shops confirm','shops refresh','shops update','shops delete-preview','shops delete'],methods:['GET'],responseTypes:['JSON'],transport:'private-local-mailbox',debuggingRequired:false,platforms:{macos:'development',windows:'not-implemented'}};
   const profile=values.profile||path.join(root,'.brave-build/profiles/Ecom-Dev');
@@ -83,7 +83,7 @@ async function main() {
     if(!success) process.exitCode=1;
     return {ok:success,target,container:container.name,httpStatus:result.httpStatus,
       platformCode:Number.isInteger(body?.code)?body.code:null,
-      ...(success?(target==='self'?{authenticated:true}:{items:body.data.items.length,hasMore:body.data.has_more}):{error:{code:'XHS_SEARCH_REJECTED'}})};
+      ...(success?(target==='self'?{authenticated:true}:{items:body.data.items.length,hasMore:body.data.has_more}):{error:{code:target==='self'?'XHS_SESSION_CHECK_REJECTED':'XHS_SEARCH_REJECTED'}})};
   }
   if(group==='shops') {
     if(['manage','platforms','list','refresh'].includes(action)) return nativeCall(profile,{method:'shops.'+action});

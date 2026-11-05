@@ -19,7 +19,7 @@ test('actual native CLI exposes dev capabilities and structured failure without 
   const script=fileURLToPath(new URL('../cli.mjs',import.meta.url));
   const caps=JSON.parse(execFileSync(process.execPath,[script,'capabilities'],{encoding:'utf8'}));
   assert.equal(caps.debuggingRequired,false);
-  assert.deepEqual(caps.commands.slice(0,2),['containers list','session get']);
+  for(const command of ['containers list','session get','xhs probe']) assert.ok(caps.commands.includes(command));
   for(const command of ['shops manage','shops create','shops configure','shops open','shops verify','shops confirm']) assert.ok(caps.commands.includes(command));
   assert.throws(()=>execFileSync(process.execPath,[script,'evaluate'],{encoding:'utf8',stdio:'pipe'}),e=>JSON.parse(e.stderr).error.code==='UNSUPPORTED_COMMAND');
 });
@@ -29,4 +29,15 @@ test('shop CLI rejects incomplete creation and confirmation before native calls'
  for(const args of [['shops','create','--name','Example'],['shops','confirm','--container','unknown'],['shops','configure','--container','unknown'],['shops','delete','--container','unknown'],['shops','update','--container','unknown']]) {
   assert.throws(()=>execFileSync(process.execPath,[script,...args],{encoding:'utf8',stdio:'pipe'}),e=>JSON.parse(e.stderr).error.code==='INVALID_SHOP_COMMAND');
  }
+});
+
+
+test('XHS probe rejects unknown targets and missing search terms before browser access',()=>{
+  const script=fileURLToPath(new URL('../cli.mjs',import.meta.url));
+  for(const args of [
+    ['xhs','probe','--container','Example','--probe-target','unknown'],
+    ['xhs','probe','--container','Example'],
+    ['xhs','probe','--container','Example','--probe-target','search-v2'],
+    ['xhs','probe','--probe-target','self'],
+  ]) assert.throws(()=>execFileSync(process.execPath,[script,...args],{encoding:'utf8',stdio:'pipe'}),e=>JSON.parse(e.stderr).error.code==='INVALID_ARGUMENT');
 });
