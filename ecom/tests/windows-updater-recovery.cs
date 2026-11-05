@@ -28,12 +28,14 @@ namespace EcomUpdate {
         var registration=(Dictionary<string,object>)Call("CaptureRegistration");
         Call("PrivateDirectory",test);string backup=Path.Combine(test,"Application");Call("CopyTree",app,backup);
         var record=new Dictionary<string,object>{{"app",app},{"backup",backup},{"version","0.0.0"},{"exeSha256",Program.Hash(Path.Combine(app,"Ecom.exe"))},{"frameworkSha256",Program.Hash(Path.Combine(native,"chrome.dll"))},{"metadataSha256",Program.Hash(Path.Combine(native,"ecom-update.json"))},{"updaterSha256",Program.Hash(Path.Combine(native,"EcomUpdater.exe"))},{"registration",registration}};
+        Call("AtomicJson",Path.Combine(test,"recovery.json"),record);
         var before=new HashSet<string>(Directory.GetDirectories(root,"Application.failed-*"));
         Call("Restore",record);
         string restored=Path.Combine(app,Path.GetFileName(native));
         foreach(var pair in new[]{Tuple.Create(Path.Combine(app,"Ecom.exe"),"exeSha256"),Tuple.Create(Path.Combine(restored,"chrome.dll"),"frameworkSha256"),Tuple.Create(Path.Combine(restored,"ecom-update.json"),"metadataSha256"),Tuple.Create(Path.Combine(restored,"EcomUpdater.exe"),"updaterSha256")})Program.Require(Program.Hash(pair.Item1)==Program.S(record,pair.Item2),"Restored native hash differs");
         foreach(var profile in profiles)Program.Require(Program.Hash(profile.Key)==profile.Value,"User profile changed during recovery");
-        Program.Require(Program.Json.Serialize(Call("CaptureRegistration"))==Program.Json.Serialize(registration),"Uninstall registration changed");
+        var restoredRegistration=(Dictionary<string,object>)Call("CaptureRegistration");
+        Program.Require(restoredRegistration.Count==registration.Count&&registration.All(p=>restoredRegistration.ContainsKey(p.Key)&&Program.Json.Serialize(restoredRegistration[p.Key])==Program.Json.Serialize(p.Value)),"Uninstall registration changed");
         foreach(string created in Directory.GetDirectories(root,"Application.failed-*").Where(p=>!before.Contains(p)))Directory.Delete(created,true);
         Directory.Delete(test,true);
         using(var report=new FileStream(args[0],FileMode.CreateNew)){

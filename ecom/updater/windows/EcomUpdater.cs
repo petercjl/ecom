@@ -232,10 +232,12 @@ namespace EcomUpdate {
     }
     static string Quote(string value) { Require(value.IndexOf('"')<0 && !value.EndsWith("\\"),"Invalid path argument");return "\""+value+"\""; }
     static void CloseBrowser(int pid,string app,string quitEvent) {
-      Process process;try{process=Process.GetProcessById(pid);}catch(ArgumentException){return;}
-      Require(Same(process.MainModule.FileName,Path.Combine(app,"Ecom.exe")),"Browser identity changed");
-      using(var evt=EventWaitHandle.OpenExisting(quitEvent,EventWaitHandleRights.Modify))evt.Set();
-      Require(process.WaitForExit(60000),"Ecom has not exited. Existing installation retained; finish any open dialogs and retry.");
+      Process process=null;try{process=Process.GetProcessById(pid);}catch(ArgumentException){}
+      if(process!=null) {
+        Require(Same(process.MainModule.FileName,Path.Combine(app,"Ecom.exe")),"Browser identity changed");
+        using(var evt=EventWaitHandle.OpenExisting(quitEvent,EventWaitHandleRights.Modify))evt.Set();
+        Require(process.WaitForExit(60000),"Ecom has not exited. Existing installation retained; finish any open dialogs and retry.");
+      }
       foreach(var p in Process.GetProcessesByName("Ecom"))try{Require(!Same(p.MainModule.FileName,Path.Combine(app,"Ecom.exe")),"Another Ecom instance still uses this installation");}catch(System.ComponentModel.Win32Exception){throw new IOException("Cannot verify remaining Ecom processes");}
     }
     static void CopyTree(string source,string destination) {
