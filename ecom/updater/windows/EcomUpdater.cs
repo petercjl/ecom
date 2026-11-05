@@ -238,6 +238,9 @@ namespace EcomUpdate {
         using(var evt=EventWaitHandle.OpenExisting(quitEvent,EventWaitHandleRights.Modify))evt.Set();
         Require(process.WaitForExit(60000),"Ecom has not exited. Existing installation retained; finish any open dialogs and retry.");
       }
+      EnsureNoBrowser(app);
+    }
+    static void EnsureNoBrowser(string app) {
       foreach(var p in Process.GetProcessesByName("Ecom"))try{Require(!Same(p.MainModule.FileName,Path.Combine(app,"Ecom.exe")),"Another Ecom instance still uses this installation");}catch(System.ComponentModel.Win32Exception){throw new IOException("Cannot verify remaining Ecom processes");}
     }
     static void CopyTree(string source,string destination) {
@@ -290,6 +293,7 @@ namespace EcomUpdate {
     static void Restore(Dictionary<string,object> recovery) {
       string app=S(recovery,"app"),backup=S(recovery,"backup");
       Require(Same(app,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom","Application")) && backup.StartsWith(State+"\\",StringComparison.OrdinalIgnoreCase),"Invalid recovery target");
+      EnsureNoBrowser(app);
       Require(Directory.Exists(backup) && File.Exists(Path.Combine(backup,"Ecom.exe")),"Recovery copy unavailable");
       Require(Hash(Path.Combine(backup,"Ecom.exe"))==S(recovery,"exeSha256") && Hash(Path.Combine(VersionDirectory(backup),"chrome.dll"))==S(recovery,"frameworkSha256"),"Recovery program integrity mismatch");
       Require(Hash(Path.Combine(VersionDirectory(backup),"ecom-update.json"))==S(recovery,"metadataSha256") && Hash(Path.Combine(VersionDirectory(backup),"EcomUpdater.exe"))==S(recovery,"updaterSha256"),"Recovery metadata or helper integrity mismatch");
@@ -324,7 +328,7 @@ namespace EcomUpdate {
           using(var installer=Process.Start(new ProcessStartInfo(Path.Combine(S(job,"work"),"EcomSetup.exe"),"--do-not-launch-chrome"){UseShellExecute=false})) {
             Require(installer.WaitForExit(600000),"Installer still running; recovery deferred until it exits");Require(installer.ExitCode==0,"Installer failed: "+installer.ExitCode);
           }
-          ValidateInstalled(app,artifact);Restart(app,profile,S(artifact,"version"),p=>launched=p);
+          ValidateInstalled(app,artifact);EnsureNoBrowser(app);Restart(app,profile,S(artifact,"version"),p=>launched=p);
           AtomicJson(Path.Combine(State,"rollback.json"),record);record["status"]="complete";AtomicJson(Path.Combine(State,"pending.json"),record);
           AtomicJson(Path.Combine(State,"last-result.json"),new Dictionary<string,object>{{"status","updated"},{"version",S(artifact,"version")},{"sourceRevision",S(artifact,"sourceRevision")},{"pid",launched.Id},{"backup",backup}});
         } catch {
