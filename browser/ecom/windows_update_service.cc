@@ -3,8 +3,8 @@
 // License, v. 2.0. https://mozilla.org/MPL/2.0/.
 #include "brave/browser/ecom/windows_update_service.h"
 
-#include <sddl.h>
 #include <windows.h>
+#include <sddl.h>
 
 #include "base/base_paths.h"
 #include "base/command_line.h"
