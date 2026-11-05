@@ -156,6 +156,22 @@ void CollectDataFlows(const base::Value &value, std::vector<int64_t> &ids) {
   }
 }
 const base::DictValue *Spec(const std::string &operation) {
+  if (operation == "xhs.search-cookie-probe" && SupportsSignedBusinessRoutes()) {
+    static const base::NoDestructor<base::DictValue> probe(
+        base::DictValue()
+            .Set("service", "xiaohongshu")
+            .Set("origin", "https://edith.xiaohongshu.com")
+            .Set("entryUrl", "https://www.xiaohongshu.com/")
+            .Set("path", "/api/sns/web/v1/search/notes")
+            .Set("method", "POST")
+            .Set("requiredParams", base::ListValue().Append("keyword").Append("search_id"))
+            .Set("defaultParams", base::DictValue()
+                                      .Set("page", 1)
+                                      .Set("page_size", 20)
+                                      .Set("sort", "general")
+                                      .Set("note_type", 0)));
+    return probe.get();
+  }
   static const base::NoDestructor<base::DictValue> registry([] {
     auto value =
         base::JSONReader::Read(kSycmReadRegistry, base::JSON_PARSE_RFC);
@@ -204,6 +220,17 @@ public:
               Stage::kSycm);
     } else if (service == "alimama") {
       ReadAlimamaContext();
+    } else if (service == "xiaohongshu") {
+      auto* partition = Partition();
+      if (!partition) {
+        Fail("CONTAINER_NOT_FOUND");
+        return;
+      }
+      partition->GetCookieManagerForBrowserProcess()->GetCookieList(
+          GURL(Field(*spec_, "origin") + Field(*spec_, "path")),
+          net::CookieOptions::MakeAllInclusive(),
+          net::CookiePartitionKeyCollection(),
+          base::BindOnce(&Read::XhsCookiesRead, weak_.GetWeakPtr()));
     } else if (service == "dmp" || service == "coupon") {
       ReadCookie();
     } else {
@@ -213,6 +240,18 @@ public:
 
 private:
   enum class Stage { kSycm, kAccess, kDmpUser, kResult, kDataFlow };
+  void XhsCookiesRead(const net::CookieAccessResultList& included,
+                      const net::CookieAccessResultList&) {
+    entry_cookie_count_ = static_cast<int>(included.size());
+    if (std::none_of(included.begin(), included.end(), [](const auto& entry) {
+          return entry.cookie.Name() == "web_session" &&
+                 !entry.cookie.Value().empty();
+        })) {
+      Fail("XHS_SESSION_COOKIE_MISSING");
+      return;
+    }
+    Submit();
+  }
   void ReadAlimamaContext() {
     phase_ = "auth-cookie-metadata";
     auto *partition = Partition();
@@ -340,8 +379,10 @@ private:
       return;
     }
     GURL entry(Field(*spec_, "entryUrl"));
-    if (auto *frame = FindServiceFrame()) {
-      entry = frame->GetLastCommittedURL().GetWithoutRef();
+    if (Field(*spec_, "service") != "xiaohongshu") {
+      if (auto* frame = FindServiceFrame()) {
+        entry = frame->GetLastCommittedURL().GetWithoutRef();
+      }
     }
     phase_ = stage == Stage::kSycm       ? "auth-sycm-home"
              : stage == Stage::kAccess   ? "auth-alimama-access"

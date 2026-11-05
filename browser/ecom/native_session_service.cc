@@ -414,6 +414,24 @@ class NativeSessionService final : public ProfileObserver {
     const auto* shop = profile_->GetPrefs()
                            ->GetDict(containers::prefs::kShopContainers)
                            .FindDict(*container);
+    if (*operation == "xhs.search-cookie-probe" && SupportsSignedBusinessRoutes()) {
+      const auto* platform = shop ? shop->FindString("platform") : nullptr;
+      const auto* keyword = params->FindString("keyword");
+      const auto* search_id = params->FindString("search_id");
+      if (!platform || *platform != "xiaohongshu") {
+        Fail(id, "XHS_CONTAINER_REQUIRED");
+        return;
+      }
+      if (params->size() != 2 || !keyword || keyword->empty() ||
+          keyword->size() > 180 || !search_id || search_id->size() != 21 ||
+          search_id->find_first_not_of("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") !=
+              std::string::npos) {
+        Fail(id, "INVALID_ARGUMENT");
+        return;
+      }
+      StartBusinessRead(id, *container, *operation, params->Clone(), std::nullopt);
+      return;
+    }
     if (!shop || !shop->FindDict("identity")) {
       Fail(id, "SHOP_NOT_READY");
       return;
@@ -440,6 +458,14 @@ class NativeSessionService final : public ProfileObserver {
       Fail(id, "SHOP_VERIFICATION_FAILED");
       return;
     }
+    StartBusinessRead(id, std::move(container), std::move(operation),
+                      std::move(params), std::move(signed_spec));
+  }
+  void StartBusinessRead(const std::string& id,
+                         std::string container,
+                         std::string operation,
+                         base::DictValue params,
+                         std::optional<base::DictValue> signed_spec) {
     business_reads_[id] = CreateBusinessRead(
         profile_, std::move(container), std::move(operation), std::move(params),
         std::move(signed_spec),
