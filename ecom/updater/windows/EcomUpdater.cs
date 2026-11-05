@@ -17,6 +17,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace EcomUpdate {
   static class Program {
@@ -251,6 +252,32 @@ namespace EcomUpdate {
       Require(S(identity,"version")==S(artifact,"version") && S(identity,"sourceRevision")==S(artifact,"sourceRevision"),"Installed release identity mismatch");
       Require(Hash(Path.Combine(app,"Ecom.exe"))==S(artifact,"exeSha256") && Hash(Path.Combine(version,"chrome.dll"))==S(artifact,"frameworkSha256") && Hash(Path.Combine(version,"EcomUpdater.exe"))==S(artifact,"updaterSha256"),"Installed program differs from verified payload");
     }
+    const string UninstallKey=@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Ecom";
+    static Dictionary<string,object> CaptureRegistration() {
+      var values=new Dictionary<string,object>();
+      using(var key=Registry.CurrentUser.OpenSubKey(UninstallKey)) {
+        Require(key!=null,"Ecom uninstall registration is missing");
+        foreach(string name in key.GetValueNames()) {
+          var kind=key.GetValueKind(name);object value=key.GetValue(name,null,RegistryValueOptions.DoNotExpandEnvironmentNames);
+          if(kind==RegistryValueKind.Binary)value=Convert.ToBase64String((byte[])value);
+          values[name]=new Dictionary<string,object>{{"kind",kind.ToString()},{"value",value}};
+        }
+      }
+      return values;
+    }
+    static void RestoreRegistration(Dictionary<string,object> values) {
+      using(var key=Registry.CurrentUser.CreateSubKey(UninstallKey)) {
+        foreach(string name in key.GetValueNames())if(!values.ContainsKey(name))key.DeleteValue(name,false);
+        foreach(var entry in values) {
+          var saved=(Dictionary<string,object>)entry.Value;var kind=(RegistryValueKind)Enum.Parse(typeof(RegistryValueKind),S(saved,"kind"));object value=saved["value"];
+          if(kind==RegistryValueKind.DWord)value=Convert.ToInt32(value);
+          if(kind==RegistryValueKind.QWord)value=Convert.ToInt64(value);
+          if(kind==RegistryValueKind.Binary)value=Convert.FromBase64String((string)value);
+          if(kind==RegistryValueKind.MultiString)value=((object[])value).Select(v=>(string)v).ToArray();
+          key.SetValue(entry.Key,value,kind);
+        }
+      }
+    }
     static Process Restart(string app,string profile,string expectedVersion,Action<Process> started=null) {
       var process=Process.Start(new ProcessStartInfo(Path.Combine(app,"Ecom.exe"),"--user-data-dir="+Quote(profile)){UseShellExecute=false});
       if(started!=null)started(process);
@@ -267,6 +294,7 @@ namespace EcomUpdate {
       if(Directory.Exists(app))Directory.Move(app,app+".failed-"+Guid.NewGuid().ToString("N"));
       // Retain the verified backup for another recovery attempt if interrupted.
       CopyTree(backup,app);
+      RestoreRegistration((Dictionary<string,object>)recovery["registration"]);
       AtomicJson(Path.Combine(State,"last-result.json"),new Dictionary<string,object>{{"status","rolled-back"},{"version",S(recovery,"version")},{"backup",backup}});
     }
     static void RecoverPending() {
@@ -287,6 +315,7 @@ namespace EcomUpdate {
         string backup=Path.Combine(State,"backups",Guid.NewGuid().ToString("N"));PrivateDirectory(Path.GetDirectoryName(backup));CopyTree(app,backup);
         var previous=ReadObject(Path.Combine(VersionDirectory(app),"ecom-update.json"));
         var record=new Dictionary<string,object>{{"app",app},{"backup",backup},{"version",S(previous,"version")},{"profile",profile},{"exeSha256",Hash(Path.Combine(app,"Ecom.exe"))},{"frameworkSha256",Hash(Path.Combine(VersionDirectory(app),"chrome.dll"))},{"metadataSha256",Hash(Path.Combine(VersionDirectory(app),"ecom-update.json"))},{"updaterSha256",Hash(Path.Combine(VersionDirectory(app),"EcomUpdater.exe"))},{"status","installing"}};
+        record["registration"]=CaptureRegistration();
         AtomicJson(Path.Combine(State,"pending.json"),record);
         Process launched=null;
         try {
