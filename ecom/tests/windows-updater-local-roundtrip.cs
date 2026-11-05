@@ -57,6 +57,7 @@ namespace EcomUpdate {
         bool wrongContextRejected=false;try{Call("ReadPreparedRecord",app,data+"-different",baselineVersion);}catch(InvalidDataException){wrongContextRejected=true;}Program.Require(wrongContextRejected,"Deferred update crossed a profile boundary");
         File.Delete(readyFile);
         var job=Program.CreateBoundJob(app,data,Convert.ToInt32(baseline["pid"]),Program.S(baseline,"quitEvent"),new Dictionary<string,object>{{"work",work},{"integrity",receipt["integrity"]},{"metadata",metadata}},false);
+        Directory.SetCurrentDirectory(Path.Combine(app,FileVersionInfo.GetVersionInfo(Path.Combine(app,"Ecom.exe")).FileVersion));
         Call("Apply",job);
         var updated=Program.ReadObject(Path.Combine(Program.State,"last-result.json"));Program.Require(Program.S(updated,"status")=="updated"&&Program.S(updated,"sourceRevision")==Program.S(receipt,"sourceRevision"),"Candidate identity mismatch");
         Program.Require(!Directory.Exists(work),"Successful update did not automatically remove its payload");
