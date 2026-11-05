@@ -362,7 +362,7 @@ private:
       return;
     }
     timer_.Stop();
-    bool page_closed = false;
+    bool close_requested = false;
     if (xhs_page_ && xhs_page_->GetLastCommittedURL().host() == "www.xiaohongshu.com" &&
         xhs_page_->GetLastCommittedURL().path() == "/search_result") {
       bool selected = false;
@@ -375,15 +375,29 @@ private:
           });
       if (!selected) {
         xhs_page_->ClosePage();
-        page_closed = !xhs_page_;
+        close_requested = true;
       }
     }
-    Finish(base::Value(base::DictValue()
-        .Set("pageClosed", page_closed)
+    auto result = base::Value(base::DictValue()
+        .Set("pageClosed", false)
         .Set("success", true)
         .Set("transport", "background-page-dom")
         .Set("keyword", Field(params_, "keyword"))
-        .Set("data", std::move(json->GetDict()))));
+        .Set("data", std::move(json->GetDict())));
+    if (close_requested)
+      CompleteXhsPage(std::move(result), 0);
+    else
+      Finish(std::move(result));
+  }
+  void CompleteXhsPage(base::Value result, int attempts) {
+    if (xhs_page_ && attempts < 10) {
+      xhs_poll_.Start(FROM_HERE, base::Milliseconds(100),
+          base::BindOnce(&Read::CompleteXhsPage, weak_.GetWeakPtr(),
+                         std::move(result), attempts + 1));
+      return;
+    }
+    result.GetDict().Set("pageClosed", !xhs_page_);
+    Finish(std::move(result));
   }
 
   void XhsCookiesRead(const net::CookieAccessResultList& included,
