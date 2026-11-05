@@ -267,8 +267,8 @@ if (is_win) {
     }
 
     sign("signed_brave_exe") {
-      sources = [ "$root_out_dir/brave.exe" ]
-      outputs = [ "$root_out_dir/presigned_binaries/brave.exe" ]
+      sources = [ "$root_out_dir/Ecom.exe" ]
+      outputs = [ "$root_out_dir/presigned_binaries/Ecom.exe" ]
       deps = [ "//brave/build/win:copy_exe" ]
     }
 

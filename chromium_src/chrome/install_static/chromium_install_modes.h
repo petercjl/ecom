@@ -23,7 +23,11 @@ namespace install_static {
 
 // The brand-specific company name to be included as a component of the install
 // and user data directory paths. May be empty if no such dir is to be used.
+#if defined(OFFICIAL_BUILD)
 inline constexpr wchar_t kCompanyPathName[] = L"BraveSoftware";
+#else
+inline constexpr wchar_t kCompanyPathName[] = L"";
+#endif
 
 // The brand-specific product name to be included as a component of the install
 // and user data directory paths.
@@ -38,7 +42,7 @@ inline constexpr wchar_t kProductPathName[] = L"Brave-Browser";
 #else
 // If you change this, then you also need to change occurrences of this string
 // in mini_installer_constants.cc.
-inline constexpr wchar_t kProductPathName[] = L"Brave-Browser-Development";
+inline constexpr wchar_t kProductPathName[] = L"Ecom";
 #endif
 
 // The brand-specific safe browsing client name.
@@ -454,7 +458,7 @@ inline constexpr auto kInstallModes = std::to_array<InstallConstants>({
 #define CHROMIUM_INDEX DEVELOPER_INDEX
 
 inline constexpr auto kInstallModes = std::to_array<InstallConstants>({
-    // The primary (and only) install mode for Brave developer build.
+    // The primary install mode for Ecom.
     {
         .size = sizeof(InstallConstants),
         .index = DEVELOPER_INDEX,  // The one and only mode for developer mode.
@@ -464,16 +468,16 @@ inline constexpr auto kInstallModes = std::to_array<InstallConstants>({
             L"",  // Empty install_suffix for the primary install mode.
         .logo_suffix = L"",  // No logo suffix for the primary install mode.
         .app_guid =
-            L"",  // Empty app_guid since no integraion with Brave Update.
-        .base_app_name = L"Brave Development",     // A distinct base_app_name.
-        .base_app_id = L"BraveDevelopment",        // A distinct base_app_id.
-        .browser_prog_id_prefix = L"BraveDevHTM",  // Browser ProgID prefix.
+            L"",  // Empty app_guid for the standalone installer.
+        .base_app_name = L"Ecom",     // A distinct base_app_name.
+        .base_app_id = L"Ecom",        // A distinct base_app_id.
+        .browser_prog_id_prefix = L"EcomHTML",  // Browser ProgID prefix.
         .browser_prog_id_description =
-            L"Brave Development HTML Document",  // Browser ProgID description.
-        .direct_launch_url_scheme = "brave-browser-development",
-        .pdf_prog_id_prefix = L"BraveDevPDF",  // PDF ProgID prefix.
+            L"Ecom HTML Document",  // Browser ProgID description.
+        .direct_launch_url_scheme = "ecom-browser",
+        .pdf_prog_id_prefix = L"EcomPDF",  // PDF ProgID prefix.
         .pdf_prog_id_description =
-            L"Brave Development PDF Document",  // PDF ProgID description.
+            L"Ecom PDF Document",  // PDF ProgID description.
         .active_setup_guid =
             L"{D6527C63-5CDD-4EF3-9299-1504E17CBD18}",  // Active Setup GUID.
         .toast_activator_clsid = {0xeb41c6e8,

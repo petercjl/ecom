@@ -303,7 +303,7 @@ class InstallStaticUtilTest
 #endif
 #else
     static constexpr wchar_t kPolicyKey[] =
-        L"Software\\Policies\\BraveSoftware\\Brave-Browser-Development";
+        L"Software\\Policies\\Ecom";
 #endif
 
     ASSERT_EQ(ERROR_SUCCESS,
@@ -364,7 +364,7 @@ TEST_P(InstallStaticUtilTest, GetChromeInstallSubDirectory) {
   // The directory strings for the brand's install modes; parallel to
   // kInstallModes.
   static constexpr const wchar_t* kInstallDirs[] = {
-      L"BraveSoftware\\Brave-Browser-Development",
+      L"Ecom",
   };
 #endif
   static_assert(std::size(kInstallDirs) == NUM_INSTALL_MODES,
@@ -398,7 +398,7 @@ TEST_P(InstallStaticUtilTest, GetRegistryPath) {
   // The registry path strings for the brand's install modes; parallel to
   // kInstallModes.
   static constexpr const wchar_t* kRegistryPaths[] = {
-      L"Software\\BraveSoftware\\Brave-Browser-Development",
+      L"Software\\Ecom",
   };
 #endif
   static_assert(std::size(kRegistryPaths) == NUM_INSTALL_MODES,
@@ -442,7 +442,7 @@ TEST_P(InstallStaticUtilTest, GetUninstallRegistryPath) {
   // kInstallModes.
   static constexpr const wchar_t* kUninstallRegistryPaths[] = {
       L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\"  // (cont'd)
-      L"BraveSoftware Brave-Browser-Development",
+      L"Ecom",
   };
 #endif
   static_assert(std::size(kUninstallRegistryPaths) == NUM_INSTALL_MODES,
@@ -501,7 +501,7 @@ TEST_P(InstallStaticUtilTest, GetBaseAppId) {
 #else
   // The base app ids for the brand's install modes; parallel to kInstallModes.
   static constexpr const wchar_t* kBaseAppIds[] = {
-      L"BraveDevelopment",
+      L"Ecom",
   };
 #endif
   static_assert(std::size(kBaseAppIds) == NUM_INSTALL_MODES,
@@ -584,12 +584,12 @@ TEST_P(InstallStaticUtilTest, GetToastActivatorClsid) {
         0xba35,
         0x4c06,
         { 0x96, 0xe8, 0x6f, 0x30, 0xf1, 0x8c, 0xa5,
-          0x5c } },  // Brave-Browser-Development.
+          0x5c } },  // Ecom.
   };
 
   // The string representation of the CLSIDs above.
   static constexpr const wchar_t* kToastActivatorClsidsString[] = {
-      L"{EB41C6E8-BA35-4C06-96E8-6F30F18CA55C}"  // Brave-Browser-Development.
+      L"{EB41C6E8-BA35-4C06-96E8-6F30F18CA55C}"  // Ecom.
   };
 #endif
   static_assert(std::size(kToastActivatorClsids) == NUM_INSTALL_MODES,

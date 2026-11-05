@@ -75,56 +75,56 @@ struct TestData {
 constexpr TestData kTestData[] = {
     {
         L"C:\\Program Files (x86)\\BraveSoftware\\Brave-Origin\\Application"
-        L"\\brave.exe",
+        L"\\Ecom.exe",
         STABLE_INDEX,
         true,
         L"",
     },
     {
         L"C:\\Users\\user\\AppData\\Local\\BraveSoftware\\Brave-Origin"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         STABLE_INDEX,
         false,
         L"",
     },
     {
         L"C:\\Program Files (x86)\\BraveSoftware\\Brave-Origin-Beta"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         BETA_INDEX,
         true,
         L"beta",
     },
     {
         L"C:\\Users\\user\\AppData\\Local\\BraveSoftware\\Brave-Origin-Beta"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         BETA_INDEX,
         false,
         L"beta",
     },
     {
         L"C:\\Program Files (x86)\\BraveSoftware\\Brave-Origin-Dev"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         DEV_INDEX,
         true,
         L"dev",
     },
     {
         L"C:\\Users\\user\\AppData\\Local\\BraveSoftware\\Brave-Origin-Dev"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         DEV_INDEX,
         false,
         L"dev",
     },
     {
         L"C:\\Users\\user\\AppData\\Local\\BraveSoftware\\Brave-Origin-Nightly"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         NIGHTLY_INDEX,
         false,
         L"nightly",
     },
     {
         L"C:\\Users\\user\\AppData\\Local\\BraveSoftware\\Brave-Origin-Nightly"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         NIGHTLY_INDEX,
         false,
         L"nightly",
@@ -134,42 +134,42 @@ constexpr TestData kTestData[] = {
 constexpr TestData kTestData[] = {
     {
         L"C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application"
-        L"\\brave.exe",
+        L"\\Ecom.exe",
         STABLE_INDEX, true, L"",
     },
     {
         L"C:\\Users\\user\\AppData\\Local\\BraveSoftware\\Brave-Browser"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         STABLE_INDEX, false, L"",
     },
     {
         L"C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser-Beta"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         BETA_INDEX, true, L"beta",
     },
     {
         L"C:\\Users\\user\\AppData\\Local\\BraveSoftware\\Brave-Browser-Beta"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         BETA_INDEX, false, L"beta",
     },
     {
         L"C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser-Dev"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         DEV_INDEX, true, L"dev",
     },
     {
         L"C:\\Users\\user\\AppData\\Local\\BraveSoftware\\Brave-Browser-Dev"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         DEV_INDEX, false, L"dev",
     },
     {
         L"C:\\Users\\user\\AppData\\Local\\BraveSoftware\\Brave-Browser-Nightly"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         NIGHTLY_INDEX, false, L"nightly",
     },
     {
         L"C:\\Users\\user\\AppData\\Local\\BraveSoftware\\Brave-Browser-Nightly"
-        L"\\Application\\brave.exe",
+        L"\\Application\\Ecom.exe",
         NIGHTLY_INDEX, false, L"nightly",
     },
 };
@@ -177,15 +177,14 @@ constexpr TestData kTestData[] = {
 #else   // OFFICIAL_BUILD
 constexpr TestData kTestData[] = {
     {
-        L"C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser-Development"
-        L"\\Application\\brave.exe",
+        L"C:\\Program Files (x86)\\Ecom"
+        L"\\Application\\Ecom.exe",
         DEVELOPER_INDEX,
         true,
         L"",
     },
     {
-        L"C:\\Users\\user\\AppData\\Local\\BraveSoftware\\Brave-Browser-"
-        L"Development\\Application\\brave.exe",
+        L"C:\\Users\\user\\AppData\\Local\\Ecom\\Application\\Ecom.exe",
         DEVELOPER_INDEX,
         false,
         L"",

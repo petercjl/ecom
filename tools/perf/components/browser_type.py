@@ -209,7 +209,7 @@ class BraveBrowserTypeImpl(BrowserType):
             tag, f'BraveBrowserStandaloneSilent{self.channel}Setup.exe')
       return _DownloadWinInstallerAndExtract(out_dir, url,
                                              self._GetWinInstallPath(),
-                                             'brave.exe')
+                                             'Ecom.exe')
     if target_os == 'android':
       if url is None:
         url = _GetBraveDownloadUrl(tag, 'Bravearm64Universal.apk')

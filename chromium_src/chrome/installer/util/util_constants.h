@@ -26,7 +26,7 @@
   inline constexpr char kGoogleUpdateIsMachineEnvVar_UnUsed
 
 #define kChromeExe             \
-  kChromeExe[] = L"brave.exe"; \
+  kChromeExe[] = L"Ecom.exe"; \
   inline constexpr wchar_t kChromeExe_UnUsed
 
 #include <chrome/installer/util/util_constants.h>  // IWYU pragma: export

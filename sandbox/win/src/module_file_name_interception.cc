@@ -33,13 +33,13 @@ struct BraveToChrome;
 
 template <>
 struct BraveToChrome<char> {
-  static constexpr const std::string_view kBrave = "brave.exe";
+  static constexpr const std::string_view kBrave = "Ecom.exe";
   static constexpr const std::string_view kChrome = "chrome.exe";
 };
 
 template <>
 struct BraveToChrome<wchar_t> {
-  static constexpr const std::wstring_view kBrave = L"brave.exe";
+  static constexpr const std::wstring_view kBrave = L"Ecom.exe";
   static constexpr const std::wstring_view kChrome = L"chrome.exe";
 };
 

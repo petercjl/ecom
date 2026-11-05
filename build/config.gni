@@ -63,7 +63,11 @@ if (should_generate_symbols && is_mac) {
 }
 
 if (brave_exe == "") {
-  brave_exe = brave_product_name
+  if (is_win) {
+    brave_exe = "Ecom"
+  } else {
+    brave_exe = brave_product_name
+  }
 }
 
 brave_dist_dir = "$root_out_dir/dist"

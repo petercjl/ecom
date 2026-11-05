@@ -181,8 +181,8 @@ if (is_win && !skip_signing) {
   }
 
   brave_widevine_sign_file("brave_exe_sig") {
-    file = "$root_out_dir/presigned_binaries/brave.exe"
-    signature_file = "$root_out_dir/brave.exe.sig"
+    file = "$root_out_dir/presigned_binaries/Ecom.exe"
+    signature_file = "$root_out_dir/Ecom.exe.sig"
     flags = "1"
     deps = [ "//brave:signed_brave_exe" ]
   }
