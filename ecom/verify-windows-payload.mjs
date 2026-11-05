@@ -56,7 +56,7 @@ export async function verifyWindowsPayload(root,version,tgz,tag='next') {
 }
 export async function windowsRegistryStatus(version,tag) {
   const r=await fetch('https://registry.npmjs.org/@petercjl%2fecom-windows-x64/'+encodeURIComponent(version),{redirect:'error',signal:AbortSignal.timeout(30000)});
-  if(r.status===404){if(tag==='latest')throw new Error('Publish and verify next first');return null;}
+  if(r.status===404){await r.arrayBuffer();if(tag==='latest')throw new Error('Publish and verify next first');return null;}
   if(!r.ok)throw new Error('Cannot query Windows registry version');const data=await r.json();
   if(data.name!=='@petercjl/ecom-windows-x64'||data.version!==version||!data.dist?.integrity)throw new Error('Unexpected registry identity');return data;
 }

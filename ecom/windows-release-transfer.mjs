@@ -7,16 +7,42 @@ import {spawnSync} from 'node:child_process';
 import {sha256,validateWindowsParts} from './windows-release-contract.mjs';
 import {verifyWindowsPayload,windowsRegistryStatus} from './verify-windows-payload.mjs';
 const root=process.cwd(),[operation,version,tag]=process.argv.slice(2);
-if(!['fetch','publish'].includes(operation)||!['next','latest'].includes(tag)||!/^\d+\.\d+\.\d+$/.test(version))throw new Error('Invalid release operation');
+if(!['fetch','publish','ready'].includes(operation)||!['next','latest'].includes(tag)||!/^\d+\.\d+\.\d+$/.test(version))throw new Error('Invalid release operation');
 const record=validateWindowsParts(JSON.parse(fs.readFileSync(path.join(root,'ecom/releases/windows-x64',version+'.json'))));
 const directory=path.join(root,'windows-payloads'),mainName='petercjl-ecom-windows-x64-'+version+'.tgz';
+async function waitForPublic(items){
+  const deadline=Date.now()+15*60*1000;
+  while(true){
+    const results=await Promise.all(items.map(async item=>{
+      const metadata=await windowsRegistryStatus(item.version,'next');if(!metadata)return false;
+      if(metadata.dist.integrity!==item.integrity)throw new Error('Public immutable payload integrity differs: '+item.version);
+      return true;
+    }));
+    if(results.every(Boolean))return;
+    console.log('Waiting for npm processing: '+items.filter((_,i)=>!results[i]).map(p=>p.version).join(', '));
+    if(Date.now()>=deadline)throw new Error('npm processing has not completed; retain exact versions and inspect before retrying');
+    await new Promise(resolve=>setTimeout(resolve,10000));
+  }
+}
+async function waitForTag(){
+  const deadline=Date.now()+15*60*1000;
+  while(true){
+    const response=await fetch('https://registry.npmjs.org/@petercjl%2fecom-windows-x64/'+tag,{redirect:'error',signal:AbortSignal.timeout(30000)});
+    if(response.ok){const metadata=await response.json();if(metadata.version===version){if(metadata.dist.integrity!==record.integrity)throw new Error('Public channel integrity differs');return;}}
+    else {await response.arrayBuffer();if(response.status!==404)throw new Error('Cannot verify public channel');}
+    if(Date.now()>=deadline)throw new Error('npm channel is not visible yet; inspect before retrying');
+    console.log('Waiting for public npm channel: '+tag);await new Promise(resolve=>setTimeout(resolve,10000));
+  }
+}
 async function download(url,file,limit,temporary=false){
   url=new URL(url);
   if(url.protocol!=='https:'||url.username||url.password||url.port||!(url.hostname==='registry.npmjs.org'||temporary&&/^[a-z0-9-]+\.trycloudflare\.com$/.test(url.hostname)))throw new Error('Unsupported transfer origin');
   const r=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(1200000)});if(!r.ok||Number(r.headers.get('content-length'))>limit)throw new Error('Cannot transfer payload');
   let bytes=0;await pipeline(Readable.fromWeb(r.body),async function*(stream){for await(const chunk of stream){bytes+=chunk.length;if(bytes>limit)throw new Error('Payload too large');yield chunk;}},fs.createWriteStream(file,{flags:'wx'}));
 }
-if(operation==='fetch'){
+if(operation==='ready'){
+  await waitForPublic([...record.parts,record]);await waitForTag();console.log(JSON.stringify({ok:true,version,tag,parts:record.parts.length,allPublicIntegrityVerified:true}));
+}else if(operation==='fetch'){
   if(fs.existsSync(directory))throw new Error('Transfer directory already exists');fs.mkdirSync(directory);
   const existing=await windowsRegistryStatus(version,tag);
   if(existing){
@@ -37,7 +63,11 @@ if(operation==='fetch'){
   const npm=args=>{const r=spawnSync('npm',args,{stdio:'inherit',cwd:process.env.RUNNER_TEMP});if(r.error||r.status!==0)throw new Error('OIDC npm operation failed');};
   // Chunks are exact prerelease versions. The payload tag never changes latest.
   for(const part of record.parts){const existing=await windowsRegistryStatus(part.version,'next');if(existing){if(existing.dist.integrity!==part.integrity)throw new Error('Existing immutable part differs');}else npm(['publish',path.join(directory,'parts','petercjl-ecom-windows-x64-'+part.version+'.tgz'),'--access','public','--tag','payload']);}
+  // npm can accept a publication before its asynchronous processing finishes.
+  // Do not expose a primary version until every referenced part is public.
+  await waitForPublic(record.parts);
   const existing=await windowsRegistryStatus(version,tag);
   if(existing){if(existing.dist.integrity!==record.integrity)throw new Error('Existing primary differs');npm(['dist-tag','add',record.packageName+'@'+version,tag]);}
   else npm(['publish',path.join(directory,mainName),'--access','public','--tag',tag]);
+  await waitForPublic([record]);await waitForTag();
 }
