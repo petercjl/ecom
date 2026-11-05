@@ -19,7 +19,7 @@
 #include "ui/gfx/image/image_skia.h"
 #endif
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "brave/browser/ecom/shop_manager_ui.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #endif
@@ -116,7 +116,7 @@ void ContainersMenuModel::ExecuteCommand(int command_id, int event_flags) {
 }
 
 void ContainersMenuModel::OpenContainerSettingsPage() {
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
   if (auto* browser = delegate_->GetBrowserToOpenSettings()) {
     ecom::OpenShopManager(browser->GetProfile());
   }

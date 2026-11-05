@@ -10,7 +10,7 @@
 #include "base/functional/bind.h"
 #include "build/build_config.h"
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "base/feature_list.h"
 #include "brave/browser/ecom/shop_container_service.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
@@ -53,7 +53,7 @@ NewTabShowsNavigationThrottle::WillStartRequest() {
   if (!brave::ShouldUseNewTabURLForNewTab(profile)) {
     new_tab_options_url_ = brave::GetNewTabPageURL(profile);
   }
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
   if (new_tab_options_url_.is_empty() &&
       base::FeatureList::IsEnabled(containers::features::kContainers)) {
     new_tab_options_url_ = ecom::GetShopHomepage(

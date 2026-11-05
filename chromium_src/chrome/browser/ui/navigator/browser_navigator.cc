@@ -8,7 +8,7 @@
 #include "brave/browser/ui/brave_ui_features.h"
 #include "build/build_config.h"
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "brave/browser/ecom/shop_container_service.h"
 #include "brave/browser/new_tab/new_tab_shows_options.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -51,7 +51,7 @@ void MaybeOverridePopupDisposition(NavigateParams* params) {
 void UpdateParams(NavigateParams* params) {
   UpdateBraveScheme(params);
   MaybeOverridePopupDisposition(params);
-#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_CONTAINERS)
+#if (BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)) && BUILDFLAG(ENABLE_CONTAINERS)
   if (!params->browser || params->contents_to_insert ||
       params->is_renderer_initiated ||
       (params->disposition != WindowOpenDisposition::NEW_FOREGROUND_TAB &&

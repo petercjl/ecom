@@ -137,7 +137,7 @@
 #include "brave/components/psst/core/common/features.h"
 #endif
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "brave/browser/ecom/shop_container_service.h"
 #endif
 
@@ -156,7 +156,7 @@ bool IsLocaleJapan(Profile* profile) {
 }  // namespace
 
 BraveSettingsUI::BraveSettingsUI(content::WebUI* web_ui) : SettingsUI(web_ui) {
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
   web_ui->AddMessageHandler(ecom::CreateShopSettingsHandler());
 #endif
   web_ui->AddMessageHandler(

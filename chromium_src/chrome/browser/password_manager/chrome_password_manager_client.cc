@@ -8,7 +8,7 @@
 
 #include "build/build_config.h"
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "base/feature_list.h"
 #include "brave/browser/ecom/container_password_store.h"
 #include "brave/components/containers/core/browser/pref_names.h"
@@ -45,7 +45,7 @@
 
 bool ChromePasswordManagerClient::CanAutofillConfiguredContainerLogin(
     const url::Origin& origin) const {
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
   auto* profile = GetProfile();
   if (profile->IsOffTheRecord() ||
       !base::FeatureList::IsEnabled(containers::features::kContainers)) {

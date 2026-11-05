@@ -62,7 +62,7 @@ inline void AddShopContainerStrings(content::WebUIDataSource* source,
     source->AddString(item.key,
                       locale.starts_with("zh") ? item.chinese : item.english);
   }
-  source->AddBoolean("ecomShopContainersSupported", BUILDFLAG(IS_MAC));
+  source->AddBoolean("ecomShopContainersSupported", (BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)));
 }
 }  // namespace ecom
 #endif

@@ -71,7 +71,7 @@
 #include "brave/browser/ui/webui/brave_rewards_internals_ui.h"
 #endif
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "brave/browser/ecom/shop_manager_ui.h"
 #endif
 
@@ -90,7 +90,7 @@ WebUIController* NewWebUI(WebUI* web_ui, const GURL& url) {
   Profile* profile = Profile::FromBrowserContext(
       web_ui->GetWebContents()->GetBrowserContext());
   CHECK(profile);
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
   if (host == ecom::kShopManagerHost && !profile->IsOffTheRecord()) {
     return new ecom::ShopManagerUI(web_ui);
   }
@@ -185,7 +185,7 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
   }
 
   if (
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
       (url.host() == ecom::kShopManagerHost && !profile->IsOffTheRecord()) ||
 #endif
 #if BUILDFLAG(ENABLE_BRAVE_NEWS) && !BUILDFLAG(IS_ANDROID)

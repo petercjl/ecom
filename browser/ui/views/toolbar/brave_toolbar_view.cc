@@ -87,7 +87,7 @@
 #include "brave/components/brave_wallet/common/common_utils.h"
 #endif
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "brave/browser/ecom/shop_manager_ui.h"
 #endif
 
@@ -239,7 +239,7 @@ void BraveToolbarView::Init() {
 
   Profile* profile = browser()->GetProfile();
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
   if (!profile->IsOffTheRecord()) {
     auto* shops =
         AddChildViewAt(std::make_unique<ToolbarButton>(base::BindRepeating(
