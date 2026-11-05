@@ -48,7 +48,7 @@ namespace EcomUpdate {
         Program.Require(before.Count>0,"No profile preservation evidence");
         Call("AtomicJson",Path.Combine(Program.State,"channel.json"),new Dictionary<string,object>{{"channel","next"}});
         string work=Path.Combine(Program.State,"staging",Guid.NewGuid().ToString("N"));Call("PrivateDirectory",work);
-        string tgz=Path.Combine(work,"payload.tgz");File.Copy(args[0],tgz,false);Call("VerifyIntegrity",tgz,Program.S(receipt,"integrity"));Call("Extract",tgz,work);
+        string tgz=Path.Combine(work,"payload.tgz");File.Copy(args[0],tgz,false);Call("VerifyIntegrity",tgz,Program.S(receipt,"integrity"));Call("Extract",tgz,work,false);Call("FetchParts",work,Path.Combine(Path.GetDirectoryName(args[1]),"parts"),null);
         var job=new Dictionary<string,object>{{"app",app},{"profile",data},{"pid",baseline["pid"]},{"quitEvent",baseline["quitEvent"]},{"rollback",false},{"work",work},{"integrity",receipt["integrity"]},{"metadata",new Dictionary<string,object>{{"version",version}}}};
         Call("Apply",job);
         var updated=Program.ReadObject(Path.Combine(Program.State,"last-result.json"));Program.Require(Program.S(updated,"status")=="updated"&&Program.S(updated,"sourceRevision")==Program.S(receipt,"sourceRevision"),"Candidate identity mismatch");

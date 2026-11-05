@@ -41,7 +41,7 @@ namespace EcomUpdate {
         PrivateDirectory(State);
         if(Args.ContainsKey("verify-payload")) {
           string work=Path.Combine(State,"verification",Guid.NewGuid().ToString("N"));PrivateDirectory(work);
-          try {Require(!File.Exists(Get("report")),"Verification report already exists");VerifyIntegrity(Get("verify-payload"),Get("integrity"));Extract(Get("verify-payload"),work);var manifest=ValidatePayload(work,new Dictionary<string,object>{{"version",Get("version")}});AtomicJson(Get("report"),manifest);}
+          try {Require(!File.Exists(Get("report")),"Verification report already exists");VerifyIntegrity(Get("verify-payload"),Get("integrity"));Extract(Get("verify-payload"),work);FetchParts(work,Get("parts-dir"),null);var manifest=ValidatePayload(work,new Dictionary<string,object>{{"version",Get("version")}});AtomicJson(Get("report"),manifest);}
           finally {Directory.Delete(work,true);}return 0;
         }
         if(Args.ContainsKey("apply")) { Apply(ReadObject(Args["apply"])); return 0; }
@@ -140,8 +140,8 @@ namespace EcomUpdate {
         Require("sha512-"+Convert.ToBase64String(hash.ComputeHash(stream))==integrity,"npm package integrity mismatch");
     }
     static void ReadExactly(Stream stream,byte[] buffer,int count) { int at=0,n;while(at<count && (n=stream.Read(buffer,at,count-at))>0) at+=n;Require(at==count,"Truncated tar archive"); }
-    internal static void Extract(string tgz,string destination) {
-      var expected=new HashSet<string>(new[]{"package/package.json","package/artifact.json","package/LICENSE","package/EcomSetup.exe"});
+    internal static void Extract(string tgz,string destination,bool part=false) {
+      var expected=new HashSet<string>(part?new[]{"package/package.json","package/part.json","package/LICENSE","package/EcomSetup.part"}:new[]{"package/package.json","package/artifact.json","package/LICENSE"});
       long expanded=0;
       using(var file=File.OpenRead(tgz)) using(var tar=new GZipStream(file,CompressionMode.Decompress)) {
         var header=new byte[512];
@@ -154,7 +154,7 @@ namespace EcomUpdate {
           Require(header[156]==0 || header[156]==(byte)'0',"Archive links and special entries are rejected");
           Require(header.Skip(345).Take(155).All(b=>b==0) && expected.Remove(name),"Unexpected or duplicate archive entry");
           long size=Convert.ToInt64(Encoding.ASCII.GetString(header,124,12).Trim('\0',' '),8);expanded+=size;
-          Require(size>=0 && expanded<=390000000 && (name.EndsWith(".exe") || size<=1000000),"Invalid archive entry size");
+          Require(size>=0 && expanded<=390000000 && (name.EndsWith(".part") ? size<=50000000 : size<=1000000),"Invalid archive entry size");
           string target=Path.Combine(destination,Path.GetFileName(name));
           using(var output=new FileStream(target,FileMode.CreateNew)) {
             byte[] buf=new byte[65536];long left=size;while(left>0){int count=(int)Math.Min(buf.Length,left);ReadExactly(tar,buf,count);output.Write(buf,0,count);left-=count;}
@@ -163,6 +163,36 @@ namespace EcomUpdate {
         }
       }
       Require(expected.Count==0,"Incomplete npm payload");
+    }
+    static void FetchParts(string work,string localDirectory,Action<long> progress) {
+      var manifest=ReadObject(Path.Combine(work,"artifact.json"));ValidateIdentity(manifest);
+      Require(S(manifest,"payloadFormat")=="npm-parts-v1","Unsupported Windows payload layout");
+      var parts=((System.Collections.IEnumerable)manifest["parts"]).Cast<Dictionary<string,object>>().ToArray();
+      Require(parts.Length>0&&parts.Length<=8,"Invalid payload part count");
+      long total=0;int index=0;
+      using(var installer=new FileStream(Path.Combine(work,"EcomSetup.exe"),FileMode.CreateNew))foreach(var part in parts) {
+        string version=S(manifest,"version")+"-payload."+index;
+        long bytes=N(part,"bytes");
+        Require(N(part,"index")==index&&S(part,"version")==version&&bytes>0&&bytes<=50000000&&Regex.IsMatch(S(part,"sha256"),"^[a-f0-9]{64}$"),"Invalid immutable payload part");
+        string directory=Path.Combine(work,"part-"+index);Directory.CreateDirectory(directory);string tgz=Path.Combine(directory,"payload.tgz");
+        if(localDirectory!=null)File.Copy(Path.Combine(localDirectory,"petercjl-ecom-windows-x64-"+version+".tgz"),tgz,false);
+        else {
+          Dictionary<string,object> metadata;
+          using(var response=Open(new Uri("https://registry.npmjs.org/@petercjl%2fecom-windows-x64/"+version)))using(var input=response.GetResponseStream())using(var output=new MemoryStream()) {CopyBounded(input,output,1500000,null);metadata=Json.Deserialize<Dictionary<string,object>>(Encoding.UTF8.GetString(output.ToArray()));}
+          Require(S(metadata,"name")==Package&&S(metadata,"version")==version,"Unexpected payload part registry identity");
+          var dist=(Dictionary<string,object>)metadata["dist"];Require(S(dist,"integrity")==S(part,"integrity"),"Payload part registry integrity differs from manifest");
+          using(var response=Open(new Uri(S(dist,"tarball"))))using(var input=response.GetResponseStream())using(var output=new FileStream(tgz,FileMode.CreateNew))CopyBounded(input,output,70000000,n=>{if(progress!=null)progress(total+n);});
+        }
+        Require(new FileInfo(tgz).Length==N(part,"tarballBytes")&&Hash(tgz)==S(part,"tarballSha256"),"Payload part package differs from manifest");
+        VerifyIntegrity(tgz,S(part,"integrity"));Extract(tgz,directory,true);
+        var pkg=ReadObject(Path.Combine(directory,"package.json"));var info=ReadObject(Path.Combine(directory,"part.json"));
+        Require(S(pkg,"name")==Package&&S(pkg,"version")==version&&!pkg.ContainsKey("scripts")&&!pkg.ContainsKey("dependencies"),"Unexpected payload part package");
+        string binary=Path.Combine(directory,"EcomSetup.part");
+        Require(N(info,"schemaVersion")==1&&S(info,"version")==S(manifest,"version")&&N(info,"index")==index&&N(info,"bytes")==bytes&&S(info,"sha256")==S(part,"sha256")&&new FileInfo(binary).Length==bytes&&Hash(binary)==S(part,"sha256"),"Payload part content mismatch");
+        using(var input=File.OpenRead(binary))CopyBounded(input,installer,50000000,null);
+        total+=bytes;Require(total<=390000000,"Installer exceeds size limit");index++;
+      }
+      Require(total==N(manifest,"archiveBytes")&&Hash(Path.Combine(work,"EcomSetup.exe"))==S(manifest,"archiveSha256"),"Reassembled installer integrity mismatch");
     }
     static Dictionary<string,object> ValidatePayload(string work,Dictionary<string,object> metadata) {
       var pkg=ReadObject(Path.Combine(work,"package.json"));var artifact=ReadObject(Path.Combine(work,"artifact.json"));ValidateIdentity(artifact);
@@ -213,7 +243,7 @@ namespace EcomUpdate {
           var dist=(Dictionary<string,object>)candidate["dist"];string tgz=Path.Combine(work,"payload.tgz");
           string integrity=S(dist,"integrity");var url=new Uri(S(dist,"tarball"));
           var progress=new Progress<long>(n=>status.Text="正在下载："+(n/1048576)+" MiB");
-          await Task.Run(()=>{using(var response=Open(url)) using(var input=response.GetResponseStream()) using(var output=new FileStream(tgz,FileMode.CreateNew)){Require(response.ContentLength<=390000000,"Package too large");CopyBounded(input,output,390000000,n=>((IProgress<long>)progress).Report(n));}VerifyIntegrity(tgz,integrity);Extract(tgz,work);ValidatePayload(work,candidate);});
+          await Task.Run(()=>{using(var response=Open(url)) using(var input=response.GetResponseStream()) using(var output=new FileStream(tgz,FileMode.CreateNew)){Require(response.ContentLength<=70000000,"Package too large");CopyBounded(input,output,70000000,n=>((IProgress<long>)progress).Report(n));}VerifyIntegrity(tgz,integrity);Extract(tgz,work);FetchParts(work,null,n=>((IProgress<long>)progress).Report(n));ValidatePayload(work,candidate);});
           status.Text="更新包完整性校验通过，等待确认安装。";
           if(MessageBox.Show("更新包已下载并通过校验。现在退出 Ecom、更新到 "+S(candidate,"version")+" 并重新启动？账号及用户数据会保留。","Ecom 更新",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) {
             var job=new Dictionary<string,object>{{"work",work},{"metadata",candidate},{"integrity",integrity}};StartWorker(job,false);

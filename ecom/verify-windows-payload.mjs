@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
-import {validateWindowsRelease,windowsPackage,sha256} from './windows-release-contract.mjs';
+import {validateWindowsRelease,windowsPackage,windowsPartPackage,validateWindowsParts,windowsPackBudget,sha256} from './windows-release-contract.mjs';
 import {git} from './workspace.mjs';
 
 export function validateWindowsPublication(record,config,tag) {
@@ -23,21 +23,35 @@ export async function verifyWindowsPayload(root,version,tgz,tag='next') {
   const record=validateWindowsPublication(JSON.parse(fs.readFileSync(path.join(root,'ecom/releases/windows-x64',version+'.json'))),config,tag);
   git(root,['cat-file','-e',record.sourceRevision+'^{commit}']);
   const evidence=git(root,['show','HEAD:'+record.evidencePath]);if(!evidence.includes(record.sourceRevision))throw new Error('Build source missing from evidence');
-  const verificationOnly=new Set(['AGENTS.md','ecom/verify-windows-payload.mjs','.github/workflows/ecom-windows-publish.yml','ecom/tests/windows-updater-local-roundtrip.cs']);
+  const verificationOnly=new Set(['AGENTS.md','ecom/verify-windows-payload.mjs','.github/workflows/ecom-windows-publish.yml','ecom/tests/windows-updater-local-roundtrip.cs','ecom/windows-release-transfer.mjs']);
   const changes=git(root,['diff','--name-only',record.sourceRevision,'HEAD']).split('\n').filter(Boolean);
   if(changes.some(p=>!verificationOnly.has(p)&&!p.startsWith('docs/')&&!p.startsWith('ecom/releases/')&&!p.startsWith('packages/ecom-cli/')))throw new Error('Native inputs changed after the build');
+  validateWindowsParts(record);
   if(!tgz)return {ok:true,record};
-  if(fs.statSync(tgz).size>390000000||await sha256(tgz)!==record.tarballSha256)throw new Error('Package checksum or size mismatch');
-  const tar=args=>{const r=spawnSync('tar',args,{encoding:'utf8',maxBuffer:2000000});if(r.status!==0||r.error)throw new Error('Invalid tarball');return r.stdout;};
-  const entries=tar(['-tzf',tgz]).trim().split('\n').sort();
-  if(JSON.stringify(entries)!==JSON.stringify(['package/EcomSetup.exe','package/LICENSE','package/artifact.json','package/package.json'].sort()))throw new Error('Unexpected package entries');
-  const pkg=JSON.parse(tar(['-xOzf',tgz,'package/package.json']));if(JSON.stringify(pkg)!==JSON.stringify(windowsPackage(config)))throw new Error('Unexpected npm package descriptor');
-  const artifact=JSON.parse(tar(['-xOzf',tgz,'package/artifact.json']));
+  const checkArchive=async(file,identity,entries)=>{
+    if(fs.statSync(file).size!==identity.tarballBytes||fs.statSync(file).size>windowsPackBudget||await sha256(file)!==identity.tarballSha256)throw new Error('Package checksum or size mismatch');
+    const integrity='sha512-'+crypto.createHash('sha512').update(fs.readFileSync(file)).digest('base64');if(integrity!==identity.integrity)throw new Error('Recorded integrity mismatch');
+    const tar=(args,binary=false)=>{const r=spawnSync('tar',args,{encoding:binary?null:'utf8',maxBuffer:55_000_000});if(r.status!==0||r.error)throw new Error('Invalid tarball');return r.stdout;};
+    const names=tar(['-tzf',file]).trim().split('\n').sort();
+    if(JSON.stringify(names)!==JSON.stringify(entries.sort()))throw new Error('Unexpected package entries');
+    if(tar(['-tvzf',file]).trim().split('\n').some(line=>!line.startsWith('-')))throw new Error('Archive links rejected');
+    return (name,binary=false)=>tar(['-xOzf',file,'package/'+name],binary);
+  };
+  const main=await checkArchive(tgz,record,['package/artifact.json','package/package.json','package/LICENSE']);
+  if(JSON.stringify(JSON.parse(main('package.json')))!==JSON.stringify(windowsPackage(config)))throw new Error('Unexpected npm package descriptor');
+  const artifact=validateWindowsParts(JSON.parse(main('artifact.json')));
   for(const [k,v]of Object.entries(config))if(artifact[k]!==v)throw new Error('Artifact contract differs: '+k);
-  for(const k of ['sourceRevision','archiveSha256','archiveBytes','exeSha256','frameworkSha256','updaterSha256'])if(artifact[k]!==record[k])throw new Error('Artifact identity differs: '+k);
-  const hash=crypto.createHash('sha512').update(fs.readFileSync(tgz)).digest('base64');if('sha512-'+hash!==record.integrity)throw new Error('Recorded integrity mismatch');
-  // The native Windows helper has already parsed the tar and checked the EXE;
-  // this independent transport gate pins the entire packed payload.
+  for(const k of ['sourceRevision','archiveSha256','archiveBytes','exeSha256','frameworkSha256','updaterSha256','payloadFormat','parts'])if(JSON.stringify(artifact[k])!==JSON.stringify(record[k]))throw new Error('Artifact identity differs: '+k);
+  const installerHash=crypto.createHash('sha256');
+  for(const part of artifact.parts){
+    const file=path.join(path.dirname(tgz),'parts','petercjl-ecom-windows-x64-'+part.version+'.tgz');
+    const read=await checkArchive(file,part,['package/EcomSetup.part','package/part.json','package/package.json','package/LICENSE']);
+    if(JSON.stringify(JSON.parse(read('package.json')))!==JSON.stringify(windowsPartPackage(config,part.index)))throw new Error('Part descriptor mismatch');
+    const info=JSON.parse(read('part.json')),bytes=read('EcomSetup.part',true);
+    if(info.schemaVersion!==1||info.version!==config.version||info.index!==part.index||info.bytes!==part.bytes||info.sha256!==part.sha256||bytes.length!==part.bytes||crypto.createHash('sha256').update(bytes).digest('hex')!==part.sha256)throw new Error('Payload part mismatch');
+    installerHash.update(bytes);
+  }
+  if(installerHash.digest('hex')!==record.archiveSha256)throw new Error('Reassembled installer differs');
   return {ok:true,record};
 }
 export async function windowsRegistryStatus(version,tag) {

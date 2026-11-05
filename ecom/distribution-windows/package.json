@@ -3,9 +3,21 @@
   "version": "0.1.0",
   "description": "Ecom native Windows x64 application payload",
   "license": "MPL-2.0",
-  "os": ["win32"],
-  "cpu": ["x64"],
-  "files": ["EcomSetup.exe", "artifact.json", "LICENSE"],
-  "publishConfig": {"access": "public"},
-  "repository": {"type": "git", "url": "git+https://github.com/petercjl/ecom.git"}
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "artifact.json",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/petercjl/ecom.git"
+  }
 }

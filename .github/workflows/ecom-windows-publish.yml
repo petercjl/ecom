@@ -47,40 +47,19 @@ jobs:
       - run: npm install --global npm@11.21.0
       - name: Validate committed Windows evidence
         run: node ecom/verify-windows-payload.mjs "$RELEASE" --tag "$DIST_TAG"
-      - name: Fetch pinned payload from temporary transfer or existing npm version
-        run: |
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          import { Readable } from 'node:stream';
-          import { pipeline } from 'node:stream/promises';
-          import { windowsRegistryStatus } from './ecom/verify-windows-payload.mjs';
-          const existing = await windowsRegistryStatus(process.env.RELEASE, process.env.DIST_TAG);
-          const url = new URL(existing ? existing.dist.tarball : process.env.PAYLOAD_URL);
-          if (url.protocol !== 'https:' || url.username || url.password || url.port || !(url.hostname === 'registry.npmjs.org' || (!existing && /^[a-z0-9-]+\.trycloudflare\.com$/.test(url.hostname)))) throw new Error('Unsupported transfer origin');
-          const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(1200000) });
-          if (!response.ok || Number(response.headers.get('content-length')) > 390000000) throw new Error('Cannot transfer payload');
-          let bytes = 0;
-          await pipeline(Readable.fromWeb(response.body), async function* (stream) { for await (const chunk of stream) { bytes += chunk.length; if (bytes > 390000000) throw new Error('Payload too large'); yield chunk; } }, fs.createWriteStream('windows-payload.tgz', { flags: 'wx' }));
-          JS
-      - name: Verify complete tarball and published identity
-        id: registry
-        run: node ecom/verify-windows-payload.mjs "$RELEASE" windows-payload.tgz --tag "$DIST_TAG" --registry >> "$GITHUB_OUTPUT"
+      - name: Fetch and verify pinned Windows payload parts
+        run: node ecom/windows-release-transfer.mjs fetch "$RELEASE" "$DIST_TAG"
       - name: Hold temporary Actions transfer artifact
         id: transfer
         uses: actions/upload-artifact@v4
         with:
           name: ecom-windows-verified-payload
-          path: windows-payload.tgz
+          path: windows-payloads
           retention-days: 1
           compression-level: 0
-      - name: Publish verified Windows payload through OIDC
-        if: ${{ !inputs.validate_only && steps.registry.outputs.exists == 'false' }}
-        working-directory: ${{ runner.temp }}
-        run: npm publish "$GITHUB_WORKSPACE/windows-payload.tgz" --access public --tag "$DIST_TAG"
-      - name: Promote the identical verified Windows version
-        if: ${{ !inputs.validate_only && steps.registry.outputs.exists == 'true' }}
-        working-directory: ${{ runner.temp }}
-        run: npm dist-tag add "@petercjl/ecom-windows-x64@$RELEASE" "$DIST_TAG"
+      - name: Publish or promote identical verified Windows payload through OIDC
+        if: ${{ !inputs.validate_only }}
+        run: node ecom/windows-release-transfer.mjs publish "$RELEASE" "$DIST_TAG"
       - name: Delete temporary binary transfer artifact
         if: ${{ always() && steps.transfer.outputs.artifact-id != '' }}
         env:
