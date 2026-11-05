@@ -50,7 +50,11 @@ export async function main(argv) {
   if(command==='skill install'||command==='skill update')return installSkill(options);
   if(command==='update check')return checkUpdate();
   if(command==='update install')return updateInstall(options);
-  if(command==='xhs search')return searchXhs(options);
+  if(command==='xhs search') {
+    const update=await checkUpdate({automatic:true});
+    if(update.available)process.stderr.write('Ecom CLI update available: '+update.latest+'\n');
+    return searchXhs(options);
+  }
   if(qianniuCommands.includes(command))return qianniuLoginStep(command.slice(6),options);
   if(command==='sycm capabilities')return inventory();
   if(command==='sycm operations'){const result=inventory();return {ok:true,schemaVersion:1,source:result.source,count:result.operations.length,operations:result.operations};}

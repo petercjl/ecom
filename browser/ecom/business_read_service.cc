@@ -375,7 +375,7 @@ private:
           });
       if (!selected) {
         xhs_page_->ClosePage();
-        page_closed = true;
+        page_closed = !xhs_page_;
       }
     }
     Finish(base::Value(base::DictValue()

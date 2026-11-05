@@ -134,10 +134,13 @@ test('real npm candidate update activates both runtime and Skill and preserves r
       res.setHeader('content-type','application/json');res.end(JSON.stringify({name:pkg.name,'dist-tags':{latest:candidateVersion},versions:{[candidateVersion]:{name:pkg.name,version:candidateVersion,dist:{tarball:'http://127.0.0.1:'+port+'/candidate.tgz'}}}}));
     });
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+    const registry='http://127.0.0.1:'+server.address().port;
+    const npmrc=path.join(tmp,'test.npmrc');
+    fs.writeFileSync(npmrc,'@petercjl:registry='+registry+'\n',{flag:'wx'});
     const target=path.join(tmp,'skills/ecom-cli'), entry=path.join(root,'bin/ecom-cli.mjs'),args=['--agent','fixture-host','--target',target,'--json'];
     assert.equal(invoke(entry,['skill','install',...args]).current,true);
     const call=(env={})=>new Promise(resolve=>{
-      const child=spawn(process.execPath,[path.join(target,'.runtime/bin/ecom-cli.mjs'),'update','install',...args,'--yes','--version',candidateVersion],{env:{...process.env,ECOM_CLI_STATE_DIR:path.join(tmp,'state'),npm_config_registry:'http://127.0.0.1:'+server.address().port,...env}});
+      const child=spawn(process.execPath,[path.join(target,'.runtime/bin/ecom-cli.mjs'),'update','install',...args,'--yes','--version',candidateVersion],{env:{...process.env,ECOM_CLI_STATE_DIR:path.join(tmp,'state'),npm_config_registry:registry,npm_config_userconfig:npmrc,...env}});
       let output='';child.stdout.on('data',s=>output+=s);child.stderr.resume();child.on('close',code=>resolve({code,...JSON.parse(output)}));
     });
     const result=await call();assert.equal(result.ok,true,JSON.stringify(result));assert.equal(result.version,candidateVersion);assert.ok(result.backup);assert.ok(result.journal);
