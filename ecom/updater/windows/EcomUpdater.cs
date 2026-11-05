@@ -231,6 +231,7 @@ namespace EcomUpdate {
       }
     }
     static string Quote(string value) { Require(value.IndexOf('"')<0 && !value.EndsWith("\\"),"Invalid path argument");return "\""+value+"\""; }
+    static string RelaunchArguments(string profile) { return "--user-data-dir="+Quote(profile)+" --restore-last-session"; }
     static void CloseBrowser(int pid,string app,string quitEvent) {
       Process process=null;try{process=Process.GetProcessById(pid);}catch(ArgumentException){}
       if(process!=null) {
@@ -284,7 +285,7 @@ namespace EcomUpdate {
       }
     }
     static Process Restart(string app,string profile,string expectedVersion,Action<Process> started=null) {
-      var process=Process.Start(new ProcessStartInfo(Path.Combine(app,"Ecom.exe"),"--user-data-dir="+Quote(profile)){UseShellExecute=false});
+      var process=Process.Start(new ProcessStartInfo(Path.Combine(app,"Ecom.exe"),RelaunchArguments(profile)){UseShellExecute=false});
       if(started!=null)started(process);
       string ready=Path.Combine(State,"running-"+process.Id+".json");var timer=Stopwatch.StartNew();
       while(timer.Elapsed.TotalSeconds<45) {if(process.HasExited)throw new IOException("Updated Ecom exited before readiness");if(File.Exists(ready)){var info=ReadObject(ready);if(N(info,"pid")==process.Id && S(info,"version")==expectedVersion)return process;}Thread.Sleep(250);}
@@ -308,7 +309,7 @@ namespace EcomUpdate {
       Require(S(pending,"status")=="installing","No interrupted installation to recover");
       string app=S(pending,"app");
       Require(!Process.GetProcessesByName("Ecom").Any(p=>{try{return Same(p.MainModule.FileName,Path.Combine(app,"Ecom.exe"));}catch{return true;}}),"Close Ecom before recovery");
-      Restore(pending);Process.Start(Path.Combine(app,"Ecom.exe"));
+      Restore(pending);Restart(app,S(pending,"profile"),S(pending,"version"));
     }
     static void Apply(Dictionary<string,object> job) {
       string app=Path.GetFullPath(S(job,"app")),profile=Path.GetFullPath(S(job,"profile"));
@@ -341,6 +342,7 @@ namespace EcomUpdate {
 
     static void SelfTest() {
       Require(ParseVersion("0.1.1")>ParseVersion("0.1.0"),"Version comparison");
+      Require(RelaunchArguments(@"C:\Users\Test User\Ecom") == "--user-data-dir=\"C:\\Users\\Test User\\Ecom\" --restore-last-session","Profile and tab restoration arguments");
       foreach(string bad in new[]{"0.1.0-next.1","../1.2.3","1.2","-1.2.3"}) {bool failed=false;try{ParseVersion(bad);}catch{failed=true;}Require(failed,"Invalid version accepted");}
       Require(Allowed(new Uri("https://registry.npmjs.org/x")),"Registry host");
       foreach(string bad in new[]{"http://registry.npmjs.org/x","https://registry.npmjs.org.evil.test/x","https://u:p@registry.npmjs.org/x","https://registry.npmjs.org:444/x"})Require(!Allowed(new Uri(bad)),"Untrusted URL accepted");
