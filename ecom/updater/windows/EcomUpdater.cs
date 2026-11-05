@@ -239,10 +239,16 @@ namespace EcomUpdate {
         using(var evt=EventWaitHandle.OpenExisting(quitEvent,EventWaitHandleRights.Modify))evt.Set();
         Require(process.WaitForExit(60000),"Ecom has not exited. Existing installation retained; finish any open dialogs and retry.");
       }
-      EnsureNoBrowser(app);
+      EnsureNoBrowser(app,10000);
     }
-    static void EnsureNoBrowser(string app) {
-      foreach(var p in Process.GetProcessesByName("Ecom"))try{Require(!Same(p.MainModule.FileName,Path.Combine(app,"Ecom.exe")),"Another Ecom instance still uses this installation");}catch(System.ComponentModel.Win32Exception){throw new IOException("Cannot verify remaining Ecom processes");}
+    static void EnsureNoBrowser(string app,int graceMilliseconds=0) {
+      var timer=Stopwatch.StartNew();
+      while(true) {
+        bool remaining=false;
+        foreach(var p in Process.GetProcessesByName("Ecom"))using(p)try{if(Same(p.MainModule.FileName,Path.Combine(app,"Ecom.exe")))remaining=true;}catch(InvalidOperationException){}catch(System.ComponentModel.Win32Exception){if(!p.HasExited)throw new IOException("Cannot verify remaining Ecom processes");}
+        if(!remaining)return;
+        Require(timer.ElapsedMilliseconds<graceMilliseconds,"Another Ecom instance still uses this installation");Thread.Sleep(100);
+      }
     }
     static void CopyTree(string source,string destination) {
       Require(!Directory.Exists(destination),"Backup target exists");Directory.CreateDirectory(destination);
