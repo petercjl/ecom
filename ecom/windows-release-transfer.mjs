@@ -26,7 +26,7 @@ if(operation==='fetch'){
   }else{
     const bundle=path.join(root,'windows-transfer.tar');await download(process.env.PAYLOAD_URL,bundle,390000000,true);
     if(fs.statSync(bundle).size!==record.transferBytes||await sha256(bundle)!==record.transferSha256)throw new Error('Transfer archive differs from pinned build');
-    const run=args=>{const r=spawnSync('tar',args,{encoding:'utf8',maxBuffer:2000000});if(r.error||r.status!==0)throw new Error('Invalid transfer archive');return r.stdout.trim().split('\n');};
+    const run=args=>{const r=spawnSync('tar',args,{encoding:'utf8',maxBuffer:2000000});if(r.error||r.status!==0)throw new Error('Invalid transfer archive');return r.stdout.trim().split(/\r?\n/);};
     const expected=[mainName,...record.parts.map(p=>'parts/petercjl-ecom-windows-x64-'+p.version+'.tgz')].sort();
     if(JSON.stringify(run(['-tf',bundle]).sort())!==JSON.stringify(expected)||run(['-tvf',bundle]).some(line=>!line.startsWith('-')))throw new Error('Unexpected transfer entries');
     run(['-xf',bundle,'-C',directory]);

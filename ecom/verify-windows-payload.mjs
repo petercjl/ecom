@@ -24,7 +24,7 @@ export async function verifyWindowsPayload(root,version,tgz,tag='next') {
   git(root,['cat-file','-e',record.sourceRevision+'^{commit}']);
   const evidence=git(root,['show','HEAD:'+record.evidencePath]);if(!evidence.includes(record.sourceRevision))throw new Error('Build source missing from evidence');
   const verificationOnly=new Set(['AGENTS.md','ecom/verify-windows-payload.mjs','.github/workflows/ecom-windows-publish.yml','ecom/tests/windows-updater-local-roundtrip.cs','ecom/windows-release-transfer.mjs']);
-  const changes=git(root,['diff','--name-only',record.sourceRevision,'HEAD']).split('\n').filter(Boolean);
+  const changes=git(root,['diff','--name-only',record.sourceRevision,'HEAD']).split(/\r?\n/).filter(Boolean);
   if(changes.some(p=>!verificationOnly.has(p)&&!p.startsWith('docs/')&&!p.startsWith('ecom/releases/')&&!p.startsWith('packages/ecom-cli/')))throw new Error('Native inputs changed after the build');
   validateWindowsParts(record);
   if(!tgz)return {ok:true,record};
@@ -32,9 +32,9 @@ export async function verifyWindowsPayload(root,version,tgz,tag='next') {
     if(fs.statSync(file).size!==identity.tarballBytes||fs.statSync(file).size>windowsPackBudget||await sha256(file)!==identity.tarballSha256)throw new Error('Package checksum or size mismatch');
     const integrity='sha512-'+crypto.createHash('sha512').update(fs.readFileSync(file)).digest('base64');if(integrity!==identity.integrity)throw new Error('Recorded integrity mismatch');
     const tar=(args,binary=false)=>{const r=spawnSync('tar',args,{encoding:binary?null:'utf8',maxBuffer:55_000_000});if(r.status!==0||r.error)throw new Error('Invalid tarball');return r.stdout;};
-    const names=tar(['-tzf',file]).trim().split('\n').sort();
+    const names=tar(['-tzf',file]).trim().split(/\r?\n/).sort();
     if(JSON.stringify(names)!==JSON.stringify(entries.sort()))throw new Error('Unexpected package entries');
-    if(tar(['-tvzf',file]).trim().split('\n').some(line=>!line.startsWith('-')))throw new Error('Archive links rejected');
+    if(tar(['-tvzf',file]).trim().split(/\r?\n/).some(line=>!line.startsWith('-')))throw new Error('Archive links rejected');
     return (name,binary=false)=>tar(['-xOzf',file,'package/'+name],binary);
   };
   const main=await checkArchive(tgz,record,['package/artifact.json','package/package.json','package/LICENSE']);
