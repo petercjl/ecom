@@ -98,6 +98,10 @@ source_set("core") {
       "ecom/sycm_read_registry.h",
     ]
   }
+
+  if (is_win) {
+    sources += [ "ecom/windows_update_service.cc", "ecom/windows_update_service.h" ]
+  }
   if (is_mac) {
     sources += [
       "ecom/native_session_service.cc",

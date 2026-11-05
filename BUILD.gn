@@ -280,7 +280,7 @@ if (is_win) {
   }
 
   group("mini_installer_dependencies") {
-    deps = [ ":brave" ]
+    deps = [ ":brave", "//brave/ecom/updater/windows:updater" ]
     if (!skip_signing) {
       deps += [
         ":signed_brave_exe",

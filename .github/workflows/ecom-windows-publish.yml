@@ -1,0 +1,88 @@
+name: Publish verified Ecom Windows payload
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Exact verified Windows native version
+        required: true
+        type: string
+      tag:
+        description: npm channel
+        default: next
+        type: choice
+        options: [next, latest]
+      payload_url:
+        description: Temporary HTTPS transfer URL (first publication only)
+        required: false
+        type: string
+      validate_only:
+        description: Validate without publication
+        default: true
+        type: boolean
+permissions:
+  contents: read
+  actions: write
+  id-token: write
+concurrency:
+  group: ecom-windows-payload-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RELEASE: ${{ inputs.release }}
+      DIST_TAG: ${{ inputs.tag }}
+      PAYLOAD_URL: ${{ inputs.payload_url }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.2'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: npm install --global npm@11.21.0
+      - name: Validate committed Windows evidence
+        run: node ecom/verify-windows-payload.mjs "$RELEASE" --tag "$DIST_TAG"
+      - name: Fetch pinned payload from temporary transfer or existing npm version
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import { Readable } from 'node:stream';
+          import { pipeline } from 'node:stream/promises';
+          import { windowsRegistryStatus } from './ecom/verify-windows-payload.mjs';
+          const existing = await windowsRegistryStatus(process.env.RELEASE, process.env.DIST_TAG);
+          const url = new URL(existing ? existing.dist.tarball : process.env.PAYLOAD_URL);
+          if (url.protocol !== 'https:' || url.username || url.password || url.port || !(url.hostname === 'registry.npmjs.org' || (!existing && /^[a-z0-9-]+\.trycloudflare\.com$/.test(url.hostname)))) throw new Error('Unsupported transfer origin');
+          const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(1200000) });
+          if (!response.ok || Number(response.headers.get('content-length')) > 390000000) throw new Error('Cannot transfer payload');
+          let bytes = 0;
+          await pipeline(Readable.fromWeb(response.body), async function* (stream) { for await (const chunk of stream) { bytes += chunk.length; if (bytes > 390000000) throw new Error('Payload too large'); yield chunk; } }, fs.createWriteStream('windows-payload.tgz', { flags: 'wx' }));
+          JS
+      - name: Verify complete tarball and published identity
+        id: registry
+        run: node ecom/verify-windows-payload.mjs "$RELEASE" windows-payload.tgz --tag "$DIST_TAG" --registry >> "$GITHUB_OUTPUT"
+      - name: Hold temporary Actions transfer artifact
+        id: transfer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecom-windows-verified-payload
+          path: windows-payload.tgz
+          retention-days: 1
+          compression-level: 0
+      - name: Publish verified Windows payload through OIDC
+        if: ${{ !inputs.validate_only && steps.registry.outputs.exists == 'false' }}
+        working-directory: ${{ runner.temp }}
+        run: npm publish "$GITHUB_WORKSPACE/windows-payload.tgz" --access public --tag "$DIST_TAG"
+      - name: Promote the identical verified Windows version
+        if: ${{ !inputs.validate_only && steps.registry.outputs.exists == 'true' }}
+        working-directory: ${{ runner.temp }}
+        run: npm dist-tag add "@petercjl/ecom-windows-x64@$RELEASE" "$DIST_TAG"
+      - name: Delete temporary binary transfer artifact
+        if: ${{ always() && steps.transfer.outputs.artifact-id != '' }}
+        env:
+          ARTIFACT_ID: ${{ steps.transfer.outputs.artifact-id }}
+        run: gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"

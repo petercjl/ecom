@@ -58,6 +58,9 @@
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/actions/actions.h"
+#if BUILDFLAG(IS_WIN)
+#include "brave/browser/ecom/windows_update_service.h"
+#endif
 
 #if BUILDFLAG(ENABLE_AI_CHAT)
 #include "brave/browser/ai_chat/ai_chat_utils.h"
@@ -415,6 +418,9 @@ void BraveBrowserCommandController::InitBraveCommandState() {
 
   UpdateCommandEnabled(IDC_READING_LIST_MENU_ADD_TAB, false);
   UpdateCommandEnabled(IDC_READING_LIST_MENU_SHOW_UI, false);
+#if BUILDFLAG(IS_WIN)
+  UpdateCommandEnabled(IDC_ECOM_CHECK_UPDATES, true);
+#endif
 
   UpdateCommandEnabled(IDC_FORCE_PASTE, true);
 
@@ -684,6 +690,11 @@ bool BraveBrowserCommandController::ExecuteBraveCommandWithDisposition(
       break;
     case IDC_TOGGLE_READING_LIST_SIDE_PANEL:
       break;
+#if BUILDFLAG(IS_WIN)
+    case IDC_ECOM_CHECK_UPDATES:
+      ecom::ShowWindowsUpdates(browser_->GetProfile());
+      break;
+#endif
     case IDC_TOGGLE_PLAYLIST_SIDE_PANEL:
       brave::ToggleSidePanel(&*browser_, SidePanelEntryId::kPlaylist);
       break;

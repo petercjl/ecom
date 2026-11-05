@@ -9,6 +9,9 @@
 #if BUILDFLAG(IS_MAC)
 #include "brave/browser/ecom/native_session_service.h"
 #endif
+#if BUILDFLAG(IS_WIN)
+#include "brave/browser/ecom/windows_update_service.h"
+#endif
 
 #include <memory>
 #include <utility>
@@ -201,6 +204,9 @@ void ChromeBrowserMainParts::PostProfileInit(Profile* profile,
 
 #if BUILDFLAG(IS_MAC)
   if (is_initial_profile) ecom::StartNativeSessionService(profile);
+#endif
+#if BUILDFLAG(IS_WIN)
+  if (is_initial_profile) ecom::StartWindowsUpdateService(profile);
 #endif
 
 #if BUILDFLAG(IS_ANDROID)

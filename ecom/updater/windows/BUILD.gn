@@ -1,0 +1,33 @@
+assert(is_win)
+
+declare_args() {
+  ecom_source_revision = ""
+}
+assert(ecom_source_revision != "",
+       "Use ecom/build-windows.mjs to pin the release source")
+
+action("updater") {
+  script = "build_updater.py"
+  inputs = [
+    "EcomUpdater.cs",
+    "//brave/ecom/windows-release-config.json",
+    "//brave/app/theme/brave/win/brave_development.ico",
+  ]
+  outputs = [
+    "$root_out_dir/EcomUpdater.exe",
+    "$root_out_dir/ecom-update.json",
+  ]
+  args = [
+    "--output",
+    rebase_path(root_out_dir, root_build_dir),
+    "--source",
+    rebase_path("EcomUpdater.cs", root_build_dir),
+    "--config",
+    rebase_path("//brave/ecom/windows-release-config.json", root_build_dir),
+    "--revision",
+    ecom_source_revision,
+    "--icon",
+    rebase_path("//brave/app/theme/brave/win/brave_development.ico",
+                root_build_dir),
+  ]
+}

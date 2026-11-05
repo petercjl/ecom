@@ -116,6 +116,7 @@ Chromium 与已有原生组件承担网页引擎及会话基础；Ecom 承担产
 - Windows 候选全部验收通过后，将同一份已验证、不可变的 npm 版本从 `next` 提升到 `latest`，随后核对注册表的版本、渠道、平台／架构及载荷哈希。提升渠道不重新编译或重新打包；稳定终端在用户确认后更新。
 - macOS 正式发布独立执行对应的候选验证及渠道提升。当前 Mac 日常只运行 Dev，正式版验证使用独立临时实例；正式安装、跨平台发布及发布渠道遵循本轮用户授权。
 - Windows 首次安装包保留在 peter-new，并按授权从 peter-new 复制至 NAS；安装包不提交到 Git，也不作为 GitHub Release 附件。npm 发布由 GitHub Actions + Trusted Publishing 执行，发布载荷的传递方式须与此交付边界一致。
+- Windows 更新载荷使用公开 npm 包 `@petercjl/ecom-windows-x64`。允许将校验固定的 npm 载荷临时传入 Actions，发布后删除临时 artifact；GitHub 不长期保留 Windows 安装包。测试基线的安装与恢复记录、候选发布和真实更新证据分别保存。
 
 - 更新通过 npm 分发。应用自动检测新版本；用户点击“更新”才下载；准备完成后再次征得用户同意，再退出、应用更新并重启。
 - 同事通过桌面界面使用和更新，不要求安装 Node.js、npm 或操作终端。
