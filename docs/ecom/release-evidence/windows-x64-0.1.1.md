@@ -30,3 +30,7 @@ All browser launches used ordinary GUI mode with the same user-data directory, w
 Local native smoke, restoration, prepared-state reuse, GUI component tests and package integrity checks passed. The candidate is eligible for next. Real npm GUI background download, Later/reopen reuse, activation and rollback are pending. updateRoundTripVerified and rollbackRoundTripVerified remain false, so latest is blocked.
 
 Publication uses the committed GitHub Actions OIDC workflow. Every immutable part must have matching public metadata and an actual readable payload body before exposing the primary version. The workflow verifies the full source-bound payload and deletes its temporary Actions binary artifact. Installers remain on peter-new and authorized NAS storage; no Windows installer is attached to a GitHub Release.
+
+## Public next verification
+
+[Actions run 42024465906](https://github.com/petercjl/ecom/actions/runs/42024465906) completed through OIDC. Version 0.1.1 and all six payload parts are publicly visible with their exact pinned integrity values, and next resolves to 0.1.1. Actual GET requests to each payload file returned 200 on peter-new using the same .NET HTTP stack as the updater. The Actions artifact count is zero, and the temporary server, SSH forward and HTTPS tunnel were closed. Operator background download, deferral/reuse and GUI activation/rollback remain pending; latest gates are unchanged.
