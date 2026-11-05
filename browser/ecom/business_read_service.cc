@@ -343,12 +343,12 @@ private:
     xhs_poll_.Start(FROM_HERE, base::Milliseconds(500),
                     base::BindOnce(&Read::PollXhsPage, weak_.GetWeakPtr()));
   }
-  void XhsPageRead(base::Value result) {
-    if (!result.is_string()) {
+  void XhsPageRead(base::Value script_result) {
+    if (!script_result.is_string()) {
       Fail("XHS_PAGE_RESULT_INVALID");
       return;
     }
-    auto json = base::JSONReader::Read(result.GetString(), base::JSON_PARSE_RFC);
+    auto json = base::JSONReader::Read(script_result.GetString(), base::JSON_PARSE_RFC);
     if (!json || !json->is_dict()) {
       Fail("XHS_PAGE_RESULT_INVALID");
       return;
