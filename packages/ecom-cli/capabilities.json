@@ -526,6 +526,42 @@
         "PROTOCOL_MISMATCH"
       ],
       "sideEffectDetails": "Registered browser navigation in the selected container; no website submission."
+    },
+    "xhs search": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--keyword": {
+          "type": "string",
+          "required": true
+        },
+        "--via": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "page"
+          ]
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Read the first Xiaohongshu search page in the selected container using a temporary background tab; no foreground activation or debugging",
+      "output": {
+        "transport": "background-page-dom",
+        "count": "1..20",
+        "items": "id, title, author, likes (display text), URL"
+      },
+      "compatibility": "Requires Ecom Dev with xhsPageSearchProtocol 1; macOS tested, other systems unverified"
     }
   },
   "transport": {

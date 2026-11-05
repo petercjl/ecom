@@ -362,7 +362,24 @@ private:
       return;
     }
     timer_.Stop();
+    bool page_closed = false;
+    if (xhs_page_ && xhs_page_->GetLastCommittedURL().host() == "www.xiaohongshu.com" &&
+        xhs_page_->GetLastCommittedURL().path() == "/search_result") {
+      bool selected = false;
+      ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+          [&](BrowserWindowInterface* browser) {
+            if (browser->GetProfile() == profile_ && browser->GetTabStripModel() &&
+                browser->GetTabStripModel()->GetActiveWebContents() == xhs_page_.get())
+              selected = true;
+            return true;
+          });
+      if (!selected) {
+        xhs_page_->ClosePage();
+        page_closed = true;
+      }
+    }
     Finish(base::Value(base::DictValue()
+        .Set("pageClosed", page_closed)
         .Set("success", true)
         .Set("transport", "background-page-dom")
         .Set("keyword", Field(params_, "keyword"))
@@ -708,13 +725,15 @@ private:
   }
   void Finish(base::Value json) {
     timer_.Stop();
-    std::move(callback_).Run(base::DictValue()
-                                 .Set("ok", true)
-                                 .Set("containerId", container_)
-                                 .Set("businessOperation", operation_)
-                                 .Set("httpStatus", 200)
-                                 .Set("dataFlows", std::move(data_flows_))
-                                 .Set("data", std::move(json)));
+    auto result = base::DictValue()
+                      .Set("ok", true)
+                      .Set("containerId", container_)
+                      .Set("businessOperation", operation_)
+                      .Set("dataFlows", std::move(data_flows_))
+                      .Set("data", std::move(json));
+    if (operation_ != "xhs.search-page")
+      result.Set("httpStatus", 200);
+    std::move(callback_).Run(std::move(result));
   }
   void NextDataFlow() {
     if (flow_ids_.empty()) {

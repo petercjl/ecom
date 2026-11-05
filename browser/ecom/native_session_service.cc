@@ -194,6 +194,7 @@ class NativeSessionService final : public ProfileObserver {
       metadata.Set("businessRouteProtocol", 1);
       if (SupportsSignedBusinessRoutes()) {
         metadata.Set("signedBusinessRouteProtocol", 1);
+        metadata.Set("xhsPageSearchProtocol", 1);
       }
       metadata.Set("businessPageOpenProtocol", 1);
       metadata.Set("businessReadRegistryHash", kSycmReadRegistryHash);
