@@ -76,6 +76,7 @@ namespace EcomUpdate {
         }
         if(Args.ContainsKey("self-test")) { SelfTest(); return 0; }
         PrivateDirectory(State);
+        ReleaseInstallationDirectory();
         if(Args.ContainsKey("verify-payload")) {
           string work=Path.Combine(State,"verification",Guid.NewGuid().ToString("N"));PrivateDirectory(work);
           try {Require(!File.Exists(Get("report")),"Verification report already exists");VerifyIntegrity(Get("verify-payload"),Get("integrity"));Extract(Get("verify-payload"),work);FetchParts(work,Get("parts-dir"),null);var manifest=ValidatePayload(work,new Dictionary<string,object>{{"version",Get("version")}});AtomicJson(Get("report"),manifest);}
@@ -85,7 +86,7 @@ namespace EcomUpdate {
         if(Args.ContainsKey("recover")) {
           string app=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom","Application");
           if(Application.ExecutablePath.StartsWith(app+"\\",StringComparison.OrdinalIgnoreCase)) {
-            string work=Path.Combine(State,"staging",Guid.NewGuid().ToString("N"));PrivateDirectory(work);string helper=Path.Combine(work,"EcomUpdateWorker.exe");File.Copy(Application.ExecutablePath,helper,false);Process.Start(helper,"--recover");
+            string work=Path.Combine(State,"staging",Guid.NewGuid().ToString("N"));PrivateDirectory(work);string helper=Path.Combine(work,"EcomUpdateWorker.exe");File.Copy(Application.ExecutablePath,helper,false);Process.Start(UpdateProcess(helper,"--recover"));
           }else RecoverPending();return 0;
         }
         AppDir=Path.GetFullPath(Get("app"));
@@ -107,12 +108,13 @@ namespace EcomUpdate {
         bool created;
         using(var show=CreateShowSignal())using(var mutex=new Mutex(true,"Local\\EcomUpdater."+HashText(AppDir).Substring(0,24),out created)) {
           if(!created){if(!Args.ContainsKey("watch"))show.Set();return 0;}
+          TryCleanup(S(Installed,"version"),false);
           Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
           var panel=new UpdateForm(Args.ContainsKey("watch"),show); Application.Run(panel);
         }
         return 0;
       } catch(Exception error) {
-        try { PrivateDirectory(State); AtomicJson(Path.Combine(State,"last-error.json"),new Dictionary<string,object>{{"error",error.Message},{"type",error.GetType().FullName},{"details",error.StackTrace},{"time",DateTime.UtcNow.ToString("o")}}); } catch {}
+        try { PrivateDirectory(State); AtomicJson(Path.Combine(State,"last-error.json"),new Dictionary<string,object>{{"error",error.Message},{"type",error.GetType().FullName},{"details",error.ToString()},{"time",DateTime.UtcNow.ToString("o")}}); } catch {}
         if(!Args.ContainsKey("watch") && !Args.ContainsKey("self-test") && !Args.ContainsKey("verify-payload")) MessageBox.Show(error.Message,"Ecom 更新",MessageBoxButtons.OK,MessageBoxIcon.Error);
         return 1;
       }
@@ -363,11 +365,57 @@ namespace EcomUpdate {
         if(job==null)job=new Dictionary<string,object>();BindBrowserJob(job,restore);
         string workerDirectory=Path.Combine(State,"workers",Guid.NewGuid().ToString("N"));PrivateDirectory(workerDirectory);
         string worker=Path.Combine(workerDirectory,"EcomUpdateWorker.exe");File.Copy(Application.ExecutablePath,worker,false);
-        string file=Path.Combine(workerDirectory,"job.json");AtomicJson(file,job);Process.Start(new ProcessStartInfo(worker,"--apply "+Quote(file)){UseShellExecute=false});CloseUpdater();
+        string file=Path.Combine(workerDirectory,"job.json");AtomicJson(file,job);Process.Start(UpdateProcess(worker,"--apply "+Quote(file)));CloseUpdater();
       }
     }
     static string Quote(string value) { Require(value.IndexOf('"')<0 && !value.EndsWith("\\"),"Invalid path argument");return "\""+value+"\""; }
     static string RelaunchArguments(string profile) { return "--user-data-dir="+Quote(profile)+" --restore-last-session"; }
+    // Windows keeps a handle to the current directory. A helper inherited from
+    // Ecom must release that handle before replacing or renaming Application.
+    static void ReleaseInstallationDirectory() { PrivateDirectory(State);Directory.SetCurrentDirectory(State); }
+    static ProcessStartInfo UpdateProcess(string executable,string arguments) {
+      return new ProcessStartInfo(executable,arguments){UseShellExecute=false,WorkingDirectory=State};
+    }
+    static void DeleteOwnedTree(string directory) {
+      Require((File.GetAttributes(directory)&FileAttributes.ReparsePoint)==0,"Cleanup reparse directory rejected");
+      foreach(string entry in Directory.GetFileSystemEntries(directory)) {
+        var attributes=File.GetAttributes(entry);Require((attributes&FileAttributes.ReparsePoint)==0,"Cleanup reparse entry rejected");
+        if((attributes&FileAttributes.Directory)!=0)DeleteOwnedTree(entry);else File.Delete(entry);
+      }
+      Directory.Delete(directory);
+    }
+    internal static void CleanupState(string root,string installedVersion,string executingFile) {
+      var keep=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+      string pendingFile=Path.Combine(root,"pending.json");
+      if(File.Exists(pendingFile)) {
+        var pending=ReadObject(pendingFile);if(S(pending,"status")=="installing")return;
+      }
+      string rollbackFile=Path.Combine(root,"rollback.json");
+      if(File.Exists(rollbackFile))keep.Add(Path.GetFullPath(S(ReadObject(rollbackFile),"backup")));
+      string readyFile=Path.Combine(root,"ready.json");
+      if(File.Exists(readyFile)) {
+        var ready=ReadObject(readyFile);
+        if(ParseVersion(S((Dictionary<string,object>)ready["metadata"],"version"))>ParseVersion(installedVersion))keep.Add(Path.GetFullPath(S(ready,"work")));
+        else {File.Delete(readyFile);if(File.Exists(readyFile+".previous"))File.Delete(readyFile+".previous");}
+      }
+      keep.Add(Path.GetDirectoryName(Path.GetFullPath(executingFile)));
+      // Only updater-owned GUID directories in these dedicated areas qualify.
+      // Profile data, installations and incident evidence are outside this set.
+      foreach(string area in new[]{"staging","workers","backups","verification","replaced"}) {
+        string parent=Path.Combine(root,area);if(!Directory.Exists(parent))continue;
+        Require((File.GetAttributes(parent)&FileAttributes.ReparsePoint)==0,"Cleanup area reparse point rejected");
+        foreach(string directory in Directory.GetDirectories(parent))if(Regex.IsMatch(Path.GetFileName(directory),"^[a-f0-9]{32}$")&&!keep.Contains(Path.GetFullPath(directory)))DeleteOwnedTree(directory);
+      }
+    }
+    static void TryCleanup(string installedVersion,bool ownsApplyLock) {
+      try {
+        if(ownsApplyLock)CleanupState(State,installedVersion,Application.ExecutablePath);
+        else using(var guard=new FileStream(Path.Combine(State,"apply.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None))CleanupState(State,installedVersion,Application.ExecutablePath);
+      }catch(Exception error) {
+        // Cleanup must never turn a verified installation into a rollback.
+        try{AtomicJson(Path.Combine(State,"cleanup-error.json"),new Dictionary<string,object>{{"error",error.Message},{"time",DateTime.UtcNow.ToString("o")}});}catch{}
+      }
+    }
     static void CloseBrowser(int pid,string app,string quitEvent) {
       Require(pid>0,"Invalid browser process ID");
       Process process=null;try{process=Process.GetProcessById(pid);}catch(ArgumentException){}
@@ -429,7 +477,7 @@ namespace EcomUpdate {
     }
     static Process Restart(string app,string profile,string expectedVersion,Action<Process> started=null) {
       DateTime startedAt=DateTime.UtcNow;
-      var process=Process.Start(new ProcessStartInfo(Path.Combine(app,"Ecom.exe"),RelaunchArguments(profile)){UseShellExecute=false});
+      var process=Process.Start(UpdateProcess(Path.Combine(app,"Ecom.exe"),RelaunchArguments(profile)));
       if(started!=null)started(process);
       string ready=Path.Combine(State,"running-"+process.Id+".json");var timer=Stopwatch.StartNew();
       double stableSince=-1;
@@ -447,13 +495,14 @@ namespace EcomUpdate {
       throw new IOException("Updated Ecom did not report startup readiness; recovery is retained");
     }
     static void Restore(Dictionary<string,object> recovery) {
+      ReleaseInstallationDirectory();
       string app=S(recovery,"app"),backup=S(recovery,"backup");
       Require(Same(app,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom","Application")) && backup.StartsWith(State+"\\",StringComparison.OrdinalIgnoreCase),"Invalid recovery target");
       EnsureNoBrowser(app);
       Require(Directory.Exists(backup) && File.Exists(Path.Combine(backup,"Ecom.exe")),"Recovery copy unavailable");
       Require(Hash(Path.Combine(backup,"Ecom.exe"))==S(recovery,"exeSha256") && Hash(Path.Combine(VersionDirectory(backup),"chrome.dll"))==S(recovery,"frameworkSha256"),"Recovery program integrity mismatch");
       Require(Hash(Path.Combine(VersionDirectory(backup),"ecom-update.json"))==S(recovery,"metadataSha256") && Hash(Path.Combine(VersionDirectory(backup),"EcomUpdater.exe"))==S(recovery,"updaterSha256"),"Recovery metadata or helper integrity mismatch");
-      if(Directory.Exists(app))Directory.Move(app,app+".failed-"+Guid.NewGuid().ToString("N"));
+      if(Directory.Exists(app)){string replaced=Path.Combine(State,"replaced");PrivateDirectory(replaced);Directory.Move(app,Path.Combine(replaced,Guid.NewGuid().ToString("N")));}
       // Retain the verified backup for another recovery attempt if interrupted.
       CopyTree(backup,app);
       RestoreRegistration((Dictionary<string,object>)recovery["registration"]);
@@ -465,8 +514,10 @@ namespace EcomUpdate {
       string app=S(pending,"app");
       Require(!Process.GetProcessesByName("Ecom").Any(p=>{try{return Same(p.MainModule.FileName,Path.Combine(app,"Ecom.exe"));}catch{return true;}}),"Close Ecom before recovery");
       Restore(pending);Restart(app,S(pending,"profile"),S(pending,"version"));
+      pending["status"]="recovered";AtomicJson(Path.Combine(State,"pending.json"),pending);TryCleanup(S(pending,"version"),false);
     }
     static void Apply(Dictionary<string,object> job) {
+      ReleaseInstallationDirectory();
       string app=Path.GetFullPath(S(job,"app")),profile=Path.GetFullPath(S(job,"profile"));
       Require(N(job,"pid")>0&&N(job,"pid")<=int.MaxValue,"Invalid browser process ID");
       Require(Same(app,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom","Application")),"Unsupported installation target");
@@ -474,7 +525,7 @@ namespace EcomUpdate {
         bool rollback=Convert.ToBoolean(job["rollback"]);Dictionary<string,object> artifact=null;
         if(!rollback) {string work=S(job,"work");Require(work.StartsWith(Path.Combine(State,"staging")+"\\",StringComparison.OrdinalIgnoreCase),"Invalid staging directory");artifact=ValidateStagedPayload(work,(Dictionary<string,object>)job["metadata"],S(job,"integrity"));Require(ParseVersion(S(artifact,"version"))>ParseVersion(S(ReadObject(Path.Combine(VersionDirectory(app),"ecom-update.json")),"version")),"Update is no longer newer");}
         CloseBrowser((int)N(job,"pid"),app,S(job,"quitEvent"));
-        if(rollback) {var recovery=ReadObject(Path.Combine(State,"rollback.json"));Restore(recovery);Restart(app,profile,S(recovery,"version"));return;}
+        if(rollback) {var recovery=ReadObject(Path.Combine(State,"rollback.json"));Restore(recovery);Restart(app,profile,S(recovery,"version"));recovery["status"]="recovered";AtomicJson(Path.Combine(State,"pending.json"),recovery);TryCleanup(S(recovery,"version"),true);return;}
         string backup=Path.Combine(State,"backups",Guid.NewGuid().ToString("N"));PrivateDirectory(Path.GetDirectoryName(backup));CopyTree(app,backup);
         var previous=ReadObject(Path.Combine(VersionDirectory(app),"ecom-update.json"));
         var record=new Dictionary<string,object>{{"app",app},{"backup",backup},{"version",S(previous,"version")},{"profile",profile},{"exeSha256",Hash(Path.Combine(app,"Ecom.exe"))},{"frameworkSha256",Hash(Path.Combine(VersionDirectory(app),"chrome.dll"))},{"metadataSha256",Hash(Path.Combine(VersionDirectory(app),"ecom-update.json"))},{"updaterSha256",Hash(Path.Combine(VersionDirectory(app),"EcomUpdater.exe"))},{"status","installing"}};
@@ -482,16 +533,22 @@ namespace EcomUpdate {
         AtomicJson(Path.Combine(State,"pending.json"),record);
         Process launched=null;
         try {
-          using(var installer=Process.Start(new ProcessStartInfo(Path.Combine(S(job,"work"),"EcomSetup.exe"),"--do-not-launch-chrome"){UseShellExecute=false})) {
+          using(var installer=Process.Start(UpdateProcess(Path.Combine(S(job,"work"),"EcomSetup.exe"),"--do-not-launch-chrome"))) {
             Require(installer.WaitForExit(600000),"Installer still running; recovery deferred until it exits");Require(installer.ExitCode==0,"Installer failed: "+installer.ExitCode);
           }
           ValidateInstalled(app,artifact);EnsureNoBrowser(app);Restart(app,profile,S(artifact,"version"),p=>launched=p);
           AtomicJson(Path.Combine(State,"rollback.json"),record);record["status"]="complete";AtomicJson(Path.Combine(State,"pending.json"),record);
           AtomicJson(Path.Combine(State,"last-result.json"),new Dictionary<string,object>{{"status","updated"},{"version",S(artifact,"version")},{"sourceRevision",S(artifact,"sourceRevision")},{"pid",launched.Id},{"backup",backup}});
-        } catch {
+          TryCleanup(S(artifact,"version"),true);
+        } catch(Exception updateError) {
+          AtomicJson(Path.Combine(State,"last-apply-error.json"),new Dictionary<string,object>{{"error",updateError.Message},{"details",updateError.ToString()},{"time",DateTime.UtcNow.ToString("o")}});
+          try {
           if(launched!=null && !launched.HasExited) {string ready=Path.Combine(State,"running-"+launched.Id+".json");Require(File.Exists(ready),"Startup outcome unknown; quit Ecom and run recovery");CloseBrowser(launched.Id,app,S(ReadObject(ready),"quitEvent"));}
           Require(!Process.GetProcessesByName("mini_installer").Any() && !Process.GetProcessesByName("setup").Any(),"Installer outcome unknown; recovery deferred");
-          Restore(record);Restart(app,profile,S(previous,"version"));throw;
+          Restore(record);Restart(app,profile,S(previous,"version"));
+          record["status"]="recovered";AtomicJson(Path.Combine(State,"pending.json"),record);
+          } catch(Exception recoveryError) {throw new AggregateException("更新未完成，恢复也未完成；已保留恢复副本。",updateError,recoveryError);}
+          throw;
         }
       }
     }

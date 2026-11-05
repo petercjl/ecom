@@ -59,11 +59,12 @@ namespace EcomUpdate {
         var job=Program.CreateBoundJob(app,data,Convert.ToInt32(baseline["pid"]),Program.S(baseline,"quitEvent"),new Dictionary<string,object>{{"work",work},{"integrity",receipt["integrity"]},{"metadata",metadata}},false);
         Call("Apply",job);
         var updated=Program.ReadObject(Path.Combine(Program.State,"last-result.json"));Program.Require(Program.S(updated,"status")=="updated"&&Program.S(updated,"sourceRevision")==Program.S(receipt,"sourceRevision"),"Candidate identity mismatch");
+        Program.Require(!Directory.Exists(work),"Successful update did not automatically remove its payload");
         Thread.Sleep(10000);var live=Live(app,version);var process=Process.GetProcessById(Convert.ToInt32(live["pid"]));process.Refresh();Program.Require(process.MainWindowHandle!=IntPtr.Zero,"Candidate has no ordinary visible window");
         var after=Snapshot(data);Program.Require(before.Count==after.Count&&before.All(p=>after.ContainsKey(p.Key)&&Program.Json.Serialize(p.Value)==Program.Json.Serialize(after[p.Key])),"Container identity changed during update");
         var restore=Program.CreateBoundJob(app,data,Convert.ToInt32(live["pid"]),Program.S(live,"quitEvent"),new Dictionary<string,object>(),true);Call("Apply",restore);
         Thread.Sleep(5000);var restored=Live(app,baselineVersion);var restoredProfiles=Snapshot(data);Program.Require(before.Count==restoredProfiles.Count&&before.All(p=>restoredProfiles.ContainsKey(p.Key)&&Program.Json.Serialize(p.Value)==Program.Json.Serialize(restoredProfiles[p.Key])),"Container identity changed during rollback");
-        Directory.Delete(work,true);
+        if(Directory.Exists(work))Directory.Delete(work,true);
         var report=new Dictionary<string,object>{{"ok",true},{"transport","local-payload"},{"fromVersion",baselineVersion},{"testedVersion",version},{"restoredVersion",baselineVersion},{"sourceRevision",receipt["sourceRevision"]},{"candidateVisibleWindow",true},{"containerIdentitiesPreserved",true},{"preparedUpdateReuseVerified",true},{"guiJobPidVerified",true},{"profileCount",before.Count},{"restoredPid",restored["pid"]}};
         using(var stream=new FileStream(args[2],FileMode.CreateNew)){byte[] bytes=Encoding.UTF8.GetBytes(Program.Json.Serialize(report));stream.Write(bytes,0,bytes.Length);}return 0;
       }catch(Exception e){Console.Error.WriteLine(e.ToString());return 1;}

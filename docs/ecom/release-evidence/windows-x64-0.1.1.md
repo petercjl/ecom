@@ -34,3 +34,7 @@ Publication uses the committed GitHub Actions OIDC workflow. Every immutable par
 ## Public next verification
 
 [Actions run 42024465906](https://github.com/petercjl/ecom/actions/runs/42024465906) completed through OIDC. Version 0.1.1 and all six payload parts are publicly visible with their exact pinned integrity values, and next resolves to 0.1.1. Actual GET requests to each payload file returned 200 on peter-new using the same .NET HTTP stack as the updater. The Actions artifact count is zero, and the temporary server, SSH forward and HTTPS tunnel were closed. Operator background download, deferral/reuse and GUI activation/rollback remain pending; latest gates are unchanged.
+
+## GUI activation failure
+
+The operator downloaded 0.1.1 from next and selected restart. Recovery failed while renaming Application, with System.IO.Directory.InternalMove in the saved exception stack. A read-only process-parameters probe confirmed the copied worker retained Application/156.1.98.0 as its current directory. The original update exception was masked by the recovery exception. The running worker's error state and recovery metadata were preserved; launching the verified recovery helper outside Application with UpdateState as its working directory restored the 0.0.0 baseline. The operator confirmed windows and shop containers recovered. Version 0.1.1 remains ineligible for latest. The correction requires a new immutable native release.
