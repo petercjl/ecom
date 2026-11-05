@@ -19,3 +19,9 @@ The test baseline contains the historical updater; its notification process was 
 ## Publication gates
 
 Native local update/recovery and automatic cleanup passed. Real npm GUI background download, Later/reopen reuse, activation and GUI rollback remain pending. updateRoundTripVerified=false and rollbackRoundTripVerified=false; latest is blocked. Publish only next through the committed OIDC workflow, remove temporary Actions payloads, and verify exact public integrity and tag. Windows installers remain on peter-new and authorized NAS, without GitHub Release installer attachments.
+
+## Public next verification
+
+[Actions run 42043116535](https://github.com/petercjl/ecom/actions/runs/42043116535) completed successfully through OIDC. The public next tag resolves to 0.1.2; latest remains 0.0.0-bootstrap.1. The main tarball and all six immutable parts match the pinned integrity values. Actual .NET GET requests from peter-new returned 200 with non-empty bodies for all seven files. Temporary Actions artifact count is zero. The Windows temporary file server and HTTPS relay were stopped; the earlier Mac relay and SSH forward were also stopped.
+
+The earlier transfer run 42040837823 was interrupted before npm publication, then its slower retry was cancelled before publication. A direct Windows HTTP/2 relay delivered the identical verified archive for the successful run, without rebuilding or changing the version. Operator GUI download, deferral/reuse, activation and rollback remain pending, with latest gates unchanged.
