@@ -170,6 +170,36 @@ std::string HomeUrl(const base::DictValue& metadata) {
 bool SupportsVerification(const base::DictValue& metadata) {
   return Field(metadata, "platform") == "taobao";
 }
+// Older platform picker entries saved these built-in platforms as custom.
+std::string_view LegacyPresetPlatform(const base::DictValue& metadata) {
+  if (Field(metadata, "platform") != "custom") {
+    return {};
+  }
+  const auto name = Field(metadata, "customPlatformName");
+  const auto home = HomeUrl(metadata);
+  struct Preset {
+    const char* name;
+    const char* english_name;
+    const char* url;
+    const char* platform;
+  };
+  constexpr Preset kLegacyPresets[] = {
+      {"小红书", "RedNote", "https://www.xiaohongshu.com/", "xiaohongshu"},
+      {"抖音", "Douyin", "https://www.douyin.com/", "douyin"},
+      {"京东前台", "JD Storefront", "https://www.jd.com/", "jd"},
+      {"京东商智后台", "JD Business Intelligence", "https://sz.jd.com/", "jd"},
+      {"京东京麦工作台", "JD Jingmai", "https://shop.jd.com/jdm/home", "jd"},
+      {"天猫前台", "Tmall", "https://www.tmall.com/", "taobao"},
+  };
+  for (const auto& preset : kLegacyPresets) {
+    if (home == preset.url &&
+        (name == preset.name || name == preset.english_name)) {
+      return preset.platform;
+    }
+  }
+  return {};
+}
+
 bool SamePlatform(const base::DictValue* existing,
                   const base::DictValue& target) {
   if (!existing) {
@@ -240,6 +270,7 @@ class ShopService final : public base::SupportsUserData::Data,
                           public ProfileObserver {
  public:
   explicit ShopService(Profile* profile) : profile_(profile) {
+    MigrateLegacyPlatformPresets();
     profile_->AddObserver(this);
     timer_.Start(
         FROM_HERE, base::Seconds(60),
@@ -837,6 +868,30 @@ class ShopService final : public base::SupportsUserData::Data,
             },
             std::move(callback), id),
         ISOLATED_WORLD_ID_BRAVE_INTERNAL);
+  }
+
+  void MigrateLegacyPlatformPresets() {
+    for (const auto& container :
+         containers::GetContainersFromPrefs(*profile_->GetPrefs())) {
+      const auto* existing = Metadata().FindDict(container->id);
+      if (!existing) {
+        continue;
+      }
+      const auto platform = LegacyPresetPlatform(*existing);
+      if (platform.empty()) {
+        continue;
+      }
+      auto item = existing->Clone();
+      item.Set("homeUrl", HomeUrl(item));
+      item.Set("platform", std::string(platform));
+      item.Remove("customPlatformName");
+      item.Remove("customPlatformIconUrl");
+      item.Remove("entryUrl");
+      if (SupportsVerification(item)) {
+        item.Set("state", "awaiting-login");
+      }
+      Store(container->id, std::move(item));
+    }
   }
 
   const base::DictValue& Metadata() {
