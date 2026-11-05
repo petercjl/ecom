@@ -414,7 +414,9 @@ class NativeSessionService final : public ProfileObserver {
     const auto* shop = profile_->GetPrefs()
                            ->GetDict(containers::prefs::kShopContainers)
                            .FindDict(*container);
-    if (*operation == "xhs.search-cookie-probe" && SupportsSignedBusinessRoutes()) {
+    if ((*operation == "xhs.search-cookie-probe" ||
+         *operation == "xhs.search-v2-cookie-probe" ||
+         *operation == "xhs.self-cookie-probe") && SupportsSignedBusinessRoutes()) {
       const auto* platform = shop ? shop->FindString("platform") : nullptr;
       const auto* keyword = params->FindString("keyword");
       const auto* search_id = params->FindString("search_id");
@@ -422,10 +424,12 @@ class NativeSessionService final : public ProfileObserver {
         Fail(id, "XHS_CONTAINER_REQUIRED");
         return;
       }
-      if (params->size() != 2 || !keyword || keyword->empty() ||
+      const bool self_probe = *operation == "xhs.self-cookie-probe";
+      if ((self_probe && !params->empty()) ||
+          (!self_probe && (params->size() != 2 || !keyword || keyword->empty() ||
           keyword->size() > 180 || !search_id || search_id->size() != 21 ||
           search_id->find_first_not_of("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") !=
-              std::string::npos) {
+              std::string::npos))) {
         Fail(id, "INVALID_ARGUMENT");
         return;
       }

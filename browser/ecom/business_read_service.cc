@@ -156,6 +156,34 @@ void CollectDataFlows(const base::Value &value, std::vector<int64_t> &ids) {
   }
 }
 const base::DictValue *Spec(const std::string &operation) {
+  if (operation == "xhs.self-cookie-probe" && SupportsSignedBusinessRoutes()) {
+    static const base::NoDestructor<base::DictValue> self(
+        base::DictValue()
+            .Set("service", "xiaohongshu")
+            .Set("origin", "https://edith.xiaohongshu.com")
+            .Set("entryUrl", "https://www.xiaohongshu.com/")
+            .Set("path", "/api/sns/web/v1/user/selfinfo")
+            .Set("method", "GET")
+            .Set("requiredParams", base::ListValue())
+            .Set("defaultParams", base::DictValue()));
+    return self.get();
+  }
+  if (operation == "xhs.search-v2-cookie-probe" && SupportsSignedBusinessRoutes()) {
+    static const base::NoDestructor<base::DictValue> search(
+        base::DictValue()
+            .Set("service", "xiaohongshu")
+            .Set("origin", "https://so.xiaohongshu.com")
+            .Set("entryUrl", "https://www.xiaohongshu.com/")
+            .Set("path", "/api/sns/web/v2/search/notes")
+            .Set("method", "POST")
+            .Set("requiredParams", base::ListValue().Append("keyword").Append("search_id"))
+            .Set("defaultParams", base::DictValue()
+                                      .Set("page", 1)
+                                      .Set("page_size", 20)
+                                      .Set("sort", "general")
+                                      .Set("note_type", 0)));
+    return search.get();
+  }
   if (operation == "xhs.search-cookie-probe" && SupportsSignedBusinessRoutes()) {
     static const base::NoDestructor<base::DictValue> probe(
         base::DictValue()
