@@ -13,7 +13,6 @@
 #include "brave/components/containers/content/browser/tab_restore_utils.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_contents/tab_util.h"
-#include "chrome/browser/ui/webui/chrome_web_ui_controller_factory.h"
 #include "components/sessions/core/serialized_navigation_entry.h"
 #include "content/public/browser/web_contents.h"
 #endif  // BUILDFLAG(ENABLE_CONTAINERS)
@@ -33,13 +32,11 @@ void MaybeSetContainerSiteInstance(
     return;
   }
 
-  // Skips WebUI URLs even when a container partition applies, since eagerly
-  // assigning their SiteInstance here would undo https://crrev.com/c/8287626.
+  // A restored container WebUI also needs its fixed partition before entries
+  // are attached and serialized. Deferring its SiteInstance would create a
+  // default-partition frame beside a container NavigationEntry. Non-container
+  // WebUI restores still take Chromium's deferred path via the early return.
   const GURL& url = navigations[selected_navigation].virtual_url();
-  if (ChromeWebUIControllerFactory::GetInstance()->UseWebUIForURL(
-          browser->GetProfile(), url)) {
-    return;
-  }
   create_params->site_instance = tab_util::GetSiteInstanceForNewTab(
       browser->GetProfile(), url, std::move(storage_partition_config));
 }
