@@ -173,6 +173,9 @@ PREFIXES_TO_KEEP = [COMMAND_PREFIX, "IDC_", "#if", "#elif", "#else", "#endif"]
 # Commands which shouldn't be included, as they either don't work, crash, or
 # aren't acceleratable.
 EXCLUDE_COMMANDS = [
+    # Ecom's Windows updater is a platform maintenance dialog, not a shortcut.
+    "IDC_ECOM_CHECK_UPDATES",
+
     # These content context commands only work from a context menu
     "_CONTEXT_",
 
