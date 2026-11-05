@@ -287,6 +287,7 @@ private:
     auto url = net::AppendQueryParameter(
         GURL("https://www.xiaohongshu.com/search_result"), "keyword", keyword);
     url = net::AppendQueryParameter(url, "source", "web_explore_feed");
+    xhs_search_url_ = url;
     NavigateParams navigation(profile_, url, ui::PAGE_TRANSITION_FROM_API);
     navigation.disposition = WindowOpenDisposition::NEW_BACKGROUND_TAB;
     navigation.storage_partition_config = content::StoragePartitionConfig::Create(
@@ -363,8 +364,7 @@ private:
     }
     timer_.Stop();
     bool close_requested = false;
-    if (xhs_page_ && xhs_page_->GetLastCommittedURL().host() == "www.xiaohongshu.com" &&
-        xhs_page_->GetLastCommittedURL().path() == "/search_result") {
+    if (xhs_page_ && xhs_page_->GetLastCommittedURL() == xhs_search_url_) {
       bool selected = false;
       ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
           [&](BrowserWindowInterface* browser) {
@@ -835,6 +835,7 @@ private:
   base::OneShotTimer timer_;
   base::OneShotTimer xhs_poll_;
   base::WeakPtr<content::WebContents> xhs_page_;
+  GURL xhs_search_url_;
   base::WeakPtrFactory<Read> weak_{this};
 };
 } // namespace
