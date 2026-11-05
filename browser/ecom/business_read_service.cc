@@ -292,7 +292,7 @@ private:
     navigation.storage_partition_config = content::StoragePartitionConfig::Create(
         profile_, containers::kContainersStoragePartitionDomain, container_, false);
     Navigate(&navigation);
-    auto* contents = navigation.navigated_or_inserted_contents;
+    auto* contents = navigation.navigated_or_inserted_contents.get();
     if (!contents || containers::GetContainerIdForWebContents(contents) != container_) {
       Fail("CONTAINER_NAVIGATION_FAILED");
       return;
