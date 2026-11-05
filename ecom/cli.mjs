@@ -64,21 +64,25 @@ async function main() {
   if(group==='version') return {ok:true,protocolVersion:1,stage:'native-shop-dev'};
   if(group==='capabilities') return {ok:true,protocolVersion:1,commands:['xhs probe','containers list','session get','shops manage','shops platforms','shops list','shops create','shops configure','shops open','shops submit-login','shops submit-login-fixture','shops verify','shops confirm','shops refresh','shops update','shops delete-preview','shops delete'],methods:['GET'],responseTypes:['JSON'],transport:'private-local-mailbox',debuggingRequired:false,platforms:{macos:'development',windows:'not-implemented'}};
   const profile=values.profile||path.join(root,'.brave-build/profiles/Ecom-Dev');
-  if(group==='xhs'&&action==='probe') {
-    const target=values['probe-target']||'search';
-    if(!['search','search-v2','self'].includes(target)) throw error('INVALID_ARGUMENT','probe-target: search|search-v2|self');
+  if(group==='xhs'&&['probe','search'].includes(action)) {
+    const target=action==='search'?'page':values['probe-target']||'search';
+    if(!['search','search-v2','self','page'].includes(target)) throw error('INVALID_ARGUMENT','probe-target: search|search-v2|self');
     const keyword=values.keyword?.trim();
     if(!values.container||(target!=='self'&&(!keyword||Buffer.byteLength(keyword)>180)))
       throw error('INVALID_ARGUMENT','请提供容器和有效关键词');
     const listed=await nativeCall(profile,{method:'containers.list'});
     const container=resolveContainer(listed.containers,values.container);
     const searchId=((BigInt(Date.now())<<64n)+BigInt(crypto.randomInt(2147483647))).toString(36).toUpperCase();
-    const operation='xhs.'+target+'-cookie-probe';
+    const operation=target==='page'?'xhs.search-page':'xhs.'+target+'-cookie-probe';
     const result=await nativeCall(profile,{method:'business.read',operation,
       containerId:container.id,params:target==='self'?{}:{keyword,search_id:searchId}});
     if(result.containerId!==container.id||result.businessOperation!==operation)
       throw error('PROTOCOL_MISMATCH','小红书响应与指定容器不匹配');
     const body=result.data;
+    if(target==='page') {
+      if(body?.success!==true||!Array.isArray(body.data?.items)||!body.data.items.length) throw error('XHS_SEARCH_REJECTED','小红书未返回搜索列表');
+      return {ok:true,container:{id:container.id,name:container.name},operationId:result.operationId,transport:body.transport,keyword,count:body.data.items.length,items:body.data.items};
+    }
     const success=body?.success===true&&(target==='self'?typeof body.data?.user_id==='string':Array.isArray(body.data?.items)&&typeof body.data.has_more==='boolean');
     if(!success) process.exitCode=1;
     return {ok:success,target,container:container.name,httpStatus:result.httpStatus,

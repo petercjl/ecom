@@ -416,6 +416,7 @@ class NativeSessionService final : public ProfileObserver {
                            .FindDict(*container);
     if ((*operation == "xhs.search-cookie-probe" ||
          *operation == "xhs.search-v2-cookie-probe" ||
+         *operation == "xhs.search-page" ||
          *operation == "xhs.self-cookie-probe") && SupportsSignedBusinessRoutes()) {
       const auto* platform = shop ? shop->FindString("platform") : nullptr;
       const auto* keyword = params->FindString("keyword");

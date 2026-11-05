@@ -24,6 +24,7 @@
 #include "base/no_destructor.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/timer/timer.h"
 #include "brave/browser/ecom/shop_identity_parser.h"
 #include "brave/browser/ecom/sycm_read_registry.h"
@@ -35,6 +36,11 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
+#include "chrome/common/chrome_isolated_world_ids.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 #include "components/embedder_support/user_agent_utils.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/render_frame_host.h"
@@ -221,6 +227,10 @@ public:
         callback_(std::move(callback)) {}
 
   void Start() override {
+    if (operation_ == "xhs.search-page" && SupportsSignedBusinessRoutes()) {
+      OpenXhsSearch();
+      return;
+    }
     spec_ = signed_spec_ ? &*signed_spec_ : Spec(operation_);
     if (!spec_) {
       Fail("UNKNOWN_OPERATION");
@@ -268,6 +278,97 @@ public:
 
 private:
   enum class Stage { kSycm, kAccess, kDmpUser, kResult, kDataFlow };
+  void OpenXhsSearch() {
+    if (!Partition()) {
+      Fail("CONTAINER_NOT_FOUND");
+      return;
+    }
+    const auto keyword = Field(params_, "keyword");
+    auto url = net::AppendQueryParameter(
+        GURL("https://www.xiaohongshu.com/search_result"), "keyword", keyword);
+    url = net::AppendQueryParameter(url, "source", "web_explore_feed");
+    NavigateParams navigation(profile_, url, ui::PAGE_TRANSITION_FROM_API);
+    navigation.disposition = WindowOpenDisposition::NEW_BACKGROUND_TAB;
+    navigation.storage_partition_config = content::StoragePartitionConfig::Create(
+        profile_, containers::kContainersStoragePartitionDomain, container_, false);
+    Navigate(&navigation);
+    auto* contents = navigation.navigated_or_inserted_contents;
+    if (!contents || containers::GetContainerIdForWebContents(contents) != container_) {
+      Fail("CONTAINER_NAVIGATION_FAILED");
+      return;
+    }
+    xhs_page_ = contents->GetWeakPtr();
+    submitted_ = true;
+    phase_ = "xhs-page-search";
+    timer_.Start(FROM_HERE, base::Seconds(23),
+                 base::BindOnce(&Read::Fail, weak_.GetWeakPtr(), "XHS_SEARCH_TIMEOUT"));
+    PollXhsPage();
+  }
+  void PollXhsPage() {
+    if (!xhs_page_ ||
+        containers::GetContainerIdForWebContents(xhs_page_.get()) != container_) {
+      Fail("XHS_SEARCH_PAGE_CLOSED");
+      return;
+    }
+    auto* frame = xhs_page_->GetPrimaryMainFrame();
+    if (!frame || frame->GetLastCommittedURL().host() != "www.xiaohongshu.com") {
+      ScheduleXhsPoll();
+      return;
+    }
+    const auto keyword = base::WriteJson(base::Value(Field(params_, "keyword"))).value();
+    auto script = std::string(R"JS(((keyword) => {
+      if (location.origin !== 'https://www.xiaohongshu.com') return JSON.stringify({state:'wrong-page'});
+      const visible = e => e && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
+      if ([...document.querySelectorAll('.login-container, .login-modal')].some(visible))
+        return JSON.stringify({state:'login-required'});
+      if ([...document.querySelectorAll('[class*=captcha], iframe[src*=captcha]')].some(visible))
+        return JSON.stringify({state:'verification-required'});
+      if (location.pathname !== '/search_result' || new URLSearchParams(location.search).get('keyword') !== keyword)
+        return JSON.stringify({state:'waiting'});
+      const items = [...document.querySelectorAll('section.note-item')].slice(0,20).map(el => {
+        const anchor = [...el.querySelectorAll('a[href]')].find(a => /\/(search_result|explore)\/[a-f0-9]{24}/.test(a.pathname));
+        const id = anchor?.pathname.match(/\/(?:search_result|explore)\/([a-f0-9]{24})/)?.[1];
+        const title = el.querySelector('.title')?.textContent.trim().slice(0,500) || '';
+        return id ? {id,title,author:el.querySelector('.author .name, .name')?.textContent.trim().slice(0,100)||'',likes:el.querySelector('.like-wrapper .count')?.textContent.trim().slice(0,30)||'',url:'https://www.xiaohongshu.com/explore/'+id} : null;
+      }).filter(Boolean);
+      return JSON.stringify(items.length ? {state:'ready',keyword,items} : {state:'waiting'});
+    }))JS") + "(" + keyword + ")";
+    frame->ExecuteJavaScriptInIsolatedWorld(
+        base::UTF8ToUTF16(script),
+        base::BindOnce(&Read::XhsPageRead, weak_.GetWeakPtr()),
+        ISOLATED_WORLD_ID_CHROME_INTERNAL);
+  }
+  void ScheduleXhsPoll() {
+    xhs_poll_.Start(FROM_HERE, base::Milliseconds(500),
+                    base::BindOnce(&Read::PollXhsPage, weak_.GetWeakPtr()));
+  }
+  void XhsPageRead(base::Value result) {
+    if (!result.is_string()) {
+      Fail("XHS_PAGE_RESULT_INVALID");
+      return;
+    }
+    auto json = base::JSONReader::Read(result.GetString(), base::JSON_PARSE_RFC);
+    if (!json || !json->is_dict()) {
+      Fail("XHS_PAGE_RESULT_INVALID");
+      return;
+    }
+    const auto state = Field(json->GetDict(), "state");
+    if (state == "login-required" || state == "verification-required") {
+      Fail(state == "login-required" ? "XHS_LOGIN_REQUIRED" : "XHS_VERIFICATION_REQUIRED");
+      return;
+    }
+    if (state != "ready") {
+      ScheduleXhsPoll();
+      return;
+    }
+    timer_.Stop();
+    Finish(base::Value(base::DictValue()
+        .Set("success", true)
+        .Set("transport", "background-page-dom")
+        .Set("keyword", Field(params_, "keyword"))
+        .Set("data", std::move(json->GetDict()))));
+  }
+
   void XhsCookiesRead(const net::CookieAccessResultList& included,
                       const net::CookieAccessResultList&) {
     entry_cookie_count_ = static_cast<int>(included.size());
@@ -699,6 +800,8 @@ private:
   base::OnceCallback<void(base::DictValue)> callback_;
   std::unique_ptr<network::SimpleURLLoader> loader_;
   base::OneShotTimer timer_;
+  base::OneShotTimer xhs_poll_;
+  base::WeakPtr<content::WebContents> xhs_page_;
   base::WeakPtrFactory<Read> weak_{this};
 };
 } // namespace
