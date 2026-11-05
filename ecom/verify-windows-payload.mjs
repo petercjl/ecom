@@ -23,7 +23,7 @@ export async function verifyWindowsPayload(root,version,tgz,tag='next') {
   const record=validateWindowsPublication(JSON.parse(fs.readFileSync(path.join(root,'ecom/releases/windows-x64',version+'.json'))),config,tag);
   git(root,['cat-file','-e',record.sourceRevision+'^{commit}']);
   const evidence=git(root,['show','HEAD:'+record.evidencePath]);if(!evidence.includes(record.sourceRevision))throw new Error('Build source missing from evidence');
-  const verificationOnly=new Set(['AGENTS.md','ecom/verify-windows-payload.mjs','.github/workflows/ecom-windows-publish.yml','ecom/tests/windows-updater-local-roundtrip.cs','ecom/windows-release-transfer.mjs']);
+  const verificationOnly=new Set(['AGENTS.md','ecom/verify-windows-payload.mjs','.github/workflows/ecom-windows-publish.yml','ecom/tests/windows-updater-local-roundtrip.cs','ecom/windows-release-transfer.mjs','ecom/tests/windows-updater-ui.cs','ecom/tests/windows-release-contract.test.mjs']);
   const changes=git(root,['diff','--name-only',record.sourceRevision,'HEAD']).split(/\r?\n/).filter(Boolean);
   if(changes.some(p=>!verificationOnly.has(p)&&!p.startsWith('docs/')&&!p.startsWith('ecom/releases/')&&!p.startsWith('packages/ecom-cli/')))throw new Error('Native inputs changed after the build');
   validateWindowsParts(record);

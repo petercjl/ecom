@@ -97,5 +97,7 @@
   "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.0.md",
   "verifiedDistTag": "next",
   "publicationRun": "https://github.com/petercjl/ecom/actions/runs/42014239489",
-  "registryIntegrityVerifiedAt": "2026-11-05T11:06:14.172043+00:00"
+  "registryIntegrityVerifiedAt": "2026-11-05T11:06:14.172043+00:00",
+  "validationStatus": "gui-activation-failed",
+  "failureSummary": "GUI worker job serialized pid as null; activation rejected before replacement; installed 0.0.0 baseline retained."
 }
