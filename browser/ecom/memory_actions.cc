@@ -272,6 +272,9 @@ base::DictValue RunMemoryTabCommand(Profile* profile,
             .Set("ok", true)
             .Set("executed", false)
             .Set("status", "already-running");
+      // Chromium's replacement-based discard explicitly clears needs_reload.
+      // Request it before background loading; DidStartLoading updates lifecycle.
+      wc->GetController().SetNeedsReload();
       wc->GetController().LoadIfNecessary();
     }
     // Discard can replace WebContents. Resolve the stable tab afresh.
