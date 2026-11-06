@@ -73,6 +73,7 @@
 
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "brave/browser/ecom/shop_manager_ui.h"
+#include "brave/browser/ecom/help_ui.h"
 #endif
 
 using content::WebUI;
@@ -91,6 +92,8 @@ WebUIController* NewWebUI(WebUI* web_ui, const GURL& url) {
       web_ui->GetWebContents()->GetBrowserContext());
   CHECK(profile);
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+  if (host == ecom::kHelpHost)
+    return new ecom::HelpUI(web_ui);
   if (host == ecom::kShopManagerHost && !profile->IsOffTheRecord()) {
     return new ecom::ShopManagerUI(web_ui);
   }
@@ -186,6 +189,7 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
 
   if (
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+      url.host() == ecom::kHelpHost ||
       (url.host() == ecom::kShopManagerHost && !profile->IsOffTheRecord()) ||
 #endif
 #if BUILDFLAG(ENABLE_BRAVE_NEWS) && !BUILDFLAG(IS_ANDROID)

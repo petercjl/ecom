@@ -1,6 +1,6 @@
 {
   "name": "@petercjl/ecom-windows-x64",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Ecom native Windows x64 application payload",
   "license": "MPL-2.0",
   "os": [

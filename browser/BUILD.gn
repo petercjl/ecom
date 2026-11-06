@@ -85,6 +85,8 @@ source_set("core") {
   sources = brave_chrome_browser_sources + [ "ecom/shop_container_strings.h" ]
   if (is_mac || is_win) {
     sources += [
+      "ecom/help_ui.cc",
+      "ecom/help_ui.h",
       "ecom/update_notification.cc",
       "ecom/update_notification.h",
       "ecom/business_read_service.cc",

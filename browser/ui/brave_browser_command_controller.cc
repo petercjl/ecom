@@ -245,6 +245,11 @@ bool BraveBrowserCommandController::ExecuteCommandWithDispositionAndContext(
     std::optional<actions::ActionInvocationContext> context,
     base::TimeTicks time_stamp) {
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+  if (id == IDC_SHOW_BRAVE_WEBCOMPAT_REPORTER) {
+    chrome::AddSelectedTabWithURL(browser_, GURL("chrome://ecom-help/#support"),
+                                  ui::PAGE_TRANSITION_LINK);
+    return true;
+  }
   if (id == IDC_UPGRADE_DIALOG &&
       ecom::HandleUpdateMenuCommand(browser_->GetProfile()))
     return true;

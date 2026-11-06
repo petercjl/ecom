@@ -109,78 +109,71 @@ namespace settings {
 namespace {
 
 constexpr char16_t kWebRTCLearnMoreURL[] =
-    u"https://support.brave.app/hc/en-us/articles/"
-    u"360017989132-How-do-I-change-my-Privacy-Settings-#webrtc";
+    u"chrome://ecom-help/#privacy";
 constexpr char16_t kBraveBuildInstructionsUrl[] =
-    u"https://github.com/brave/brave-browser/wiki";
+    u"chrome://ecom-help/#updates";
 constexpr char16_t kBraveLicenseUrl[] = u"https://mozilla.org/MPL/2.0/";
 constexpr char16_t kBraveReleaseTagPrefix[] =
-    u"https://github.com/brave/brave-browser/releases/tag/v";
+    u"chrome://ecom-help/#updates";
 #if BUILDFLAG(ENABLE_CONTAINERS)
 constexpr char16_t kContainersLearnMoreURL[] =
-    u"https://support.brave.app/hc/en-us/articles/39077103885325";
+    u"chrome://ecom-help/#containers";
 #endif
 #if BUILDFLAG(ENABLE_TRAFFIC_CONTROL)
 constexpr char16_t kTrafficControlLearnMoreURL[] =
-    u"https://support.brave.app/hc/en-us/articles/48295270280333";
+    u"chrome://ecom-help/#support";
 #endif
 constexpr char16_t kGoogleLoginLearnMoreURL[] =
-    u"https://github.com/brave/brave-browser/wiki/"
-    u"Allow-Google-login---Third-Parties-and-Extensions";
+    u"chrome://ecom-help/#privacy";
 constexpr char16_t kUnstoppableDomainsLearnMoreURL[] =
-    u"https://github.com/brave/brave-browser/wiki/"
-    u"Resolve-Methods-for-Unstoppable-Domains";
+    u"chrome://ecom-help/#support";
 constexpr char16_t kEnsOffchainLookupLearnMoreURL[] =
-    u"https://github.com/brave/brave-browser/wiki/ENS-offchain-lookup";
+    u"chrome://ecom-help/#support";
 constexpr char16_t kBraveSyncGuideUrl[] =
-    u"https://support.brave.app/hc/en-us/articles/360047642371-Sync-FAQ";
+    u"chrome://ecom-help/#support";
 constexpr char16_t kDeAmpLearnMoreUrl[] =
-    u"https://support.brave.app/hc/en-us/articles/8611298579981";
+    u"chrome://ecom-help/#privacy";
 constexpr char16_t kDebounceLearnMoreUrl[] =
-    u"https://brave.com/privacy-updates/11-debouncing/";
+    u"chrome://ecom-help/#privacy";
 constexpr char16_t kEnableNftDiscoveryLearnMoreUrl[] =
-    u"https://github.com/brave/brave-browser/wiki/"
-    u"NFT-Discovery";
+    u"chrome://ecom-help/#support";
 constexpr char16_t kBlockAllCookiesLearnMoreUrl[] =
-    u"https://github.com/brave/brave-browser/wiki/"
-    u"Block-all-cookies-global-Shields-setting";
+    u"chrome://ecom-help/#privacy";
 
 #if BUILDFLAG(ENABLE_AI_CHAT)
 constexpr char16_t kLeoCustomModelsLearnMoreURL[] =
-    u"https://support.brave.app/hc/en-us/articles/"
-    u"34070140231821-How-do-I-use-the-Bring-Your-Own-Model-BYOM-with-Brave-Leo";
+    u"chrome://ecom-help/#support";
 
 constexpr char16_t kTabOrganizationLearnMoreURL[] =
-    u"https://support.brave.app/hc/en-us/articles/"
-    u"35200007195917-How-to-use-Tab-Focus-Mode";
+    u"chrome://ecom-help/#support";
 
 // The Semantic history search toggle lives in brave://settings/privacy.
 constexpr char16_t kSemanticHistorySearchSettingURL[] =
     u"chrome://settings/privacy";
 
 constexpr char16_t kLeoMemoryLearnMoreURL[] =
-    u"https://support.brave.app/hc/en-us/articles/38441287509261";
+    u"chrome://ecom-help/#support";
 
 constexpr char16_t kLeoPrivacyPolicyURL[] =
-    u"https://brave.com/privacy/browser/#brave-leo";
+    u"chrome://ecom-help/#privacy";
 #endif
 
 #if BUILDFLAG(ENABLE_LOCAL_AI)
 constexpr char kSemanticHistorySearchLearnMoreURL[] =
-    "https://support.brave.app/hc/en-us/articles/49008428284301";
+    "chrome://ecom-help/#support";
 #endif
 
 constexpr char16_t kAdBlockOnlyModeLearnMoreURL[] =
-    u"https://support.brave.app/hc/en-us/articles/38076796692109";
+    u"chrome://ecom-help/#privacy";
 
 constexpr char16_t kSponsoredAdsLearnMoreURL[] =
-    u"https://support.brave.app/hc/en-us/articles/48376231110413";
+    u"chrome://ecom-help/#support";
 
 constexpr char16_t kExtensionsV2LearnMoreURL[] =
-    u"https://brave.com/blog/brave-shields-manifest-v3/";
+    u"chrome://ecom-help/#support";
 
 constexpr char16_t kBraveAccountLearnMoreURL[] =
-    u"https://support.brave.app/hc/en-us/articles/45530506862349";
+    u"chrome://ecom-help/#support";
 
 void BraveAddCommonStrings(content::WebUIDataSource* html_source,
                            Profile* profile) {
@@ -1330,9 +1323,7 @@ void BraveAddAboutStrings(content::WebUIDataSource* html_source,
   std::u16string license = l10n_util::GetStringFUTF16(
       IDS_BRAVE_VERSION_UI_LICENSE, kBraveLicenseUrl,
       chrome::kChromeUICreditsURL16, kBraveBuildInstructionsUrl,
-      kBraveReleaseTagPrefix +
-          base::UTF8ToUTF16(
-              version_info::GetBraveVersionWithoutChromiumMajorVersion()));
+      kBraveReleaseTagPrefix);
   html_source->AddString("aboutProductLicense", license);
 }
 

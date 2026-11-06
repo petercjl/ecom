@@ -10,7 +10,7 @@
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 
-constexpr char kBraveCommunitySupportUrl[] = "https://community.brave.app/";
+constexpr char kBraveCommunitySupportUrl[] = "chrome://ecom-help/#privacy";
 
 BraveBrowserContentSettingBubbleModelDelegate::
     BraveBrowserContentSettingBubbleModelDelegate(

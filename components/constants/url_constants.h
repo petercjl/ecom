@@ -12,26 +12,23 @@ inline constexpr char kMagnetScheme[] = "magnet";
 inline constexpr char kWidevineTOS[] = "https://policies.google.com/terms";
 inline constexpr char kRewardsUpholdSupport[] =
     "https://uphold.com/en/brave/support";
-inline constexpr char kP3ALearnMoreURL[] = "https://brave.com/P3A";
+inline constexpr char kP3ALearnMoreURL[] = "chrome://ecom-help/#support";
 inline constexpr char kP3ASettingsLink[] = "chrome://settings/privacy";
 inline constexpr char kImportDataHelpURL[] =
-    "https://support.brave.app/hc/en-us/articles/360019782291#safari";
+    "chrome://ecom-help/#support";
 inline constexpr char kPermissionPromptLearnMoreUrl[] =
-    "https://github.com/brave/brave-browser/wiki/Web-API-Permissions";
+    "chrome://ecom-help/#privacy";
 inline constexpr char kPermissionPromptHardwareAccessPrivacyRisksURL[] =
-    "https://github.com/brave/brave-browser/wiki/"
-    "Privacy-risks-from-allowing-sites-to-access-hardware";
+    "chrome://ecom-help/#privacy";
 inline constexpr char kSpeedreaderLearnMoreUrl[] =
-    "https://support.brave.app/hc/en-us/articles/"
-    "360045031392-What-is-SpeedReader";
+    "chrome://ecom-help/#support";
 inline constexpr char kWebDiscoveryLearnMoreUrl[] =
-    "https://brave.com/privacy/browser/#web-discovery-project";
+    "chrome://ecom-help/#support";
 inline constexpr char kBraveSearchHost[] = "search.brave.com";
 inline constexpr char kWidevineLearnMoreUrl[] =
-    "https://support.brave.app/hc/en-us/articles/"
-    "360023851591-How-do-I-view-DRM-protected-content-";
+    "chrome://ecom-help/#support";
 
-inline constexpr char kDownloadBraveUrl[] = "https://www.brave.com/download";
-inline constexpr char kAIChatAboutUrl[] = "https://brave.com/leo/";
+inline constexpr char kDownloadBraveUrl[] = "chrome://ecom-help/#support";
+inline constexpr char kAIChatAboutUrl[] = "chrome://ecom-help/#support";
 
 #endif  // BRAVE_COMPONENTS_CONSTANTS_URL_CONSTANTS_H_

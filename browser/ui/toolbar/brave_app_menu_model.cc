@@ -61,8 +61,7 @@ class BraveHelpMenuModel : public ui::SimpleMenuModel {
     AddItem(IDC_ECOM_CHECK_UPDATES, u"Ecom 更新…");
 #endif
     AddItemWithStringId(IDC_HELP_PAGE_VIA_MENU, IDS_HELP_PAGE);
-    AddItemWithStringId(IDC_SHOW_BRAVE_WEBCOMPAT_REPORTER,
-                        IDS_SHOW_BRAVE_WEBCOMPAT_REPORTER);
+    AddItem(IDC_SHOW_BRAVE_WEBCOMPAT_REPORTER, u"反馈问题");
   }
 };
 }  // namespace
