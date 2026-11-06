@@ -11,3 +11,9 @@ Full local update/recovery passed 0.0.0 → 0.1.4 → 0.0.0 with the existing Pr
 nativeSmokeTest=true and localUpdateRecoveryVerified=true permit next publication. Exact-candidate public npm activation, operator Later/reopen and GUI rollback remain pending. updateRoundTripVerified=false and rollbackRoundTripVerified=false keep latest blocked. next remains 0.1.3 and latest remains the bootstrap tag at this checkpoint.
 
 Artifacts: windows-release-hAJ9FR/artifacts on peter-new. The candidate has been installed and rolled back only through the local maintenance test. Publish the same immutable candidate to next, verify public registry integrity and readable payloads, then complete operator GUI update/rollback before latest. Installers remain on peter-new and authorized NAS; temporary Actions transfer artifacts are deleted after use.
+
+## Public next verification
+
+[Actions run 42156410645](https://github.com/petercjl/ecom/actions/runs/42156410645) succeeded through the committed OIDC workflow. Public next resolves to 0.1.4; latest remains 0.0.0-bootstrap.1. On peter-new, actual .NET metadata and body requests verified all seven immutable versions against the pinned integrity values and returned HTTP 200 with readable content. Registry metadata preceded several file bodies; the workflow retained the original identities and waited for all files before exposing the primary release. Temporary Actions artifact count is zero. The temporary Windows single-file server and HTTP/2 relay were stopped and their sessions reaped.
+
+The local maintenance round trip leaves the verified 0.0.0 test baseline installed with original sessions restored. Operator GUI download/background/reopen, Later/prepared reuse, explicit npm activation and rollback for this exact 0.1.4 candidate remain pending. Both stable rollout gates remain false.

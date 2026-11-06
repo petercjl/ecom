@@ -93,11 +93,14 @@
   "localUpdateRecoveryVerified": true,
   "updateRoundTripVerified": false,
   "rollbackRoundTripVerified": false,
-  "published": false,
+  "published": true,
   "installerLivenessGuardVerified": true,
   "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.4.md",
   "preparedUpdateReuseVerified": true,
   "guiJobPidVerified": true,
   "inheritedDirectoryVerified": true,
-  "automaticCleanupVerified": true
+  "automaticCleanupVerified": true,
+  "verifiedDistTag": "next",
+  "publicationRun": "https://github.com/petercjl/ecom/actions/runs/42156410645",
+  "registryIntegrityVerifiedAt": "2026-11-06T03:40:24.908476+00:00"
 }
