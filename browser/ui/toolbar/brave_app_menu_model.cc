@@ -4,6 +4,7 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "brave/browser/ui/toolbar/brave_app_menu_model.h"
+#include "brave/browser/ecom/update_notification.h"
 
 #include <memory>
 #include <optional>
@@ -98,6 +99,13 @@ void BraveAppMenuModel::Build() {
   // If we you want to add/remove from app menu, adjust commands enable status
   // at BraveBrowserCommandController.
   AppMenuModel::Build();
+
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+  if (ecom::GetUpdateNotificationPhase() != ecom::UpdatePhase::kNone) {
+    if (const auto update = GetIndexOfCommandId(IDC_UPGRADE_DIALOG))
+      SetLabel(*update, ecom::GetUpdateNotificationLabel());
+  }
+#endif
 
   RemoveUpstreamMenus();
   BuildTabsAndWindowsSection();

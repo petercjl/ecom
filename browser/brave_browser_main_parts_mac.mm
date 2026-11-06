@@ -11,6 +11,13 @@
 #include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/path_service.h"
+#include "base/no_destructor.h"
+#include "base/uuid.h"
+#include "base/functional/bind.h"
+#include "base/location.h"
+#include "brave/browser/ecom/update_notification.h"
+#include "content/public/browser/browser_task_traits.h"
+#include "content/public/browser/browser_thread.h"
 #include "brave/browser/mac/keystone_glue.h"
 #include "brave/browser/sparkle_buildflags.h"
 #include "brave/browser/ui/commands/accelerator_menu_coordinator_mac.h"
@@ -37,6 +44,31 @@ BASE_FEATURE(kUpgradeWhenIdle,
 }
 
 namespace {
+
+void EcomUpdateNotice(CFNotificationCenterRef, void* context, CFStringRef,
+                      const void*, CFDictionaryRef info) {
+  NSDictionary* values = (__bridge NSDictionary*)info;
+  NSString* token = values[@"controller"];
+  NSString* phase = values[@"phase"];
+  const auto& expected = *static_cast<const std::string*>(context);
+  if (![token isKindOfClass:[NSString class]] ||
+      ![token isEqualToString:[NSString stringWithUTF8String:expected.c_str()]] ||
+      ![phase isKindOfClass:[NSString class]])
+    return;
+  ecom::UpdatePhase state;
+  if ([phase isEqualToString:@"available"])
+    state = ecom::UpdatePhase::kAvailable;
+  else if ([phase isEqualToString:@"downloading"])
+    state = ecom::UpdatePhase::kDownloading;
+  else if ([phase isEqualToString:@"ready"])
+    state = ecom::UpdatePhase::kReady;
+  else if ([phase isEqualToString:@"none"])
+    state = ecom::UpdatePhase::kNone;
+  else
+    return;
+  content::GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE, base::BindOnce(&ecom::SetUpdateNotificationPhase, state));
+}
 
 bool UsesOmaha4() {
 #if BUILDFLAG(ENABLE_OMAHA4)
@@ -94,6 +126,25 @@ int BraveBrowserMainPartsMac::PreMainMessageLoopRun() {
       [arguments addObject:[NSString stringWithUTF8String:
           cli_origin.spec().c_str()]];
     }
+    static base::NoDestructor<std::string> controller(
+        base::Uuid::GenerateRandomV4().AsLowercaseString());
+    const int pid = NSProcessInfo.processInfo.processIdentifier;
+    NSString* notice_name = [NSString stringWithFormat:@"app.ecom.update.status.%d", pid];
+    CFNotificationCenterAddObserver(
+        CFNotificationCenterGetDistributedCenter(), &*controller,
+        &EcomUpdateNotice, (__bridge CFStringRef)notice_name,
+        (__bridge const void*)bundle.bundlePath,
+        CFNotificationSuspensionBehaviorDeliverImmediately);
+    [arguments addObject:[NSString stringWithFormat:@"--controller=%s", controller->c_str()]];
+    ecom::RegisterUpdateMenuHandler(base::BindRepeating(
+        [](std::string path, std::string token, int owner, Profile*, bool restart) {
+          [[NSDistributedNotificationCenter defaultCenter]
+              postNotificationName:[NSString stringWithFormat:@"app.ecom.update.request.%d", owner]
+              object:[NSString stringWithUTF8String:path.c_str()]
+              userInfo:@{@"controller": [NSString stringWithUTF8String:token.c_str()],
+                         @"action": restart ? @"restart" : @"show"}
+              deliverImmediately:YES];
+        }, std::string(bundle.bundlePath.UTF8String), *controller, pid));
     task.arguments = arguments;
     NSError* error = nil;
     if (![task launchAndReturnError:&error]) {

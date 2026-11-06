@@ -4,6 +4,7 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "brave/browser/ui/brave_browser_command_controller.h"
+#include "brave/browser/ecom/update_notification.h"
 
 #include <optional>
 
@@ -243,6 +244,11 @@ bool BraveBrowserCommandController::ExecuteCommandWithDispositionAndContext(
     WindowOpenDisposition disposition,
     std::optional<actions::ActionInvocationContext> context,
     base::TimeTicks time_stamp) {
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+  if (id == IDC_UPGRADE_DIALOG &&
+      ecom::HandleUpdateMenuCommand(browser_->GetProfile()))
+    return true;
+#endif
   return IsBraveCommands(id) || IsBraveOverrideCommands(id)
              ? ExecuteBraveCommandWithDisposition(id, disposition, time_stamp)
              : BrowserCommandController::

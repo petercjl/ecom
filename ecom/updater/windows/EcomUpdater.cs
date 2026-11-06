@@ -129,13 +129,13 @@ namespace EcomUpdate {
         string ticketPath=Path.Combine(State,"running-"+BrowserPid+".json");
         // Only the browser's native startup invokes this route. Replace our own
         // transient readiness receipt atomically; no profile files are modified.
-        AtomicJson(ticketPath,new Dictionary<string,object>{{"pid",BrowserPid},{"version",S(Installed,"version")},{"sourceRevision",S(Installed,"sourceRevision")},{"quitEvent",QuitEvent},{"app",AppDir},{"profile",Profile}});
+        AtomicJson(ticketPath,new Dictionary<string,object>{{"pid",BrowserPid},{"version",S(Installed,"version")},{"sourceRevision",S(Installed,"sourceRevision")},{"quitEvent",QuitEvent},{"app",AppDir},{"profile",Profile},{"notices",NoticeContext()}});
         bool created;
-        using(var show=CreateShowSignal())using(var mutex=new Mutex(true,"Local\\EcomUpdater."+HashText(AppDir).Substring(0,24),out created)) {
-          if(!created){if(!Args.ContainsKey("watch"))show.Set();return 0;}
+        using(var show=CreateShowSignal())using(var restart=CreateUserSignal("Restart"))using(var mutex=new Mutex(true,"Local\\EcomUpdater."+HashText(AppDir).Substring(0,24),out created)) {
+          if(!created){if(Args.ContainsKey("restart"))restart.Set();else if(!Args.ContainsKey("watch"))show.Set();return 0;}
           TryCleanup(S(Installed,"version"),false);
           Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
-          var panel=new UpdateForm(Args.ContainsKey("watch"),show); Application.Run(panel);
+          var panel=new UpdateForm(Args.ContainsKey("watch"),show,restart); Application.Run(panel);
         }
         return 0;
       } catch(Exception error) {
@@ -272,10 +272,28 @@ namespace EcomUpdate {
       string value=S(ReadObject(file),"channel");Require(value=="latest" || value=="next","Invalid saved channel");return value;
     }
 
-    static EventWaitHandle CreateShowSignal() {
+    static EventWaitHandle CreateShowSignal() {return CreateUserSignal("Show");}
+    static EventWaitHandle CreateUserSignal(string operation) {
       var security=new EventWaitHandleSecurity();security.SetAccessRuleProtection(true,false);
       foreach(var sid in new[]{WindowsIdentity.GetCurrent().User,new SecurityIdentifier(WellKnownSidType.LocalSystemSid,null)})security.AddAccessRule(new EventWaitHandleAccessRule(sid,EventWaitHandleRights.FullControl,AccessControlType.Allow));
-      bool created;return new EventWaitHandle(false,EventResetMode.AutoReset,"Local\\EcomUpdater.Show."+HashText(AppDir).Substring(0,24),out created,security);
+      bool created;return new EventWaitHandle(false,EventResetMode.AutoReset,"Local\\EcomUpdater."+operation+"."+HashText(AppDir).Substring(0,24),out created,security);
+    }
+    static Dictionary<string,object> NoticeContext() {
+      var context=new Dictionary<string,object>();
+      foreach(string phase in new[]{"available","downloading","ready","clear"}) {
+        string name;if(Args.TryGetValue("notice-"+phase,out name)&&ValidNoticeName(phase,name))context["notice-"+phase]=name;
+      }
+      return context;
+    }
+    internal static bool ValidNoticeName(string phase,string name) {
+      if(!new[]{"available","downloading","ready","clear"}.Contains(phase))return false;
+      string type=char.ToUpperInvariant(phase[0])+phase.Substring(1);
+      return Regex.IsMatch(name??"",@"^Local\\EcomUpdate"+type+@"\.[a-f0-9-]{36}$");
+    }
+    static bool SignalNativeNotice(string phase) {
+      string name;if(!Args.TryGetValue("notice-"+phase,out name)||!ValidNoticeName(phase,name))return false;
+      try{using(var signal=EventWaitHandle.OpenExisting(name,EventWaitHandleRights.Modify))signal.Set();return true;}
+      catch(WaitHandleCannotBeOpenedException){return false;}catch(UnauthorizedAccessException){return false;}
     }
     static void RefreshBrowserContext() {
       foreach(string file in Directory.GetFiles(State,"running-*.json").OrderByDescending(File.GetLastWriteTimeUtc))try {
@@ -284,7 +302,12 @@ namespace EcomUpdate {
         using(var process=Process.GetProcessById(pid))if(!Same(process.MainModule.FileName,Path.Combine(AppDir,"Ecom.exe")))continue;
         string quit=S(row,"quitEvent");Require(Regex.IsMatch(quit,@"^Local\\EcomUpdateQuit\.[a-f0-9-]{36}$"),"Invalid browser exit event");
         using(EventWaitHandle.OpenExisting(quit,EventWaitHandleRights.Synchronize)){}
-        BrowserPid=pid;QuitEvent=quit;return;
+        BrowserPid=pid;QuitEvent=quit;
+        foreach(string phase in new[]{"available","downloading","ready","clear"})Args.Remove("notice-"+phase);
+        object notices;if(row.TryGetValue("notices",out notices)&&notices is Dictionary<string,object>)foreach(var item in (Dictionary<string,object>)notices) {
+          if(item.Key.StartsWith("notice-")&&item.Value is string&&ValidNoticeName(item.Key.Substring(7),(string)item.Value))Args[item.Key]=(string)item.Value;
+        }
+        return;
       }catch(ArgumentException){}catch(InvalidOperationException){}catch(System.ComponentModel.Win32Exception){}catch(IOException){}
     }
     internal static Dictionary<string,object> CreateBoundJob(string app,string profile,int pid,string quit,Dictionary<string,object> job,bool rollback) {
@@ -322,14 +345,14 @@ namespace EcomUpdate {
       readonly DownloadProgressView transfer=new DownloadProgressView{Dock=DockStyle.Fill,Visible=false};
       readonly ReadyUpdateView readyView=new ReadyUpdateView{Dock=DockStyle.Fill,Visible=false};
       readonly NotifyIcon tray=new NotifyIcon();readonly System.Windows.Forms.Timer showTimer=new System.Windows.Forms.Timer{Interval=500};
-      readonly EventWaitHandle showSignal;readonly bool automatic;
-      Dictionary<string,object> candidate,prepared;bool downloading,allowClose;
+      readonly EventWaitHandle showSignal,restartSignal;readonly bool automatic;
+      Dictionary<string,object> candidate,prepared;bool downloading,allowClose,starting;
       sealed class DownloadState {
         internal readonly long Bytes,Total;internal readonly string Caption,Detail;
         internal DownloadState(long bytes,long total,string caption,string detail=null){Bytes=bytes;Total=total;Caption=caption;Detail=detail;}
       }
-      public UpdateForm(bool automatic,EventWaitHandle showSignal) {
-        this.automatic=automatic;this.showSignal=showSignal;Font=SystemFonts.MessageBoxFont;BackColor=SystemColors.Window;Text="Ecom 更新";ClientSize=new Size(490,220);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;
+      public UpdateForm(bool automatic,EventWaitHandle showSignal,EventWaitHandle restartSignal) {
+        this.automatic=automatic;this.showSignal=showSignal;this.restartSignal=restartSignal;Font=SystemFonts.MessageBoxFont;BackColor=SystemColors.Window;Text="Ecom 更新";ClientSize=new Size(490,220);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;
         var label=new Label{Text="当前版本："+S(Installed,"version")+"   Windows x64",AutoSize=true,Location=new Point(20,20)};
         var cl=new Label{Text="更新渠道",AutoSize=true,Location=new Point(20,55)};
         channel.DropDownStyle=ComboBoxStyle.DropDownList;channel.Items.AddRange(new object[]{"latest","next"});channel.SelectedItem=Channel();channel.Location=new Point(100,50);
@@ -341,7 +364,7 @@ namespace EcomUpdate {
         tray.Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath)??(Icon)SystemIcons.Application.Clone();tray.Text="Ecom 更新";
         var menu=new ContextMenuStrip();menu.Items.Add("打开更新窗口",null,(sender,e)=>ShowCurrent());menu.Items.Add("退出更新程序",null,(sender,e)=>CloseUpdater());tray.ContextMenuStrip=menu;
         tray.DoubleClick+=(sender,e)=>ShowCurrent();tray.BalloonTipClicked+=(sender,e)=>ShowCurrent();
-        showTimer.Tick+=(sender,e)=>{if(showSignal.WaitOne(0)){RefreshBrowserContext();ShowCurrent();}};showTimer.Start();
+        showTimer.Tick+=async(sender,e)=>{if(restartSignal.WaitOne(0))await RestartPrepared();else if(showSignal.WaitOne(0)){RefreshBrowserContext();ShowCurrent();}};showTimer.Start();
         FormClosing+=(sender,e)=>{if(!allowClose&&(downloading||prepared!=null)){e.Cancel=true;Hide();tray.Visible=true;}};
         FormClosed+=(sender,e)=>{showTimer.Stop();showTimer.Dispose();tray.Visible=false;var icon=tray.Icon;tray.Dispose();menu.Dispose();if(icon!=null)icon.Dispose();};
         Resize+=(sender,e)=>{if(WindowState==FormWindowState.Minimized&&(downloading||prepared!=null)){Hide();tray.Visible=true;}};
@@ -349,27 +372,27 @@ namespace EcomUpdate {
         check.Click+=async(sender,e)=>await Check();download.Click+=async(sender,e)=>await Download();
         rollback.Click+=(sender,e)=>{if(MessageBox.Show(this,"恢复上一版本会退出并重新启动 Ecom。账号及用户数据会保留。是否继续？","Ecom 更新",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes)try{StartWorker(null,true);}catch(Exception error){status.Text="恢复未开始："+error.Message;}};
         readyView.DeferredRequested+=(sender,e)=>CloseUpdater();
-        readyView.RestartRequested+=(sender,e)=>{try{var job=new Dictionary<string,object>{{"work",S(prepared,"work")},{"metadata",prepared["metadata"]},{"integrity",S(prepared,"integrity")}};StartWorker(job,false);}catch(Exception error){MessageBox.Show(this,error.Message,"Ecom 更新",MessageBoxButtons.OK,MessageBoxIcon.Error);}};
+        readyView.RestartRequested+=async(sender,e)=>await RestartPrepared();
         Shown+=async(sender,e)=>await Initialize();
       }
       void CloseUpdater(){allowClose=true;Close();}
-      void Notify(string text){tray.Visible=true;tray.ShowBalloonTip(5000,"Ecom 更新",text,ToolTipIcon.Info);}
+      void Notify(string text){tray.Visible=true;if(NoticeContext().Count==0)tray.ShowBalloonTip(5000,"Ecom 更新",text,ToolTipIcon.Info);}
       void SetView(Control view){foreach(Control item in new Control[]{options,transfer,readyView})item.Visible=item==view;view.BringToFront();}
       void ShowCurrent(){if(prepared!=null&&!downloading){readyView.SetVersion(S((Dictionary<string,object>)prepared["metadata"],"version"));SetView(readyView);}else SetView(downloading?(Control)transfer:options);Show();WindowState=FormWindowState.Normal;Activate();}
-      void MarkReady(Dictionary<string,object> row){prepared=row;downloading=false;readyView.SetVersion(S((Dictionary<string,object>)row["metadata"],"version"));SetView(readyView);Notify("更新已下载并通过校验。你可以继续工作，方便时再重启更新。");}
+      void MarkReady(Dictionary<string,object> row){SignalNativeNotice("ready");prepared=row;downloading=false;readyView.SetVersion(S((Dictionary<string,object>)row["metadata"],"version"));SetView(readyView);Notify("更新已下载并通过校验。你可以继续工作，方便时再重启更新。");}
       async Task Initialize() {
         if(automatic)Hide();
-        try{var row=await Task.Run(()=>ReadPreparedRecord(AppDir,Profile,S(Installed,"version")));if(row!=null){MarkReady(row);if(!automatic)ShowCurrent();return;}}catch(Exception error){status.Text="已保存的更新包需要重新下载："+error.Message;}
+        try{var row=await Task.Run(()=>ReadPreparedRecord(AppDir,Profile,S(Installed,"version")));if(row!=null){MarkReady(row);if(Args.ContainsKey("restart"))await RestartPrepared();else if(!automatic)ShowCurrent();return;}}catch(Exception error){status.Text="已保存的更新包需要重新下载："+error.Message;}
         await Check();
         if(automatic){if(candidate==null)CloseUpdater();else {Hide();Notify("发现可用更新。点击此通知选择下载，下载期间可继续使用 Ecom。");}}
       }
       async Task Check() {
         check.Enabled=false;channel.Enabled=false;download.Enabled=false;candidate=null;status.Text="正在检查 "+channel.SelectedItem+"…";
-        try {string selected=channel.SelectedItem.ToString();var metadata=await Task.Run(()=>Metadata(selected));Require(S(metadata,"name")==Package,"Unexpected package name");if(ParseVersion(S(metadata,"version"))>ParseVersion(S(Installed,"version"))){candidate=metadata;download.Enabled=true;status.Text="可更新到 "+S(metadata,"version")+"（"+selected+"）。下载将在后台进行。";}else status.Text="当前渠道没有更新。当前版本："+S(Installed,"version");}
+        try {string selected=channel.SelectedItem.ToString();var metadata=await Task.Run(()=>Metadata(selected));Require(S(metadata,"name")==Package,"Unexpected package name");if(ParseVersion(S(metadata,"version"))>ParseVersion(S(Installed,"version"))){candidate=metadata;SignalNativeNotice("available");download.Enabled=true;status.Text="可更新到 "+S(metadata,"version")+"（"+selected+"）。下载将在后台进行。";}else {SignalNativeNotice("clear");status.Text="当前渠道没有更新。当前版本："+S(Installed,"version");}}
         catch(Exception error){status.Text="检查失败："+error.Message;}finally{check.Enabled=true;channel.Enabled=true;}
       }
       async Task Download() {
-        downloading=true;download.Enabled=false;check.Enabled=false;channel.Enabled=false;rollback.Enabled=false;
+        downloading=true;SignalNativeNotice("downloading");download.Enabled=false;check.Enabled=false;channel.Enabled=false;rollback.Enabled=false;
         SetView(transfer);transfer.SetProgress(0,0,"正在准备更新","正在获取更新信息…");Show();WindowState=FormWindowState.Normal;
         Notify("正在下载更新。最小化或关闭进度窗口后仍会继续下载，下载完成后会通知。");
         string work=Path.Combine(State,"staging",Guid.NewGuid().ToString("N"));
@@ -384,8 +407,20 @@ namespace EcomUpdate {
             var saved=PreparedRecord(AppDir,Profile,work,metadata,integrity);SavePreparedRecord(saved,AppDir,Profile,S(Installed,"version"));return saved;
           });
           MarkReady(row);
-        }catch(Exception error){downloading=false;SetView(options);status.Text="更新未应用："+error.Message;Notify("更新下载未完成。点击此通知查看原因并重试。");}
+        }catch(Exception error){SignalNativeNotice("available");downloading=false;SetView(options);status.Text="更新未应用："+error.Message;Notify("更新下载未完成。点击此通知查看原因并重试。");}
         finally{if(!IsDisposed&&!Disposing){check.Enabled=true;channel.Enabled=true;download.Enabled=candidate!=null;rollback.Enabled=File.Exists(Path.Combine(State,"rollback.json"));}}
+      }
+      async Task RestartPrepared() {
+        if(starting)return;
+        if(downloading){ShowCurrent();return;}
+        starting=true;
+        try {
+          RefreshBrowserContext();
+          var row=await Task.Run(()=>ReadPreparedRecord(AppDir,Profile,S(Installed,"version")));
+          Require(row!=null,"更新尚未准备完成，请先下载更新。");prepared=row;
+          StartWorker(new Dictionary<string,object>{{"work",S(row,"work")},{"metadata",row["metadata"]},{"integrity",row["integrity"]}},false);
+        }catch(Exception error){SignalNativeNotice("available");prepared=null;SetView(options);status.Text="更新未开始："+error.Message;Show();WindowState=FormWindowState.Normal;}
+        finally{starting=false;}
       }
       void StartWorker(Dictionary<string,object> job,bool restore) {
         if(job==null)job=new Dictionary<string,object>();BindBrowserJob(job,restore);
@@ -647,6 +682,15 @@ namespace EcomUpdate {
     }
 
     static void SelfTest() {
+      foreach(string phase in new[]{"available","downloading","ready","clear"}) {
+        string name="Local\\EcomUpdate"+char.ToUpperInvariant(phase[0])+phase.Substring(1)+"."+Guid.NewGuid().ToString();
+        Require(ValidNoticeName(phase,name)&&!ValidNoticeName("quit",name)&&!ValidNoticeName(phase,"Local\\EcomUpdateQuit."+Guid.NewGuid().ToString()),"Notification event namespace boundary");
+        using(var signal=new EventWaitHandle(false,EventResetMode.AutoReset,name)) {
+          Args["notice-"+phase]=name;
+          try{Require(SignalNativeNotice(phase)&&signal.WaitOne(0),"Native menu notification was not delivered");}
+          finally{Args.Remove("notice-"+phase);}
+        }
+      }
       var bound=CreateBoundJob(@"C:\Ecom\Application",@"C:\Ecom\User Data",12345,"Local\\EcomUpdateQuit.00000000-0000-0000-0000-000000000001",new Dictionary<string,object>{{"pid",null}},false);
       Require(N(Json.Deserialize<Dictionary<string,object>>(Json.Serialize(bound)),"pid")==12345,"GUI worker browser PID must survive serialization");
       bool missingPidRejected=false;try{N(new Dictionary<string,object>{{"pid",null}},"pid");}catch{missingPidRejected=true;}Require(missingPidRejected,"Null browser PID accepted");
@@ -667,7 +711,7 @@ namespace EcomUpdate {
           bool failed=false;try{Extract(tgz,target);}catch{failed=true;}Require(failed,"Unsafe tar archive accepted");
         }
         Require(!File.Exists(Path.Combine(work,"escaped")),"Archive escaped extraction directory");
-        File.WriteAllText(Path.Combine(work,"self-test.json"),"{\"ok\":true,\"checks\":[\"semver\",\"registry-origin\",\"sha512-corruption\",\"tar-traversal\",\"tar-symlinks\",\"tar-hardlinks\",\"gui-worker-pid\"]}");
+        File.WriteAllText(Path.Combine(work,"self-test.json"),"{\"ok\":true,\"checks\":[\"semver\",\"registry-origin\",\"sha512-corruption\",\"tar-traversal\",\"tar-symlinks\",\"tar-hardlinks\",\"gui-worker-pid\",\"native-menu-notifications\"]}");
         if(Args.ContainsKey("report")){using(var f=new FileStream(Args["report"],FileMode.CreateNew)) {byte[] data=Encoding.UTF8.GetBytes(File.ReadAllText(Path.Combine(work,"self-test.json")));f.Write(data,0,data.Length);}}
       }finally{Directory.Delete(work,true);}
     }

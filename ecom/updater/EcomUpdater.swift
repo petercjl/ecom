@@ -5,6 +5,11 @@ import CryptoKit
 import Darwin
 
 enum UpdateFailure: Error { case invalid(String) }
+func updateMenuAction(token: String, action: String, controller: String?) -> String? {
+    guard let controller, UUID(uuidString: controller) != nil, token == controller,
+          ["show", "restart"].contains(action) else { return nil }
+    return action
+}
 func allowedOrigin(_ value: String?) -> String? {
     guard let value, let url = URLComponents(string: value), url.scheme == "https", url.host != nil,
           url.user == nil, url.password == nil, url.query == nil, url.fragment == nil,
@@ -121,18 +126,81 @@ final class RegistrySession: NSObject, URLSessionTaskDelegate {
     }
 }
 @MainActor
-final class Updater {
+final class Updater: NSObject {
     let app: URL, owner: NSRunningApplication, current: String, currentSource: String, profile: String, channel: String, origin: String?
     let fm = FileManager.default
     let delegate = RegistrySession()
     var downloadRequested = false
+    let controller: String?
+    var requestedAction: String?
+    var updatePhase = "none"
+    var progressWindow: NSPanel?
+    func publishPhase(_ phase: String) {
+        updatePhase = phase
+        if phase != "downloading" { progressWindow?.orderOut(nil) }
+        guard let controller else { return }
+        DistributedNotificationCenter.default().postNotificationName(
+            Notification.Name("app.ecom.update.status.\(owner.processIdentifier)"),
+            object: app.path, userInfo: ["controller": controller, "phase": phase],
+            deliverImmediately: true)
+    }
+    @objc nonisolated func receiveMenuCommand(_ notice: Notification) {
+        guard let token = notice.userInfo?["controller"] as? String,
+              let action = notice.userInfo?["action"] as? String,
+              ["show", "restart"].contains(action) else { return }
+        Task { @MainActor [weak self] in
+            guard let self, let accepted = updateMenuAction(token: token, action: action, controller: self.controller) else { return }
+            if self.updatePhase == "downloading" { self.showDownloadProgress(); return }
+            self.requestedAction = accepted
+        }
+    }
+    func showDownloadProgress() {
+        if progressWindow == nil {
+            let window = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 420, height: 140),
+                styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.title = "Ecom 更新"; window.isReleasedWhenClosed = false
+            let label = NSTextField(labelWithString: "正在下载并校验更新，完成后可从菜单选择重启。")
+            label.frame = NSRect(x: 20, y: 75, width: 380, height: 40)
+            let meter = NSProgressIndicator(frame: NSRect(x: 20, y: 40, width: 380, height: 16))
+            meter.style = .bar; meter.isIndeterminate = true; meter.startAnimation(nil)
+            window.contentView?.addSubview(label); window.contentView?.addSubview(meter)
+            window.center(); progressWindow = window
+        }
+        progressWindow?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+    }
+    func nextMenuAction() async throws -> String? {
+        while !owner.isTerminated {
+            if let action = requestedAction { requestedAction = nil; return action }
+            try await Task.sleep(nanoseconds: 250_000_000)
+        }
+        return nil
+    }
+    func requestDownload(_ version: String) async throws -> Bool {
+        if controller == nil { return ask("Ecom 有新版本 " + version, "当前版本 " + current + "。下载完成后会再次询问是否退出并安装。", "下载更新") }
+        publishPhase("available")
+        while let _ = try await nextMenuAction() {
+            if ask("Ecom 有新版本 " + version, "下载将在后台执行，完成后可从菜单选择重启更新。", "下载更新") { return true }
+        }
+        return false
+    }
+    func requestRestart(_ version: String) async throws -> Bool {
+        if controller == nil { return ask("更新已准备完成", "退出 Ecom 并安装 " + version + "？账号和容器数据保留。", "退出并安装") }
+        publishPhase("ready")
+        while let action = try await nextMenuAction() {
+            if action == "restart" { return true }
+            if ask("更新已准备完成", "退出 Ecom 并安装 " + version + "？账号和容器数据保留。", "重启并更新") { return true }
+        }
+        return false
+    }
     lazy var session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.httpCookieStorage = nil; config.urlCredentialStorage = nil
         config.timeoutIntervalForRequest = 60; config.timeoutIntervalForResource = 3600
         return URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
     }()
-    init(path: String, pid: pid_t, profilePath: String, cliOrigin: String?) throws {
+    init(path: String, pid: pid_t, profilePath: String, cliOrigin: String?, controller: String? = nil) throws {
+        if let controller { try require(UUID(uuidString: controller) != nil, "controller token") }
+        self.controller = controller
         app = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath()
         guard let bundle = Bundle(url: app), let process = NSRunningApplication(processIdentifier: pid),
               let version = bundle.object(forInfoDictionaryKey: "EcomReleaseVersion") as? String,
@@ -143,6 +211,12 @@ final class Updater {
         try require(profilePath.hasPrefix("/") && !profilePath.contains("\0"), "profile path")
         _ = try stableVersion(version); current = version; currentSource = source; owner = process
         profile = profilePath; channel = selectedChannel; origin = allowedOrigin(cliOrigin)
+        super.init()
+        if controller != nil {
+            DistributedNotificationCenter.default().addObserver(self, selector: #selector(receiveMenuCommand(_:)),
+                name: Notification.Name("app.ecom.update.request.\(pid)"), object: app.path,
+                suspensionBehavior: .deliverImmediately)
+        }
     }
     func ask(_ title: String, _ message: String, _ action: String) -> Bool {
         let alert = NSAlert(); alert.messageText = title; alert.informativeText = message
@@ -158,7 +232,7 @@ final class Updater {
         let url = URL(string: "https://registry.npmjs.org/@petercjl%2fecom-macos-arm64/" + channel)!
         let (data, response) = try await session.data(from: url)
         // An unpublished first version is an ordinary no-update result.
-        if (response as? HTTPURLResponse)?.statusCode == 404 { return false }
+        if (response as? HTTPURLResponse)?.statusCode == 404 { publishPhase("none"); return false }
         try checkResponse(response, maxBytes: 1_000_000)
         try require(data.count <= 1_000_000, "metadata size")
         guard let metadata = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -168,9 +242,10 @@ final class Updater {
               let tarball = dist["tarball"] as? String, let downloadURL = URL(string: tarball),
               let integrity = dist["integrity"] as? String else { throw UpdateFailure.invalid("registry metadata") }
         try require(RegistrySession.allowed(downloadURL) && integrity.hasPrefix("sha512-"), "registry integrity")
-        if !(try newer(version, than: current)) || owner.isTerminated { return false }
-        if !ask("Ecom 有新版本 " + version, "当前版本 " + current + "。下载完成后会再次询问是否退出并安装。", "下载更新") { return false }
+        if !(try newer(version, than: current)) || owner.isTerminated { publishPhase("none"); return false }
+        if !(try await requestDownload(version)) { return false }
         downloadRequested = true
+        publishPhase("downloading")
         let work = fm.temporaryDirectory.appendingPathComponent("ecom-update-" + UUID().uuidString)
         try fm.createDirectory(at: work, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
         defer { try? fm.removeItem(at: work) }
@@ -205,7 +280,8 @@ final class Updater {
         try require(bundle.object(forInfoDictionaryKey: "EcomUpdateChannel") as? String == "latest" && bundle.object(forInfoDictionaryKey: "EcomUpdateTestSeed") as? Bool != true, "production candidate channel")
         try run("/usr/bin/codesign", ["--verify", "--deep", "--strict", candidate.path])
         try verifyArm64(candidate.appendingPathComponent("Contents/MacOS/Ecom"))
-        if owner.isTerminated || !ask("更新已准备完成", "退出 Ecom 并安装 " + version + "？账号和容器数据保留，旧应用将保留在安装目录供恢复。", "退出并安装") { return false }
+        if owner.isTerminated { return false }
+        if !(try await requestRestart(version)) { return false }
         try require(owner.bundleURL?.resolvingSymlinksInPath() == app && owner.bundleIdentifier == "app.ecom.browser", "owner changed")
         try require(owner.terminate(), "normal quit refused")
         for _ in 0..<120 {
@@ -247,6 +323,9 @@ struct Main {
             do {
                 try require(try newer("0.2.0", than: "0.1.99"), "comparison")
                 try require(try !newer("0.1.0", than: "0.1.0"), "equal")
+                let controller = UUID().uuidString
+                try require(updateMenuAction(token: controller, action: "restart", controller: controller) == "restart", "menu restart consent")
+                try require(updateMenuAction(token: UUID().uuidString, action: "restart", controller: controller) == nil && updateMenuAction(token: controller, action: "apply", controller: controller) == nil && updateMenuAction(token: controller, action: "restart", controller: nil) == nil, "menu control boundary")
                 for invalid in ["1.0", "1.0.0-next.1", "-1.0.0", "1.0.0/../../"] {
                     do { _ = try stableVersion(invalid); fatalError("accepted invalid version") } catch {}
                 }
@@ -264,10 +343,13 @@ struct Main {
             } catch { fputs("Updater self-test failed\n", stderr); exit(1) }
             return
         }
-        guard (4...5).contains(CommandLine.arguments.count), let pid = Int32(CommandLine.arguments[2]) else { exit(2) }
+        let controls = CommandLine.arguments.dropFirst().filter { $0.hasPrefix("--controller=") }
+        let arguments = CommandLine.arguments.filter { !$0.hasPrefix("--controller=") }
+        guard controls.count <= 1, (4...5).contains(arguments.count), let pid = Int32(arguments[2]) else { exit(2) }
+        let controller = controls.first.map { String($0.dropFirst("--controller=".count)) }
         _ = NSApplication.shared; NSApp.setActivationPolicy(.accessory)
         do {
-            let updater = try Updater(path: CommandLine.arguments[1], pid: pid, profilePath: CommandLine.arguments[3], cliOrigin: CommandLine.arguments.count == 5 ? CommandLine.arguments[4] : nil)
+            let updater = try Updater(path: arguments[1], pid: pid, profilePath: arguments[3], cliOrigin: arguments.count == 5 ? arguments[4] : nil, controller: controller)
             NSApp.applicationIconImage = NSWorkspace.shared.icon(forFile: updater.app.path)
             // Process-scoped lock avoids duplicate helpers without persisting a stale PID.
             let lockPath = updater.app.path + ".update-lock"
@@ -285,6 +367,7 @@ struct Main {
                     do { if try await updater.check() { break } }
                     catch {
                         NSLog("Ecom update check failed: %@", String(describing: error))
+                        updater.publishPhase(updater.downloadRequested ? "available" : "none")
                         if updater.downloadRequested {
                             let alert = NSAlert(); alert.messageText = "Ecom 更新未完成"
                             alert.informativeText = "当前应用与账号数据已保留。请确认 Ecom 位于可写的应用目录，然后重试。"
@@ -292,9 +375,9 @@ struct Main {
                         }
                     }
                     // Wake periodically to stop alongside the owning browser.
-                    for _ in 0..<2160 {
-                        if updater.owner.isTerminated { break }
-                        try? await Task.sleep(nanoseconds: 10_000_000_000)
+                    for _ in 0..<21600 {
+                        if updater.owner.isTerminated || updater.requestedAction != nil { break }
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
                     }
                 }
                 close(fd); NSApp.terminate(nil)
