@@ -8,4 +8,4 @@ DMG: 248839414 bytes. npm transport tarball: 157815306 bytes; contained applicat
 
 Framework/dSYM arm64 UUID both equal 4C4C4400-5555-3144-A1A1-0097DD32534A. Crash symbols are stored separately; zero dSYM bundles exist inside the packaged application. Root UI localization is zh_CN.lproj. Bundle identity is app.ecom.browser, EcomReleaseVersion=0.1.3, with the pinned build source.
 
-No formal application was installed or published. Native formal-app smoke/update and public next round-trip gates remain false. This Mac tarball is still a single large archive; publication requires checking registry transport limits and selecting a supported split layout before dispatch. Windows distribution uses its separate existing split-payload contract.
+No formal application was installed or published. Native formal-app smoke/update and public next round-trip gates remain false. The Mac tarball is within the existing 390000000-byte packaging budget. Public registry delivery and native formal-app activation are separate pending acceptance gates. Windows distribution uses its existing split-payload contract.
