@@ -1,0 +1,624 @@
+{
+  "schemaVersion": 1,
+  "metric": "macos-physical-footprint",
+  "unit": "bytes",
+  "sampleIntervalSeconds": 15,
+  "samplesPerStage": 5,
+  "ecomBuildWorktreeRevisionAtCapture": "d5cc360664ca102e153d8969bab6f68f97c38bc5",
+  "sameEcomInstance": true,
+  "context": {
+    "timezone": "Asia/Shanghai",
+    "buildWorktreeRevisionAtCapture": "d5cc360664ca102e153d8969bab6f68f97c38bc5",
+    "runtimeInstancePinned": true,
+    "versions": {
+      "Ecom Dev": {
+        "version": "156.1.98.0",
+        "build": "198.0"
+      },
+      "Chrome": {
+        "version": "156.0.8078.80",
+        "build": "8078.80"
+      },
+      "Brave": {
+        "version": "155.1.97.59",
+        "build": "197.59"
+      }
+    },
+    "hardware": {
+      "hw.model": "Mac16,7",
+      "hw.memsize": "25769803776",
+      "hw.logicalcpu": "14",
+      "kern.osproductversion": "26.5.2",
+      "kern.osversion": "25F84"
+    },
+    "restartBlockedByWorkspaceLock": true,
+    "backgroundReleaseBuildActive": true
+  },
+  "stages": {
+    "before": {
+      "start": "2026-11-06T15:17:11.167525+08:00",
+      "end": "2026-11-06T15:18:12.542386+08:00",
+      "instances": [
+        {
+          "browser": "Brave Browser",
+          "role": "ordinary-or-other",
+          "pid": 583,
+          "ageSecondsAtFirstSample": 263511,
+          "memoryBytes": [
+            3940304712,
+            3902963992,
+            3867163512,
+            3945973432,
+            3943728824
+          ],
+          "medianBytes": 3940304712,
+          "minBytes": 3867163512,
+          "maxBytes": 3945973432,
+          "residentMedianBytes": 761790464,
+          "processCounts": [
+            18,
+            17,
+            16,
+            18,
+            18
+          ],
+          "rendererCounts": [
+            12,
+            11,
+            10,
+            12,
+            12
+          ],
+          "kindMedianBytes": {
+            "gpu-process": 465782776,
+            "browser": 390974248,
+            "utility": 166744456,
+            "renderer": 2916737696
+          }
+        },
+        {
+          "browser": "Ecom Dev",
+          "role": "dev",
+          "pid": 12163,
+          "ageSecondsAtFirstSample": 551,
+          "memoryBytes": [
+            1975430120,
+            1676242112,
+            1669098568,
+            1652206688,
+            1651862624
+          ],
+          "medianBytes": 1669098568,
+          "minBytes": 1651862624,
+          "maxBytes": 1975430120,
+          "residentMedianBytes": 2015330304,
+          "processCounts": [
+            15,
+            15,
+            15,
+            15,
+            15
+          ],
+          "rendererCounts": [
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "kindMedianBytes": {
+            "gpu-process": 133875128,
+            "browser": 147687272,
+            "utility": 86791064,
+            "renderer": 1300646800
+          }
+        },
+        {
+          "browser": "Google Chrome",
+          "role": "seller",
+          "pid": 36890,
+          "ageSecondsAtFirstSample": 191692,
+          "memoryBytes": [
+            2689693408,
+            2691135200,
+            2692282080,
+            2693953248,
+            2693871328
+          ],
+          "medianBytes": 2692282080,
+          "minBytes": 2689693408,
+          "maxBytes": 2693953248,
+          "residentMedianBytes": 713342976,
+          "processCounts": [
+            18,
+            18,
+            18,
+            18,
+            18
+          ],
+          "rendererCounts": [
+            12,
+            12,
+            12,
+            12,
+            12
+          ],
+          "kindMedianBytes": {
+            "renderer": 2081084872,
+            "browser": 236554496,
+            "gpu-process": 293848912,
+            "utility": 80662728
+          }
+        },
+        {
+          "browser": "Google Chrome",
+          "role": "buyer",
+          "pid": 46599,
+          "ageSecondsAtFirstSample": 186924,
+          "memoryBytes": [
+            2425094616,
+            2425094616,
+            2425094616,
+            2425536984,
+            2423046616
+          ],
+          "medianBytes": 2425094616,
+          "minBytes": 2423046616,
+          "maxBytes": 2425536984,
+          "residentMedianBytes": 450707456,
+          "processCounts": [
+            20,
+            20,
+            20,
+            20,
+            20
+          ],
+          "rendererCounts": [
+            14,
+            14,
+            14,
+            14,
+            14
+          ],
+          "kindMedianBytes": {
+            "gpu-process": 781830256,
+            "browser": 165595272,
+            "utility": 59789224,
+            "renderer": 1417879864
+          }
+        },
+        {
+          "browser": "Google Chrome",
+          "role": "ordinary-or-other",
+          "pid": 87473,
+          "ageSecondsAtFirstSample": 218720,
+          "memoryBytes": [
+            1999927960,
+            2004548248,
+            2000255640,
+            1997060760,
+            2000648856
+          ],
+          "medianBytes": 2000255640,
+          "minBytes": 1997060760,
+          "maxBytes": 2004548248,
+          "residentMedianBytes": 360169472,
+          "processCounts": [
+            10,
+            10,
+            10,
+            10,
+            10
+          ],
+          "rendererCounts": [
+            4,
+            4,
+            4,
+            4,
+            4
+          ],
+          "kindMedianBytes": {
+            "renderer": 594549240,
+            "browser": 210848072,
+            "gpu-process": 1139885880,
+            "utility": 54988832
+          }
+        }
+      ],
+      "chromeAllInstances": {
+        "count": 3,
+        "medianBytes": 7117566800,
+        "minBytes": 7114715984,
+        "maxBytes": 7120778064,
+        "memoryBytes": [
+          7114715984,
+          7120778064,
+          7117632336,
+          7116550992,
+          7117566800
+        ]
+      }
+    },
+    "after": {
+      "start": "2026-11-06T15:21:46.478920+08:00",
+      "end": "2026-11-06T15:22:47.686280+08:00",
+      "instances": [
+        {
+          "browser": "Brave Browser",
+          "role": "ordinary-or-other",
+          "pid": 583,
+          "ageSecondsAtFirstSample": 263786,
+          "memoryBytes": [
+            3878042488,
+            3953870616,
+            4091332376,
+            3878501240,
+            3878501240
+          ],
+          "medianBytes": 3878501240,
+          "minBytes": 3878042488,
+          "maxBytes": 4091332376,
+          "residentMedianBytes": 1008779264,
+          "processCounts": [
+            16,
+            18,
+            18,
+            16,
+            16
+          ],
+          "rendererCounts": [
+            10,
+            12,
+            12,
+            10,
+            10
+          ],
+          "kindMedianBytes": {
+            "gpu-process": 461719544,
+            "browser": 390777640,
+            "utility": 166826376,
+            "renderer": 2859177680
+          }
+        },
+        {
+          "browser": "Ecom Dev",
+          "role": "dev",
+          "pid": 12163,
+          "ageSecondsAtFirstSample": 826,
+          "memoryBytes": [
+            432469576,
+            432469576,
+            432469576,
+            432469576,
+            432682568
+          ],
+          "medianBytes": 432469576,
+          "minBytes": 432469576,
+          "maxBytes": 432682568,
+          "residentMedianBytes": 358350848,
+          "processCounts": [
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "rendererCounts": [
+            3,
+            3,
+            3,
+            3,
+            3
+          ],
+          "kindMedianBytes": {
+            "gpu-process": 99976584,
+            "browser": 143902544,
+            "utility": 80778136,
+            "renderer": 107812312
+          }
+        },
+        {
+          "browser": "Google Chrome",
+          "role": "seller",
+          "pid": 36890,
+          "ageSecondsAtFirstSample": 191967,
+          "memoryBytes": [
+            2685843168,
+            2672883424,
+            2670540512,
+            2673522400,
+            2674587360
+          ],
+          "medianBytes": 2673522400,
+          "minBytes": 2670540512,
+          "maxBytes": 2685843168,
+          "residentMedianBytes": 1590198272,
+          "processCounts": [
+            18,
+            18,
+            18,
+            18,
+            18
+          ],
+          "rendererCounts": [
+            12,
+            12,
+            12,
+            12,
+            12
+          ],
+          "kindMedianBytes": {
+            "renderer": 2062718408,
+            "browser": 236488960,
+            "gpu-process": 293586768,
+            "utility": 80646344
+          }
+        },
+        {
+          "browser": "Google Chrome",
+          "role": "buyer",
+          "pid": 46599,
+          "ageSecondsAtFirstSample": 187199,
+          "memoryBytes": [
+            2338734552,
+            2339619288,
+            2339733976,
+            2339619288,
+            2339684824
+          ],
+          "medianBytes": 2339619288,
+          "minBytes": 2338734552,
+          "maxBytes": 2339733976,
+          "residentMedianBytes": 651460608,
+          "processCounts": [
+            20,
+            20,
+            20,
+            20,
+            20
+          ],
+          "rendererCounts": [
+            14,
+            14,
+            14,
+            14,
+            14
+          ],
+          "kindMedianBytes": {
+            "gpu-process": 697714800,
+            "browser": 165447816,
+            "utility": 59789224,
+            "renderer": 1416667448
+          }
+        },
+        {
+          "browser": "Google Chrome",
+          "role": "ordinary-or-other",
+          "pid": 87473,
+          "ageSecondsAtFirstSample": 218995,
+          "memoryBytes": [
+            2003106456,
+            2000353944,
+            2003286680,
+            1998715544,
+            2003794584
+          ],
+          "medianBytes": 2003106456,
+          "minBytes": 1998715544,
+          "maxBytes": 2003794584,
+          "residentMedianBytes": 466108416,
+          "processCounts": [
+            10,
+            10,
+            10,
+            10,
+            10
+          ],
+          "rendererCounts": [
+            4,
+            4,
+            4,
+            4,
+            4
+          ],
+          "kindMedianBytes": {
+            "renderer": 597416440,
+            "browser": 210831688,
+            "gpu-process": 1139803960,
+            "utility": 55037984
+          }
+        }
+      ],
+      "chromeAllInstances": {
+        "count": 3,
+        "medianBytes": 7013561168,
+        "minBytes": 7011857232,
+        "maxBytes": 7027684176,
+        "memoryBytes": [
+          7027684176,
+          7012856656,
+          7013561168,
+          7011857232,
+          7018066768
+        ]
+      }
+    }
+  },
+  "ecom": {
+    "tabCount": 7,
+    "windowCount": 2,
+    "savedAccountCount": 6,
+    "automaticallyDiscardedTabIds": [
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "autoDiscardDelta": 5,
+    "allContainerMetadataPreserved": true,
+    "selectedTabIds": [
+      1,
+      2
+    ],
+    "perTab": [
+      {
+        "tabId": 2,
+        "origin": "chrome://shops/",
+        "beforeState": "running",
+        "afterState": "running",
+        "containerPreserved": true,
+        "selected": true,
+        "remainingProtectionCodes": [
+          "NOT_WEB_PAGE",
+          4,
+          22,
+          0,
+          22
+        ]
+      },
+      {
+        "tabId": 3,
+        "origin": "https://myseller.taobao.com/",
+        "beforeState": "running",
+        "afterState": "discarded",
+        "containerPreserved": true,
+        "selected": false,
+        "remainingProtectionCodes": [
+          3
+        ]
+      },
+      {
+        "tabId": 4,
+        "origin": "https://sycm.taobao.com/",
+        "beforeState": "running",
+        "afterState": "discarded",
+        "containerPreserved": true,
+        "selected": false,
+        "remainingProtectionCodes": [
+          3
+        ]
+      },
+      {
+        "tabId": 5,
+        "origin": "https://www.xiaohongshu.com/",
+        "beforeState": "running",
+        "afterState": "discarded",
+        "containerPreserved": true,
+        "selected": false,
+        "remainingProtectionCodes": [
+          3
+        ]
+      },
+      {
+        "tabId": 6,
+        "origin": "https://www.xiaohongshu.com/",
+        "beforeState": "running",
+        "afterState": "discarded",
+        "containerPreserved": true,
+        "selected": false,
+        "remainingProtectionCodes": [
+          3
+        ]
+      },
+      {
+        "tabId": 7,
+        "origin": "https://www.xiaohongshu.com/",
+        "beforeState": "running",
+        "afterState": "discarded",
+        "containerPreserved": true,
+        "selected": false,
+        "remainingProtectionCodes": [
+          3
+        ]
+      },
+      {
+        "tabId": 1,
+        "origin": "chrome://newtab/",
+        "beforeState": "running",
+        "afterState": "running",
+        "containerPreserved": true,
+        "selected": true,
+        "remainingProtectionCodes": [
+          "NOT_WEB_PAGE",
+          22,
+          22
+        ]
+      }
+    ],
+    "savedBytes": 1236628992,
+    "savedPercent": 74.08963231463272
+  },
+  "historicalP0Reference": {
+    "beforeMiB": 1858.64,
+    "decreaseVsHistoricalPercent": 77.80984336620858,
+    "interpretation": "Cross-time reference; foreground, cache and uptime differ. Primary comparison uses this run with automatic sleep disabled/enabled."
+  },
+  "nativeOsCrossCheck": [
+    {
+      "samePidSet": true,
+      "footprintDeltaBytes": 16384
+    },
+    {
+      "samePidSet": true,
+      "footprintDeltaBytes": 458752
+    },
+    {
+      "samePidSet": true,
+      "footprintDeltaBytes": 0
+    },
+    {
+      "samePidSet": true,
+      "footprintDeltaBytes": 0
+    },
+    {
+      "samePidSet": true,
+      "footprintDeltaBytes": 0
+    },
+    {
+      "samePidSet": true,
+      "footprintDeltaBytes": 0
+    },
+    {
+      "samePidSet": true,
+      "footprintDeltaBytes": 0
+    },
+    {
+      "samePidSet": true,
+      "footprintDeltaBytes": 0
+    },
+    {
+      "samePidSet": true,
+      "footprintDeltaBytes": 0
+    },
+    {
+      "samePidSet": true,
+      "footprintDeltaBytes": 0
+    }
+  ],
+  "limitations": [
+    "Chrome and Brave use their existing different workloads, sessions, extensions and uptimes; this is current desktop resource comparison, not equivalent-page efficiency ranking",
+    "Other browsers live tab counts and effective Memory Saver state were not queried",
+    "Ecom component Dev build versus commercial release builds",
+    "Process ancestry excludes detached crashpad; per-process sums are not unique system RAM",
+    "Online dynamic pages and GC/cache vary; measurements are sequential, not atomic"
+  ],
+  "finalState": {
+    "automaticEnabled": true,
+    "idleSeconds": 1200,
+    "tabCount": 7,
+    "discardedTabIds": [
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "temporaryKeepAwakeExceptions": 0,
+    "autoActionRecordsVerified": 5,
+    "sameInstanceAcrossBaselineAndAfter": true,
+    "foregroundPreserved": true
+  },
+  "evidenceSelection": "Only verified-run baseline/after pairs used; earlier capture interrupted by another Dev restart excluded",
+  "rawEvidenceDirectory": ".brave-build/memory-full-retest-pcels_1k/verified-run"
+}
