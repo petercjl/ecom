@@ -1,0 +1,46 @@
+# Ecom Windows x64 0.1.5 local candidate
+
+Native source: 9eab6bd064276b64135b484f8cc6314ec7a0f30b.
+
+## Supported installation and cache contract
+
+Ecom distributes full npm installers with pinned package/part integrity and complete installer SHA-256. The native application, metadata and updater are independently checked after installation. Recovery retains an independently verified program backup and uninstall registration; the original User Data directory remains in place. UI and background helpers share these checks. Windows update IPC in the product CLI remains a documented capability gap; the maintenance test driver is not a product CLI.
+
+Source inspection found that Chromium's AddChromeWorkItems already cleans the installed Installer/chrome.7z. Brave's install_worker override restored archive retention specifically for its legacy differential updates. Ecom's full-installer path does not require that old archive. The override now retains upstream cleanup and omits differential archive retention. The new backup operation skips exactly the current native-version Installer/chrome.7z; every other file, including setup.exe, is copied and SHA-256 checked. Reparse entries are rejected before exclusion. Existing backup destinations are refused. No hardlinks, shared mutable backup files or weakened package checks were introduced.
+
+Uninstall source does not read the archive; its registered setup.exe is retained in both installed and rollback trees. Full installer replacement and file-copy recovery are the supported maintenance paths. Legacy differential-update and archive-only repair paths are not used by Ecom. The final candidate includes the currently committed main native diagnostics changes and was built from the complete committed main.
+
+## Installation presentation
+
+The copied worker opens an independent WinForms installation window before apply begins. Work runs off its UI thread; stage captions and elapsed time remain visible after Ecom exits. Verified backup bytes provide a determinate progress bar. Installer execution uses an animated indeterminate bar, without a fabricated percentage. Stages cover payload verification, normal browser exit, backup, installation, installed-file validation, startup, stability confirmation and automatic cleanup. During startup confirmation the window explicitly says Ecom is already running. It closes automatically after completion; closing the presentation while work is active is guarded. Failure recovery uses the same presentation and retains the existing error/recovery records.
+
+The initiating window first displays installation preparation, then hands off to the independent worker. The new behavior belongs to the updated helper; an older installed helper remains older until its application is replaced. The local integration test runs this candidate's production apply/presentation code against the real installation. Public npm/GUI acceptance of this candidate remains a separate release gate.
+
+## Verification on peter-new
+
+Build artifact: E:\ecom-build-x64\repo\.brave-build\windows-release-wNoaVJ\artifacts\Ecom-0.1.5-windows-x64.exe (250588672 bytes). Update transfer archive: 250651648 bytes. The exact chrome.dll and chrome.dll.pdb pair is separately retained in windows-release-wNoaVJ/symbols; Windows SDK symchk reported zero failed files. Symbol files are outside the npm transfer. The helper self-test, six-part reconstruction and corrupted-part rejection passed. Source fixture tests verified exact cache exclusion, retained-file hashes, setup.exe preservation, unchanged source, byte progress and refusal to overwrite an existing backup. UI component tests checked download/deferral behavior, installation backup percentage, indeterminate installer progress, immediate elapsed text and the installation close guard. The native components were rendered for visual inspection.
+
+Interactive scheduled maintenance tests used the original persistent Profile, ordinary GUI Ecom, explicit native quit events and normal session restoration, without debugging ports or headless execution. The first test passed 0.1.4 → 0.1.5 → 0.1.4, checking candidate identity, visible window, preserved container identity digests, prepared-payload reuse and wrong-Profile refusal. It asserted cache absence in both installed and backup trees, retained setup.exe, and automatic payload removal. The second test updated the restored cache-free 0.1.4 again to 0.1.5 and retained it. Both reports returned ok=true and scheduled-task exit zero.
+
+Reports: updater-validation-015-9eab6bd06/roundtrip/report.json and activation/report.json on peter-new. These drive the production updater code; operator validation of the new actual menu/worker presentation remains pending. Stable npm activation/GUI rollback gates remain false.
+
+## Measured timings
+
+All measurements are on peter-new. Times below start at the new installation window's apply operation; local test payload preparation occurs beforehand, like a prepared GUI update. The previous 0.1.4 operator measurement used worker/process/file timestamps and is approximate. OS cache, background load and main-source differences are not controlled; this is a two-run operational comparison, not a benchmark guarantee.
+
+| Step | Previous operator run | First optimized update | Cache-free re-update |
+| --- | ---: | ---: | ---: |
+| Verified backup | approximately 35 s | 15.28 s | 15.35 s |
+| Installer execution | not separately instrumented | 22.44 s | 21.01 s |
+| Installed identity/hash validation | not separately instrumented | 8.02 s | 7.96 s |
+| Browser process launch | approximately 86 s | 48.61 s | 46.81 s |
+| Visible window plus readiness | approximately 87 s | 49.87 s | 48.08 s |
+| Stability and automatic cleanup completed | approximately 98 s | 60.20 s | 58.44 s |
+
+Verified rollback took 26.61 s through startup confirmation. The new installed application totals 699927003 bytes and the retained 0.1.4 backup totals 699890651 bytes. The earlier full backup was 1391410495 bytes, including 691500900 bytes of Installer/chrome.7z. The archive omission roughly halves the application/backup disk footprint; the compressed first-install file remains about 251 MB.
+
+## Final state and publication boundary
+
+Independent inspection confirmed installed 0.1.5/source 9eab6bd064276b64135b484f8cc6314ec7a0f30b, exact EXE/framework/updater receipt hashes, pending=complete and last-result=updated. Installer cache absent, setup.exe present, ready record absent. Owned counts: backups=1, staging=0, workers=0, replaced=0, verification=0; no active installer/test process remained. Product cleanup performed the file removal; the agent did not manually delete update files.
+
+The selected runtime channel remains next. No npm publication was performed: public next is 0.1.4 and latest is 0.0.0-bootstrap.1. This local candidate is unpublished. Installers remain on peter-new, with no GitHub installer upload. Stable promotion remains blocked pending the exact candidate's public/operator acceptance.
