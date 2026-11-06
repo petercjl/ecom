@@ -112,19 +112,25 @@ test('native auth diagnostics expose bounded context and public assets without s
 });
 
 test('registered page fallback pins the container, defaults to background and never rewrites account settings',{skip:process.platform==='win32'},async()=>{
-  const hash='a'.repeat(64);let foreground=false,bad=false;
+  const hash='a'.repeat(64);let foreground=false,bad=false,restoration;
   const f=fixture(message=>{
     if(message.method==='containers.list')return {ok:true,containers:accounts};
     assert.equal(message.method,'shops.open');assert.equal(message.businessOperation,'alimama.member-config');
     assert.equal(message.containerId,'account-a');assert.equal(message.background,!foreground);assert.equal(message.reuse,!foreground);
     assert.equal(message.homeUrl,undefined);assert.equal(message.url,undefined);
-    return {ok:true,containerId:'account-a',requestedUrl:bad?'https://other.example/':'https://one.alimama.com/',navigation:'started'};
+    return {ok:true,containerId:'account-a',requestedUrl:bad?'https://other.example/':'https://one.alimama.com/',navigation:'started',...(restoration?{restoration}:{})};
   });
   try {
     Object.assign(f.connection.endpoint,{businessReadRegistryHash:hash,businessPageOpenProtocol:1});
     fs.writeFileSync(path.join(f.connection.folder,'endpoint.json'),JSON.stringify(f.connection.endpoint),{mode:0o600});
     const a=await openBusinessPageInConnection(f.connection,{container:'示例甲'},'alimama.member-config','https://one.alimama.com/',hash);
     assert.equal(a.background,true);assert.equal(a.authentication,'not-verified');
+    restoration={status:'navigation-queued',restore:{containerId:'account-a',tabId:3,requestId:'restore-123',phase:'queued'}};
+    const queued=await openBusinessPageInConnection(f.connection,{container:'account-a'},'alimama.member-config','https://one.alimama.com/',hash);
+    assert.equal(queued.restoration.status,'navigation-queued');assert.equal(queued.restoration.restore.tabId,3);
+    restoration.restore.containerId='account-b';
+    await assert.rejects(openBusinessPageInConnection(f.connection,{container:'account-a'},'alimama.member-config','https://one.alimama.com/',hash),e=>e.code==='PROTOCOL_MISMATCH');
+    restoration=undefined;
     foreground=true;
     const b=await openBusinessPageInConnection(f.connection,{container:'account-a',foreground:true},'alimama.member-config','https://one.alimama.com/',hash);assert.equal(b.background,false);
     bad=true;

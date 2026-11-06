@@ -127,7 +127,14 @@ export async function openBusinessPageInConnection(connection,options,operation,
   const background=!options.foreground;
   const body=await callMailbox(connection,{method:'shops.open',containerId:container.id,businessOperation:operation,background,reuse:background,...(useRoute?{route}:{})});
   if(body.containerId!==container.id||!['started','reused'].includes(body.navigation)||body.requestedUrl!==entryUrl)throw fail('PROTOCOL_MISMATCH','Navigation target differs from the registered container or entry page',{operationId:body.operationId,executed:'unknown'});
-  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,requestedUrl:body.requestedUrl,navigation:body.navigation,background,authentication:'not-verified'};
+  let restoration;
+  if(body.restoration?.status!==undefined) {
+    const r=body.restoration.restore;
+    if(!['navigation-started','navigation-queued'].includes(body.restoration.status)||!r||r.containerId!==container.id||!Number.isInteger(r.tabId)||r.tabId<=0||typeof r.requestId!=='string'||!r.requestId||!['queued','loading','foreground-loading','ready','failed'].includes(r.phase))
+      throw fail('PROTOCOL_MISMATCH','Page restoration differs from the selected container',{operationId:body.operationId,executed:'unknown'});
+    restoration={status:body.restoration.status,restore:{requestId:r.requestId,tabId:r.tabId,containerId:r.containerId,phase:r.phase}};
+  }
+  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container,operation,requestedUrl:body.requestedUrl,navigation:body.navigation,background,authentication:'not-verified',...(restoration?{restoration}:{})};
 }
 function safeDiagnostics(value) {
   if(!value||typeof value!=='object')return undefined;

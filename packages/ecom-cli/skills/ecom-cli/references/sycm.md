@@ -42,3 +42,5 @@ A navigation result is not a login check. Preserve the original target and let t
 ### Dev signed DMP read
 
 Use `dmp.competitor-audience` with `itemId` as a string. Optional parameters are `days` (7, 15, 30, 90), `audienceType` (purchase, browse, favorite, cart, search) and `dimension` (gender, age, consumption, city, segments). Each call reads one dimension of a rolling window. Ecom Dev must advertise `signedBusinessRouteProtocol=1`. A rejected or expired manifest requires a valid signed route from the maintainer. Report platform errors and missing chart data separately.
+
+A reused deferred/discarded tab restores through the shared native queue. On compatible builds, `restoration` reports `navigation-started` or `navigation-queued` with the native request ID, tab ID and phase. Observe `memory restore status` or a fresh memory snapshot for completion; navigation reuse remains separate from authentication.

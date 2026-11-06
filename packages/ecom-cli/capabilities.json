@@ -516,7 +516,8 @@
         "container": "stable ID and current name",
         "requestedUrl": "compiled registered entry",
         "background": "boolean",
-        "authentication": "not-verified"
+        "authentication": "not-verified",
+        "restoration": "Optional shared-queue status and exact native request/tab identity when a deferred tab is reused; completion is separate from authentication"
       },
       "errors": [
         "BROWSER_UPGRADE_REQUIRED",
