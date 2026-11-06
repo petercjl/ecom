@@ -57,6 +57,28 @@ namespace EcomUpdate {
     }
     internal void SetVersion(string version){description.Text="更新到 "+version+" 的文件已下载并通过校验。\n你可以继续工作，方便时再重启 Ecom。";}
   }
+  internal sealed class InstallProgress {
+    internal readonly string Stage,Caption,Detail;
+    internal readonly long Completed,Total;
+    internal InstallProgress(string stage,string caption,string detail,long completed=0,long total=0){Stage=stage;Caption=caption;Detail=detail;Completed=completed;Total=total;}
+  }
+  internal sealed class InstallProgressForm : Form {
+    readonly DownloadProgressView view=new DownloadProgressView();
+    readonly Label elapsed=new Label();
+    readonly System.Windows.Forms.Timer timer=new System.Windows.Forms.Timer{Interval=1000};
+    readonly Stopwatch clock=Stopwatch.StartNew();
+    bool finished;
+    internal InstallProgressForm() {
+      Text="Ecom 安装更新";Font=SystemFonts.MessageBoxFont;BackColor=SystemColors.Window;
+      ClientSize=new Size(490,220);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;
+      elapsed.SetBounds(20,180,450,24);Controls.Add(view);Controls.Add(elapsed);elapsed.BringToFront();
+      SetProgress(new InstallProgress("preparing","正在准备安装","完成后将自动打开 Ecom。安装期间请保持电脑开机。"));
+      timer.Tick+=(sender,e)=>{elapsed.Text="已用时间 "+clock.Elapsed.ToString(@"mm\:ss");};timer.Start();
+      FormClosing+=(sender,e)=>{if(!finished)e.Cancel=true;};FormClosed+=(sender,e)=>timer.Dispose();
+    }
+    internal void SetProgress(InstallProgress progress){view.SetProgress(progress.Completed,progress.Total,progress.Caption,progress.Detail);}
+    internal void Finish(){finished=true;Close();}
+  }
   static class Program {
     internal const string Package = "@petercjl/ecom-windows-x64";
     internal static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = 2000000 };
@@ -65,6 +87,9 @@ namespace EcomUpdate {
     static string AppDir, Profile, NativeDir, QuitEvent;
     static int BrowserPid;
     static Dictionary<string,object> Installed;
+    // Apply runs on a worker thread; the observer marshals presentation to the
+    // independent installer window. Tests can observe the same production steps.
+    internal static Action<InstallProgress> InstallObserver;
 
     [STAThread] static int Main(string[] args) {
       try {
@@ -82,7 +107,7 @@ namespace EcomUpdate {
           try {Require(!File.Exists(Get("report")),"Verification report already exists");VerifyIntegrity(Get("verify-payload"),Get("integrity"));Extract(Get("verify-payload"),work);FetchParts(work,Get("parts-dir"),null);var manifest=ValidatePayload(work,new Dictionary<string,object>{{"version",Get("version")}});AtomicJson(Get("report"),manifest);}
           finally {Directory.Delete(work,true);}return 0;
         }
-        if(Args.ContainsKey("apply")) { Apply(ReadObject(Args["apply"])); return 0; }
+        if(Args.ContainsKey("apply")) { RunApplyWithProgress(Args["apply"]); return 0; }
         if(Args.ContainsKey("recover")) {
           string app=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom","Application");
           if(Application.ExecutablePath.StartsWith(app+"\\",StringComparison.OrdinalIgnoreCase)) {
@@ -366,8 +391,38 @@ namespace EcomUpdate {
         if(job==null)job=new Dictionary<string,object>();BindBrowserJob(job,restore);
         string workerDirectory=Path.Combine(State,"workers",Guid.NewGuid().ToString("N"));PrivateDirectory(workerDirectory);
         string worker=Path.Combine(workerDirectory,"EcomUpdateWorker.exe");File.Copy(Application.ExecutablePath,worker,false);
-        string file=Path.Combine(workerDirectory,"job.json");AtomicJson(file,job);Process.Start(UpdateProcess(worker,"--apply "+Quote(file)));CloseUpdater();
+        string file=Path.Combine(workerDirectory,"job.json");AtomicJson(file,job);
+        SetView(transfer);transfer.SetProgress(0,0,"正在启动安装程序","安装进度将在独立窗口中显示，完成后自动打开 Ecom。");
+        Process.Start(UpdateProcess(worker,"--apply "+Quote(file)));CloseUpdater();
       }
+    }
+    static void RunApplyWithProgress(string jobFile) {
+      Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
+      Exception failure=null;
+      using(var window=new InstallProgressForm()) {
+        window.Shown+=async(sender,e)=>{
+          IProgress<InstallProgress> progress=new Progress<InstallProgress>(p=>window.SetProgress(p));
+          InstallObserver=p=>progress.Report(p);
+          var clock=Stopwatch.StartNew();var steps=new List<Dictionary<string,object>>();
+          Action<InstallProgress> display=InstallObserver;string previousStage=null;
+          InstallObserver=p=>{
+            if(p.Stage!=previousStage){previousStage=p.Stage;steps.Add(new Dictionary<string,object>{{"stage",p.Stage},{"elapsedMs",clock.ElapsedMilliseconds},{"utc",DateTime.UtcNow.ToString("o")},{"completed",p.Completed},{"total",p.Total}});}
+            display(p);
+          };
+          try{await Task.Run(()=>Apply(ReadObject(jobFile)));}
+          catch(Exception error){failure=error;}
+          finally {
+            InstallObserver=null;
+            try{AtomicJson(Path.Combine(Path.GetDirectoryName(jobFile),"timing.json"),new Dictionary<string,object>{{"ok",failure==null},{"elapsedMs",clock.ElapsedMilliseconds},{"steps",steps}});}catch{}
+            window.Finish();
+          }
+        };
+        Application.Run(window);
+      }
+      if(failure!=null)throw failure;
+    }
+    static void InstallationStep(string stage,string caption,string detail,long completed=0,long total=0) {
+      var observer=InstallObserver;if(observer!=null)observer(new InstallProgress(stage,caption,detail,completed,total));
     }
     static string Quote(string value) { Require(value.IndexOf('"')<0 && !value.EndsWith("\\"),"Invalid path argument");return "\""+value+"\""; }
     static string RelaunchArguments(string profile) { return "--user-data-dir="+Quote(profile)+" --restore-last-session"; }
@@ -447,6 +502,31 @@ namespace EcomUpdate {
         if((attr&FileAttributes.Directory)!=0)CopyTree(entry,target);else {File.Copy(entry,target,false);Require(Hash(entry)==Hash(target),"Backup verification failed");}
       }
     }
+    static void BackupApplication(string app,string destination) {
+      // Full npm installers carry all program files. The archive retained by
+      // Brave's legacy differential updater is not used for launch, uninstall
+      // or our verified file-copy rollback. Keep setup.exe and every other file.
+      string cache=Path.Combine(VersionDirectory(app),"Installer","chrome.7z");
+      Require(!Directory.Exists(destination),"Backup target exists");
+      var files=new List<string>();var directories=new List<string>();
+      Action<string> scan=null;
+      scan=directory=>{
+        directories.Add(directory);
+        foreach(string entry in Directory.GetFileSystemEntries(directory)) {
+          var attributes=File.GetAttributes(entry);Require((attributes&FileAttributes.ReparsePoint)==0,"Application reparse point rejected");
+          if((attributes&FileAttributes.Directory)!=0)scan(entry);
+          else if(!Same(entry,cache))files.Add(entry);
+        }
+      };
+      scan(app);long total=files.Sum(file=>new FileInfo(file).Length),done=0;
+      foreach(string directory in directories)Directory.CreateDirectory(destination+directory.Substring(app.Length));
+      InstallationStep("backup","正在备份当前版本","正在复制并校验回滚所需的程序文件…",0,total);
+      foreach(string file in files) {
+        string target=destination+file.Substring(app.Length);File.Copy(file,target,false);
+        Require(Hash(file)==Hash(target),"Backup verification failed");done+=new FileInfo(file).Length;
+        InstallationStep("backup","正在备份当前版本",string.Format("已校验 {0:0.0} MB / {1:0.0} MB",done/1000000d,total/1000000d),done,total);
+      }
+    }
     static string VersionDirectory(string app) { return Path.Combine(app,FileVersionInfo.GetVersionInfo(Path.Combine(app,"Ecom.exe")).FileVersion); }
     static void ValidateInstalled(string app,Dictionary<string,object> artifact) {
       string version=VersionDirectory(app);var identity=ReadObject(Path.Combine(version,"ecom-update.json"));ValidateIdentity(identity);
@@ -480,6 +560,7 @@ namespace EcomUpdate {
       }
     }
     static Process Restart(string app,string profile,string expectedVersion,Action<Process> started=null) {
+      InstallationStep("starting","正在启动 Ecom","正在恢复原有窗口和店铺容器…");
       DateTime startedAt=DateTime.UtcNow;
       var process=Process.Start(UpdateProcess(Path.Combine(app,"Ecom.exe"),RelaunchArguments(profile)));
       if(started!=null)started(process);
@@ -492,13 +573,14 @@ namespace EcomUpdate {
           var info=ReadObject(ready);
           healthy=N(info,"pid")==process.Id&&S(info,"version")==expectedVersion&&process.MainWindowHandle!=IntPtr.Zero;
         }
-        if(healthy){if(stableSince<0)stableSince=timer.Elapsed.TotalSeconds;if(timer.Elapsed.TotalSeconds-stableSince>=10)return process;}
+        if(healthy){if(stableSince<0){stableSince=timer.Elapsed.TotalSeconds;InstallationStep("confirming","Ecom 已启动","正在确认启动稳定，完成后会自动关闭此窗口。");}if(timer.Elapsed.TotalSeconds-stableSince>=10)return process;}
         else stableSince=-1;
         Thread.Sleep(250);
       }
       throw new IOException("Updated Ecom did not report startup readiness; recovery is retained");
     }
     static void Restore(Dictionary<string,object> recovery) {
+      InstallationStep("restoring","正在恢复上一版本","正在校验并恢复回滚副本，完成后自动打开 Ecom。");
       ReleaseInstallationDirectory();
       EnsureNoInstaller();
       string app=S(recovery,"app"),backup=S(recovery,"backup");
@@ -528,24 +610,30 @@ namespace EcomUpdate {
       Require(Same(app,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom","Application")),"Unsupported installation target");
       using(var guard=new FileStream(Path.Combine(State,"apply.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None)) {
         bool rollback=Convert.ToBoolean(job["rollback"]);Dictionary<string,object> artifact=null;
+        InstallationStep("verifying","正在校验更新文件","正在确认更新完整性和目标版本…");
         if(!rollback) {string work=S(job,"work");Require(work.StartsWith(Path.Combine(State,"staging")+"\\",StringComparison.OrdinalIgnoreCase),"Invalid staging directory");artifact=ValidateStagedPayload(work,(Dictionary<string,object>)job["metadata"],S(job,"integrity"));Require(ParseVersion(S(artifact,"version"))>ParseVersion(S(ReadObject(Path.Combine(VersionDirectory(app),"ecom-update.json")),"version")),"Update is no longer newer");}
         EnsureNoInstaller();
+        InstallationStep("closing","正在退出 Ecom","正在保存会话并正常退出，请完成浏览器中的待处理对话框。");
         CloseBrowser((int)N(job,"pid"),app,S(job,"quitEvent"));
         if(rollback) {var recovery=ReadObject(Path.Combine(State,"rollback.json"));Restore(recovery);Restart(app,profile,S(recovery,"version"));recovery["status"]="recovered";AtomicJson(Path.Combine(State,"pending.json"),recovery);TryCleanup(S(recovery,"version"),true);return;}
-        string backup=Path.Combine(State,"backups",Guid.NewGuid().ToString("N"));PrivateDirectory(Path.GetDirectoryName(backup));CopyTree(app,backup);
+        string backup=Path.Combine(State,"backups",Guid.NewGuid().ToString("N"));PrivateDirectory(Path.GetDirectoryName(backup));BackupApplication(app,backup);
         var previous=ReadObject(Path.Combine(VersionDirectory(app),"ecom-update.json"));
         var record=new Dictionary<string,object>{{"app",app},{"backup",backup},{"version",S(previous,"version")},{"profile",profile},{"exeSha256",Hash(Path.Combine(app,"Ecom.exe"))},{"frameworkSha256",Hash(Path.Combine(VersionDirectory(app),"chrome.dll"))},{"metadataSha256",Hash(Path.Combine(VersionDirectory(app),"ecom-update.json"))},{"updaterSha256",Hash(Path.Combine(VersionDirectory(app),"EcomUpdater.exe"))},{"status","installing"}};
         record["registration"]=CaptureRegistration();
         AtomicJson(Path.Combine(State,"pending.json"),record);
         Process launched=null;
         try {
+          InstallationStep("installing","正在安装 Ecom","正在解压并替换程序文件。此步骤可能需要约一分钟，请稍候…");
           using(var installer=Process.Start(UpdateProcess(Path.Combine(S(job,"work"),"EcomSetup.exe"),"--do-not-launch-chrome"))) {
             Require(installer.WaitForExit(600000),"Installer still running; recovery deferred until it exits");Require(installer.ExitCode==0,"Installer failed: "+installer.ExitCode);
           }
+          InstallationStep("validating","正在校验安装结果","正在核对程序完整性，随后自动启动 Ecom。");
           ValidateInstalled(app,artifact);EnsureNoBrowser(app);Restart(app,profile,S(artifact,"version"),p=>launched=p);
           AtomicJson(Path.Combine(State,"rollback.json"),record);record["status"]="complete";AtomicJson(Path.Combine(State,"pending.json"),record);
           AtomicJson(Path.Combine(State,"last-result.json"),new Dictionary<string,object>{{"status","updated"},{"version",S(artifact,"version")},{"sourceRevision",S(artifact,"sourceRevision")},{"pid",launched.Id},{"backup",backup}});
+          InstallationStep("cleanup","正在清理更新文件","更新已成功，正在自动清理下载和安装临时文件。");
           TryCleanup(S(artifact,"version"),true);
+          InstallationStep("complete","更新已完成","Ecom 已打开，窗口和店铺容器正在恢复。",1,1);
         } catch(Exception updateError) {
           AtomicJson(Path.Combine(State,"last-apply-error.json"),new Dictionary<string,object>{{"error",updateError.Message},{"details",updateError.ToString()},{"time",DateTime.UtcNow.ToString("o")}});
           try {
