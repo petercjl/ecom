@@ -2,6 +2,8 @@
 
 Native source: 156676c25ea4b425c250592ad93041d825b0802c.
 
+Current checkpoint: the real npm GUI update to 0.1.3 is verified. GUI rollback and deferral/reopen acceptance remain pending. Stable rollout will use the installer-liveness correction in 0.1.4.
+
 ## Identity and changes
 
 Built on peter-new from committed source using the established Windows x64 toolchain. Installer size is 250653184 bytes, SHA-256 5d231ba11bf544a895dc0cc0be6be29fbf6f44210193ed695eda60f8c377d4e6. The receipt pins the primary npm package, six immutable parts, whole installer and temporary transfer archive. This is a Windows updater and native-menu correction; Mac application inputs are unchanged.
@@ -27,3 +29,7 @@ Publish only next through the committed OIDC workflow and verify exact public ve
 [Actions run 42148484243](https://github.com/petercjl/ecom/actions/runs/42148484243) completed through OIDC. next resolves to 0.1.3 and latest remains 0.0.0-bootstrap.1. All seven public versions match the pinned integrity values; actual .NET GET requests on peter-new returned 200 with readable bodies for the primary and six parts. Registry processing of part 0 delayed visibility; the immutable version and checksums were retained until it became readable. Temporary Actions artifact count is zero, and the temporary Windows file server and HTTP/2 HTTPS relay were stopped.
 
 The repaired test baseline remains installed after local rollback. Its saved next channel was restored after public file verification. Operator menu/progress/background/deferral tests and real npm activation/rollback remain pending; latest gates are unchanged.
+
+## Operator restart verification
+
+The operator reported a normal update and completed restart. Inspection confirmed product version 0.1.3, native source 156676c25ea4b425c250592ad93041d825b0802c and selected runtime channel next. EXE, framework and updater SHA-256 values match the published receipt. last-result reports updated and pending reports complete; the browser runs ordinary GUI arguments with the original User Data directory and session restoration. Automatic cleanup left staging=0, replaced=0 and backups=1. One copied worker remained after exit, to be reclaimed on the next updater launch. The operator restarted directly, so Later/reopen was not established by this run. GUI rollback has been requested and remains pending.
