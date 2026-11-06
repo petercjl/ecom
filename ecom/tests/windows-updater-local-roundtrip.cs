@@ -73,8 +73,9 @@ namespace EcomUpdate {
       }
       return 0;
     }
-    public static int Main(string[] args) {
+    [STAThread] public static int Main(string[] args) {
       try {
+        System.Windows.Forms.Application.EnableVisualStyles();System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
         if(args.Length==4&&args[0]=="--migrate-baseline")return MigrateBaseline(args[1],args[2],args[3]);
         Program.Require(args.Length==4&&!File.Exists(args[2]),"Supply payload, receipt, a new report path and the explicit baseline version");
         string root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom"),app=Path.Combine(root,"Application"),data=Path.Combine(root,"User Data");

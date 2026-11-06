@@ -71,7 +71,7 @@ namespace EcomUpdate {
     internal InstallProgressForm() {
       Text="Ecom 安装更新";Font=SystemFonts.MessageBoxFont;BackColor=SystemColors.Window;
       ClientSize=new Size(490,220);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;
-      elapsed.SetBounds(20,180,450,24);Controls.Add(view);Controls.Add(elapsed);elapsed.BringToFront();
+      elapsed.SetBounds(20,180,450,24);elapsed.Text="已用时间 00:00";Controls.Add(view);Controls.Add(elapsed);elapsed.BringToFront();
       SetProgress(new InstallProgress("preparing","正在准备安装","完成后将自动打开 Ecom。安装期间请保持电脑开机。"));
       timer.Tick+=(sender,e)=>{elapsed.Text="已用时间 "+clock.Elapsed.ToString(@"mm\:ss");};timer.Start();
       FormClosing+=(sender,e)=>{if(!finished)e.Cancel=true;};FormClosed+=(sender,e)=>timer.Dispose();
@@ -107,7 +107,7 @@ namespace EcomUpdate {
           try {Require(!File.Exists(Get("report")),"Verification report already exists");VerifyIntegrity(Get("verify-payload"),Get("integrity"));Extract(Get("verify-payload"),work);FetchParts(work,Get("parts-dir"),null);var manifest=ValidatePayload(work,new Dictionary<string,object>{{"version",Get("version")}});AtomicJson(Get("report"),manifest);}
           finally {Directory.Delete(work,true);}return 0;
         }
-        if(Args.ContainsKey("apply")) { RunApplyWithProgress(Args["apply"]); return 0; }
+        if(Args.ContainsKey("apply")) { Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);RunApplyWithProgress(Args["apply"]); return 0; }
         if(Args.ContainsKey("recover")) {
           string app=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom","Application");
           if(Application.ExecutablePath.StartsWith(app+"\\",StringComparison.OrdinalIgnoreCase)) {
@@ -397,7 +397,6 @@ namespace EcomUpdate {
       }
     }
     static void RunApplyWithProgress(string jobFile) {
-      Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
       Exception failure=null;
       using(var window=new InstallProgressForm()) {
         window.Shown+=async(sender,e)=>{
