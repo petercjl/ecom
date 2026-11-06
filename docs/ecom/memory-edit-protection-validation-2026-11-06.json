@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "6ce8c8695db7d66c69f5c640699eddfa3f05810a",
+  "platform": "macOS arm64 Dev",
+  "rootCause": "CouldDisplayBeforeUnloadDialog checks listener registration and sticky activation, not unsaved edits",
+  "editSignalsLocation": "tabs[].manualDiscard.editSignals",
+  "beforeUnloadAloneBlocks": false,
+  "xhsBeforeSignals": {
+    "available": true,
+    "beforeUnloadBlocks": false,
+    "beforeUnloadDialogPossible": true,
+    "hadFormInteraction": false,
+    "hadUserEdits": false
+  },
+  "listenerOnlyBeforeSignals": {
+    "available": true,
+    "beforeUnloadBlocks": false,
+    "beforeUnloadDialogPossible": true,
+    "hadFormInteraction": false,
+    "hadUserEdits": false
+  },
+  "formBeforeSignals": {
+    "available": true,
+    "beforeUnloadBlocks": false,
+    "beforeUnloadDialogPossible": true,
+    "hadFormInteraction": true,
+    "hadUserEdits": true
+  },
+  "richTextBeforeSignals": {
+    "available": true,
+    "beforeUnloadBlocks": false,
+    "beforeUnloadDialogPossible": false,
+    "hadFormInteraction": false,
+    "hadUserEdits": true
+  },
+  "observationCount": 12,
+  "observationSpanSeconds": 111.7740810546875,
+  "automaticallyDiscardedTabIds": [
+    7,
+    8
+  ],
+  "protectedThroughoutTabIds": [
+    9,
+    10,
+    11
+  ],
+  "nativeTaskGuardSamples": 12,
+  "nativeTaskDiscardRefused": true,
+  "nativeReadSucceeded": true,
+  "guiPreservedFormTextVerified": true,
+  "guiPreservedRichTextVerified": true,
+  "foregroundPreserved": true,
+  "testPassCount": 59,
+  "testFailCount": 0,
+  "finalAutomaticEnabled": true,
+  "finalIdleSeconds": 1200,
+  "finalTabCount": 7,
+  "finalTemporaryExceptionsRemaining": 0,
+  "npmPublished": false,
+  "limitations": [
+    "Native edit-history flags are conservative; a website saved-state guarantee is not inferred",
+    "Custom app state outside native editing/task detection needs explicit keep-running protection",
+    "Native runtime verified on macOS arm64 only"
+  ]
+}

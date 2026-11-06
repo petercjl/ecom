@@ -82,3 +82,5 @@ ecom-cli tabs protect --tab ID --container ID --expected-page-version VERSION --
 自动休眠的真实保护、恢复及内存结果见 [自动闲置休眠验收](memory-auto-validation-2026-11-06.md)。
 
 `manualDiscard.editSignals` 返回原生 `hadFormInteraction`、`hadUserEdits` 与 `beforeUnloadDialogPossible`，另有检测可用状态；不可用的编辑标志为 null。离开监听加用户激活仅表示“可能显示确认”，单独不阻止休眠。实际保护继续由原生 PROACTIVE 表单／富文本编辑、任务、媒体等信号决定；不试运行网站离开处理器。内核编辑记录偏保守，并非网站“已保存”的业务证明；无法识别的自定义编辑器或任务应显式保持运行。
+
+编辑信号与离开监听的实测边界见 [编辑与取数保护验收](memory-edit-protection-validation-2026-11-06.md)。
