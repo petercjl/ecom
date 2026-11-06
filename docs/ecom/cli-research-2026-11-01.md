@@ -6,7 +6,7 @@
 
 ## 当前交付与缺口
 
-内存 P2 增量：`memory restore status|set` 与 GUI 共用重启按需恢复和后台恢复并发设置；`tabs wake` 支持待恢复页及有界队列，`memory operation` 回读恢复阶段。每窗口选中页直接加载，后台标签保留原容器与会话。启动、切换和后台取数的 macOS Dev 实测单独记录；通用会话导入导出、应用生命周期 CLI 及 Windows 运行验收仍待接入。
+内存 P2 增量：`memory restore status|set` 与 GUI 共用重启按需恢复和后台恢复并发设置；`tabs wake` 支持待恢复页及有界队列，`memory operation` 回读恢复阶段。每窗口选中页直接加载，后台标签保留原容器与会话。启动、切换和后台取数的 macOS Dev 实测见 [P2 验收](memory-p2-validation-2026-11-06.md)；通用会话导入导出、应用生命周期 CLI 及 Windows 运行验收仍待接入。
 
 自动休眠增量：`memory auto status|set` 与 `tabs protect` 接入共享原生闲置调度、持久设置及运行期单页保持运行保护；GUI 同步提供开关、阈值与保护原因。取数、编辑、音视频等保护在执行前复核，按最多一页／30 秒调度。运行验收独立记录，Windows 仍待验证。
 

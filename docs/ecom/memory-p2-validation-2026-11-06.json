@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "platform": "macOS arm64",
+  "metric": "macos-physical-footprint",
+  "units": "MiB",
+  "samplingIntervalSeconds": 0.5,
+  "baselineRevision": "cee0a38e4f317226f7467f77a55d6f590f2017aa",
+  "firstP2Revision": "7fa0a180355d47ae17065667ce595aab624c4d3f",
+  "finalBuildRevision": "5e534887948e29b2d7eb409cd76e1d1aa497b8a6",
+  "runs": {
+    "baseline-startup": {
+      "sampleCount": 239,
+      "allSamplesComplete": true,
+      "durationSeconds": 120.01733375000185,
+      "sampledPeakMiB": 2177.4796752929688,
+      "peakAtSeconds": 14.633237958012614,
+      "endMiB": 1869.5736770629883,
+      "median60sToEndMiB": 1869.5736770629883,
+      "endProcessCount": 15
+    },
+    "p2-startup": {
+      "sampleCount": 239,
+      "allSamplesComplete": true,
+      "durationSeconds": 120.13653579200036,
+      "sampledPeakMiB": 599.8384475708008,
+      "peakAtSeconds": 3.5340364589937963,
+      "endMiB": 326.07298278808594,
+      "median60sToEndMiB": 325.77610778808594,
+      "endProcessCount": 7,
+      "peakReductionPercent": 72.45262702669794,
+      "endReductionPercent": 82.55896588679344
+    },
+    "p2-final-startup": {
+      "sampleCount": 240,
+      "allSamplesComplete": true,
+      "durationSeconds": 120.43288875001599,
+      "sampledPeakMiB": 649.6822662353516,
+      "peakAtSeconds": 4.538111709000077,
+      "endMiB": 338.0730514526367,
+      "median60sToEndMiB": 336.0574264526367,
+      "endProcessCount": 7,
+      "peakReductionPercent": 70.16356691605215,
+      "endReductionPercent": 81.91710465330613
+    },
+    "p2-eager-startup": {
+      "sampleCount": 180,
+      "allSamplesComplete": true,
+      "durationSeconds": 90.21894095800235,
+      "sampledPeakMiB": 2203.526321411133,
+      "peakAtSeconds": 31.75679833299364,
+      "endMiB": 2089.042266845703,
+      "median60sToEndMiB": 1900.2844314575195,
+      "endProcessCount": 15
+    }
+  },
+  "queue": {
+    "limit": 1,
+    "requestCount": 4,
+    "initialQueuedCount": 3,
+    "observedPeakActive": 1,
+    "allFinished": true,
+    "foregroundStartedBeforeBackgroundFinished": true,
+    "eagerStartup": {
+      "limit": 2,
+      "observedPeakActive": 2,
+      "requestCount": 5,
+      "allFinished": true
+    }
+  },
+  "reads": {
+    "p2": {
+      "tabCount": 7,
+      "deferredCountAfterReads": 5,
+      "tabIdentityAndSelectionUnchanged": true,
+      "nativeReadHttpStatus": 200,
+      "nativeBusinessStatus": "success",
+      "accountAuthenticated": true,
+      "accountIdentityConfirmed": true,
+      "xhsCount": 18,
+      "xhsTemporaryPageClosed": true
+    },
+    "p2-final": {
+      "tabCount": 7,
+      "deferredCountAfterReads": 5,
+      "tabIdentityAndSelectionUnchanged": true,
+      "nativeReadHttpStatus": 200,
+      "nativeBusinessStatus": "success",
+      "accountAuthenticated": true,
+      "accountIdentityConfirmed": true,
+      "xhsCount": 18,
+      "xhsTemporaryPageClosed": true
+    }
+  },
+  "targetGuards": {
+    "stalePage": "PAGE_CHANGED",
+    "wrongContainer": "TARGET_MISMATCH",
+    "bothExecuted": false
+  },
+  "rawEvidenceDirectory": ".brave-build/memory-p2-r2dctr0i",
+  "cliTestsPassed": 49,
+  "nativeEntryAndManagerTestsPassed": 13
+}
