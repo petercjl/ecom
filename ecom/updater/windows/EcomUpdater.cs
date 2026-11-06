@@ -71,7 +71,7 @@ namespace EcomUpdate {
     internal InstallProgressForm() {
       Text="Ecom 安装更新";Font=SystemFonts.MessageBoxFont;BackColor=SystemColors.Window;
       ClientSize=new Size(490,220);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;
-      elapsed.SetBounds(20,180,450,24);elapsed.Text="已用时间 00:00";Controls.Add(view);Controls.Add(elapsed);elapsed.BringToFront();
+      elapsed.Name="elapsed";elapsed.SetBounds(20,180,450,24);elapsed.Text="已用时间 00:00";view.Controls.Add(elapsed);Controls.Add(view);
       SetProgress(new InstallProgress("preparing","正在准备安装","完成后将自动打开 Ecom。安装期间请保持电脑开机。"));
       timer.Tick+=(sender,e)=>{elapsed.Text="已用时间 "+clock.Elapsed.ToString(@"mm\:ss");};timer.Start();
       FormClosing+=(sender,e)=>{if(!finished)e.Cancel=true;};FormClosed+=(sender,e)=>timer.Dispose();

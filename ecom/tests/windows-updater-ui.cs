@@ -35,6 +35,7 @@ namespace EcomUpdate {
         }
         using(var form=new InstallProgressForm()) {
           var view=form.Controls.OfType<DownloadProgressView>().Single();
+          Program.Require(view.Controls["elapsed"].Text.Contains("00:00"),"Elapsed time must be visible immediately");
           form.SetProgress(new InstallProgress("backup","正在备份当前版本","正在复制并校验回滚所需的程序文件…",350,700));
           Program.Require(view.Controls["percentage"].Text=="50%","Verified backup progress is missing");
           form.SetProgress(new InstallProgress("installing","正在安装 Ecom","正在解压并替换程序文件。完成后将自动打开 Ecom。"));
