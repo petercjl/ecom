@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "19f0d5ff361cb8b29b8e679e855b0648dfd66e97",
+  "platform": "macOS arm64 Dev",
+  "metric": "macos-physical-footprint",
+  "sameBrowserInstanceAcrossStages": true,
+  "browserRestartBetweenStages": false,
+  "sampleIntervalSeconds": 15,
+  "targetTabIds": [
+    6,
+    7
+  ],
+  "targetOrigins": [
+    "https://www.xiaohongshu.com/"
+  ],
+  "stages": [
+    {
+      "stage": "before-sleep",
+      "sampleCount": 5,
+      "firstSampleUnixMs": 1793942739250.172,
+      "lastSampleUnixMs": 1793942799795.401,
+      "memoryBytes": [
+        1975889496,
+        1975561816,
+        1970728560,
+        1972661872,
+        1976118896
+      ],
+      "medianBytes": 1975561816,
+      "minBytes": 1970728560,
+      "maxBytes": 1976118896,
+      "processCounts": [
+        15,
+        15,
+        15,
+        15,
+        15
+      ],
+      "tabCount": 7,
+      "selectedTabIds": [
+        1,
+        2
+      ]
+    },
+    {
+      "stage": "after-sleep",
+      "sampleCount": 5,
+      "firstSampleUnixMs": 1793942864607.977,
+      "lastSampleUnixMs": 1793942925175.02,
+      "memoryBytes": [
+        1722293048,
+        1473469216,
+        1473878792,
+        1473518344,
+        1473600264
+      ],
+      "medianBytes": 1473600264,
+      "minBytes": 1473469216,
+      "maxBytes": 1722293048,
+      "processCounts": [
+        13,
+        13,
+        13,
+        13,
+        13
+      ],
+      "tabCount": 7,
+      "selectedTabIds": [
+        1,
+        2
+      ]
+    },
+    {
+      "stage": "after-wake",
+      "sampleCount": 5,
+      "firstSampleUnixMs": 1793943042443.96,
+      "lastSampleUnixMs": 1793943103020.814,
+      "memoryBytes": [
+        1985621208,
+        1725639968,
+        1676029288,
+        1700588904,
+        1675177320
+      ],
+      "medianBytes": 1700588904,
+      "minBytes": 1675177320,
+      "maxBytes": 1985621208,
+      "processCounts": [
+        15,
+        15,
+        15,
+        15,
+        15
+      ],
+      "tabCount": 7,
+      "selectedTabIds": [
+        1,
+        2
+      ]
+    }
+  ],
+  "savedBytes": 501961552,
+  "savedPercent": 25.408546973050022,
+  "finalTargetState": "discarded",
+  "limitations": [
+    "Online dynamic pages; observational sequential experiment, not randomized benchmark",
+    "Reload, garbage collection and cache change footprint after wake",
+    "Title, origin, stable tab handle and container checked; platform login identity not reverified",
+    "Only macOS arm64 runtime verified"
+  ]
+}

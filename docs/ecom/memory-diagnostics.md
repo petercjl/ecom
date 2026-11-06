@@ -42,7 +42,7 @@ macOS 的 `memoryBytes` 包含压缩内存等记账，不等于当前驻留 RAM�
 
 ## 状态与边界
 
-状态区分 running、frozen、discarded、unloaded 和 unavailable。页面版本由主框架 token 与导航 ID 组成；标签 ID 仅在当前会话内有效，跨重启不能假定不变。
+状态区分 running、frozen、discarded、unloaded 和 unavailable。页面版本由主框架 token 与导航 ID 组成；`tabIdKind=native-tab-handle`，标签 ID 使用 TabInterface 句柄，在卸载替换 WebContents 时保持稳定；仅在当前实例内有效，跨重启不能假定不变。窗口 ID 使用独立的窗口会话标识。
 
 `canFreeze` 为 yes／no／varies／unavailable，原因分别列出本页与关联页限制。`canDiscard` 使用内核主动卸载资格检查并返回独立原因。GUI 提供中文／英文说明，包括可见、最近使用、媒体、通知、表单编辑、设备、锁、WebRTC、固定标签和策略例外。
 
@@ -58,4 +58,4 @@ macOS 的 `memoryBytes` 包含压缩内存等记账，不等于当前驻留 RAM�
 
 系统压力等级当前为 unavailable，不以已有 swap 数量伪造压力事件。Windows GUI 采样已有条件编译实现，但本轮只验证 macOS arm64；Windows CLI 传输仍待接入。
 
-验收见 [P0 验收与前后对照](memory-p0-validation-2026-11-06.md)。后续记录活跃标签、加载状态、日期范围、容器、运行时间和系统条件。相同 URL 不保证动态网页完全相同，重启比较不能单独证明策略收益。
+验收见 [P0 验收与前后对照](memory-p0-validation-2026-11-06.md) 和 [P1 手动休眠实测](memory-p1-validation-2026-11-06.md)。后续记录活跃标签、加载状态、日期范围、容器、运行时间和系统条件。相同 URL 不保证动态网页完全相同，重启比较不能单独证明策略收益。
