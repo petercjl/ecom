@@ -10,8 +10,9 @@ using System.Text;
 using System.Threading;
 namespace EcomUpdate {
   static class LocalRoundtripMain {
+    static Type backend=typeof(Program);
     static object Call(string name,params object[] args) {
-      try{return typeof(Program).GetMethod(name,BindingFlags.Static|BindingFlags.NonPublic).Invoke(null,args);}
+      try{return backend.GetMethod(name,BindingFlags.Static|BindingFlags.NonPublic).Invoke(null,args);}
       catch(TargetInvocationException e){throw e.InnerException;}
     }
     static Dictionary<string,object> Live(string app,string version) {
@@ -73,10 +74,33 @@ namespace EcomUpdate {
       }
       return 0;
     }
+    static int VerifyPublishedRollback(string receiptFile,string reportFile,string expectedPreviousVersion) {
+      Program.Require(!File.Exists(reportFile),"Rollback report exists");
+      string root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom"),app=Path.Combine(root,"Application"),data=Path.Combine(root,"User Data");
+      var receipt=Program.ReadObject(receiptFile);Call("ValidateInstalled",app,receipt);
+      var recovery=Program.ReadObject(Path.Combine(Program.State,"rollback.json"));Program.Require(Program.S(recovery,"version")==expectedPreviousVersion,"Unexpected rollback version");
+      var live=Live(app,Program.S(receipt,"version"));var before=Snapshot(data);
+      // Load the actual receipt-matched product helper outside Application so
+      // the maintenance process cannot lock files that recovery must replace.
+      string helper=Path.Combine(Path.GetDirectoryName(reportFile),"ProductionUpdater.exe");Program.Require(!File.Exists(helper),"Test helper exists");
+      File.Copy(Path.Combine((string)Call("VersionDirectory",app),"EcomUpdater.exe"),helper,false);
+      Program.Require(Program.Hash(helper)==Program.S(receipt,"updaterSha256"),"Published helper hash differs");
+      backend=Assembly.LoadFile(helper).GetType("EcomUpdate.Program",true);
+      Call("ValidateInstalled",app,receipt);
+      var job=Program.CreateBoundJob(app,data,Convert.ToInt32(live["pid"]),Program.S(live,"quitEvent"),new Dictionary<string,object>(),true);
+      string jobFile=Path.Combine(Path.GetDirectoryName(reportFile),"job.json");Call("AtomicJson",jobFile,job);Call("RunApplyWithProgress",jobFile);
+      var restored=Live(app,expectedPreviousVersion);var process=Process.GetProcessById(Convert.ToInt32(restored["pid"]));process.Refresh();Program.Require(process.MainWindowHandle!=IntPtr.Zero,"Restored browser has no visible window");
+      var after=Snapshot(data);Program.Require(before.Count==after.Count&&before.All(p=>after.ContainsKey(p.Key)&&Program.Json.Serialize(p.Value)==Program.Json.Serialize(after[p.Key])),"Container identities changed during public rollback");
+      Program.Require(Program.S(Program.ReadObject(Path.Combine(Program.State,"pending.json")),"status")=="recovered"&&Program.S(Program.ReadObject(Path.Combine(Program.State,"last-result.json")),"status")=="rolled-back","Recovery did not complete");
+      foreach(string area in new[]{"staging","replaced","workers"})Program.Require(!Directory.Exists(Path.Combine(Program.State,area))||Directory.GetDirectories(Path.Combine(Program.State,area)).Length==0,"Automatic cleanup did not empty "+area);
+      var report=new Dictionary<string,object>{{"ok",true},{"fromVersion",receipt["version"]},{"restoredVersion",expectedPreviousVersion},{"publishedHelperHash",receipt["updaterSha256"]},{"publishedAssemblyExecuted",true},{"containerIdentitiesPreserved",true},{"visibleWindow",true},{"automaticCleanupVerified",true},{"profileCount",before.Count},{"pid",restored["pid"]},{"timing",Program.ReadObject(Path.Combine(Path.GetDirectoryName(reportFile),"timing.json"))}};
+      using(var stream=new FileStream(reportFile,FileMode.CreateNew)){byte[] bytes=Encoding.UTF8.GetBytes(Program.Json.Serialize(report));stream.Write(bytes,0,bytes.Length);}return 0;
+    }
     [STAThread] public static int Main(string[] args) {
       try {
         System.Windows.Forms.Application.EnableVisualStyles();System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
         if(args.Length==4&&args[0]=="--migrate-baseline")return MigrateBaseline(args[1],args[2],args[3]);
+        if(args.Length==4&&args[0]=="--rollback-published")return VerifyPublishedRollback(args[1],args[2],args[3]);
         Program.Require((args.Length==4||(args.Length==5&&args[4]=="--keep-candidate"))&&!File.Exists(args[2]),"Supply payload, receipt, a new report path, explicit baseline version and optional --keep-candidate");
         string root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom"),app=Path.Combine(root,"Application"),data=Path.Combine(root,"User Data");
         var receipt=Program.ReadObject(args[1]);string version=Program.S(receipt,"version");string baselineVersion=args[3];Program.Require((baselineVersion=="0.0.0"||baselineVersion=="0.1.0"||baselineVersion=="0.1.4")&&new Version(version)>new Version(baselineVersion),"Unsupported explicit baseline or candidate");
