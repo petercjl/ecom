@@ -21,3 +21,9 @@ Matching chrome.dll/PDB pairs are preserved separately in each run's symbols dir
 The previous operator download of 0.1.2 reached a verified prepared record, but its menu path triggered a UI-thread blocking check and its progress window hid immediately. Those observations are the regression cases for this candidate. Actual operator menu reopening, visible progress, background/foreground transitions, Later/reopen reuse, npm activation and GUI rollback are pending. updateRoundTripVerified=false and rollbackRoundTripVerified=false; latest remains blocked.
 
 Publish only next through the committed OIDC workflow and verify exact public versions, integrity and readable files. Delete temporary Actions payloads and stop the temporary file server/HTTPS relay after publication. Installers remain on peter-new and authorized NAS, without GitHub Release installer attachments.
+
+## Public next verification
+
+[Actions run 42148484243](https://github.com/petercjl/ecom/actions/runs/42148484243) completed through OIDC. next resolves to 0.1.3 and latest remains 0.0.0-bootstrap.1. All seven public versions match the pinned integrity values; actual .NET GET requests on peter-new returned 200 with readable bodies for the primary and six parts. Registry processing of part 0 delayed visibility; the immutable version and checksums were retained until it became readable. Temporary Actions artifact count is zero, and the temporary Windows file server and HTTP/2 HTTPS relay were stopped.
+
+The repaired test baseline remains installed after local rollback. Its saved next channel was restored after public file verification. Operator menu/progress/background/deferral tests and real npm activation/rollback remain pending; latest gates are unchanged.
