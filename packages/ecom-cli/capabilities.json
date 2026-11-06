@@ -828,6 +828,86 @@
         "INVALID_ARGUMENT",
         "PROTOCOL_MISMATCH"
       ]
+    },
+    "memory auto status": {
+      "options": {
+        "--instance": {
+          "type": "string"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "none",
+      "authorization": "Read automatic sleep settings and run-local scheduler activity"
+    },
+    "memory auto set": {
+      "options": {
+        "--instance": {
+          "type": "string"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--enabled": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off"
+          ],
+          "required": true
+        },
+        "--idle-seconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 86400,
+          "required": true
+        }
+      },
+      "sideEffects": "browser-settings",
+      "authorization": "Explicitly enable or disable persistent automatic sleep with an idle threshold; recheck native task, edit and media protections before each discard"
+    },
+    "tabs protect": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--tab": {
+          "type": "string",
+          "required": true
+        },
+        "--container": {
+          "type": "string",
+          "required": true,
+          "description": "Exact native container ID; @default selects the default session"
+        },
+        "--expected-page-version": {
+          "type": "string",
+          "required": true
+        },
+        "--keep-awake": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off"
+          ],
+          "required": true
+        }
+      },
+      "sideEffects": "browser-settings",
+      "authorization": "Set a run-scoped keep-running exception on the exact tab/container/page; does not wake an already discarded tab"
     }
   },
   "transport": {
@@ -1050,5 +1130,15 @@
       "default": "background and reuse",
       "strategy": "Native HTTP and private auth initialization first. Open the registered container entry only when needed and authorized; verify data again afterward."
     }
+  },
+  "automaticTabMemory": {
+    "protocol": 1,
+    "settings": "profile-persistent",
+    "minimumIdleSeconds": 60,
+    "defaultIdleSeconds": 1200,
+    "scanIntervalSeconds": 30,
+    "maxDiscardsPerScan": 1,
+    "keepAwakeScope": "tab-until-closed-or-browser-restart",
+    "requiresDebugging": false
   }
 }

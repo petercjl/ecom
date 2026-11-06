@@ -93,6 +93,8 @@ source_set("core") {
       "ecom/memory_snapshot.h",
       "ecom/memory_actions.cc",
       "ecom/memory_actions.h",
+      "ecom/memory_auto.cc",
+      "ecom/memory_auto.h",
       "ecom/shop_container_service.cc",
       "ecom/shop_container_service.h",
       "ecom/shop_identity_parser.cc",

@@ -1,6 +1,7 @@
 // Copyright 2026 Ecom Authors. MPL-2.0.
 #include "brave/browser/ecom/memory_snapshot.h"
 #include "brave/browser/ecom/memory_actions.h"
+#include "brave/browser/ecom/memory_auto.h"
 
 #include <map>
 #include <set>
@@ -220,6 +221,7 @@ void GetMemorySnapshot(Profile *profile,
                prefs->GetBoolean(tuning::kTabFreezingEnabled))
           .Set("discardPolicyAvailable", policy != nullptr)
           .Set("p0ReadOnly", true));
+  snapshot.Set("automatic", AutoMemoryStatus(profile));
   base::ListValue tabs, container_rows;
   container_rows.Append(
       base::DictValue().Set("containerId", "").Set("name", "Default"));
@@ -249,6 +251,7 @@ void GetMemorySnapshot(Profile *profile,
           tab.Set("containerId", containers::GetContainerIdForWebContents(wc));
           tab.Set("pageVersion", MemoryPageVersion(wc));
           tab.Set("manualDiscard", DescribeManualDiscard(wc));
+          tab.Set("automatic", DescribeAutoMemoryTab(wc));
           tab.Set("selected", strip->active_index() == i);
           tab.Set("measurementStatus", "unavailable");
           tab.Set("estimatedMemoryBytes", base::Value());

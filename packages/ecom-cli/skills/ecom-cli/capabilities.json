@@ -47,12 +47,15 @@
         "snapshotId",
         "status",
         "pageVersion",
-        "navigationPreserved"
+        "navigationPreserved",
+        "automatic",
+        "keepAwake",
+        "scope"
       ],
       "side_effects": {
         "external_mutation": true,
         "may_cost_money": false,
-        "authorization": "Container metadata reads and explicitly authorized read-only HTTPS operations; website Set-Cookie may refresh the native session. Qianniu login submission requires explicit login intent for the selected container. Selected-target maintenance requires installation/update intent. Xiaohongshu page-mode search opens a temporary background tab in the selected container and reads visible search results. Explicit tab sleep/wake may release runtime state or reload in the original container; require exact tab, container and page-version preconditions."
+        "authorization": "Container metadata reads and explicitly authorized read-only HTTPS operations; website Set-Cookie may refresh the native session. Qianniu login submission requires explicit login intent for the selected container. Selected-target maintenance requires installation/update intent. Xiaohongshu page-mode search opens a temporary background tab in the selected container and reads visible search results. Explicit tab sleep/wake may release runtime state or reload in the original container; require exact tab, container and page-version preconditions. Explicit automatic-sleep configuration persists on the selected browser profile. A precisely targeted keep-running exception protects both automatic and manual sleep until tab close or browser restart."
       },
       "errors": [
         "CAPABILITY_UNAVAILABLE",

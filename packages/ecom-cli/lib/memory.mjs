@@ -71,3 +71,43 @@ export async function memoryOperation(options) {
     throw fail('PROTOCOL_MISMATCH','Operation lookup does not match requested ID',{executed:'unknown'});
   return {...body,instance:{id:connection.endpoint.instanceId,pid:connection.endpoint.pid,channel:connection.channel}};
 }
+
+// Automatic settings are profile-persistent. Per-tab exceptions are run-scoped.
+export function validateAutoOptions(options) {
+  const idle=Number(options['idle-seconds']);
+  if(!['on','off'].includes(options.enabled)||!/^\d+$/.test(options['idle-seconds']??'')||!Number.isSafeInteger(idle)||idle<60||idle>86400)
+    throw fail('INVALID_ARGUMENT','Specify --enabled on|off and --idle-seconds 60..86400');
+  return {enabled:options.enabled==='on',idleSeconds:idle};
+}
+export function validateAutomatic(body) {
+  const a=body.automatic;
+  if(!a||a.protocolVersion!==1||typeof a.enabled!=='boolean'||!Number.isInteger(a.idleSeconds)||a.idleSeconds<60||a.idleSeconds>86400||
+      a.scanIntervalSeconds!==30||a.maxDiscardsPerScan!==1||typeof a.managed!=='boolean'||typeof a.pausedReason!=='string'||typeof a.running!=='boolean'||
+      !Number.isInteger(a.scanCount)||!Number.isInteger(a.discardCount)||!Array.isArray(a.recentActions))
+    throw fail('PROTOCOL_MISMATCH','Invalid automatic memory settings',{executed:'unknown'});
+  return body;
+}
+export async function autoMemory(action,options) {
+  const payload=action==='set'?validateAutoOptions(options):{};
+  return autoMemoryInConnection(discover(options),action,payload);
+}
+export async function autoMemoryInConnection(connection,action,payload={}) {
+  if(!['status','set'].includes(action))throw fail('INVALID_ARGUMENT','Unknown automatic memory action');
+  if(connection.endpoint.autoTabMemoryProtocol!==1)throw fail('BROWSER_UPGRADE_REQUIRED','Automatic memory management requires a compatible browser');
+  const body=validateAutomatic(await callMailbox(connection,{method:'memory.auto.'+action,...payload}));
+  if(action==='set'&&(body.automatic.enabled!==payload.enabled||body.automatic.idleSeconds!==payload.idleSeconds))
+    throw fail('PROTOCOL_MISMATCH','Automatic settings readback differs from requested values',{operationId:body.operationId,executed:'unknown'});
+  return {...body,instance:{id:connection.endpoint.instanceId,pid:connection.endpoint.pid,channel:connection.channel}};
+}
+export async function protectTab(options) {
+  const target=validateTabTarget(options);
+  if(!['on','off'].includes(options['keep-awake']))throw fail('INVALID_ARGUMENT','Specify --keep-awake on|off');
+  const connection=discover(options);
+  if(connection.endpoint.autoTabMemoryProtocol!==1)throw fail('BROWSER_UPGRADE_REQUIRED','Tab keep-running protection requires a compatible browser');
+  const keepAwake=options['keep-awake']==='on';
+  const body=await callMailbox(connection,{method:'tabs.protect',...target,keepAwake});
+  if(body.tabId!==target.tabId||body.containerId!==target.containerId||body.expectedPageVersion!==target.expectedPageVersion||body.keepAwake!==keepAwake||
+      body.scope!=='tab-until-closed-or-browser-restart')
+    throw fail('PROTOCOL_MISMATCH','Protection response does not match requested target',{operationId:body.operationId,executed:'unknown'});
+  return {...body,instance:{id:connection.endpoint.instanceId,pid:connection.endpoint.pid,channel:connection.channel}};
+}

@@ -6,6 +6,8 @@
 
 ## 当前交付与缺口
 
+自动休眠增量：`memory auto status|set` 与 `tabs protect` 接入共享原生闲置调度、持久设置及运行期单页保持运行保护；GUI 同步提供开关、阈值与保护原因。取数、编辑、音视频等保护在执行前复核，按最多一页／30 秒调度。运行验收独立记录，Windows 仍待验证。
+
 2026-11-06 P1 MVP：新增显式 `tabs discard/wake` 与 `memory operation`，GUI 提供同一原生能力；固定实例、容器、标签和页面版本，复核保护并保留动作记录。属于单标签手动回收与恢复，自动调度和通用 Agent 任务租约仍是缺口；当前实现与验收状态见 [内存诊断及手动休眠](memory-diagnostics.md)。
 
 2026-11-06 增量：`memory status|tabs|containers|processes` 已接入原生只读资源快照，与账号管理中的内存页面共用能力，覆盖窗口／标签／容器归属、唯一进程内存、估算对账及冻结／卸载原因。范围和验收见 [内存诊断 P0](memory-diagnostics.md)。这不是通用标签控制、休眠执行或业务任务保护的完成记录；Windows CLI 传输仍待接入。

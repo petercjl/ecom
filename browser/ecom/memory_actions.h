@@ -13,8 +13,8 @@ namespace ecom {
 // Native page-backed tasks retain this guard until completion or cancellation.
 base::ScopedClosureRunner ProtectMemoryPageTask(content::WebContents* contents);
 std::string MemoryPageVersion(content::WebContents* contents);
-// Explicit MVP discards retain a 30-second recent-use guard. Automatic policy
-// remains unchanged. Additional lock, upload and task guards apply here.
+// Shared manual/automatic discards retain native protections and a 30-second
+// recent-use minimum. The automatic scheduler also checks its full idle window.
 base::DictValue DescribeManualDiscard(content::WebContents* contents);
 base::DictValue RunMemoryTabCommand(Profile* profile,
                                     const base::DictValue& request);

@@ -3,7 +3,7 @@ import path from 'node:path';
 import {root,pkg,fail} from './common.mjs';
 import {discover,listContainers,inspectContainer,requestSession,validateReadUrl,qianniuLoginStep} from './browser.mjs';
 import {searchXhs} from './xhs.mjs';
-import {readMemory,tabMemoryAction,memoryOperation,validateTabTarget} from './memory.mjs';
+import {readMemory,tabMemoryAction,memoryOperation,validateTabTarget,autoMemory,protectTab,validateAutoOptions} from './memory.mjs';
 import {source,status,installSkill,checkUpdate,updateInstall} from './maintenance.mjs';
 import {inventory,operationSchema,runRead,openOperation,planMutation,showPlan,authorizePlan,nativeRegistryHash} from './sycm.mjs';
 export const capabilities=()=>JSON.parse(fs.readFileSync(path.join(root,'capabilities.json'),'utf8'));
@@ -17,7 +17,7 @@ export function parse(argv) {
     const key=word.slice(2);
     if(Object.hasOwn(options,key)) throw fail('INVALID_ARGUMENT','Duplicate option '+word);
     if(['json','help','yes','foreground'].includes(key))options[key]=true;
-    else if(['agent','target','profile','instance','name','version','container','url','method','operation','params-json','plan','confirm','service','keyword','via','tab','expected-page-version','operation-id'].includes(key)&&argv[i+1]&&!argv[i+1].startsWith('--')) options[key]=argv[++i];
+    else if(['agent','target','profile','instance','name','version','container','url','method','operation','params-json','plan','confirm','service','keyword','via','tab','expected-page-version','operation-id','enabled','idle-seconds','keep-awake'].includes(key)&&argv[i+1]&&!argv[i+1].startsWith('--')) options[key]=argv[++i];
     else throw fail('INVALID_ARGUMENT','Unknown option or missing value: '+word);
   }
   let command=positions.join(' ')||'help';
@@ -28,7 +28,9 @@ export function parse(argv) {
   if(options.name&&options.name!=='ecom-cli')throw fail('INVALID_ARGUMENT','Unknown Skill name');
   if(command==='xhs search'&&(!options.container||typeof options.keyword!=='string'||!options.keyword.trim()||Buffer.byteLength(options.keyword.trim())>180||options.via!=='page'))throw fail('INVALID_ARGUMENT','Specify --container, --keyword (up to 180 UTF-8 bytes), and --via page; Cookie-only search is not yet supported');
   if(command==='containers inspect'&&!options.container)throw fail('INVALID_ARGUMENT','containers inspect requires --container');
-  if(['tabs discard','tabs wake'].includes(command))validateTabTarget(options);
+  if(['tabs discard','tabs wake','tabs protect'].includes(command))validateTabTarget(options);
+  if(command==='tabs protect'&&!['on','off'].includes(options['keep-awake']))throw fail('INVALID_ARGUMENT','Specify --keep-awake on|off');
+  if(command==='memory auto set')validateAutoOptions(options);
   if(command==='memory operation'&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(options['operation-id']??''))throw fail('INVALID_ARGUMENT','Specify --operation-id UUID');
   if(qianniuCommands.includes(command)&&(!options.container||options.service!=='qianniu')) {
     throw fail('INVALID_ARGUMENT','Specify --container and --service qianniu');
@@ -50,6 +52,8 @@ export async function main(argv) {
   if(['memory status','memory tabs','memory processes','memory containers'].includes(command))return readMemory(options);
   if(['tabs discard','tabs wake'].includes(command))return tabMemoryAction(command.slice(5),options);
   if(command==='memory operation')return memoryOperation(options);
+  if(command==='memory auto status'||command==='memory auto set')return autoMemory(command.slice(12),options);
+  if(command==='tabs protect')return protectTab(options);
   if(command==='capabilities'||command==='schema')return {ok:true,...capabilities()};
   if(command==='skill source') {const item=source();return {...capabilities(),...item,complete:true,items:[item]};}
   if(command==='skill status')return status(options);

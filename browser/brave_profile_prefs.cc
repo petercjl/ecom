@@ -18,6 +18,7 @@
 #include "brave/common/pref_names.h"
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_account/prefs.h"
+#include "brave/browser/ecom/memory_auto.h"
 #include "brave/components/brave_adaptive_captcha/brave_adaptive_captcha_service.h"
 #include "brave/components/brave_ads/buildflags/buildflags.h"
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
@@ -422,6 +423,7 @@ void RegisterProfilePrefsForMigration(
 }
 
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+  ecom::RegisterAutoMemoryPrefs(registry);
   brave_shields::BraveShieldsWebContentsObserver::RegisterProfilePrefs(
       registry);
 

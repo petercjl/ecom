@@ -1,5 +1,9 @@
 // Copyright 2026 Ecom Authors. MPL-2.0.
 #include "brave/browser/ecom/memory_actions.h"
+#include "brave/browser/ecom/memory_auto.h"
+#include "content/public/browser/media_session.h"
+#include "services/media_session/public/mojom/media_session.mojom.h"
+#include "third_party/blink/public/mojom/frame/sudden_termination_disabler_type.mojom.h"
 
 #include <deque>
 #include <map>
@@ -38,26 +42,25 @@ using Policy = pm::policies::DiscardEligibilityPolicy;
 constexpr char kOperations[] = "ecom.memory.operations";
 constexpr char kTasks[] = "ecom.memory.page-tasks";
 class PageTasks final : public base::SupportsUserData::Data {
- public:
+public:
   int count = 0;
 };
 class Operations final : public base::SupportsUserData::Data {
- public:
+public:
   std::map<std::string, base::DictValue> results;
   std::deque<std::string> order;
 };
 
-content::WebContents* FindTab(Profile* profile,
-                              int id,
-                              bool* selected = nullptr) {
-  content::WebContents* found = nullptr;
+content::WebContents *FindTab(Profile *profile, int id,
+                              bool *selected = nullptr) {
+  content::WebContents *found = nullptr;
   ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
-      [&](BrowserWindowInterface* browser) {
+      [&](BrowserWindowInterface *browser) {
         if (browser->GetProfile() != profile)
           return true;
-        auto* strip = browser->GetTabStripModel();
+        auto *strip = browser->GetTabStripModel();
         for (int i = 0; strip && i < strip->count(); ++i) {
-          auto* wc = strip->GetWebContentsAt(i);
+          auto *wc = strip->GetWebContentsAt(i);
           if (strip->GetTabAtIndex(i)->GetHandle().raw_value() == id) {
             found = wc;
             if (selected)
@@ -76,39 +79,41 @@ base::DictValue Error(std::string code, bool executed = false) {
                         .Set("code", std::move(code))
                         .Set("executed", executed));
 }
-}  // namespace
+} // namespace
 
-base::ScopedClosureRunner ProtectMemoryPageTask(content::WebContents* wc) {
+base::ScopedClosureRunner ProtectMemoryPageTask(content::WebContents *wc) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  auto* tasks = static_cast<PageTasks*>(wc->GetUserData(kTasks));
+  auto *tasks = static_cast<PageTasks *>(wc->GetUserData(kTasks));
   if (!tasks) {
     auto owned = std::make_unique<PageTasks>();
     tasks = owned.get();
     wc->SetUserData(kTasks, std::move(owned));
   }
   ++tasks->count;
+  ResetAutoMemoryIdle(wc);
   return base::ScopedClosureRunner(base::BindOnce(
       [](base::WeakPtr<content::WebContents> contents) {
         if (!contents)
           return;
-        auto* active = static_cast<PageTasks*>(contents->GetUserData(kTasks));
+        auto *active = static_cast<PageTasks *>(contents->GetUserData(kTasks));
         if (active && --active->count == 0)
           contents->RemoveUserData(kTasks);
+        ResetAutoMemoryIdle(contents.get());
       },
       wc->GetWeakPtr()));
 }
 
-std::string MemoryPageVersion(content::WebContents* wc) {
+std::string MemoryPageVersion(content::WebContents *wc) {
   if (!wc || !wc->GetPrimaryMainFrame())
     return "unavailable";
   return wc->GetPrimaryMainFrame()->GetFrameToken().ToString() + ":" +
          base::NumberToString(wc->GetPrimaryMainFrame()->GetNavigationId());
 }
 
-base::DictValue DescribeManualDiscard(content::WebContents* wc) {
+base::DictValue DescribeManualDiscard(content::WebContents *wc) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   base::ListValue reasons;
-  auto block = [&](const char* code, const char* message) {
+  auto block = [&](const char *code, const char *message) {
     reasons.Append(base::DictValue()
                        .Set("source", "mvp")
                        .Set("code", code)
@@ -117,6 +122,23 @@ base::DictValue DescribeManualDiscard(content::WebContents* wc) {
   if (!wc || !pm::PerformanceManager::IsAvailable()) {
     block("UNAVAILABLE", "Native page state is unavailable");
   } else {
+    if (IsMemoryTabKeptAwake(wc))
+      block("KEEP_AWAKE", "Explicit keep-running protection is enabled");
+    if (wc->GetCurrentlyPlayingVideoCount() > 0)
+      block("VIDEO_PLAYING", "Video is playing, including muted video");
+    if (auto *media = content::MediaSession::GetIfExists(wc)) {
+      auto info = media->GetMediaSessionInfoSync();
+      if (info && info->playback_state ==
+                      media_session::mojom::MediaPlaybackState::kPlaying)
+        block("MEDIA_PLAYING", "Media playback is active");
+    }
+    bool before_unload = false;
+    wc->ForEachRenderFrameHost([&](content::RenderFrameHost *frame) {
+      before_unload |= frame->GetSuddenTerminationDisablerState(
+          blink::mojom::SuddenTerminationDisablerType::kBeforeUnloadHandler);
+    });
+    if (before_unload)
+      block("BEFORE_UNLOAD", "Page has a before-unload handler");
     if (wc->GetUserData(kTasks))
       block("TASK_IN_PROGRESS", "Native page task is in progress");
     if (!wc->GetLastCommittedURL().SchemeIsHTTPOrHTTPS())
@@ -126,8 +148,8 @@ base::DictValue DescribeManualDiscard(content::WebContents* wc) {
     if (wc->GetUploadSize() > wc->GetUploadPosition())
       block("UPLOADING", "Upload is in progress");
     auto page = pm::PerformanceManager::GetPrimaryPageNodeForWebContents(wc);
-    auto* graph = pm::PerformanceManager::GetGraph();
-    auto* policy = graph->GetRegisteredObjectAs<Policy>();
+    auto *graph = pm::PerformanceManager::GetGraph();
+    auto *policy = graph->GetRegisteredObjectAs<Policy>();
     if (!page || !policy ||
         !graph->GetRegisteredObjectAs<pm::FreezingPolicy>()) {
       block("UNAVAILABLE", "Native protection policy is unavailable");
@@ -148,7 +170,7 @@ base::DictValue DescribeManualDiscard(content::WebContents* wc) {
         block("NATIVE_PROTECTION", "Native policy protects this page");
       const auto details =
           pm::freezing::GetCanFreezeDetailsForPageNode(page.get());
-      auto add_freeze = [&](auto set, const char* source) {
+      auto add_freeze = [&](auto set, const char *source) {
         for (auto reason : set) {
           // These are freezing scheduling hints; explicit discard uses its own
           // checked recent-visibility window and native discard protections.
@@ -175,21 +197,25 @@ base::DictValue DescribeManualDiscard(content::WebContents* wc) {
       .Set("reasons", std::move(reasons));
 }
 
-base::DictValue RunMemoryTabCommand(Profile* profile,
-                                    const base::DictValue& request) {
+base::DictValue RunMemoryTabCommand(Profile *profile,
+                                    const base::DictValue &request) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!profile || profile->IsOffTheRecord())
     return Error("PROFILE_UNSUPPORTED");
-  auto* operations =
-      static_cast<Operations*>(profile->GetUserData(kOperations));
+  const auto *auto_method = request.FindString("method");
+  if (auto_method && (auto_method->starts_with("memory.auto.") ||
+                      *auto_method == "tabs.protect"))
+    return RunAutoMemoryCommand(profile, request);
+  auto *operations =
+      static_cast<Operations *>(profile->GetUserData(kOperations));
   if (!operations) {
     auto owned = std::make_unique<Operations>();
     operations = owned.get();
     profile->SetUserData(kOperations, std::move(owned));
   }
-  const auto* method = request.FindString("method");
+  const auto *method = request.FindString("method");
   if (method && *method == "memory.operation") {
-    const auto* id = request.FindString("targetOperationId");
+    const auto *id = request.FindString("targetOperationId");
     if (!id || !operations->results.contains(*id))
       return base::DictValue()
           .Set("ok", true)
@@ -200,17 +226,17 @@ base::DictValue RunMemoryTabCommand(Profile* profile,
         .Set("status", "found")
         .Set("result", operations->results.at(*id).Clone());
   }
-  const auto* id = request.FindString("operationId");
+  const auto *id = request.FindString("operationId");
   const auto tab_id = request.FindInt("tabId");
-  const auto* container = request.FindString("containerId");
-  const auto* version = request.FindString("expectedPageVersion");
+  const auto *container = request.FindString("containerId");
+  const auto *version = request.FindString("expectedPageVersion");
   if (!id || !base::Uuid::ParseLowercase(*id).is_valid() || !method ||
       (*method != "tabs.discard" && *method != "tabs.wake") || !tab_id ||
       *tab_id <= 0 || !container || !version || version->empty() ||
       version->size() > 200)
     return Error("INVALID_ARGUMENT");
   if (operations->results.contains(*id)) {
-    const auto& previous = operations->results.at(*id);
+    const auto &previous = operations->results.at(*id);
     if (previous.FindInt("tabId") != tab_id ||
         previous.FindString("containerId") == nullptr ||
         *previous.FindString("containerId") != *container ||
@@ -225,14 +251,14 @@ base::DictValue RunMemoryTabCommand(Profile* profile,
   const auto action = *method;
   auto run = [&]() -> base::DictValue {
     bool selected = false;
-    auto* wc = FindTab(profile, *tab_id, &selected);
+    auto *wc = FindTab(profile, *tab_id, &selected);
     if (!wc)
       return Error("TAB_NOT_FOUND");
     if (containers::GetContainerIdForWebContents(wc) != target_container)
       return Error("TARGET_MISMATCH");
     if (MemoryPageVersion(wc) != expected_version)
       return Error("PAGE_CHANGED");
-    auto* lifecycle =
+    auto *lifecycle =
         resource_coordinator::TabLifecycleUnitExternal::FromWebContents(wc);
     if (!lifecycle)
       return Error("MEMORY_UNAVAILABLE");
@@ -256,7 +282,7 @@ base::DictValue RunMemoryTabCommand(Profile* profile,
         return result;
       }
       auto page = pm::PerformanceManager::GetPrimaryPageNodeForWebContents(wc);
-      auto* helper =
+      auto *helper =
           pm::PerformanceManager::GetGraph()
               ->GetRegisteredObjectAs<pm::policies::PageDiscardingHelper>();
       if (!page || !helper)
@@ -273,17 +299,18 @@ base::DictValue RunMemoryTabCommand(Profile* profile,
             .Set("executed", false)
             .Set("status", "already-running");
       // Chromium's replacement-based discard explicitly clears needs_reload.
-      // Request it before background loading; DidStartLoading updates lifecycle.
+      // Request it before background loading; DidStartLoading updates
+      // lifecycle.
       wc->GetController().SetNeedsReload();
       wc->GetController().LoadIfNecessary();
     }
     // Discard can replace WebContents. Resolve the stable tab afresh.
-    auto* after = FindTab(profile, *tab_id);
+    auto *after = FindTab(profile, *tab_id);
     if (!after ||
         containers::GetContainerIdForWebContents(after) != target_container ||
         after->GetVisibleURL() != before_url)
       return Error("TARGET_CHANGED_AFTER_ACTION", true);
-    auto* after_lifecycle =
+    auto *after_lifecycle =
         resource_coordinator::TabLifecycleUnitExternal::FromWebContents(after);
     if (action == "tabs.discard" &&
         (!after_lifecycle || after_lifecycle->GetTabState() !=
@@ -311,4 +338,4 @@ base::DictValue RunMemoryTabCommand(Profile* profile,
   }
   return result;
 }
-}  // namespace ecom
+} // namespace ecom
