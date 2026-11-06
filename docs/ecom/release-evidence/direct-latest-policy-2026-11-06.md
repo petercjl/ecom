@@ -1,0 +1,9 @@
+# Direct latest publication policy validation
+
+The user selected direct stable publication for the internal Ecom browser on 2026-11-06. AGENTS.md and the Windows workflow now default to latest. next remains optional. Dev validation is bound to a committed source and evidence document; actual native build identity, package hashes, platform/architecture checks, updater self-tests, Mac signature checks and immutable-version checks remain required. Previous formal smoke/update/rollback flags remain truthful and are no longer mandatory publication gates.
+
+Source implementation: cee0a38e4. Mac executed 13 release-contract tests: 13 passed. Physical peter-new executed the same suites: 9 passed, 4 Mac-only tests skipped, zero failures. Tests cover first publication directly to latest with a registry 404, existing-version integrity conflicts, missing/invalid Dev evidence, incomplete automated package checks, tampered transport, and source changes after validation.
+
+The actual Mac 0.1.3 tarball passed verify-release-payload with --tag latest and artifactVerified=true. Its pinned native source remains d5cc360664ca102e153d8969bab6f68f97c38bc5. The actual Windows 0.1.6 primary and six parts passed verify-windows-payload on peter-new with --tag latest, retaining source 78925bb3a13177bd6b6048eca19cf81b3ab4d8ce. Both bind the previously completed Dev source 8fd5a8313b8dbf0bfde1069287f3d620682ac958. Publication policy changes did not rebuild, repack or modify either native payload.
+
+npm-release-kit 0.1.4 doctor passed for both platform packages and workflows. No GitHub publication workflow was dispatched, no npm version/tag was changed, and no formal application was installed by this policy change. The implemented first-publication route was tested with controlled registry responses; an actual first latest publication is not claimed here.
