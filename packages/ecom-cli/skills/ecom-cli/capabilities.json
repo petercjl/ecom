@@ -50,7 +50,8 @@
         "navigationPreserved",
         "automatic",
         "keepAwake",
-        "scope"
+        "scope",
+        "editSignals"
       ],
       "side_effects": {
         "external_mutation": true,

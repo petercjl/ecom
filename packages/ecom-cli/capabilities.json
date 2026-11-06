@@ -1140,5 +1140,14 @@
     "maxDiscardsPerScan": 1,
     "keepAwakeScope": "tab-until-closed-or-browser-restart",
     "requiresDebugging": false
+  },
+  "tabEditProtection": {
+    "snapshotPath": "tabs[].manualDiscard.editSignals",
+    "available": "boolean",
+    "hadFormInteraction": "boolean when available; null otherwise",
+    "hadUserEdits": "boolean when available; includes contenteditable edits",
+    "beforeUnloadDialogPossible": "boolean; listener plus sticky user activation",
+    "beforeUnloadBlocks": false,
+    "classification": "native-edit-history-and-task-guards; no speculative unload dispatch"
   }
 }

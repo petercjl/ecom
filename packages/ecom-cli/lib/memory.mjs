@@ -14,6 +14,10 @@ export function validateSnapshot(body) {
     if(!Number.isInteger(t.tabId)||tabs.has(t.tabId)||typeof t.containerId!=='string'||typeof t.pageVersion!=='string'||
         !measurement(t.estimatedMemoryBytes)||!Array.isArray(t.discardReasons)||!Array.isArray(t.freezeReasons)||!Array.isArray(t.connectedFreezeReasons))
       throw fail('PROTOCOL_MISMATCH','Invalid or duplicate memory tab');
+    const edits=t.manualDiscard?.editSignals;
+    if(edits!==undefined&&(!edits||typeof edits.available!=='boolean'||typeof edits.beforeUnloadDialogPossible!=='boolean'||edits.beforeUnloadBlocks!==false||
+        (edits.available?!['hadFormInteraction','hadUserEdits'].every(k=>typeof edits[k]==='boolean'):!['hadFormInteraction','hadUserEdits'].every(k=>edits[k]===null))))
+      throw fail('PROTOCOL_MISMATCH','Invalid native edit-protection signals');
     tabs.add(t.tabId);
   }
   for(const p of body.processes){

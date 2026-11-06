@@ -71,7 +71,7 @@ ecom-cli memory auto set --enabled on --idle-seconds 1200 --instance INSTANCE --
 ecom-cli tabs protect --tab ID --container ID --expected-page-version VERSION --keep-awake on --instance INSTANCE --json
 ```
 
-普通窗口的选中／可见标签保持运行。每次执行前重新核对页面版本、容器、原生 PROACTIVE 资格及附加保护。表单／编辑、可显示的离开页面确认、播放中的音频与视频（含静音）、上传、设备、WebRTC、锁与关联页、已接入原生页面取数任务及显式保持运行均阻止休眠；原生页面任务结束后重置闲置时间。保持运行保护同时适用于手动休眠，作用于该实例内的稳定标签，持续到明确释放、标签关闭或浏览器重启，跨导航保留。它本身不会唤醒已卸载页。
+普通窗口的选中／可见标签保持运行。每次执行前重新核对页面版本、容器、原生 PROACTIVE 资格及附加保护。表单／富文本编辑、播放中的音频与视频（含静音）、上传、设备、WebRTC、锁与关联页、已接入原生页面取数任务及显式保持运行均阻止休眠；原生页面任务结束后重置闲置时间。保持运行保护同时适用于手动休眠，作用于该实例内的稳定标签，持续到明确释放、标签关闭或浏览器重启，跨导航保留。它本身不会唤醒已卸载页。
 
 外部 Agent 的页面任务先以精确实例、标签、容器和新页面版本开启 `tabs protect --keep-awake on`，完成或取消时重新读取目标并释放。纯原生后台网络请求依赖容器存储，不要求网页常驻。无法识别的业务编辑状态、持续客服可显式保持运行；自动检测不承诺理解所有网站自定义业务状态。
 
@@ -80,3 +80,5 @@ ecom-cli tabs protect --tab ID --container ID --expected-page-version VERSION --
 静音视频可能被 Chromium 在转入后台时暂挂解码。原生页面观察器保留此类后台播放意图，防止将其误判为空闲；返回页面并暂停后可解除该保护，导航会清除旧页状态。休眠成功后设置原生需要重新加载标记，切回标签自动恢复；显式后台恢复仍由相同 CLI／GUI 能力执行。
 
 自动休眠的真实保护、恢复及内存结果见 [自动闲置休眠验收](memory-auto-validation-2026-11-06.md)。
+
+`manualDiscard.editSignals` 返回原生 `hadFormInteraction`、`hadUserEdits` 与 `beforeUnloadDialogPossible`，另有检测可用状态；不可用的编辑标志为 null。离开监听加用户激活仅表示“可能显示确认”，单独不阻止休眠。实际保护继续由原生 PROACTIVE 表单／富文本编辑、任务、媒体等信号决定；不试运行网站离开处理器。内核编辑记录偏保守，并非网站“已保存”的业务证明；无法识别的自定义编辑器或任务应显式保持运行。

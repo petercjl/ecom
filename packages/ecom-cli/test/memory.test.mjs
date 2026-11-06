@@ -99,3 +99,15 @@ test('automatic mailbox pins settings and fails closed on mismatched readback',{
     assert.throws(()=>validateAutomatic({automatic:{...state,maxDiscardsPerScan:20}}),e=>e.code==='PROTOCOL_MISMATCH');
   }finally{clearInterval(timer);fs.rmSync(folder,{recursive:true,force:true});}
 });
+
+test('native edit diagnostics distinguish leave listeners from edits and preserve unknown state',()=>{
+  const d=sample();d.tabs[0].manualDiscard={eligible:true,editSignals:{available:true,hadFormInteraction:false,hadUserEdits:false,beforeUnloadDialogPossible:true,beforeUnloadBlocks:false}};
+  assert.equal(validateSnapshot(d).tabs[0].manualDiscard.eligible,true);
+  d.tabs[0].manualDiscard.editSignals.hadUserEdits=true;d.tabs[0].manualDiscard.eligible=false;
+  assert.equal(validateSnapshot(d).tabs[0].manualDiscard.editSignals.hadUserEdits,true);
+  d.tabs[0].manualDiscard.editSignals={available:false,hadFormInteraction:null,hadUserEdits:null,beforeUnloadDialogPossible:false,beforeUnloadBlocks:false};
+  assert.equal(validateSnapshot(d).tabs[0].manualDiscard.editSignals.hadUserEdits,null);
+  for(const mutate of [s=>s.available='yes',s=>s.hadUserEdits=false,s=>s.beforeUnloadBlocks=true,s=>s.beforeUnloadDialogPossible=null]){
+    const x=structuredClone(d);mutate(x.tabs[0].manualDiscard.editSignals);assert.throws(()=>validateSnapshot(x),e=>e.code==='PROTOCOL_MISMATCH');
+  }
+});

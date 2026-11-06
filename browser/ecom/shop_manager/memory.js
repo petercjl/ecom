@@ -85,6 +85,11 @@ function actionCell(tab) {
   button.disabled=actionPending||(!wake&&tab.manualDiscard?.eligible!==true)
   button.addEventListener('click',()=>act(tab,wake?'wake':'discard'))
   div.append(button)
+  const edits=tab.manualDiscard?.editSignals
+  if(!wake&&edits){
+    div.append(node('small',!edits.available?t('编辑检测不可用','Edit detection unavailable'):edits.hadFormInteraction||edits.hadUserEdits?t('已检测到表单或富文本编辑','Form or rich-text edits detected'):t('未检测到表单或富文本编辑','No form or rich-text edits detected')))
+    if(edits.beforeUnloadDialogPossible)div.append(node('small',t('离开监听仅作提示，按实际编辑与任务状态判断','Leave listener is informational; edit and task protections decide sleep')))
+  }
   if(!wake)for(const r of tab.manualDiscard?.reasons??[])div.append(node('small',manualReason(r)))
   return div
 }

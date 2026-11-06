@@ -157,6 +157,10 @@ std::string MemoryPageVersion(content::WebContents *wc) {
 base::DictValue DescribeManualDiscard(content::WebContents *wc) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   base::ListValue reasons;
+  bool before_unload = false;
+  bool edit_signals_available = false;
+  bool form_interaction = false;
+  bool user_edits = false;
   auto block = [&](const char *code, const char *message) {
     reasons.Append(base::DictValue()
                        .Set("source", "mvp")
@@ -180,12 +184,13 @@ base::DictValue DescribeManualDiscard(content::WebContents *wc) {
                       media_session::mojom::MediaPlaybackState::kPlaying)
         block("MEDIA_PLAYING", "Media playback is active");
     }
-    bool before_unload = false;
     wc->ForEachRenderFrameHost([&](content::RenderFrameHost *frame) {
       before_unload |= frame->CouldDisplayBeforeUnloadDialog();
     });
-    if (before_unload)
-      block("BEFORE_UNLOAD", "Page can display a before-unload confirmation");
+    // Listener registration plus sticky activation does not establish unsaved
+    // content. Do not invoke handlers speculatively (they may have side
+    // effects). PROACTIVE policy below protects native form and contenteditable
+    // edits.
     if (wc->GetUserData(kTasks))
       block("TASK_IN_PROGRESS", "Native page task is in progress");
     if (!wc->GetLastCommittedURL().SchemeIsHTTPOrHTTPS())
@@ -201,6 +206,9 @@ base::DictValue DescribeManualDiscard(content::WebContents *wc) {
         !graph->GetRegisteredObjectAs<pm::FreezingPolicy>()) {
       block("UNAVAILABLE", "Native protection policy is unavailable");
     } else {
+      edit_signals_available = true;
+      form_interaction = page->HadFormInteraction();
+      user_edits = page->HadUserEdits();
       std::vector<pm::policies::CannotDiscardReason> native_reasons;
       const auto eligible = policy->CanDiscardWithCustomRecentVisibilityWindow(
           page.get(), Policy::DiscardReason::PROACTIVE, base::Seconds(30),
@@ -241,6 +249,17 @@ base::DictValue DescribeManualDiscard(content::WebContents *wc) {
   return base::DictValue()
       .Set("eligible", eligible)
       .Set("recentUseProtectionSeconds", 30)
+      .Set("editSignals",
+           base::DictValue()
+               .Set("available", edit_signals_available)
+               .Set("hadFormInteraction", edit_signals_available
+                                              ? base::Value(form_interaction)
+                                              : base::Value())
+               .Set("hadUserEdits", edit_signals_available
+                                        ? base::Value(user_edits)
+                                        : base::Value())
+               .Set("beforeUnloadDialogPossible", before_unload)
+               .Set("beforeUnloadBlocks", false))
       .Set("reasons", std::move(reasons));
 }
 
