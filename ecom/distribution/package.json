@@ -1,6 +1,6 @@
 {
   "name": "@petercjl/ecom-macos-arm64",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Ecom native macOS arm64 application payload",
   "license": "MPL-2.0",
   "os": [

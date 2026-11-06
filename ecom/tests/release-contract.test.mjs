@@ -7,11 +7,17 @@ import { spawnSync } from 'node:child_process';
 import { prepareReleaseSource } from '../build-macos.mjs';
 import { validatePublication, verifyPayload } from '../verify-release-payload.mjs';
 import { auditMacBundle, verifyMacArchitecture, packNativePayload } from '../package-macos.mjs';
-import { verifyDevValidation } from '../publication-evidence.mjs';
+import { verifyDevValidation, releaseVersionOnly } from '../publication-evidence.mjs';
 import { registryPayloadStatus } from '../registry-payload-status.mjs';
 import crypto from 'node:crypto';
 import { artifactManifest, payloadPackage, validateRelease, sha256 } from '../release-contract.mjs';
 const config = JSON.parse(fs.readFileSync(new URL('../release-config.json', import.meta.url)));
+test('Dev proof permits only release-number metadata changes, not runtime or target changes', () => {
+  assert.equal(releaseVersionOnly({version:'0.1.3',arch:'arm64'}, {version:'0.1.4',arch:'arm64'}), true);
+  assert.equal(releaseVersionOnly({version:'0.1.3',arch:'arm64'}, {version:'0.1.4',arch:'x64'}), false);
+  assert.equal(releaseVersionOnly({version:'0.1.3'}, {version:'0.1.4',scripts:{install:'run'}}), false);
+  assert.equal(releaseVersionOnly({version:'0.1.3'}, {version:'HEAD'}), false);
+});
 test('release artifact pins native source, payload hash and supported target', () => {
   const result = artifactManifest(config, 'a'.repeat(40), 'b'.repeat(64), 1234);
   assert.equal(result.sourceRevision, 'a'.repeat(40));
