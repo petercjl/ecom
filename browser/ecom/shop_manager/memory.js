@@ -116,7 +116,7 @@ function render(s) {
     [t('公共与未归因','Shared / unattributed'),bytes(totals.unattributedBytes)],
     [t('标签／进程','Tabs / processes'),`${s.tabs.length} / ${s.processes.length}`],
   ].map(([label,value])=>{const card=node('div');card.className='card';card.append(node('span',label),node('b',value));return card}))
-  $('policy').textContent=t('内存指标：','Metric: ')+s.metric+' · '+t('内存节省：','Memory Saver: ')+(s.policy.memorySaverActive?t('开启','On'):t('关闭','Off'))+' · '+t('冻结偏好：','Freezing preference: ')+(s.policy.freezingEnabledPreference?t('开启','On'):t('关闭','Off'))
+  $('policy').textContent=t('内存指标：','Metric: ')+s.metric+' · '+t('内核自带节省策略：','Chromium Memory Saver: ')+(s.policy.memorySaverActive?t('开启','On'):t('关闭','Off'))+' · '+t('冻结偏好：','Freezing preference: ')+(s.policy.freezingEnabledPreference?t('开启','On'):t('关闭','Off'))
   const names=new Map(s.containers.map(c=>[c.containerId,c.containerId?c.name:t('默认会话','Default session')]))
   $('containers').replaceChildren(...s.containers.map(c=>row([names.get(c.containerId),c.tabCount,bytes(c.estimatedMemoryBytes),`${c.measuredTabCount} / ${c.tabCount}`])))
   const processList=id=>s.processes.filter(p=>p.tabIds.includes(id)).map(p=>p.pid).join(', ')||'—'
