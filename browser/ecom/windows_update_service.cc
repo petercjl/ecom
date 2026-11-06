@@ -9,12 +9,16 @@
 #include "base/base_paths.h"
 #include "base/command_line.h"
 #include "base/files/file_util.h"
+#include "base/functional/bind.h"
+#include "base/location.h"
 #include "base/no_destructor.h"
 #include "base/path_service.h"
 #include "base/process/launch.h"
 #include "base/process/process_handle.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/task/task_traits.h"
+#include "base/task/thread_pool.h"
 #include "base/uuid.h"
 #include "base/win/object_watcher.h"
 #include "base/win/scoped_handle.h"
@@ -24,19 +28,32 @@
 
 namespace ecom {
 namespace {
+void LaunchWindowsUpdater(std::wstring event_name, bool manual) {
+  base::FilePath module, app, user_data;
+  if (!base::PathService::Get(base::DIR_MODULE, &module) ||
+      !base::PathService::Get(base::DIR_EXE, &app) ||
+      !base::PathService::Get(chrome::DIR_USER_DATA, &user_data) ||
+      !base::PathExists(module.Append(FILE_PATH_LITERAL("ecom-update.json"))))
+    return; // Component/Dev builds carry no update identity.
+  const auto helper = module.Append(FILE_PATH_LITERAL("EcomUpdater.exe"));
+  if (!base::PathExists(helper))
+    return;
+  base::CommandLine command(helper);
+  command.AppendSwitchPath("app", app);
+  command.AppendSwitchPath("profile", user_data);
+  command.AppendSwitchASCII("pid",
+                            base::NumberToString(base::GetCurrentProcId()));
+  command.AppendSwitchNative("quit-event", event_name);
+  command.AppendSwitch(manual ? "manual" : "watch");
+  base::LaunchOptions options;
+  options.current_directory = app.DirName();
+  base::LaunchProcess(command, options);
+}
+
 class WindowsUpdateService : public base::win::ObjectWatcher::Delegate {
 public:
   void Start(Profile *profile, bool manual) {
     if (!profile || profile->IsOffTheRecord())
-      return;
-    base::FilePath module, app, user_data;
-    if (!base::PathService::Get(base::DIR_MODULE, &module) ||
-        !base::PathService::Get(base::DIR_EXE, &app) ||
-        !base::PathService::Get(chrome::DIR_USER_DATA, &user_data) ||
-        !base::PathExists(module.Append(FILE_PATH_LITERAL("ecom-update.json"))))
-      return; // Component/Dev builds carry no update identity.
-    const auto helper = module.Append(FILE_PATH_LITERAL("EcomUpdater.exe"));
-    if (!base::PathExists(helper))
       return;
     if (!event_.is_valid()) {
       event_name_ =
@@ -54,15 +71,11 @@ public:
           !watcher_.StartWatchingMultipleTimes(event_.get(), this))
         return;
     }
-    base::CommandLine command(helper);
-    command.AppendSwitchPath("app", app);
-    command.AppendSwitchPath("profile", user_data);
-    command.AppendSwitchASCII("pid",
-                              base::NumberToString(base::GetCurrentProcId()));
-    command.AppendSwitchNative("quit-event", event_name_);
-    command.AppendSwitch(manual ? "manual" : "watch");
-    base::LaunchOptions options;
-    base::LaunchProcess(command, options);
+    // Menu commands run on the UI sequence, where filesystem access and process
+    // launch are disallowed. Keep the watcher here and copy only launch context.
+    base::ThreadPool::PostTask(
+        FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+        base::BindOnce(&LaunchWindowsUpdater, event_name_, manual));
   }
   void OnObjectSignaled(HANDLE) override { chrome::AttemptUserExit(); }
 

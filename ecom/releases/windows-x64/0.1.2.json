@@ -101,5 +101,6 @@
   "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.2.md",
   "verifiedDistTag": "next",
   "publicationRun": "https://github.com/petercjl/ecom/actions/runs/42043116535",
-  "registryIntegrityVerifiedAt": "2026-11-05T14:33:48.849957+00:00"
+  "registryIntegrityVerifiedAt": "2026-11-05T14:33:48.849957+00:00",
+  "validationStatus": "menu-entry-crash"
 }

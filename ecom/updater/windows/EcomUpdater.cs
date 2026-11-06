@@ -345,7 +345,8 @@ namespace EcomUpdate {
       }
       async Task Download() {
         downloading=true;download.Enabled=false;check.Enabled=false;channel.Enabled=false;rollback.Enabled=false;
-        SetView(transfer);transfer.SetProgress(0,0,"正在准备更新","正在获取更新信息…");Hide();Notify("正在后台下载更新。你可以继续使用 Ecom，下载完成后会通知。");
+        SetView(transfer);transfer.SetProgress(0,0,"正在准备更新","正在获取更新信息…");Show();WindowState=FormWindowState.Normal;
+        Notify("正在下载更新。最小化或关闭进度窗口后仍会继续下载，下载完成后会通知。");
         string work=Path.Combine(State,"staging",Guid.NewGuid().ToString("N"));
         try {
           PrivateDirectory(work);var metadata=candidate;var dist=(Dictionary<string,object>)metadata["dist"];string tgz=Path.Combine(work,"payload.tgz"),integrity=S(dist,"integrity");var url=new Uri(S(dist,"tarball"));
