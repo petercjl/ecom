@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "benchmarkSourceRevision": "df7447c59530fbfc0d9791b499c2a5dc67ba287c",
+  "finalVerifiedBuildSourceRevision": "ff0f8b827ed66f0856df20f546916c7ce0d5b2db",
+  "platform": "macOS arm64 Dev",
+  "metric": "macos-physical-footprint",
+  "sameBrowserInstanceAcrossStages": true,
+  "browserRestartBetweenBenchmarkStages": false,
+  "sampleIntervalSeconds": 15,
+  "stages": [
+    {
+      "stage": "before",
+      "firstSampleUnixMs": 1793944905144.393,
+      "lastSampleUnixMs": 1793944965739.004,
+      "sampleCount": 5,
+      "memoryBytes": [
+        2015178856,
+        1999794280,
+        2011000936,
+        2012082280,
+        1955688456
+      ],
+      "medianBytes": 2011000936,
+      "minBytes": 1955688456,
+      "maxBytes": 2015178856,
+      "processCounts": [
+        15,
+        15,
+        15,
+        15,
+        15
+      ],
+      "tabCount": 7,
+      "selectedTabIds": [
+        1,
+        2
+      ]
+    },
+    {
+      "stage": "after",
+      "firstSampleUnixMs": 1793945149382.237,
+      "lastSampleUnixMs": 1793945210005.226,
+      "sampleCount": 5,
+      "memoryBytes": [
+        1656694344,
+        1656677960,
+        1657054792,
+        1657235016,
+        1658529352
+      ],
+      "medianBytes": 1657054792,
+      "minBytes": 1656677960,
+      "maxBytes": 1658529352,
+      "processCounts": [
+        14,
+        14,
+        14,
+        14,
+        14
+      ],
+      "tabCount": 7,
+      "selectedTabIds": [
+        1,
+        2
+      ]
+    }
+  ],
+  "actualAutomaticallySleptTabIds": [
+    6
+  ],
+  "protectedSecondCandidate": {
+    "tabId": 7,
+    "reason": "BEFORE_UNLOAD",
+    "state": "running"
+  },
+  "temporaryKeptAwakeTabIds": [
+    3,
+    4,
+    5
+  ],
+  "savedBytes": 353946144,
+  "savedPercent": 17.60049623368251,
+  "finalConfiguration": {
+    "enabled": true,
+    "idleSeconds": 1200,
+    "scanIntervalSeconds": 30,
+    "maxDiscardsPerScan": 1,
+    "persistsAcrossRestartVerified": true,
+    "temporaryKeepAwakeExceptionsRemaining": 0,
+    "devMainProcessCount": 1
+  },
+  "safety": {
+    "sourceRevision": "df7447c59530fbfc0d9791b499c2a5dc67ba287c",
+    "samples": 10,
+    "observedDurationSeconds": 91.41004907226562,
+    "protectedTabCases": [
+      "background muted video and suspended playback intent",
+      "unsaved textarea contents",
+      "playing audio",
+      "actionable before-unload confirmation",
+      "explicit page task keep-running"
+    ],
+    "allProtectedTabsStayedRunning": true,
+    "idleControlAutomaticallyDiscarded": true,
+    "automaticDiscardCount": 1,
+    "nativeXhsTaskGuardObservedSamples": 9,
+    "nativeXhsReadSucceeded": true,
+    "selectionWakeVerified": true,
+    "sharedManualRefusalsVerified": 5
+  },
+  "validation": {
+    "testPassCount": 58,
+    "testFailCount": 0,
+    "guiAndCliVerified": true,
+    "ordinaryGuiMode": true,
+    "debuggingEnabled": false,
+    "codexIsolatedRuntimeHashMatch": true,
+    "npmPublished": false
+  },
+  "limitations": [
+    "Sequential dynamic online pages, not a randomized benchmark; GC/cache and other page activity can contribute to total change",
+    "Before-unload protection is conservative and can retain a page without a visible edit",
+    "Custom unsaved business state and external page tasks require explicit keep-running protection when native signals are unavailable",
+    "Native runtime verified on macOS arm64; Windows runtime and long-duration multi-shop load not validated"
+  ]
+}
