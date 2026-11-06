@@ -91,7 +91,7 @@
   "corruptedPartRejected": true,
   "nativeSmokeTest": true,
   "localUpdateRecoveryVerified": true,
-  "updateRoundTripVerified": false,
+  "updateRoundTripVerified": true,
   "rollbackRoundTripVerified": false,
   "published": true,
   "preparedUpdateReuseVerified": true,
@@ -105,5 +105,10 @@
   "verifiedDistTag": "next",
   "publicationRun": "https://github.com/petercjl/ecom/actions/runs/42166625924",
   "registryIntegrityVerifiedAt": "2026-11-06T05:25:55.657963+00:00",
-  "operatorInitialRollbackVerified": true
+  "operatorInitialRollbackVerified": true,
+  "operatorUpdateVerified": true,
+  "nativeNpmActivationVerified": true,
+  "publicPreparedPayloadVerified": true,
+  "operatorAutomaticCleanupVerified": true,
+  "userDataPreservedAfterPublicUpdate": true
 }
