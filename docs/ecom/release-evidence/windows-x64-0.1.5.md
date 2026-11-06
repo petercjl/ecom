@@ -80,3 +80,11 @@ Chrome reached npm's Security Key/passkey authentication. The account holder mus
 ## Stable-promotion retry
 
 [Retry run 42176430162](https://github.com/petercjl/ecom/actions/runs/42176430162) on 2026-11-06 again verified the existing 0.1.5 payload and failed at the same npm E403: the Trusted Publisher cannot manage dist-tags and requires Allow npm dist-tag. Public registry verification still shows next=0.1.5 and latest=0.0.0-bootstrap.1. Temporary Actions artifacts total zero. No native rebuild, repack or version change occurred.
+
+## Stable promotion completed
+
+[Promotion run 42177139962](https://github.com/petercjl/ecom/actions/runs/42177139962) succeeded on 2026-11-06 after the account holder enabled the existing Trusted Publisher's dist-tag permission. It reused the original verified 0.1.5 program and all six immutable payload parts through GitHub Actions OIDC. There was no native rebuild, payload repack or application installation.
+
+Independent public registry checks on both the Mac and peter-new confirmed latest=0.1.5 and next=0.1.5. A real .NET download through the latest metadata on peter-new returned the 7334-byte primary tarball and matched its pinned SHA-512 integrity. The installed test application remains 0.1.5/source 9eab6bd064276b64135b484f8cc6314ec7a0f30b. The workflow deleted its temporary Actions artifact; final artifact count is zero. Its installer remains outside GitHub Releases.
+
+This stable release includes the verified installation progress, cache reduction, recovery and cleanup implementation. Later native memory changes and the new browser-menu update reminders are separate source changes and are not part of the immutable 0.1.5 binary. The test machine's previously selected runtime channel next is retained; promotion changes the public stable channel, not the local selection.

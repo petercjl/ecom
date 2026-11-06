@@ -102,7 +102,7 @@
   "installationProgressVerified": true,
   "cacheFreeReupdateVerified": true,
   "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.5.md",
-  "verifiedDistTag": "next",
+  "verifiedDistTag": "latest",
   "publicationRun": "https://github.com/petercjl/ecom/actions/runs/42166625924",
   "registryIntegrityVerifiedAt": "2026-11-06T05:25:55.657963+00:00",
   "operatorInitialRollbackVerified": true,
@@ -116,6 +116,14 @@
   "finalLocalVersion": "0.1.5",
   "finalLocalReactivationVerified": true,
   "latestPromotionAttempt": "https://github.com/petercjl/ecom/actions/runs/42171272706",
-  "latestPromotionStatus": "blocked-dist-tag-permission",
-  "latestPromotionRetry": "https://github.com/petercjl/ecom/actions/runs/42176430162"
+  "latestPromotionStatus": "published",
+  "latestPromotionRetry": "https://github.com/petercjl/ecom/actions/runs/42176430162",
+  "latestPromotionRun": "https://github.com/petercjl/ecom/actions/runs/42177139962",
+  "verifiedDistTags": {
+    "latest": "0.1.5",
+    "next": "0.1.5"
+  },
+  "stableRegistryVerifiedAt": "2026-11-06T06:54:28.773086+00:00",
+  "stablePrimaryDownloadVerifiedOnWindows": true,
+  "stableTemporaryActionsArtifactCount": 0
 }
