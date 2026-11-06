@@ -36,7 +36,7 @@
 #include "components/performance_manager/public/performance_manager.h"
 #include "components/performance_manager/public/user_tuning/prefs.h"
 #include "components/prefs/pref_service.h"
-#include "components/sessions/content/session_tab_helper.h"
+#include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
@@ -187,6 +187,7 @@ void GetMemorySnapshot(Profile *profile,
   base::DictValue snapshot;
   snapshot.Set("ok", true);
   snapshot.Set("snapshotVersion", 1);
+  snapshot.Set("tabIdKind", "native-tab-handle");
   snapshot.Set("snapshotId",
                base::Uuid::GenerateRandomV4().AsLowercaseString());
   snapshot.Set("browserPid", static_cast<int>(base::GetCurrentProcId()));
@@ -233,7 +234,7 @@ void GetMemorySnapshot(Profile *profile,
         auto *strip = browser->GetTabStripModel();
         for (int i = 0; strip && i < strip->count(); ++i) {
           auto *wc = strip->GetWebContentsAt(i);
-          const int id = sessions::SessionTabHelper::IdForTab(wc).id();
+          const int id = strip->GetTabAtIndex(i)->GetHandle().raw_value();
           auto page =
               pm::PerformanceManager::GetPrimaryPageNodeForWebContents(wc);
           base::DictValue tab;

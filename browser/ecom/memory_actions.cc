@@ -25,7 +25,7 @@
 #include "components/performance_manager/public/freezing/freezing.h"
 #include "components/performance_manager/public/graph/graph.h"
 #include "components/performance_manager/public/performance_manager.h"
-#include "components/sessions/content/session_tab_helper.h"
+#include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_frame_host.h"
@@ -58,7 +58,7 @@ content::WebContents* FindTab(Profile* profile,
         auto* strip = browser->GetTabStripModel();
         for (int i = 0; strip && i < strip->count(); ++i) {
           auto* wc = strip->GetWebContentsAt(i);
-          if (sessions::SessionTabHelper::IdForTab(wc).id() == id) {
+          if (strip->GetTabAtIndex(i)->GetHandle().raw_value() == id) {
             found = wc;
             if (selected)
               *selected = strip->active_index() == i;
