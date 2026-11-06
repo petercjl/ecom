@@ -1,0 +1,62 @@
+{
+  "before": {
+    "start": "2026-11-06T11:32:46.047212+08:00",
+    "end": "2026-11-06T11:33:46.710982+08:00",
+    "samples": 5,
+    "memoryMiB": {
+      "median": 1858.64,
+      "min": 1803.29,
+      "max": 1863.26
+    },
+    "residentMiBMedian": 1071.88,
+    "kindMemoryMiBMedian": {
+      "browser": 140.24,
+      "renderer": 1358.91,
+      "gpu-process": 279.31,
+      "utility": 84.58
+    }
+  },
+  "after": {
+    "start": "2026-11-06T11:42:00.703750+08:00",
+    "end": "2026-11-06T11:43:01.338960+08:00",
+    "samples": 5,
+    "memoryMiB": {
+      "median": 2073.81,
+      "min": 1880.95,
+      "max": 2466.17
+    },
+    "residentMiBMedian": 3044.02,
+    "kindMemoryMiBMedian": {
+      "browser": 133.08,
+      "renderer": 1561.61,
+      "gpu-process": 290.49,
+      "utility": 84.75
+    },
+    "changeVsBeforePercent": 11.58
+  },
+  "settled": {
+    "start": "2026-11-06T11:48:42.049497+08:00",
+    "end": "2026-11-06T11:49:42.785276+08:00",
+    "samples": 5,
+    "memoryMiB": {
+      "median": 2054.54,
+      "min": 2032.29,
+      "max": 2088.61
+    },
+    "residentMiBMedian": 2287.0,
+    "kindMemoryMiBMedian": {
+      "browser": 140.99,
+      "renderer": 1342.33,
+      "gpu-process": 489.38,
+      "utility": 84.96
+    },
+    "changeVsBeforePercent": 10.54
+  },
+  "interpretation": {
+    "p0": "read-only observability; no reclaim policy changed",
+    "workload": "7 tabs / 2 windows / 15 processes / 9 renderers",
+    "dateRangeDifference": "user accepted comparable content volume; not strict byte-identical content",
+    "foreground": "before and early-after: Xiaohongshu; settled: SYCM after native GUI inspection",
+    "causalOptimizationEstablished": false
+  }
+}

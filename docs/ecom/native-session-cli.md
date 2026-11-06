@@ -1,5 +1,7 @@
 # Ecom 原生容器会话 CLI（macOS Dev）
 
+原生只读内存快照与 GUI／CLI 的共同契约见 [内存诊断 P0](memory-diagnostics.md)。该能力读取资源元数据，不发起网站请求或执行休眠。
+
 ## 当前能力
 
 Ecom 原生进程支持列出既有容器，以及使用指定容器会话发送 HTTPS JSON GET。此阶段用于验证后台取数的最小通路。正常有界面浏览器保持运行，原生请求使用该容器的 `StoragePartition` 与网络服务，不创建 WebContents、导航或激活标签。
