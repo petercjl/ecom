@@ -77,7 +77,7 @@ namespace EcomUpdate {
       try {
         System.Windows.Forms.Application.EnableVisualStyles();System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
         if(args.Length==4&&args[0]=="--migrate-baseline")return MigrateBaseline(args[1],args[2],args[3]);
-        Program.Require(args.Length==4&&!File.Exists(args[2]),"Supply payload, receipt, a new report path and the explicit baseline version");
+        Program.Require((args.Length==4||(args.Length==5&&args[4]=="--keep-candidate"))&&!File.Exists(args[2]),"Supply payload, receipt, a new report path, explicit baseline version and optional --keep-candidate");
         string root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom"),app=Path.Combine(root,"Application"),data=Path.Combine(root,"User Data");
         var receipt=Program.ReadObject(args[1]);string version=Program.S(receipt,"version");string baselineVersion=args[3];Program.Require((baselineVersion=="0.0.0"||baselineVersion=="0.1.0"||baselineVersion=="0.1.4")&&new Version(version)>new Version(baselineVersion),"Unsupported explicit baseline or candidate");
         var baseline=Live(app,baselineVersion);var before=Snapshot(data);
@@ -104,14 +104,18 @@ namespace EcomUpdate {
         Program.Require(File.Exists(Path.Combine((string)Call("VersionDirectory",backup),"Installer","setup.exe")),"Uninstaller was excluded from the rollback backup");
         Thread.Sleep(10000);var live=Live(app,version);var process=Process.GetProcessById(Convert.ToInt32(live["pid"]));process.Refresh();Program.Require(process.MainWindowHandle!=IntPtr.Zero,"Candidate has no ordinary visible window");
         var after=Snapshot(data);Program.Require(before.Count==after.Count&&before.All(p=>after.ContainsKey(p.Key)&&Program.Json.Serialize(p.Value)==Program.Json.Serialize(after[p.Key])),"Container identity changed during update");
-        var restore=Program.CreateBoundJob(app,data,Convert.ToInt32(live["pid"]),Program.S(live,"quitEvent"),new Dictionary<string,object>(),true);
-        string restoreEvidence=Path.Combine(Path.GetDirectoryName(args[2]),"rollback");Call("PrivateDirectory",restoreEvidence);string restoreJob=Path.Combine(restoreEvidence,"job.json");Call("AtomicJson",restoreJob,restore);Call("RunApplyWithProgress",restoreJob);
-        Thread.Sleep(5000);var restored=Live(app,baselineVersion);var restoredProfiles=Snapshot(data);Program.Require(before.Count==restoredProfiles.Count&&before.All(p=>restoredProfiles.ContainsKey(p.Key)&&Program.Json.Serialize(p.Value)==Program.Json.Serialize(restoredProfiles[p.Key])),"Container identity changed during rollback");
+        Dictionary<string,object> restored=null,rollbackTiming=null;
+        if(args.Length==4) {
+          var restore=Program.CreateBoundJob(app,data,Convert.ToInt32(live["pid"]),Program.S(live,"quitEvent"),new Dictionary<string,object>(),true);
+          string restoreEvidence=Path.Combine(Path.GetDirectoryName(args[2]),"rollback");Call("PrivateDirectory",restoreEvidence);string restoreJob=Path.Combine(restoreEvidence,"job.json");Call("AtomicJson",restoreJob,restore);Call("RunApplyWithProgress",restoreJob);
+          Thread.Sleep(5000);restored=Live(app,baselineVersion);var restoredProfiles=Snapshot(data);Program.Require(before.Count==restoredProfiles.Count&&before.All(p=>restoredProfiles.ContainsKey(p.Key)&&Program.Json.Serialize(p.Value)==Program.Json.Serialize(restoredProfiles[p.Key])),"Container identity changed during rollback");
+          rollbackTiming=Program.ReadObject(Path.Combine(restoreEvidence,"timing.json"));
+        }
         if(Directory.Exists(work))Directory.Delete(work,true);
-        var report=new Dictionary<string,object>{{"ok",true},{"transport","local-payload"},{"fromVersion",baselineVersion},{"testedVersion",version},{"restoredVersion",baselineVersion},{"sourceRevision",receipt["sourceRevision"]},{"candidateVisibleWindow",true},{"containerIdentitiesPreserved",true},{"preparedUpdateReuseVerified",true},{"guiJobPidVerified",true},{"differentialArchiveOmitted",true},{"uninstallerRetained",true},{"installationWindowExercised",true},{"applyTiming",Program.ReadObject(Path.Combine(applyEvidence,"timing.json"))},{"rollbackTiming",Program.ReadObject(Path.Combine(restoreEvidence,"timing.json"))},{"profileCount",before.Count},{"restoredPid",restored["pid"]}};
+        var report=new Dictionary<string,object>{{"ok",true},{"transport","local-payload"},{"fromVersion",baselineVersion},{"testedVersion",version},{"restoredVersion",restored==null?null:baselineVersion},{"finalVersion",restored==null?version:baselineVersion},{"rollbackVerified",restored!=null},{"sourceRevision",receipt["sourceRevision"]},{"candidateVisibleWindow",true},{"containerIdentitiesPreserved",true},{"preparedUpdateReuseVerified",true},{"guiJobPidVerified",true},{"differentialArchiveOmitted",true},{"uninstallerRetained",true},{"installationWindowExercised",true},{"applyTiming",Program.ReadObject(Path.Combine(applyEvidence,"timing.json"))},{"rollbackTiming",rollbackTiming},{"profileCount",before.Count},{"finalPid",(restored??live)["pid"]}};
         using(var stream=new FileStream(args[2],FileMode.CreateNew)){byte[] bytes=Encoding.UTF8.GetBytes(Program.Json.Serialize(report));stream.Write(bytes,0,bytes.Length);}return 0;
       }catch(Exception e){
-        try{string report=args.Length==4?(args[0]=="--migrate-baseline"?args[3]:args[2]):null;if(report!=null)using(var output=new FileStream(report+".error.txt",FileMode.CreateNew)){byte[] bytes=Encoding.UTF8.GetBytes(e.ToString());output.Write(bytes,0,bytes.Length);}}catch{}
+        try{string report=args.Length>=4?(args[0]=="--migrate-baseline"?args[3]:args[2]):null;if(report!=null)using(var output=new FileStream(report+".error.txt",FileMode.CreateNew)){byte[] bytes=Encoding.UTF8.GetBytes(e.ToString());output.Write(bytes,0,bytes.Length);}}catch{}
         Console.Error.WriteLine(e.ToString());return 1;
       }
     }
