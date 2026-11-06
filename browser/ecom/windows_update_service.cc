@@ -52,7 +52,7 @@ void LaunchWindowsUpdater(std::wstring event_name,
   command.AppendSwitch(manual ? "manual" : "watch");
   if (restart)
     command.AppendSwitch("restart");
-  constexpr const char* switches[] = {"notice-available", "notice-downloading",
+  constexpr std::array<const char*, 4> switches = {"notice-available", "notice-downloading",
                                      "notice-ready", "notice-clear"};
   for (size_t i = 0; i < notice_names.size(); ++i)
     command.AppendSwitchNative(switches[i], notice_names[i]);
@@ -70,7 +70,7 @@ public:
       const auto nonce = base::UTF8ToWide(
           base::Uuid::GenerateRandomV4().AsLowercaseString());
       event_name_ = L"Local\\EcomUpdateQuit." + nonce;
-      constexpr const wchar_t* prefixes[] = {
+      constexpr std::array<const wchar_t*, 4> prefixes = {
           L"Local\\EcomUpdateAvailable.", L"Local\\EcomUpdateDownloading.",
           L"Local\\EcomUpdateReady.", L"Local\\EcomUpdateClear."};
       auto create_event = [](const std::wstring& name) {
@@ -119,7 +119,7 @@ public:
       chrome::AttemptUserExit();
       return;
     }
-    constexpr UpdatePhase phases[] = {
+    constexpr std::array<UpdatePhase, 4> phases = {
         UpdatePhase::kAvailable, UpdatePhase::kDownloading,
         UpdatePhase::kReady, UpdatePhase::kNone};
     for (size_t i = 0; i < notices_.size(); ++i) {
