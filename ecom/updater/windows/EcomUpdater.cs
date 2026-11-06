@@ -436,6 +436,9 @@ namespace EcomUpdate {
         Require(timer.ElapsedMilliseconds<graceMilliseconds,"Another Ecom instance still uses this installation");Thread.Sleep(100);
       }
     }
+    static void EnsureNoInstaller() {
+      Require(!new[]{"EcomSetup","mini_installer","setup"}.Any(name=>Process.GetProcessesByName(name).Any()),"Installer is still running; recovery is deferred until it exits");
+    }
     static void CopyTree(string source,string destination) {
       Require(!Directory.Exists(destination),"Backup target exists");Directory.CreateDirectory(destination);
       foreach(string entry in Directory.GetFileSystemEntries(source)) {
@@ -497,6 +500,7 @@ namespace EcomUpdate {
     }
     static void Restore(Dictionary<string,object> recovery) {
       ReleaseInstallationDirectory();
+      EnsureNoInstaller();
       string app=S(recovery,"app"),backup=S(recovery,"backup");
       Require(Same(app,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom","Application")) && backup.StartsWith(State+"\\",StringComparison.OrdinalIgnoreCase),"Invalid recovery target");
       EnsureNoBrowser(app);
@@ -525,6 +529,7 @@ namespace EcomUpdate {
       using(var guard=new FileStream(Path.Combine(State,"apply.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None)) {
         bool rollback=Convert.ToBoolean(job["rollback"]);Dictionary<string,object> artifact=null;
         if(!rollback) {string work=S(job,"work");Require(work.StartsWith(Path.Combine(State,"staging")+"\\",StringComparison.OrdinalIgnoreCase),"Invalid staging directory");artifact=ValidateStagedPayload(work,(Dictionary<string,object>)job["metadata"],S(job,"integrity"));Require(ParseVersion(S(artifact,"version"))>ParseVersion(S(ReadObject(Path.Combine(VersionDirectory(app),"ecom-update.json")),"version")),"Update is no longer newer");}
+        EnsureNoInstaller();
         CloseBrowser((int)N(job,"pid"),app,S(job,"quitEvent"));
         if(rollback) {var recovery=ReadObject(Path.Combine(State,"rollback.json"));Restore(recovery);Restart(app,profile,S(recovery,"version"));recovery["status"]="recovered";AtomicJson(Path.Combine(State,"pending.json"),recovery);TryCleanup(S(recovery,"version"),true);return;}
         string backup=Path.Combine(State,"backups",Guid.NewGuid().ToString("N"));PrivateDirectory(Path.GetDirectoryName(backup));CopyTree(app,backup);
@@ -545,7 +550,7 @@ namespace EcomUpdate {
           AtomicJson(Path.Combine(State,"last-apply-error.json"),new Dictionary<string,object>{{"error",updateError.Message},{"details",updateError.ToString()},{"time",DateTime.UtcNow.ToString("o")}});
           try {
           if(launched!=null && !launched.HasExited) {string ready=Path.Combine(State,"running-"+launched.Id+".json");Require(File.Exists(ready),"Startup outcome unknown; quit Ecom and run recovery");CloseBrowser(launched.Id,app,S(ReadObject(ready),"quitEvent"));}
-          Require(!Process.GetProcessesByName("mini_installer").Any() && !Process.GetProcessesByName("setup").Any(),"Installer outcome unknown; recovery deferred");
+          EnsureNoInstaller();
           Restore(record);Restart(app,profile,S(previous,"version"));
           record["status"]="recovered";AtomicJson(Path.Combine(State,"pending.json"),record);
           } catch(Exception recoveryError) {throw new AggregateException("更新未完成，恢复也未完成；已保留恢复副本。",updateError,recoveryError);}
