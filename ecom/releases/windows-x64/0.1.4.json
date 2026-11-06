@@ -89,11 +89,15 @@
   "updaterSelfTest": true,
   "payloadVerified": true,
   "corruptedPartRejected": true,
-  "nativeSmokeTest": false,
-  "localUpdateRecoveryVerified": false,
+  "nativeSmokeTest": true,
+  "localUpdateRecoveryVerified": true,
   "updateRoundTripVerified": false,
   "rollbackRoundTripVerified": false,
   "published": false,
   "installerLivenessGuardVerified": true,
-  "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.4.md"
+  "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.4.md",
+  "preparedUpdateReuseVerified": true,
+  "guiJobPidVerified": true,
+  "inheritedDirectoryVerified": true,
+  "automaticCleanupVerified": true
 }

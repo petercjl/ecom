@@ -92,7 +92,7 @@
   "nativeSmokeTest": true,
   "localUpdateRecoveryVerified": true,
   "updateRoundTripVerified": true,
-  "rollbackRoundTripVerified": false,
+  "rollbackRoundTripVerified": true,
   "published": true,
   "preparedUpdateReuseVerified": true,
   "guiJobPidVerified": true,
@@ -102,5 +102,6 @@
   "verifiedDistTag": "next",
   "publicationRun": "https://github.com/petercjl/ecom/actions/runs/42148484243",
   "registryIntegrityVerifiedAt": "2026-11-06T02:35:19.197298+00:00",
-  "operatorUpdateVerified": true
+  "operatorUpdateVerified": true,
+  "operatorRollbackVerified": true
 }

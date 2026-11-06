@@ -33,3 +33,7 @@ The repaired test baseline remains installed after local rollback. Its saved nex
 ## Operator restart verification
 
 The operator reported a normal update and completed restart. Inspection confirmed product version 0.1.3, native source 156676c25ea4b425c250592ad93041d825b0802c and selected runtime channel next. EXE, framework and updater SHA-256 values match the published receipt. last-result reports updated and pending reports complete; the browser runs ordinary GUI arguments with the original User Data directory and session restoration. Automatic cleanup left staging=0, replaced=0 and backups=1. One copied worker remained after exit, to be reclaimed on the next updater launch. The operator restarted directly, so Later/reopen was not established by this run. GUI rollback has been requested and remains pending.
+
+## Operator rollback verification
+
+The operator selected GUI rollback and confirmed that windows and shop containers recovered normally. Before the following 0.1.4 local test, the machine preflight independently required the 0.0.0 baseline at source 0c0b3a8672cbf2373d2dfac69e412382583e8c5b, pending=recovered, last-result=rolled-back, no active installer/worker, no ready record and empty staging. That preflight passed. GUI rollback is verified for 0.1.3; Later/reopen remains unverified. Stable rollout continues with the 0.1.4 installer-liveness correction.
