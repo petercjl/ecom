@@ -321,7 +321,9 @@ void GetMemorySnapshot(Profile *profile,
           tab.Set("discardReasons", std::move(discard_reasons));
           tab.Set("freezeReasons", std::move(freeze_reasons));
           tab.Set("connectedFreezeReasons", std::move(connected_reasons));
-          if (IsMemoryRestoreDeferred(wc)) tab.Set("state", "unloaded");
+          if (IsMemoryRestoreDeferred(wc) &&
+              (!tab.FindString("state") || *tab.FindString("state") != "discarded"))
+            tab.Set("state", "unloaded");
           tabs.Append(std::move(tab));
         }
         return true;

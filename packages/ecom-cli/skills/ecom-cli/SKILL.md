@@ -1,6 +1,6 @@
 ---
 name: ecom-cli
-description: Use Ecom for browser memory diagnostics and automatic idle sleep settings, protected tab sleep/wake, account container inspection, registered Shengyicanmou data reads, local mutation planning, authorized Qianniu login recovery, native-session requests, or CLI and companion Skill maintenance. Business analysis and operating decisions belong to the caller.
+description: Use Ecom for browser memory diagnostics and automatic idle sleep settings, on-demand startup restoration and background restore limits, protected tab sleep/wake, account container inspection, registered Shengyicanmou data reads, local mutation planning, authorized Qianniu login recovery, native-session requests, or CLI and companion Skill maintenance. Business analysis and operating decisions belong to the caller.
 ---
 
 # Ecom CLI

@@ -778,13 +778,14 @@
       "authorization": "Explicitly selected page runtime release or background reload in the original container; persistent account data remains browser-owned. Shared native protections are rechecked immediately before action.",
       "output": {
         "operationId": "UUID; use memory operation after unknown outcomes",
-        "status": "discarded/already-discarded or navigation-started/already-running; wake is not load/login completion",
+        "status": "navigation-started, navigation-queued or already-running; submission is not load/login completion",
         "executed": "boolean",
         "tabId": "exact selected tab",
         "containerId": "original native container",
         "expectedPageVersion": "version precondition",
         "pageVersion": "post-action document version when executed",
-        "navigationPreserved": "verified target and visible URL preserved"
+        "navigationPreserved": "verified target and visible URL preserved",
+        "restore": "Native requestId and phase for accepted restores when queue protocol 1 is available"
       },
       "errors": [
         "BROWSER_UPGRADE_REQUIRED",
@@ -796,7 +797,9 @@
         "DISCARD_REJECTED",
         "TARGET_CHANGED_AFTER_ACTION",
         "DISCARD_STATE_UNKNOWN",
-        "OPERATION_TIMEOUT"
+        "OPERATION_TIMEOUT",
+        "RESTORE_QUEUE_BUSY",
+        "RESTORE_QUEUE_FULL"
       ]
     },
     "memory operation": {
@@ -820,7 +823,8 @@
       "output": {
         "status": "found or not-found",
         "result": "original action response when retained",
-        "executed": "unknown when not found; never infer no execution"
+        "executed": "unknown when not found; never infer no execution",
+        "currentRestore": "result.currentRestore reports live queue phase for a retained restore request"
       },
       "retention": "latest 128 actions per ordinary Profile in this running browser; lost on restart",
       "errors": [
