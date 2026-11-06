@@ -8,6 +8,9 @@ action("resources") {
     "manager.css",
     "manager.js",
     "model.js",
+    "memory.html",
+    "memory.js",
+    "memory.css",
   ]
   inputs += [ "//brave/node_modules/@brave/leo/icons/container-personal.svg" ]
   inputs += [ "//brave/node_modules/@brave/leo/icons/container-work.svg" ]

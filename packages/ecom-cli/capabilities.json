@@ -562,6 +562,142 @@
         "items": "id, title, author, likes (display text), URL"
       },
       "compatibility": "Requires Ecom Dev with xhsPageSearchProtocol 1; macOS tested, other systems unverified"
+    },
+    "memory status": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Read-only native memory snapshot via private mailbox; no tab activation, navigation, freezing or discarding. Origins only; titles and container labels are user data.",
+      "output": {
+        "snapshotVersion": 1,
+        "snapshotId": "UUID",
+        "tabs": "stable session tab/window IDs, containerId, pageVersion, estimatedMemoryBytes|null, state, canFreeze/canDiscard, separate native reasons",
+        "processes": "unique PID, kind, memoryBytes|null, residentBytes|null, tabIds, workerCount, hasUnmappedClients",
+        "containers": "containerId, name, tabCount, measuredTabCount, estimatedMemoryBytes|null",
+        "totals": "memoryBytes, residentBytes, attributedBytes, unattributedBytes, unavailableProcesses, complete",
+        "metric": "macos-physical-footprint or windows-private-bytes; OS metrics are not interchangeable",
+        "policy": "effective Memory Saver state and activation, freezing preference, read-only stage",
+        "scope": "instance processes, current ordinary profile tabs; detached crashpad excluded"
+      },
+      "errors": [
+        "BROWSER_UPGRADE_REQUIRED",
+        "MEMORY_UNAVAILABLE",
+        "BUSY",
+        "PROTOCOL_MISMATCH",
+        "INSTANCE_NOT_RUNNING",
+        "INSTANCE_AMBIGUOUS"
+      ]
+    },
+    "memory tabs": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Read-only native memory snapshot via private mailbox; no tab activation, navigation, freezing or discarding. Origins only; titles and container labels are user data.",
+      "output": {
+        "snapshotVersion": 1,
+        "snapshotId": "UUID",
+        "tabs": "stable session tab/window IDs, containerId, pageVersion, estimatedMemoryBytes|null, state, canFreeze/canDiscard, separate native reasons",
+        "processes": "unique PID, kind, memoryBytes|null, residentBytes|null, tabIds, workerCount, hasUnmappedClients",
+        "containers": "containerId, name, tabCount, measuredTabCount, estimatedMemoryBytes|null",
+        "totals": "memoryBytes, residentBytes, attributedBytes, unattributedBytes, unavailableProcesses, complete",
+        "metric": "macos-physical-footprint or windows-private-bytes; OS metrics are not interchangeable",
+        "policy": "effective Memory Saver state and activation, freezing preference, read-only stage",
+        "scope": "instance processes, current ordinary profile tabs; detached crashpad excluded"
+      },
+      "errors": [
+        "BROWSER_UPGRADE_REQUIRED",
+        "MEMORY_UNAVAILABLE",
+        "BUSY",
+        "PROTOCOL_MISMATCH",
+        "INSTANCE_NOT_RUNNING",
+        "INSTANCE_AMBIGUOUS"
+      ]
+    },
+    "memory processes": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Read-only native memory snapshot via private mailbox; no tab activation, navigation, freezing or discarding. Origins only; titles and container labels are user data.",
+      "output": {
+        "snapshotVersion": 1,
+        "snapshotId": "UUID",
+        "tabs": "stable session tab/window IDs, containerId, pageVersion, estimatedMemoryBytes|null, state, canFreeze/canDiscard, separate native reasons",
+        "processes": "unique PID, kind, memoryBytes|null, residentBytes|null, tabIds, workerCount, hasUnmappedClients",
+        "containers": "containerId, name, tabCount, measuredTabCount, estimatedMemoryBytes|null",
+        "totals": "memoryBytes, residentBytes, attributedBytes, unattributedBytes, unavailableProcesses, complete",
+        "metric": "macos-physical-footprint or windows-private-bytes; OS metrics are not interchangeable",
+        "policy": "effective Memory Saver state and activation, freezing preference, read-only stage",
+        "scope": "instance processes, current ordinary profile tabs; detached crashpad excluded"
+      },
+      "errors": [
+        "BROWSER_UPGRADE_REQUIRED",
+        "MEMORY_UNAVAILABLE",
+        "BUSY",
+        "PROTOCOL_MISMATCH",
+        "INSTANCE_NOT_RUNNING",
+        "INSTANCE_AMBIGUOUS"
+      ]
+    },
+    "memory containers": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Read-only native memory snapshot via private mailbox; no tab activation, navigation, freezing or discarding. Origins only; titles and container labels are user data.",
+      "output": {
+        "snapshotVersion": 1,
+        "snapshotId": "UUID",
+        "tabs": "stable session tab/window IDs, containerId, pageVersion, estimatedMemoryBytes|null, state, canFreeze/canDiscard, separate native reasons",
+        "processes": "unique PID, kind, memoryBytes|null, residentBytes|null, tabIds, workerCount, hasUnmappedClients",
+        "containers": "containerId, name, tabCount, measuredTabCount, estimatedMemoryBytes|null",
+        "totals": "memoryBytes, residentBytes, attributedBytes, unattributedBytes, unavailableProcesses, complete",
+        "metric": "macos-physical-footprint or windows-private-bytes; OS metrics are not interchangeable",
+        "policy": "effective Memory Saver state and activation, freezing preference, read-only stage",
+        "scope": "instance processes, current ordinary profile tabs; detached crashpad excluded"
+      },
+      "errors": [
+        "BROWSER_UPGRADE_REQUIRED",
+        "MEMORY_UNAVAILABLE",
+        "BUSY",
+        "PROTOCOL_MISMATCH",
+        "INSTANCE_NOT_RUNNING",
+        "INSTANCE_AMBIGUOUS"
+      ]
     }
   },
   "transport": {

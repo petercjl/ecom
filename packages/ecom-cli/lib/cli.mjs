@@ -3,6 +3,7 @@ import path from 'node:path';
 import {root,pkg,fail} from './common.mjs';
 import {discover,listContainers,inspectContainer,requestSession,validateReadUrl,qianniuLoginStep} from './browser.mjs';
 import {searchXhs} from './xhs.mjs';
+import {readMemory} from './memory.mjs';
 import {source,status,installSkill,checkUpdate,updateInstall} from './maintenance.mjs';
 import {inventory,operationSchema,runRead,openOperation,planMutation,showPlan,authorizePlan,nativeRegistryHash} from './sycm.mjs';
 export const capabilities=()=>JSON.parse(fs.readFileSync(path.join(root,'capabilities.json'),'utf8'));
@@ -44,6 +45,7 @@ export async function main(argv) {
   const {command,options,requested}=parse(argv);
   if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli containers list|inspect | shops open|login-status|submit-login | xhs search --via page | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
   if(command==='version')return {ok:true,package:pkg.name,version:pkg.version,protocolVersion:1};
+  if(['memory status','memory tabs','memory processes','memory containers'].includes(command))return readMemory(options);
   if(command==='capabilities'||command==='schema')return {ok:true,...capabilities()};
   if(command==='skill source') {const item=source();return {...capabilities(),...item,complete:true,items:[item]};}
   if(command==='skill status')return status(options);

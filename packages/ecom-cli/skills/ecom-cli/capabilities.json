@@ -38,7 +38,13 @@
         "count",
         "keyword",
         "transport",
-        "pageClosed"
+        "pageClosed",
+        "tabs",
+        "processes",
+        "totals",
+        "policy",
+        "metric",
+        "snapshotId"
       ],
       "side_effects": {
         "external_mutation": true,

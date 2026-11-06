@@ -1,0 +1,108 @@
+{
+  "start": "2026-11-06T11:19:05.193024+08:00",
+  "end": "2026-11-06T11:20:05.881390+08:00",
+  "sample_count": 5,
+  "duration_seconds": 60.688366,
+  "instances": {
+    "583": {
+      "browser": "Brave Browser",
+      "role": "ordinary-or-other",
+      "age_s": 249225,
+      "debugging": false,
+      "footprint_mib_median": 4707.5,
+      "footprint_mib_range": [
+        4636.1,
+        4711.8
+      ],
+      "resident_mib_median": 1227.2,
+      "process_count_range": [
+        18,
+        20
+      ],
+      "renderer_count_range": [
+        12,
+        14
+      ]
+    },
+    "36890": {
+      "browser": "Google Chrome",
+      "role": "seller",
+      "age_s": 177406,
+      "debugging": true,
+      "footprint_mib_median": 2127.3,
+      "footprint_mib_range": [
+        2016.5,
+        2158.4
+      ],
+      "resident_mib_median": 1294.5,
+      "process_count_range": [
+        15,
+        16
+      ],
+      "renderer_count_range": [
+        9,
+        10
+      ]
+    },
+    "46599": {
+      "browser": "Google Chrome",
+      "role": "buyer",
+      "age_s": 172638,
+      "debugging": true,
+      "footprint_mib_median": 2311.2,
+      "footprint_mib_range": [
+        2230.6,
+        2312.8
+      ],
+      "resident_mib_median": 679.4,
+      "process_count_range": [
+        20,
+        20
+      ],
+      "renderer_count_range": [
+        14,
+        14
+      ]
+    },
+    "76532": {
+      "browser": "Ecom Dev",
+      "role": "dev",
+      "age_s": 55313,
+      "debugging": false,
+      "footprint_mib_median": 1882.2,
+      "footprint_mib_range": [
+        1851.5,
+        1910.6
+      ],
+      "resident_mib_median": 1090.7,
+      "process_count_range": [
+        15,
+        15
+      ],
+      "renderer_count_range": [
+        9,
+        9
+      ]
+    },
+    "87473": {
+      "browser": "Google Chrome",
+      "role": "ordinary-or-other",
+      "age_s": 204434,
+      "debugging": false,
+      "footprint_mib_median": 2087.1,
+      "footprint_mib_range": [
+        2083.1,
+        2088.2
+      ],
+      "resident_mib_median": 818.8,
+      "process_count_range": [
+        17,
+        17
+      ],
+      "renderer_count_range": [
+        11,
+        11
+      ]
+    }
+  }
+}

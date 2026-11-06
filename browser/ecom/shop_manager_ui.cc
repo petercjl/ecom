@@ -8,6 +8,8 @@
 
 #include "base/functional/bind.h"
 #include "base/memory/ref_counted_memory.h"
+#include "base/memory/weak_ptr.h"
+#include "brave/browser/ecom/memory_snapshot.h"
 #include "brave/browser/ecom/shop_container_service.h"
 #include "brave/browser/ecom/shop_manager/shop_manager_resources.h"
 #include "chrome/browser/browser_process.h"
@@ -22,6 +24,27 @@
 #include "url/gurl.h"
 
 namespace ecom {
+namespace {
+class MemoryHandler final : public content::WebUIMessageHandler {
+ public:
+  void RegisterMessages() override {
+    web_ui()->RegisterMessageCallback("ecomMemorySnapshot",
+        base::BindRepeating(&MemoryHandler::Read, base::Unretained(this)));
+  }
+ private:
+  void Read(const base::ListValue& args) {
+    if (args.size() != 1 || !args[0].is_string()) return;
+    AllowJavascript();
+    GetMemorySnapshot(Profile::FromWebUI(web_ui()), base::BindOnce(
+        &MemoryHandler::Done, weak_.GetWeakPtr(), args[0].Clone()));
+  }
+  void Done(base::Value callback, base::DictValue snapshot) {
+    if (IsJavascriptAllowed())
+      ResolveJavascriptCallback(callback, base::Value(std::move(snapshot)));
+  }
+  base::WeakPtrFactory<MemoryHandler> weak_{this};
+};
+}
 void OpenShopManager(Profile* profile) {
   if (!profile || profile->IsOffTheRecord()) {
     return;
@@ -42,6 +65,7 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
       base::BindRepeating([](const std::string& path) {
         return path.empty() || path == "index.html" || path == "manager.css" ||
                path == "manager.js" || path == "model.js" ||
+               path == "memory.html" || path == "memory.js" || path == "memory.css" ||
                path.starts_with("icons/");
       }),
       base::BindRepeating([](const std::string& path,
@@ -53,6 +77,12 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
           data = kShopManagerJs;
         } else if (path == "model.js") {
           data = kShopManagerModel;
+        } else if (path == "memory.html") {
+          data = kShopManagerMemoryHtml;
+        } else if (path == "memory.js") {
+          data = kShopManagerMemoryJs;
+        } else if (path == "memory.css") {
+          data = kShopManagerMemoryCss;
         } else if (path.starts_with("icons/")) {
           data = nullptr;
           for (int i = 0; i < 11; ++i) {
@@ -69,5 +99,6 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
             base::MakeRefCounted<base::RefCountedString>(std::string(data)));
       }));
   web_ui->AddMessageHandler(CreateShopSettingsHandler());
+  web_ui->AddMessageHandler(std::make_unique<MemoryHandler>());
 }
 }  // namespace ecom

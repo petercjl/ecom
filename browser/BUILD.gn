@@ -89,6 +89,8 @@ source_set("core") {
       "ecom/business_read_service.h",
       "ecom/container_password_store.cc",
       "ecom/container_password_store.h",
+      "ecom/memory_snapshot.cc",
+      "ecom/memory_snapshot.h",
       "ecom/shop_container_service.cc",
       "ecom/shop_container_service.h",
       "ecom/shop_identity_parser.cc",

@@ -1,0 +1,69 @@
+{
+  "date": "2026-11-06",
+  "timezone": "Asia/Shanghai",
+  "hardware": {
+    "model": "Mac16,7",
+    "memory_bytes": 25769803776,
+    "logical_cpus": 14,
+    "os": "macOS 26.5.2 (25F84)"
+  },
+  "source": {
+    "root_commit": "180518772f010e2e103f9c9c8802d69ec3efdc22",
+    "build_worktree_commit": "61456ca4a68d421a17f9bb0a0af709e5d4771b69",
+    "running_binary_source_commit": "not verified",
+    "file_sha256": {
+      "chromium_src/chrome/browser/performance_manager/chrome_browser_main_extra_parts_performance_manager.cc": "22dcab3153d00b3775acb2339c7b4b83db067e8f098f3e9e2653fe1e81f71a91",
+      "browser/ecom/shop_container_service.cc": "349825a08ea0e3b6d6c36e545eff64dab34b160634d76b64fd1b926d07238dd0",
+      "browser/ecom/native_session_service.cc": "aa69f8f6953962b7f853c1e96fbdeca9d2e5371f2fe6b90c2db272326f0ba790",
+      "browser/ecom/business_read_service.cc": "49297455f90b579d5df96b09e3242a5dff01d0270eb28c0ef0edc645105b1b63",
+      ".brave-build/src/chrome/browser/performance_manager/policies/memory_saver_mode_policy.cc": "bc501743eaefaa0c67b1305b9df71e13fd9da0765b65602585e8a22b0a181b9f",
+      ".brave-build/src/components/performance_manager/user_tuning/prefs.cc": "58ebe3fb66f71d2b9abcba0f307e0ddfba751ef1a4b4a681e83dab3ab993cae0"
+    }
+  },
+  "build": {
+    "is_component_build": true,
+    "is_debug": false,
+    "symbol_level": 0
+  },
+  "ecom_tabs": {
+    "visible_window_tab_count": 6,
+    "evidence": "native accessibility tab strip",
+    "categories": {
+      "shop_management": 1,
+      "tmall_merchant": 1,
+      "sycm": 1,
+      "xiaohongshu": 3
+    },
+    "cli_container_count": 6,
+    "cli_containers_with_open_tabs": 2,
+    "cli_container_tab_counts_sorted": [
+      0,
+      0,
+      0,
+      0,
+      2,
+      3
+    ]
+  },
+  "memory_saver": {
+    "ecom_local_state_explicit_state": null,
+    "source_registered_state_default": 0,
+    "runtime_effective_state": "not queried; policy/feature/runtime override not excluded",
+    "source_discard_hours": [
+      6,
+      4,
+      2
+    ]
+  },
+  "system_query_after_sampling": {
+    "memory_pressure_Q_free_percentage": 43,
+    "interpretation": "not equivalent to vm_stat free-page ratio or a critical-pressure event"
+  },
+  "limitations": [
+    "Other browser live tab counts unavailable; native UI access blocked on Brave current URL, computer-use stopped; no bypass used.",
+    "No renderer-to-page mapping or heap traces captured.",
+    "Natural workloads; not controlled equivalent-page comparison.",
+    "Detached crashpad processes excluded.",
+    "Sampling not atomic; changing process membership is recorded."
+  ]
+}

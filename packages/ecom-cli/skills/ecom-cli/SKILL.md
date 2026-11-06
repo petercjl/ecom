@@ -1,6 +1,6 @@
 ---
 name: ecom-cli
-description: Use Ecom account containers for registered Shengyicanmou data reads, local mutation planning and confirmation, account inspection, authorized Qianniu login recovery, native-session requests, or CLI and companion Skill maintenance. Business analysis and operating decisions belong to the caller.
+description: Use Ecom for browser memory and tab diagnostics, account container inspection, registered Shengyicanmou data reads, local mutation planning, authorized Qianniu login recovery, native-session requests, or CLI and companion Skill maintenance. Business analysis and operating decisions belong to the caller.
 ---
 
 # Ecom CLI
@@ -45,6 +45,10 @@ For business data or mutation-planning requests, read [the business contract](re
 Mutation plan/apply commands create local records and return reviewed workflow instructions. They perform no website submission. Report `executed=false` and require actual executor and readback evidence before describing a platform change as completed. Existing authorization can cover the reviewed plan; a development request itself grants no real store mutation authority.
 
 ## Diagnosis and recovery
+
+For memory diagnosis, use `memory status|tabs|processes|containers --json` with the intended `--instance` or `--profile`. All four commands return the same complete, read-only native snapshot so totals and page/process relationships refer to one sample. Inspect metric, sample time, completeness, effective policy, stable tab/container identities and freeze/discard reasons. Origin-only URLs exclude query strings; titles and container labels remain user data. Shared process costs are counted once; tab/container shares are estimates, not reclaimable memory. Unavailable values remain null. Preserve instance identity across calls; page versions change on navigation and tab IDs are session-scoped.
+
+P0 observes current engine eligibility and performs no freezing or discarding. It does not yet verify business safety for uploads, chat, login or Agent task leases. A restart comparison is observational: match tab content, loaded states and active tab, record elapsed time and system conditions, and do not attribute restart-related changes to an optimization. `BROWSER_UPGRADE_REQUIRED` requires a compatible normal Ecom build. `BUSY` means no snapshot was executed; wait for the concurrent sample to finish before another explicit read. `MEMORY_UNAVAILABLE` means the native graph or supported profile is unavailable. Return to ordinary diagnosis after resolving the stated condition.
 
 - BROWSER_UPGRADE_REQUIRED: use a browser supporting the requested route. Legacy browser builds require matching catalog hashes. Preserve the account session.
 - BUSINESS_ROUTE_UNSUPPORTED: the browser does not approve the requested route contract. Report the operation ID and upgrade the browser if the route requires new authorization.

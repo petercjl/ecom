@@ -30,6 +30,7 @@
 #include "base/uuid.h"
 #include "base/values.h"
 #include "brave/browser/ecom/business_read_service.h"
+#include "brave/browser/ecom/memory_snapshot.h"
 #include "brave/browser/ecom/shop_container_service.h"
 #include "brave/browser/ecom/sycm_read_registry.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
@@ -185,6 +186,7 @@ class NativeSessionService final : public ProfileObserver {
     metadata.Set("authToken", auth_);
     metadata.Set("pid", static_cast<int>(getpid()));
     metadata.Set("product", "Ecom");
+    metadata.Set("memorySnapshotProtocol", 1);
     metadata.Set("executable",
                  base::CommandLine::ForCurrentProcess()->GetProgram().value());
     metadata.Set("userDataDir", folder_.DirName().DirName().value());
@@ -288,6 +290,11 @@ class NativeSessionService final : public ProfileObserver {
       return;
     }
     const auto* method = request.FindString("method");
+    if (method && *method == "memory.snapshot") {
+      GetMemorySnapshot(profile_, base::BindOnce(
+          &NativeSessionService::Respond, weak_.GetWeakPtr(), id));
+      return;
+    }
     if (method && method->starts_with("shops.")) {
       RunShopCommand(
           profile_, base::WriteJson(request).value_or("{}"),
