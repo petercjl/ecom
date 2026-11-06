@@ -104,5 +104,6 @@
   "publicationRun": "https://github.com/petercjl/ecom/actions/runs/42156410645",
   "registryIntegrityVerifiedAt": "2026-11-06T03:40:24.908476+00:00",
   "operatorProgressReopenVerified": true,
-  "operatorDeferredReadyVerified": true
+  "operatorDeferredReadyVerified": true,
+  "nativeNpmActivationVerified": true
 }
