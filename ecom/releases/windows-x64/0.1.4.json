@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.4",
+  "packageName": "@petercjl/ecom-windows-x64",
+  "channel": "latest",
+  "platform": "win32",
+  "arch": "x64",
+  "appName": "Ecom.exe",
+  "updateProtocol": 1,
+  "signing": "unsigned",
+  "sourceRevision": "547fd6b585f8e9f77e3e2244a3d834787830645b",
+  "archive": "EcomSetup.exe",
+  "archiveSha256": "4c598049a8f47f6d77a82c0ae8831c64e125c3323ecd6372679bff1a262f34a2",
+  "archiveBytes": 250653184,
+  "exeSha256": "e4900b7b5a2a6ba98a252caee55ce49b2a5532340ce98c7f6575e098b5ee02dd",
+  "frameworkSha256": "06fc12e580b4cb5d1774c418ecf8110ff89666d2b03bfc0b16ba095f68c46fb1",
+  "updaterSha256": "1cf89633611c6999e2c8c1cf89df41cdd7ff1048edb149a0d6b18a2b64d69a44",
+  "payloadFormat": "npm-parts-v1",
+  "parts": [
+    {
+      "index": 0,
+      "version": "0.1.4-payload.0",
+      "bytes": 50000000,
+      "sha256": "2f64c82f7fb98774f66c64380b4548a3c93d72ce02c8e397f2c91186797c7a86",
+      "tarballBytes": 49987189,
+      "tarballSha256": "5443ccaae177bdcc133b61506388bceac3ec23113da9eecd4d6750078cfaf3fb",
+      "integrity": "sha512-a0xL9p8VwFwlHkVM852VNyVZLxps3a/sUyseXWH5DH8vsdf9HPUYLUimC67fiRAlNWR41nYtZfMS54a2YqDcOQ=="
+    },
+    {
+      "index": 1,
+      "version": "0.1.4-payload.1",
+      "bytes": 50000000,
+      "sha256": "2b9440cfa7cc56e5aa8ad3446b19ff933626e0934894bf544c2a0f8cbe6e56ed",
+      "tarballBytes": 50022264,
+      "tarballSha256": "2b72e74de6f3eeaf1f471591689369628c56b6aa195583a7c71f70737e07ddb8",
+      "integrity": "sha512-r20VesXlWAzFD4pa2Lyu4rn7zfCjmG77txZIG8ISCOhe0fvuvwIp7z5lZ8EAD/7TrJiF66abDmKENDDpfil3hQ=="
+    },
+    {
+      "index": 2,
+      "version": "0.1.4-payload.2",
+      "bytes": 50000000,
+      "sha256": "2efcbb7db537350ce2d44af5dfce06eb53e8cf37a0c0d0f49fc334d4bc206bd7",
+      "tarballBytes": 50022271,
+      "tarballSha256": "1f22aefd5bc2947d78727b601381aae56a242a355084a658bed877e99c28cf94",
+      "integrity": "sha512-EoCQFjfmaWgGj58f6msn7D9WpzL3LwMF0NAvgDnts+utuXGpREzsQeuO/uBP3eonTz5nRouNLdb/T3F5QGRGSw=="
+    },
+    {
+      "index": 3,
+      "version": "0.1.4-payload.3",
+      "bytes": 50000000,
+      "sha256": "eaa75e85a875ee12fe91561f0798d8c8230aeb439af62ee871d043179286dc91",
+      "tarballBytes": 50021430,
+      "tarballSha256": "d4c63f16899a2615c2ef2a3da4832e703af9c5bedbee8505497038f8edb80fdb",
+      "integrity": "sha512-FB+BMKMWz2dAeJd5oOu4IzQIJPY+KXeWH//pTf4OzX2tWFrsMpQ7O0pE7EAdKNjvPOC/jTh/ewiRAw1ZLCC5rg=="
+    },
+    {
+      "index": 4,
+      "version": "0.1.4-payload.4",
+      "bytes": 50000000,
+      "sha256": "c1b1ec693ca46fdb8b986cdcd438c9087e98e8a54529590adc36af1440eed1f0",
+      "tarballBytes": 50002724,
+      "tarballSha256": "8f4fef5203551c0321ed4189d222f2534950f70b4cf11b0a72d59b9ea72ad097",
+      "integrity": "sha512-vugUI25BuYqUt7W497g81eKYjzc4et6gAbNm7rnHRCUJXD3HtCJP/WrmmqiwzuLEvY8npSVFsLncyjPsMsv0+A=="
+    },
+    {
+      "index": 5,
+      "version": "0.1.4-payload.5",
+      "bytes": 653184,
+      "sha256": "3ccc4052756feebf0ff7356c32de7a88039df4445f8ea5e2b223523baa4d483c",
+      "tarballBytes": 647957,
+      "tarballSha256": "eff8a524bd8acf9e138c6e91a2e271e6b6a639699a7e5cc75afc3ac0d5a10b40",
+      "integrity": "sha512-VIn1waOFUhJwnCSTu93ZcYudhbkjCQHUhE1Qtr3xhdVn00aG491rzT+6Po8I/z9DGZnAocSDHe6TMz+f3ZWKGg=="
+    }
+  ],
+  "installer": "Ecom-0.1.4-windows-x64.exe",
+  "tarball": "petercjl-ecom-windows-x64-0.1.4.tgz",
+  "tarballSha256": "a438ad05f5d0882fb2fe8bc68871edfefd8b54edaea0d3741d02592f95c04d64",
+  "integrity": "sha512-vK7/5oLrnFzeeJ65JTm6jFz5xKKTg8S4n95YEZ7/7GKeQjjbLScW/aJYRm8whk7IupJfekjWRQKdvyvvH0TCVA==",
+  "tarballBytes": 7331,
+  "transfer": "windows-transfer.tar",
+  "transferSha256": "da67c8bc84b2ae50dbe0ddb919129b4826ee014f90b9b2230819021b4a84180b",
+  "transferBytes": 250717696,
+  "buildEnvironment": {
+    "node": "v24.22.2",
+    "platform": "win32",
+    "arch": "x64",
+    "argsSha256": "18ff8c9d05246b21a7f71e9d3fd4b81b31927fc55bd73f62a439feea7b03235b"
+  },
+  "updaterSelfTest": true,
+  "payloadVerified": true,
+  "corruptedPartRejected": true,
+  "nativeSmokeTest": false,
+  "localUpdateRecoveryVerified": false,
+  "updateRoundTripVerified": false,
+  "rollbackRoundTripVerified": false,
+  "published": false,
+  "installerLivenessGuardVerified": true,
+  "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.4.md"
+}
