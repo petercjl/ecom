@@ -112,5 +112,9 @@
   "operatorAutomaticCleanupVerified": true,
   "userDataPreservedAfterPublicUpdate": true,
   "publishedAssemblyRollbackVerified": true,
-  "userDataPreservedAfterPublicRollback": true
+  "userDataPreservedAfterPublicRollback": true,
+  "finalLocalVersion": "0.1.5",
+  "finalLocalReactivationVerified": true,
+  "latestPromotionAttempt": "https://github.com/petercjl/ecom/actions/runs/42171272706",
+  "latestPromotionStatus": "blocked-dist-tag-permission"
 }
