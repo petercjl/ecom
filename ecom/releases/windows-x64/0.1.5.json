@@ -116,5 +116,6 @@
   "finalLocalVersion": "0.1.5",
   "finalLocalReactivationVerified": true,
   "latestPromotionAttempt": "https://github.com/petercjl/ecom/actions/runs/42171272706",
-  "latestPromotionStatus": "blocked-dist-tag-permission"
+  "latestPromotionStatus": "blocked-dist-tag-permission",
+  "latestPromotionRetry": "https://github.com/petercjl/ecom/actions/runs/42176430162"
 }
