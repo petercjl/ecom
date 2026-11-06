@@ -92,7 +92,7 @@
   "nativeSmokeTest": true,
   "localUpdateRecoveryVerified": true,
   "updateRoundTripVerified": true,
-  "rollbackRoundTripVerified": false,
+  "rollbackRoundTripVerified": true,
   "published": true,
   "preparedUpdateReuseVerified": true,
   "guiJobPidVerified": true,
@@ -110,5 +110,7 @@
   "nativeNpmActivationVerified": true,
   "publicPreparedPayloadVerified": true,
   "operatorAutomaticCleanupVerified": true,
-  "userDataPreservedAfterPublicUpdate": true
+  "userDataPreservedAfterPublicUpdate": true,
+  "publishedAssemblyRollbackVerified": true,
+  "userDataPreservedAfterPublicRollback": true
 }
