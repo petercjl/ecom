@@ -1,4 +1,4 @@
-# Ecom Windows x64 0.1.5 local candidate
+# Ecom Windows x64 0.1.5 next candidate
 
 Native source: 9eab6bd064276b64135b484f8cc6314ec7a0f30b.
 
@@ -39,8 +39,32 @@ All measurements are on peter-new. Times below start at the new installation win
 
 Verified rollback took 26.61 s through startup confirmation. The new installed application totals 699927003 bytes and the retained 0.1.4 backup totals 699890651 bytes. The earlier full backup was 1391410495 bytes, including 691500900 bytes of Installer/chrome.7z. The archive omission roughly halves the application/backup disk footprint; the compressed first-install file remains about 251 MB.
 
-## Final state and publication boundary
+## Local validation checkpoint
 
 Independent inspection confirmed installed 0.1.5/source 9eab6bd064276b64135b484f8cc6314ec7a0f30b, exact EXE/framework/updater receipt hashes, pending=complete and last-result=updated. Installer cache absent, setup.exe present, ready record absent. Owned counts: backups=1, staging=0, workers=0, replaced=0, verification=0; no active installer/test process remained. Product cleanup performed the file removal; the agent did not manually delete update files.
 
-The selected runtime channel remains next. No npm publication was performed: public next is 0.1.4 and latest is 0.0.0-bootstrap.1. This local candidate is unpublished. Installers remain on peter-new, with no GitHub installer upload. Stable promotion remains blocked pending the exact candidate's public/operator acceptance.
+The selected runtime channel remains next. At the local checkpoint no npm publication had been performed: next was 0.1.4 and latest was 0.0.0-bootstrap.1. Installers remain on peter-new, with no GitHub installer upload. Stable promotion remains blocked pending the exact candidate's public/operator acceptance.
+
+## Public next publication and operator validation setup
+
+[Actions run 42166625924](https://github.com/petercjl/ecom/actions/runs/42166625924) succeeded through OIDC using the same immutable windows-release-wNoaVJ payload. No native rebuild or repack was performed. On peter-new, all seven public versions matched the pinned integrity values and actual .NET GET requests returned HTTP 200 with readable content. next=0.1.5 and latest=0.0.0-bootstrap.1. The workflow waited for npm file processing before exposing the primary version. Temporary Actions artifacts total zero; the single-file server and HTTP/2 relay were stopped and their sessions reaped.
+
+The operator first used the installed 0.1.5 GUI to restore its existing 0.1.4 backup, confirming persistent progress and recovered windows/containers. Independent inspection confirmed source 547fd6b585f8e9f77e3e2244a3d834787830645b, pending=recovered, last-result=rolled-back, no active installer, staging=0 and replaced=0. The copied worker remained eligible for cleanup on the next updater launch. The GUI recovery timing report recorded 30.415 seconds. A private snapshot records the original Profile/container identity digests for the public update round trip.
+
+For presentation testing on the older baseline, the exact 0.1.5 helper (SHA-256 b937c5eeca1d6e3b60cadda5e483b3aebccfd8215afb18e2e0aaf7760c98acd1) was copied to the build machine's test-evidence directory before rollback. This staged test client uses the canonical 0.1.4 application and live native PID/quit-event context; it does not overwrite the installed older helper. It allows validation of the 0.1.5 progress implementation while the original 0.1.4 application remains unchanged. It is distinct from upgrading with an unmodified older helper. Public npm download, activation and subsequent operator rollback validation remain pending; stable gates remain false.
+
+## Public GUI activation and automatic cleanup
+
+The old installed manual updater was closed by the operator. The staged exact 0.1.5 helper opened against the unchanged 0.1.4 application using its live native PID/quit-event and original Profile. It downloaded next 0.1.5 from the public registry. Independent prepared-state inspection confirmed the pinned primary SRI, the complete reassembled installer SHA-256, source 9eab6bd064276b64135b484f8cc6314ec7a0f30b and canonical application/Profile binding. The operator selected Restart, confirmed completion and reported a substantially better experience.
+
+Independent post-restart checks confirmed installed 0.1.5/source 9eab6bd064276b64135b484f8cc6314ec7a0f30b and exact EXE/framework/updater hashes. pending=complete, last-result=updated, ready absent, no active apply/installer. The original container identity digest matches the pre-download snapshot (one persisted Profile). Installer/chrome.7z is absent; setup.exe remains. The actual GUI worker timing reports process launch at 45.346 seconds, visible readiness at 46.605 seconds and completion at 57.039 seconds.
+
+Immediately after completion, staging/replaced/verification were empty and one 373107-byte worker directory remained because its executable had been running. Its timing was preserved in the build-machine evidence directory. Starting the installed updater through the normal native context-bound entry invoked the product cleanup routine: workers=0, staging=0, replaced=0 and verification=0. Exactly one 699890651-byte rollback backup remains. No update files were manually deleted. Cleanup of a just-exited worker occurs on the next updater start; large downloaded/extracted files were removed during successful activation.
+
+Public activation is verified using the staged 0.1.5 client; the separate unmodified 0.1.4 helper upgrade path is not claimed as a presentation test. The installed 0.1.5 GUI is now open for the operator's subsequent rollback test. That post-public-activation rollback remains pending, so rollbackRoundTripVerified stays false. latest remains unchanged.
+
+## Final published-assembly rollback and promotion eligibility
+
+After the public GUI update, the final maintenance rollback exercised the actual receipt-matched 0.1.5 product assembly, SHA-256 b937c5eeca1d6e3b60cadda5e483b3aebccfd8215afb18e2e0aaf7760c98acd1. The --rollback-published test mode copies that helper outside Application, verifies its hash and loads its production RunApplyWithProgress/restore implementation; it does not substitute a newly built updater. It verifies the installed source/core hashes before recovery, the expected 0.1.4 backup, a normal visible restored window, retained container identity digests, pending=recovered, last-result=rolled-back and automatic staging/worker/replaced cleanup. EcomPublic015RollbackFinal returned zero; its report is ok=true, publishedAssemblyExecuted=true and containerIdentitiesPreserved=true. Recovery and startup confirmation took 26.582 seconds. This final run is automated maintenance verification; the earlier operator GUI rollback remains separately recorded.
+
+All candidate update/recovery gates now pass. The user authorized promotion of this same immutable 0.1.5 version to latest. A final local activation restores the test machine to the already verified candidate after recovery. No new browser compilation or npm payload repack is required. Later main commits contain separate native memory work, so channel promotion uses the frozen codex/windows-015-latest release checkout based on the original verified publication inputs plus QA records. Those later native changes are not included in this release. Registry promotion and final test-machine state remain to be recorded after completion.
