@@ -87,3 +87,5 @@ Always inspect `skill status` using the newly activated entry. If `recovery.requ
 ## QA and evolution
 
 Success requires actual structured CLI output, not inferred browser state. Maintenance additionally requires integrity plus native host discovery. Runtime checks do not claim clean-context regression or other Agents/OS tests. Add new commands to the browser capability layer, CLI schema, tests and this canonical Skill together in an authorized development cycle. This simple deterministic Skill uses direct internalization of user-confirmed scope and verified CLI contracts; private knowledge bases are not runtime dependencies.
+
+Native playback observation preserves background playback intent when Chromium suspends muted media on hiding it. Revisit and pause to release that conservative protection; navigation clears the old page state. Selecting a sleeping tab reloads it through the native tab model.

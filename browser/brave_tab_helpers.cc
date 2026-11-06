@@ -4,6 +4,7 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "brave/browser/brave_tab_helpers.h"
+#include "brave/browser/ecom/memory_actions.h"
 
 #include <memory>
 #include <utility>
@@ -131,6 +132,9 @@
 namespace brave {
 
 void AttachTabHelpers(content::WebContents* web_contents) {
+#if !BUILDFLAG(IS_ANDROID)
+  ecom::InitializeMemoryPage(web_contents);
+#endif
   // If your TabHelper is related to privacy consider whether it belongs in this
   // method, so it can also be attached to background WebContents.
   AttachPrivacySensitiveTabHelpers(web_contents);

@@ -1,12 +1,14 @@
 // Copyright 2026 Ecom Authors. MPL-2.0.
 #include "brave/browser/ecom/memory_actions.h"
 #include "brave/browser/ecom/memory_auto.h"
+#include "content/public/browser/media_player_id.h"
 #include "content/public/browser/media_session.h"
 #include "services/media_session/public/mojom/media_session.mojom.h"
 
 #include <deque>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -33,6 +35,7 @@
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_observer.h"
 
 namespace ecom {
 namespace {
@@ -40,6 +43,43 @@ namespace pm = performance_manager;
 using Policy = pm::policies::DiscardEligibilityPolicy;
 constexpr char kOperations[] = "ecom.memory.operations";
 constexpr char kTasks[] = "ecom.memory.page-tasks";
+constexpr char kPlayback[] = "ecom.memory.playback";
+class Playback final : public base::SupportsUserData::Data,
+                       public content::WebContentsObserver {
+public:
+  explicit Playback(content::WebContents *wc) : WebContentsObserver(wc) {}
+  void MediaStartedPlaying(const MediaPlayerInfo &,
+                           const content::MediaPlayerId &id) override {
+    playing_.insert(id);
+    if (web_contents()->GetVisibility() != content::Visibility::VISIBLE)
+      background_intent = true;
+  }
+  void MediaStoppedPlaying(const MediaPlayerInfo &,
+                           const content::MediaPlayerId &id,
+                           MediaStoppedReason reason) override {
+    playing_.erase(id);
+    if (web_contents()->GetVisibility() == content::Visibility::VISIBLE ||
+        (playing_.empty() && reason == MediaStoppedReason::kReachedEndOfStream))
+      background_intent = false;
+    // Chromium can pause muted video on hiding it. An unspecified background
+    // stop cannot prove that the user paused it; retain its playback intent.
+  }
+  void OnVisibilityChanged(content::Visibility visibility) override {
+    if (visibility == content::Visibility::VISIBLE)
+      background_intent = false;
+    else
+      background_intent |= !playing_.empty() ||
+                           web_contents()->GetCurrentlyPlayingVideoCount() > 0;
+  }
+  void PrimaryPageChanged(content::Page &) override {
+    playing_.clear();
+    background_intent = false;
+  }
+  bool background_intent = false;
+
+private:
+  std::set<content::MediaPlayerId> playing_;
+};
 class PageTasks final : public base::SupportsUserData::Data {
 public:
   int count = 0;
@@ -79,6 +119,11 @@ base::DictValue Error(std::string code, bool executed = false) {
                         .Set("executed", executed));
 }
 } // namespace
+
+void InitializeMemoryPage(content::WebContents *wc) {
+  if (!wc->GetUserData(kPlayback))
+    wc->SetUserData(kPlayback, std::make_unique<Playback>(wc));
+}
 
 base::ScopedClosureRunner ProtectMemoryPageTask(content::WebContents *wc) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
@@ -123,6 +168,10 @@ base::DictValue DescribeManualDiscard(content::WebContents *wc) {
   } else {
     if (IsMemoryTabKeptAwake(wc))
       block("KEEP_AWAKE", "Explicit keep-running protection is enabled");
+    auto *playback = static_cast<Playback *>(wc->GetUserData(kPlayback));
+    if (playback && playback->background_intent)
+      block("BACKGROUND_MEDIA",
+            "Background media playback or suspended playback intent");
     if (wc->GetCurrentlyPlayingVideoCount() > 0)
       block("VIDEO_PLAYING", "Video is playing, including muted video");
     if (auto *media = content::MediaSession::GetIfExists(wc)) {
@@ -314,6 +363,12 @@ base::DictValue RunMemoryTabCommand(Profile *profile,
         (!after_lifecycle || after_lifecycle->GetTabState() !=
                                  mojom::LifecycleUnitState::DISCARDED))
       return Error("DISCARD_STATE_UNKNOWN", true);
+    if (action == "tabs.discard") {
+      // Replacement-based discard clears this flag. TabModel::LoadIfNeeded
+      // needs it to reload when the user selects an unloaded background tab,
+      // including when that window is not the focused browser window.
+      after->GetController().SetNeedsReload();
+    }
     return base::DictValue()
         .Set("ok", true)
         .Set("executed", true)

@@ -38,7 +38,7 @@ function reasons(tab, freeze) {
   if(freeze)for(const reason of tab.connectedFreezeReasons)div.append(node('small',t('关联页面：','Connected page: ')+(zh?freezeZh[reason.code]??reason.message:reason.message)))
   return div
 }
-const mvpZh={UNAVAILABLE:'原生状态不可用',NOT_WEB_PAGE:'内置页面保持运行',LOADING:'页面正在加载',UPLOADING:'正在上传',TASK_IN_PROGRESS:'原生页面任务正在执行',NATIVE_PROTECTION:'内核保护',KEEP_AWAKE:'已开启保持运行',VIDEO_PLAYING:'正在播放视频（含静音）',MEDIA_PLAYING:'正在播放音视频',BEFORE_UNLOAD:'页面设有离开确认，保护未保存内容'}
+const mvpZh={UNAVAILABLE:'原生状态不可用',NOT_WEB_PAGE:'内置页面保持运行',LOADING:'页面正在加载',UPLOADING:'正在上传',TASK_IN_PROGRESS:'原生页面任务正在执行',NATIVE_PROTECTION:'内核保护',KEEP_AWAKE:'已开启保持运行',BACKGROUND_MEDIA:'后台播放或暂挂播放，返回页面暂停后可释放',VIDEO_PLAYING:'正在播放视频（含静音）',MEDIA_PLAYING:'正在播放音视频',BEFORE_UNLOAD:'页面设有离开确认，保护未保存内容'}
 function manualReason(reason) {
   if(!zh)return reason.message
   if(reason.source==='mvp')return mvpZh[reason.code]??reason.message
