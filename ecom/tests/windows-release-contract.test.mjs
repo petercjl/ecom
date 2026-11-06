@@ -4,18 +4,24 @@ import fs from 'node:fs';
 import {validateWindowsRelease,windowsPackage,validateWindowsParts,windowsPackBudget} from '../windows-release-contract.mjs';
 import {validateWindowsPublication,windowsRegistryStatus} from '../verify-windows-payload.mjs';
 const config=JSON.parse(fs.readFileSync(new URL('../windows-release-config.json',import.meta.url)));
-const record={...config,sourceRevision:'a'.repeat(40),tarballSha256:'b'.repeat(64),evidencePath:'docs/ecom/release-evidence/windows-test.md',nativeSmokeTest:true,localUpdateRecoveryVerified:true,updaterSelfTest:true,payloadVerified:true,updateRoundTripVerified:false,rollbackRoundTripVerified:false};
+const record={...config,sourceRevision:'a'.repeat(40),tarballSha256:'b'.repeat(64),evidencePath:'docs/ecom/release-evidence/windows-test.md',nativeSmokeTest:false,localUpdateRecoveryVerified:false,updaterSelfTest:true,payloadVerified:true,corruptedPartRejected:true,devValidation:{verified:true,sourceRevision:'a'.repeat(40),evidencePath:'docs/ecom/release-evidence/dev.md'},updateRoundTripVerified:false,rollbackRoundTripVerified:false};
 test('Windows payload cannot be confused with a Mac or another architecture',()=>{
   assert.equal(validateWindowsRelease(config),config);
   for(const patch of [{platform:'darwin'},{arch:'arm64'},{packageName:'@petercjl/ecom-macos-arm64'},{version:'1.0.0/../../x'},{updateProtocol:2}])assert.throws(()=>validateWindowsRelease({...config,...patch}));
   assert.deepEqual(windowsPackage(config).os,['win32']);assert.deepEqual(windowsPackage(config).cpu,['x64']);
 });
-test('next requires local native and recovery evidence; latest also requires real update and rollback',()=>{
+test('direct Windows latest requires Dev and package checks without a next round trip',()=>{
+  assert.equal(validateWindowsPublication(record,config,'latest'),record);
   assert.equal(validateWindowsPublication(record,config,'next'),record);
-  for(const gate of ['nativeSmokeTest','localUpdateRecoveryVerified','updaterSelfTest','payloadVerified'])assert.throws(()=>validateWindowsPublication({...record,[gate]:false},config,'next'));
-  assert.throws(()=>validateWindowsPublication(record,config,'latest'));
-  assert.throws(()=>validateWindowsPublication({...record,updateRoundTripVerified:true},config,'latest'));
-  assert.doesNotThrow(()=>validateWindowsPublication({...record,updateRoundTripVerified:true,rollbackRoundTripVerified:true},config,'latest'));
+  for(const gate of ['updaterSelfTest','payloadVerified','corruptedPartRejected'])assert.throws(()=>validateWindowsPublication({...record,[gate]:false},config,'latest'));
+  assert.throws(()=>validateWindowsPublication({...record,devValidation:undefined},config,'latest'));
+  assert.throws(()=>validateWindowsPublication({...record,devValidation:{...record.devValidation,verified:false}},config,'latest'));
+});
+test('unpublished Windows versions can be created directly under latest',async()=>{
+  const absent=async()=>new Response('',{status:404});
+  assert.equal(await windowsRegistryStatus(config.version,'latest',absent),null);
+  assert.equal(await windowsRegistryStatus(config.version,'next',absent),null);
+  await assert.rejects(windowsRegistryStatus(config.version,'latest',async()=>new Response('',{status:403})),/Cannot query/);
 });
 
 test('part layout rejects gaps, duplicates, version drift and oversized publication units',()=>{

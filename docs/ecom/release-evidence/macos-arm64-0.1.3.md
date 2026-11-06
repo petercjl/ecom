@@ -9,3 +9,7 @@ DMG: 248839414 bytes. npm transport tarball: 157815306 bytes; contained applicat
 Framework/dSYM arm64 UUID both equal 4C4C4400-5555-3144-A1A1-0097DD32534A. Crash symbols are stored separately; zero dSYM bundles exist inside the packaged application. Root UI localization is zh_CN.lproj. Bundle identity is app.ecom.browser, EcomReleaseVersion=0.1.3, with the pinned build source.
 
 No formal application was installed or published. Native formal-app smoke/update and public next round-trip gates remain false. The Mac tarball is within the existing 390000000-byte packaging budget. Public registry delivery and native formal-app activation are separate pending acceptance gates. Windows distribution uses its existing split-payload contract.
+
+## Direct-latest policy adoption
+
+The user changed the internal release policy on 2026-11-06: verified Dev behavior and automatic platform packaging checks permit direct latest publication; next and full installation/update/rollback exercises are optional directed checks. The candidate now binds the actual Dev validation record in dev-2026-11-06-help.md. Historical test flags above remain unchanged and are not represented as completed. Payload bytes, native source identity and checksum pins are unchanged. No npm publication was performed by this policy change.

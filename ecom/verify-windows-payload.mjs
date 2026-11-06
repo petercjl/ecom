@@ -6,26 +6,27 @@ import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
 import {validateWindowsRelease,windowsPackage,windowsPartPackage,validateWindowsParts,windowsPackBudget,sha256} from './windows-release-contract.mjs';
 import {git} from './workspace.mjs';
+import {validateDevValidation,verifyDevValidation,publicationOnly} from './publication-evidence.mjs';
 
 export function validateWindowsPublication(record,config,tag) {
   validateWindowsRelease(config);
+  validateDevValidation(record);
   if(!['next','latest'].includes(tag)||record.version!==config.version||record.packageName!==config.packageName||record.platform!=='win32'||record.arch!=='x64'||
-    record.nativeSmokeTest!==true||record.localUpdateRecoveryVerified!==true||record.updaterSelfTest!==true||record.payloadVerified!==true||
-    (tag==='latest'&&(record.updateRoundTripVerified!==true||record.rollbackRoundTripVerified!==true))||
+    record.updaterSelfTest!==true||record.payloadVerified!==true||record.corruptedPartRejected!==true||
     !/^[a-f0-9]{40}$/.test(record.sourceRevision)||!/^[a-f0-9]{64}$/.test(record.tarballSha256)||
     !/^docs\/ecom\/release-evidence\/[a-zA-Z0-9._-]+\.md$/.test(record.evidencePath))throw new Error('Windows native release evidence is incomplete');
   return record;
 }
-export async function verifyWindowsPayload(root,version,tgz,tag='next') {
+export async function verifyWindowsPayload(root,version,tgz,tag='latest') {
   const config=validateWindowsRelease(JSON.parse(fs.readFileSync(path.join(root,'ecom/windows-release-config.json'))));
   if(version!==config.version)throw new Error('Version must match the committed Windows release');
   if(JSON.stringify(JSON.parse(fs.readFileSync(path.join(root,'ecom/distribution-windows/package.json'))))!==JSON.stringify(windowsPackage(config)))throw new Error('Distribution descriptor mismatch');
   const record=validateWindowsPublication(JSON.parse(fs.readFileSync(path.join(root,'ecom/releases/windows-x64',version+'.json'))),config,tag);
   git(root,['cat-file','-e',record.sourceRevision+'^{commit}']);
   const evidence=git(root,['show','HEAD:'+record.evidencePath]);if(!evidence.includes(record.sourceRevision))throw new Error('Build source missing from evidence');
-  const verificationOnly=new Set(['AGENTS.md','ecom/verify-windows-payload.mjs','.github/workflows/ecom-windows-publish.yml','ecom/tests/windows-updater-local-roundtrip.cs','ecom/windows-release-transfer.mjs','ecom/tests/windows-updater-ui.cs','ecom/tests/windows-release-contract.test.mjs']);
   const changes=git(root,['diff','--name-only',record.sourceRevision,'HEAD']).split(/\r?\n/).filter(Boolean);
-  if(changes.some(p=>!verificationOnly.has(p)&&!p.startsWith('docs/')&&!p.startsWith('ecom/releases/')&&!p.startsWith('packages/ecom-cli/')))throw new Error('Native inputs changed after the build');
+  if(changes.some(file=>!publicationOnly(file,config.platform)))throw new Error('Native inputs changed after the build');
+  verifyDevValidation(root,record);
   validateWindowsParts(record);
   if(!tgz)return {ok:true,record};
   const checkArchive=async(file,identity,entries)=>{
@@ -54,14 +55,14 @@ export async function verifyWindowsPayload(root,version,tgz,tag='next') {
   if(installerHash.digest('hex')!==record.archiveSha256)throw new Error('Reassembled installer differs');
   return {ok:true,record};
 }
-export async function windowsRegistryStatus(version,tag) {
-  const r=await fetch('https://registry.npmjs.org/@petercjl%2fecom-windows-x64/'+encodeURIComponent(version),{redirect:'error',signal:AbortSignal.timeout(30000)});
-  if(r.status===404){await r.arrayBuffer();if(tag==='latest')throw new Error('Publish and verify next first');return null;}
+export async function windowsRegistryStatus(version,tag,fetchMetadata=fetch) {
+  const r=await fetchMetadata('https://registry.npmjs.org/@petercjl%2fecom-windows-x64/'+encodeURIComponent(version),{redirect:'error',signal:AbortSignal.timeout(30000)});
+  if(r.status===404){await r.arrayBuffer();return null;}
   if(!r.ok)throw new Error('Cannot query Windows registry version');const data=await r.json();
   if(data.name!=='@petercjl/ecom-windows-x64'||data.version!==version||!data.dist?.integrity)throw new Error('Unexpected registry identity');return data;
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
-  const {positionals,values}=parseArgs({allowPositionals:true,options:{tag:{type:'string',default:'next'},registry:{type:'boolean'}}});
+  const {positionals,values}=parseArgs({allowPositionals:true,options:{tag:{type:'string',default:'latest'},registry:{type:'boolean'}}});
   const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
   const main=async()=>{const result=await verifyWindowsPayload(root,positionals[0],positionals[1],values.tag);if(values.registry){const data=await windowsRegistryStatus(positionals[0],values.tag);if(data&&data.dist.integrity!==result.record.integrity)throw new Error('Published payload differs from verified candidate');console.log('exists='+Boolean(data));}else console.log(JSON.stringify(result));};
   main().catch(e=>{console.error(e.message);process.exitCode=1;});

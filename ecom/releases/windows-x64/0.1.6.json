@@ -96,5 +96,10 @@
   "published": false,
   "helpMenuVerifiedOnDev": true,
   "installerIndependentHashVerified": true,
-  "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.6.md"
+  "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.6.md",
+  "devValidation": {
+    "verified": true,
+    "sourceRevision": "8fd5a8313b8dbf0bfde1069287f3d620682ac958",
+    "evidencePath": "docs/ecom/release-evidence/dev-2026-11-06-help.md"
+  }
 }

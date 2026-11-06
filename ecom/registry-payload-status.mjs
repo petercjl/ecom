@@ -9,7 +9,6 @@ export async function registryPayloadStatus(version, tarball, tag, fetchMetadata
   if (version !== config.version || !['next', 'latest'].includes(tag) || !tarball) throw new Error('Invalid release target');
   const response = await fetchMetadata('https://registry.npmjs.org/@petercjl%2fecom-macos-arm64/' + version, { redirect: 'error', signal: AbortSignal.timeout(30000) });
   if (response.status === 404) {
-    if (tag === 'latest') throw new Error('Publish and verify the candidate on next before promotion');
     return { exists: false };
   } else {
     if (!response.ok) throw new Error('Cannot verify the public registry version');

@@ -9,3 +9,7 @@ Artifacts remain on peter-new under repo/.brave-build/windows-release-j6LvXu/art
 The shared help page was opened and visually checked on Mac Dev using the actual Help menu; that is not a Windows desktop acceptance test. No 0.1.6 application was installed and no package was published. The installed peter-new application remains 0.1.5. Native smoke, local update/recovery, public next activation and rollback gates remain false. The new native update reminder must be accepted on the Windows candidate in the next validation cycle before stable promotion.
 
 The separate macOS arm64 0.1.3 candidate was built from d5cc360664ca102e153d8969bab6f68f97c38bc5. Its only subsequent runtime-source difference at this checkpoint is the Windows-only array correction; macOS build evidence and signatures retain the original source identity. Later memory comparison documents do not change native inputs.
+
+## Direct-latest policy adoption
+
+The user changed the internal release policy on 2026-11-06: verified Dev behavior and automatic platform packaging checks permit direct latest publication; next and full installation/update/rollback exercises are optional directed checks. The candidate now binds the actual Dev validation record in dev-2026-11-06-help.md. Historical test flags above remain unchanged and are not represented as completed. Payload bytes, native source identity and checksum pins are unchanged. No npm publication was performed by this policy change.

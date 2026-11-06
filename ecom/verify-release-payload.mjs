@@ -6,14 +6,15 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { validateRelease, payloadPackage, sha256 } from './release-contract.mjs';
 import { git } from './workspace.mjs';
+import { validateDevValidation, verifyDevValidation, publicationOnly } from './publication-evidence.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export function validatePublication(record, config, tag = 'latest') {
   validateRelease(config);
+  validateDevValidation(record);
   if (record.version !== config.version || record.packageName !== config.packageName ||
       record.platform !== config.platform || record.arch !== config.arch ||
-      !['latest', 'next'].includes(tag) || record.nativeSmokeTest !== true || record.localUpdateRecoveryVerified !== true ||
-      (tag === 'latest' && record.updateRoundTripVerified !== true) ||
+      !['latest', 'next'].includes(tag) || record.updaterSelfTest !== true || record.codesignVerified !== true ||
       !/^[a-f0-9]{40}$/.test(record.sourceRevision) || !/^[a-f0-9]{64}$/.test(record.tarballSha256) ||
       !/^docs\/ecom\/release-evidence\/[a-zA-Z0-9._-]+\.md$/.test(record.evidencePath)) throw new Error('Native release evidence is incomplete');
   return record;
@@ -25,16 +26,15 @@ export async function verifyPayload(repositoryRoot, version, tgz, tag = 'latest'
   const descriptor = JSON.parse(fs.readFileSync(path.join(root, 'ecom/distribution/package.json'), 'utf8'));
   if (JSON.stringify(descriptor) !== JSON.stringify(payloadPackage(config))) throw new Error('Distribution descriptor differs from release config');
   const recordPath = path.join(root, 'ecom/releases/macos-arm64', version + '.json');
-  if (!fs.existsSync(recordPath)) throw new Error('Native release record is missing; complete installation and update validation before publishing');
+  if (!fs.existsSync(recordPath)) throw new Error('Native release record is missing; complete Dev validation and platform packaging before publishing');
   const record = validatePublication(JSON.parse(fs.readFileSync(recordPath, 'utf8')), config, tag);
   git(root, ['cat-file', '-e', record.sourceRevision + '^{commit}']);
   const evidence = git(root, ['show', 'HEAD:' + record.evidencePath]);
   if (!evidence.includes(record.sourceRevision)) throw new Error('Evidence does not identify the native build source');
   // Unknown application or recipe changes select a new build rather than reuse.
   const changes = git(root, ['diff', '--name-only', record.sourceRevision, 'HEAD']).split('\n').filter(Boolean);
-  const verificationOnly = new Set(['ecom/test-macos-update-recovery.mjs', 'ecom/tests/release-contract.test.mjs']);
-  const managerOnly = file => verificationOnly.has(file) || file.startsWith('docs/') || file.startsWith('packages/ecom-cli/') || file.startsWith('ecom/releases/') || file === 'AGENTS.md' || file === '.github/workflows/ecom-macos-publish.yml' || file === 'ecom/verify-release-payload.mjs';
-  if (changes.some(file => !managerOnly(file))) throw new Error('Native inputs changed after the verified artifact; build again');
+  if (changes.some(file => !publicationOnly(file, config.platform))) throw new Error('Native inputs changed after the verified artifact; build again');
+  verifyDevValidation(root, record);
   if (!tgz) return { ok: true, version, record, artifactVerified: false };
   if (fs.statSync(tgz).size > 390_000_000) throw new Error('Payload exceeds npm CLI publication size budget');
   if (await sha256(tgz) !== record.tarballSha256) throw new Error('Payload differs from the committed artifact');
