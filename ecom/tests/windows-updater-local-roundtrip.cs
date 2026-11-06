@@ -39,8 +39,43 @@ namespace EcomUpdate {
       }
       return result;
     }
+    // Explicit test-baseline migration: unlike a product update, both versions
+    // are 0.0.0. The browser must already be closed by the operator.
+    static int MigrateBaseline(string installerFile,string receiptFile,string reportFile) {
+      Program.Require(!File.Exists(reportFile),"Migration report exists");
+      string root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom"),app=Path.Combine(root,"Application"),data=Path.Combine(root,"User Data");
+      Call("EnsureNoBrowser",app,0);Call("ReleaseInstallationDirectory");
+      Program.Require(!Process.GetProcessesByName("EcomUpdater").Any()&&!Process.GetProcessesByName("EcomUpdateWorker").Any(),"Close update windows before test-baseline migration");
+      var receipt=Program.ReadObject(receiptFile);Call("ValidateIdentity",receipt);
+      var previous=Program.ReadObject(Path.Combine((string)Call("VersionDirectory",app),"ecom-update.json"));
+      Program.Require(Program.S(previous,"version")=="0.0.0"&&Program.S(receipt,"version")=="0.0.0"&&Program.S(previous,"sourceRevision")!=Program.S(receipt,"sourceRevision"),"Only an explicit changed test baseline can migrate");
+      Program.Require(Program.Hash(installerFile)==Program.S(receipt,"archiveSha256"),"Baseline installer differs from receipt");
+      var before=Snapshot(data);Program.Require(before.Count>0,"No container preservation evidence");
+      string evidence=Path.Combine(Program.State,"test-baselines",Guid.NewGuid().ToString("N"));Call("PrivateDirectory",evidence);
+      foreach(string name in new[]{"pending.json","rollback.json","last-result.json","channel.json"}) {string file=Path.Combine(Program.State,name);if(File.Exists(file))File.Copy(file,Path.Combine(evidence,name),false);}
+      string ready=Path.Combine(Program.State,"ready.json");if(File.Exists(ready))File.Move(ready,Path.Combine(evidence,"ready-before.json"));
+      // Hold the repaired baseline on the stable tag until its new candidate is
+      // public, so the rejected previous next candidate is not offered again.
+      Call("AtomicJson",Path.Combine(Program.State,"channel.json"),new Dictionary<string,object>{{"channel","latest"}});
+      string backup=Path.Combine(Program.State,"backups",Guid.NewGuid().ToString("N"));Call("PrivateDirectory",Path.GetDirectoryName(backup));Call("CopyTree",app,backup);
+      string native=(string)Call("VersionDirectory",app);
+      var record=new Dictionary<string,object>{{"app",app},{"backup",backup},{"version","0.0.0"},{"profile",data},{"exeSha256",Program.Hash(Path.Combine(app,"Ecom.exe"))},{"frameworkSha256",Program.Hash(Path.Combine(native,"chrome.dll"))},{"metadataSha256",Program.Hash(Path.Combine(native,"ecom-update.json"))},{"updaterSha256",Program.Hash(Path.Combine(native,"EcomUpdater.exe"))},{"status","installing"},{"registration",Call("CaptureRegistration")}};
+      Call("AtomicJson",Path.Combine(Program.State,"pending.json"),record);
+      using(var installer=Process.Start((ProcessStartInfo)Call("UpdateProcess",installerFile,"--do-not-launch-chrome"))) {
+        Program.Require(installer.WaitForExit(600000),"Baseline installer still running; preserve pending recovery");Program.Require(installer.ExitCode==0,"Baseline installer failed: "+installer.ExitCode);
+      }
+      Call("ValidateInstalled",app,receipt);var process=(Process)Call("Restart",app,data,"0.0.0",null);
+      var after=Snapshot(data);Program.Require(before.Count==after.Count&&before.All(p=>after.ContainsKey(p.Key)&&Program.Json.Serialize(p.Value)==Program.Json.Serialize(after[p.Key])),"Container identity changed during baseline migration");
+      Call("AtomicJson",Path.Combine(Program.State,"rollback.json"),record);record["status"]="complete";Call("AtomicJson",Path.Combine(Program.State,"pending.json"),record);
+      Call("TryCleanup","0.0.0",false);
+      using(var output=new FileStream(reportFile,FileMode.CreateNew)) {
+        byte[] bytes=Encoding.UTF8.GetBytes(Program.Json.Serialize(new Dictionary<string,object>{{"ok",true},{"testOnly",true},{"version","0.0.0"},{"sourceRevision",receipt["sourceRevision"]},{"previousSourceRevision",previous["sourceRevision"]},{"containerIdentitiesPreserved",true},{"profileCount",before.Count},{"pid",process.Id},{"recoveryInputs",evidence}}));output.Write(bytes,0,bytes.Length);
+      }
+      return 0;
+    }
     public static int Main(string[] args) {
       try {
+        if(args.Length==4&&args[0]=="--migrate-baseline")return MigrateBaseline(args[1],args[2],args[3]);
         Program.Require(args.Length==4&&!File.Exists(args[2]),"Supply payload, receipt, a new report path and the explicit baseline version");
         string root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Ecom"),app=Path.Combine(root,"Application"),data=Path.Combine(root,"User Data");
         var receipt=Program.ReadObject(args[1]);string version=Program.S(receipt,"version");string baselineVersion=args[3];Program.Require((baselineVersion=="0.0.0"||baselineVersion=="0.1.0")&&new Version(version)>new Version(baselineVersion),"Unsupported explicit baseline or candidate");
@@ -68,7 +103,10 @@ namespace EcomUpdate {
         if(Directory.Exists(work))Directory.Delete(work,true);
         var report=new Dictionary<string,object>{{"ok",true},{"transport","local-payload"},{"fromVersion",baselineVersion},{"testedVersion",version},{"restoredVersion",baselineVersion},{"sourceRevision",receipt["sourceRevision"]},{"candidateVisibleWindow",true},{"containerIdentitiesPreserved",true},{"preparedUpdateReuseVerified",true},{"guiJobPidVerified",true},{"profileCount",before.Count},{"restoredPid",restored["pid"]}};
         using(var stream=new FileStream(args[2],FileMode.CreateNew)){byte[] bytes=Encoding.UTF8.GetBytes(Program.Json.Serialize(report));stream.Write(bytes,0,bytes.Length);}return 0;
-      }catch(Exception e){Console.Error.WriteLine(e.ToString());return 1;}
+      }catch(Exception e){
+        try{string report=args.Length==4?(args[0]=="--migrate-baseline"?args[3]:args[2]):null;if(report!=null)using(var output=new FileStream(report+".error.txt",FileMode.CreateNew)){byte[] bytes=Encoding.UTF8.GetBytes(e.ToString());output.Write(bytes,0,bytes.Length);}}catch{}
+        Console.Error.WriteLine(e.ToString());return 1;
+      }
     }
   }
 }
