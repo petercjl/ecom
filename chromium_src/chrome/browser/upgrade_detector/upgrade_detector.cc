@@ -5,8 +5,10 @@
 void UpgradeDetector::SetEcomUpdateNotification(bool available) {
   if (available && !notify_upgrade())
     set_upgrade_detected_time(base::Time::Now());
-  set_upgrade_available(available ? UPGRADE_AVAILABLE_REGULAR
-                                 : UPGRADE_AVAILABLE_NONE);
+  // npm payloads are staged outside the application. Only expose the native
+  // recommendation UI: marking the installed binary as upgraded would arm
+  // Chromium's lock-screen/zero-window automatic restart managers.
+  set_upgrade_available(UPGRADE_AVAILABLE_NONE);
   set_upgrade_notification_stage(available ? UPGRADE_ANNOYANCE_LOW
                                          : UPGRADE_ANNOYANCE_NONE);
   NotifyUpgrade();
