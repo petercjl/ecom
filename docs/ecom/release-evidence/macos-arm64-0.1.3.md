@@ -1,0 +1,11 @@
+# macOS arm64 0.1.3 build evidence
+
+Built on 2026-11-06 from committed source d5cc360664ca102e153d8969bab6f68f97c38bc5 using the unified release build entry. Native compilation took 10m12.83s. The candidate includes Ecom offline help/feedback destinations and native update-menu presentation. The later 78925bb3a correction changes Windows-only event arrays; it does not change macOS runtime inputs. Later memory comparison documentation is separate evidence.
+
+The Dev build passed and restarted normally. Actual macOS Help > Ecom Help navigation opened chrome://ecom-help/ (displayed as ecom://ecom-help); AX inspection and a screenshot confirmed the localized offline guide rendered. The page has no WebUI message handler or new management permissions. Both release-contract suites passed (12 tests); all introduced help anchors resolve.
+
+DMG: 248839414 bytes. npm transport tarball: 157815306 bytes; contained application archive: 157782660 bytes. The packaging receipt reports ad-hoc signature verification, updater self-test and isolated update/recovery contract verification passed. These are packaging checks, not an actual installed application update round trip.
+
+Framework/dSYM arm64 UUID both equal 4C4C4400-5555-3144-A1A1-0097DD32534A. Crash symbols are stored separately; zero dSYM bundles exist inside the packaged application. Root UI localization is zh_CN.lproj. Bundle identity is app.ecom.browser, EcomReleaseVersion=0.1.3, with the pinned build source.
+
+No formal application was installed or published. Native formal-app smoke/update and public next round-trip gates remain false. This Mac tarball is still a single large archive; publication requires checking registry transport limits and selecting a supported split layout before dispatch. Windows distribution uses its separate existing split-payload contract.
