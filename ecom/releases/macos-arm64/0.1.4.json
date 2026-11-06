@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.4",
+  "packageName": "@petercjl/ecom-macos-arm64",
+  "channel": "latest",
+  "platform": "darwin",
+  "arch": "arm64",
+  "bundleId": "app.ecom.browser",
+  "appName": "Ecom.app",
+  "updateProtocol": 1,
+  "signing": "ad-hoc",
+  "notarized": false,
+  "sourceRevision": "0cc91b3876f3e2e17105ed4a0a359e4b4ffd6a1d",
+  "archive": "Ecom.tar.xz",
+  "archiveSha256": "ffe67023d42e6e61377e1ebcba55c9de389808c5ca65e784528df581d8ff2146",
+  "archiveBytes": 157778140,
+  "dmg": "Ecom-0.1.4-macos-arm64.dmg",
+  "dmgSha256": "b472461a8823d88e2b58e9620c90e1d1c8b217e73c350853653a29fbda01a28d",
+  "tarball": "petercjl-ecom-macos-arm64-0.1.4.tgz",
+  "tarballSha256": "c11da6909f1361224c5a2355c6eaed4b2df0e8a2cc0542bcf63bd360ff13c69d",
+  "buildEnvironment": {
+    "node": "v24.22.2",
+    "xcode": "Xcode 26.5",
+    "sdk": "26.5",
+    "argsSha256": "ce4d1d096da68075b214324a728bd98bbcb337fc377fb012a20f196e6d5a2401"
+  },
+  "updaterSelfTest": true,
+  "localUpdateRecoveryVerified": true,
+  "codesignVerified": true,
+  "nativeSmokeTest": false,
+  "updateRoundTripVerified": false,
+  "published": false,
+  "devValidation": {
+    "verified": true,
+    "sourceRevision": "5e534887948e29b2d7eb409cd76e1d1aa497b8a6",
+    "evidencePath": "docs/ecom/release-evidence/dev-2026-11-06-p2.md"
+  },
+  "evidencePath": "docs/ecom/release-evidence/macos-arm64-0.1.4.md",
+  "dmgBytes": 248663148,
+  "tarballBytes": 157811273
+}
