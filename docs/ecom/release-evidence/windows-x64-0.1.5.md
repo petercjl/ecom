@@ -1,4 +1,4 @@
-# Ecom Windows x64 0.1.5 local candidate
+# Ecom Windows x64 0.1.5 next candidate
 
 Native source: 9eab6bd064276b64135b484f8cc6314ec7a0f30b.
 
@@ -39,8 +39,16 @@ All measurements are on peter-new. Times below start at the new installation win
 
 Verified rollback took 26.61 s through startup confirmation. The new installed application totals 699927003 bytes and the retained 0.1.4 backup totals 699890651 bytes. The earlier full backup was 1391410495 bytes, including 691500900 bytes of Installer/chrome.7z. The archive omission roughly halves the application/backup disk footprint; the compressed first-install file remains about 251 MB.
 
-## Final state and publication boundary
+## Local validation checkpoint
 
 Independent inspection confirmed installed 0.1.5/source 9eab6bd064276b64135b484f8cc6314ec7a0f30b, exact EXE/framework/updater receipt hashes, pending=complete and last-result=updated. Installer cache absent, setup.exe present, ready record absent. Owned counts: backups=1, staging=0, workers=0, replaced=0, verification=0; no active installer/test process remained. Product cleanup performed the file removal; the agent did not manually delete update files.
 
-The selected runtime channel remains next. No npm publication was performed: public next is 0.1.4 and latest is 0.0.0-bootstrap.1. This local candidate is unpublished. Installers remain on peter-new, with no GitHub installer upload. Stable promotion remains blocked pending the exact candidate's public/operator acceptance.
+The selected runtime channel remains next. At the local checkpoint no npm publication had been performed: next was 0.1.4 and latest was 0.0.0-bootstrap.1. Installers remain on peter-new, with no GitHub installer upload. Stable promotion remains blocked pending the exact candidate's public/operator acceptance.
+
+## Public next publication and operator validation setup
+
+[Actions run 42166625924](https://github.com/petercjl/ecom/actions/runs/42166625924) succeeded through OIDC using the same immutable windows-release-wNoaVJ payload. No native rebuild or repack was performed. On peter-new, all seven public versions matched the pinned integrity values and actual .NET GET requests returned HTTP 200 with readable content. next=0.1.5 and latest=0.0.0-bootstrap.1. The workflow waited for npm file processing before exposing the primary version. Temporary Actions artifacts total zero; the single-file server and HTTP/2 relay were stopped and their sessions reaped.
+
+The operator first used the installed 0.1.5 GUI to restore its existing 0.1.4 backup, confirming persistent progress and recovered windows/containers. Independent inspection confirmed source 547fd6b585f8e9f77e3e2244a3d834787830645b, pending=recovered, last-result=rolled-back, no active installer, staging=0 and replaced=0. The copied worker remained eligible for cleanup on the next updater launch. The GUI recovery timing report recorded 30.415 seconds. A private snapshot records the original Profile/container identity digests for the public update round trip.
+
+For presentation testing on the older baseline, the exact 0.1.5 helper (SHA-256 b937c5eeca1d6e3b60cadda5e483b3aebccfd8215afb18e2e0aaf7760c98acd1) was copied to the build machine's test-evidence directory before rollback. This staged test client uses the canonical 0.1.4 application and live native PID/quit-event context; it does not overwrite the installed older helper. It allows validation of the 0.1.5 progress implementation while the original 0.1.4 application remains unchanged. It is distinct from upgrading with an unmodified older helper. Public npm download, activation and subsequent operator rollback validation remain pending; stable gates remain false.
