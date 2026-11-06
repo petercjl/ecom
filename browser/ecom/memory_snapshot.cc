@@ -16,6 +16,7 @@
 #include "base/uuid.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "brave/components/containers/core/browser/prefs.h"
+#include "brave/components/containers/core/mojom/containers.mojom.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/performance_manager/policies/discard_eligibility_policy.h"
 #include "chrome/browser/performance_manager/public/user_tuning/user_performance_tuning_manager.h"
@@ -245,7 +246,9 @@ void GetMemorySnapshot(Profile *profile,
                   wc->GetLastCommittedURL().DeprecatedGetOriginAsURL().spec());
           tab.Set("containerId", containers::GetContainerIdForWebContents(wc));
           tab.Set("pageVersion",
-                  wc->GetPrimaryMainFrame()->GetDocumentToken().ToString());
+                  wc->GetPrimaryMainFrame()->GetFrameToken().ToString() + ":" +
+                      base::NumberToString(
+                          wc->GetPrimaryMainFrame()->GetNavigationId()));
           tab.Set("selected", strip->active_index() == i);
           tab.Set("measurementStatus", "unavailable");
           tab.Set("estimatedMemoryBytes", base::Value());
