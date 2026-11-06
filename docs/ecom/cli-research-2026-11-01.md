@@ -6,6 +6,8 @@
 
 ## 当前交付与缺口
 
+2026-11-06 P1 MVP：新增显式 `tabs discard/wake` 与 `memory operation`，GUI 提供同一原生能力；固定实例、容器、标签和页面版本，复核保护并保留动作记录。属于单标签手动回收与恢复，自动调度和通用 Agent 任务租约仍是缺口；当前实现与验收状态见 [内存诊断及手动休眠](memory-diagnostics.md)。
+
 2026-11-06 增量：`memory status|tabs|containers|processes` 已接入原生只读资源快照，与账号管理中的内存页面共用能力，覆盖窗口／标签／容器归属、唯一进程内存、估算对账及冻结／卸载原因。范围和验收见 [内存诊断 P0](memory-diagnostics.md)。这不是通用标签控制、休眠执行或业务任务保护的完成记录；Windows CLI 传输仍待接入。
 
 `@petercjl/ecom-cli` 已有容器列表；本次完成前两项增量：`containers inspect` 返回平台、首页、外观及带时间的服务登录状态，`session request` 固定实例与容器，调用原生受限 HTTPS JSON GET。配套 Skill、机器契约及浏览器安装说明同步更新。macOS Dev 已完成真实店铺身份核验和生意参谋只读接口取数，详情见 [CLI 验收](cli-inspect-session-test-2026-11-02.md)。请求的 HTTP 成功、平台业务成功与店铺身份分别校验，GET 方法本身不构成无副作用的授权依据。

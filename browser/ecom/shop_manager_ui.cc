@@ -10,6 +10,8 @@
 #include "base/memory/ref_counted_memory.h"
 #include "base/memory/weak_ptr.h"
 #include "brave/browser/ecom/memory_snapshot.h"
+#include "brave/browser/ecom/memory_actions.h"
+#include "base/json/json_reader.h"
 #include "brave/browser/ecom/shop_container_service.h"
 #include "brave/browser/ecom/shop_manager/shop_manager_resources.h"
 #include "chrome/browser/browser_process.h"
@@ -30,8 +32,17 @@ class MemoryHandler final : public content::WebUIMessageHandler {
   void RegisterMessages() override {
     web_ui()->RegisterMessageCallback("ecomMemorySnapshot",
         base::BindRepeating(&MemoryHandler::Read, base::Unretained(this)));
+    web_ui()->RegisterMessageCallback("ecomMemoryCommand",
+        base::BindRepeating(&MemoryHandler::Command, base::Unretained(this)));
   }
  private:
+  void Command(const base::ListValue& args) {
+    if (args.size() != 2 || !args[0].is_string() || !args[1].is_string() || args[1].GetString().size() > 4096) return;
+    auto request = base::JSONReader::ReadDict(args[1].GetString(), base::JSON_PARSE_RFC);
+    if (!request) return;
+    AllowJavascript();
+    Done(args[0].Clone(), RunMemoryTabCommand(Profile::FromWebUI(web_ui()), *request));
+  }
   void Read(const base::ListValue& args) {
     if (args.size() != 1 || !args[0].is_string()) return;
     AllowJavascript();

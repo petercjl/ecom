@@ -1,5 +1,6 @@
 // Copyright 2026 Ecom Authors. MPL-2.0.
 #include "brave/browser/ecom/memory_snapshot.h"
+#include "brave/browser/ecom/memory_actions.h"
 
 #include <map>
 #include <set>
@@ -245,10 +246,8 @@ void GetMemorySnapshot(Profile *profile,
           tab.Set("origin",
                   wc->GetLastCommittedURL().DeprecatedGetOriginAsURL().spec());
           tab.Set("containerId", containers::GetContainerIdForWebContents(wc));
-          tab.Set("pageVersion",
-                  wc->GetPrimaryMainFrame()->GetFrameToken().ToString() + ":" +
-                      base::NumberToString(
-                          wc->GetPrimaryMainFrame()->GetNavigationId()));
+          tab.Set("pageVersion", MemoryPageVersion(wc));
+          tab.Set("manualDiscard", DescribeManualDiscard(wc));
           tab.Set("selected", strip->active_index() == i);
           tab.Set("measurementStatus", "unavailable");
           tab.Set("estimatedMemoryBytes", base::Value());

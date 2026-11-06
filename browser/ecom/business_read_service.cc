@@ -2,6 +2,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. https://mozilla.org/MPL/2.0/
 #include "brave/browser/ecom/business_read_service.h"
+#include "brave/browser/ecom/memory_actions.h"
 
 #include <algorithm>
 #include <array>
@@ -298,6 +299,7 @@ private:
       return;
     }
     xhs_page_ = contents->GetWeakPtr();
+    memory_task_ = ProtectMemoryPageTask(contents);
     submitted_ = true;
     phase_ = "xhs-page-search";
     timer_.Start(FROM_HERE, base::Seconds(23),
@@ -839,6 +841,7 @@ private:
   base::OneShotTimer timer_;
   base::OneShotTimer xhs_poll_;
   base::WeakPtr<content::WebContents> xhs_page_;
+  base::ScopedClosureRunner memory_task_;
   base::WeakPtrFactory<Read> weak_{this};
 };
 } // namespace

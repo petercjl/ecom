@@ -13,7 +13,7 @@ const labels = {
   refresh: t('刷新快照', 'Refresh snapshot'), 'containers-title': t('容器与账号', 'Containers and accounts'),
   'tabs-title': t('标签页与休眠条件', 'Tabs and sleep eligibility'), 'processes-title': t('进程明细', 'Process details'),
   explanation: t('标签与容器内存是按关联进程分摊的估算，并非 JS 堆或可以立即释放的大小。共享内存只计一次；主进程、GPU 和未归因部分保留在公共开销中。', 'Tab and container memory is an estimated share of associated processes, not JS heap size or reclaimable bytes. Processes are counted once; browser, GPU and unattributed costs remain separate.'),
-  limits: t('P0 仅提供按需观测。冻结通常保留内存，卸载会重新加载页面；此页不执行休眠。判定来自当前内核，不代表已完成客服、上传、登录和 Agent 任务的业务安全核验。系统压力等级暂不可用；快照只列当前普通 Profile 的标签，进程统计覆盖整个实例。', 'P0 is on-demand observation only. Freezing generally retains memory; discarding requires reload. This page does not put tabs to sleep. Engine eligibility is not business-safety verification for chat, uploads, login or Agent tasks. Pressure level is unavailable. Tabs cover the current regular profile; processes cover the instance.'),
+  limits: t('手动休眠保留 30 秒最近使用保护，并检查内核、上传、锁、WebRTC 和已接入的原生页面任务。休眠会释放页面运行状态，恢复时重新加载；账号持久会话由原容器保留。自动休眠尚未开启。请为需要持续工作的客服或网页任务保留活动页面；未知业务状态仍需人工判断。', 'Manual sleep retains a 30-second recent-use guard and checks engine, upload, lock, WebRTC and integrated native page-task protections. Sleeping releases page runtime state; waking reloads it in the original persistent container session. Automatic sleep is not enabled. Keep ongoing chat or page tasks active; unknown business state still requires judgment.'),
 }
 for (const [key,value] of Object.entries(labels)) $(key).textContent = value
 document.title = `Ecom · ${labels.title}`
@@ -23,7 +23,7 @@ const bytes = value => typeof value === 'number' ? `${(value / 1048576).toFixed(
 const node = (tag, text) => {const n=document.createElement(tag);if(text!==undefined)n.textContent=String(text);return n}
 function head(id, cells) {const tr=node('tr');for(const c of cells)tr.append(node('th',c));$(id).replaceChildren(tr)}
 head('containers-head', [t('容器','Container'),t('标签数','Tabs'),t('估算内存','Estimated memory'),t('有估算的标签','Measured tabs')])
-head('tabs-head', [t('标签／来源','Tab / origin'),t('容器','Container'),t('估算内存','Estimated memory'),t('进程','Processes'),t('冻结条件','Freeze eligibility'),t('卸载条件','Discard eligibility')])
+head('tabs-head', [t('标签／来源','Tab / origin'),t('容器','Container'),t('估算内存','Estimated memory'),t('进程','Processes'),t('冻结条件','Freeze eligibility'),t('自动卸载条件','Automatic discard eligibility'),t('手动休眠／恢复','Manual sleep / wake')])
 head('processes-head', ['PID',t('类型','Type'),t('内存','Memory'),t('驻留内存','Resident'),t('关联标签 ID','Associated tab IDs'),t('Worker／归属','Workers / attribution')])
 function row(cells) {const tr=node('tr');for(const c of cells){const td=node('td');td.append(c instanceof Node ? c : node('span',c));tr.append(td)}return tr}
 function reasons(tab, freeze) {
@@ -34,6 +34,36 @@ function reasons(tab, freeze) {
   for(const reason of list)div.append(node('small',zh?(freeze?freezeZh:discardZh)[reason.code]??reason.message:reason.message))
   if(freeze)for(const reason of tab.connectedFreezeReasons)div.append(node('small',t('关联页面：','Connected page: ')+(zh?freezeZh[reason.code]??reason.message:reason.message)))
   return div
+}
+const mvpZh={UNAVAILABLE:'原生状态不可用',NOT_WEB_PAGE:'内置页面保持运行',LOADING:'页面正在加载',UPLOADING:'正在上传',TASK_IN_PROGRESS:'原生页面任务正在执行',NATIVE_PROTECTION:'内核保护'}
+function manualReason(reason) {
+  if(!zh)return reason.message
+  if(reason.source==='mvp')return mvpZh[reason.code]??reason.message
+  return (reason.source==='discard'?discardZh:freezeZh)[reason.code]??reason.message
+}
+let actionPending=false
+function actionCell(tab) {
+  const div=node('div'), wake=tab.state==='discarded'
+  const button=node('button',wake?t('恢复','Wake'):t('休眠','Sleep'))
+  button.disabled=actionPending||(!wake&&tab.manualDiscard?.eligible!==true)
+  button.addEventListener('click',()=>act(tab,wake?'wake':'discard'))
+  div.append(button)
+  if(!wake)for(const r of tab.manualDiscard?.reasons??[])div.append(node('small',manualReason(r)))
+  return div
+}
+async function act(tab,action) {
+  if(actionPending)return
+  if(action==='discard'&&!window.confirm(t(`休眠「${tab.title}」？页面将释放运行状态，再次打开时重新加载。`, `Put “${tab.title}” to sleep? Its runtime state will be released and reloaded when reopened.`)))return
+  actionPending=true;$('refresh').disabled=true
+  const operationId=crypto.randomUUID()
+  try {
+    const result=await sendWithPromise('ecomMemoryCommand',JSON.stringify({method:'tabs.'+action,operationId,tabId:tab.tabId,containerId:tab.containerId,expectedPageVersion:tab.pageVersion}))
+    if(!result.ok)throw new Error(result.error?.code??'ACTION_FAILED')
+    actionPending=false
+    await refresh()
+    $('status').textContent+=' · '+t('操作：','Action: ')+result.status+' · '+operationId
+  }catch(error){$('status').className='error';$('status').textContent=t('操作未完成：','Action not completed: ')+error.message+' · '+operationId}
+  finally{actionPending=false;$('refresh').disabled=false}
 }
 function render(s) {
   const totals=s.totals
@@ -50,7 +80,7 @@ function render(s) {
   $('tabs').replaceChildren(...s.tabs.map(tab=>{
     const states={running:t('运行中','Running'),frozen:t('已冻结','Frozen'),discarded:t('已卸载','Discarded'),unloaded:t('未加载','Unloaded'),unavailable:t('不可用','Unavailable')}
     const title=node('div');title.append(node('b',tab.title||t('无标题','Untitled')),node('small',`#${tab.tabId} · ${tab.origin}`),node('small',t('窗口 ','Window ')+tab.windowId+(tab.selected?t(' · 已选中',' · selected'):'')+' · '+states[tab.state]))
-    return row([title,names.get(tab.containerId)??tab.containerId,bytes(tab.estimatedMemoryBytes),processList(tab.tabId),reasons(tab,true),reasons(tab,false)])
+    return row([title,names.get(tab.containerId)??tab.containerId,bytes(tab.estimatedMemoryBytes),processList(tab.tabId),reasons(tab,true),reasons(tab,false),actionCell(tab)])
   }))
   $('processes').replaceChildren(...s.processes.map(p=>row([p.pid,`${p.kind} ${p.name}`,bytes(p.memoryBytes),bytes(p.residentBytes),p.tabIds.join(', ')||'—',`${p.workerCount} · ${p.hasUnmappedClients?t('含未映射页面','includes unmapped pages'):t('已知关联','known associations')}`])))
   $('status').textContent=`${t('采样时间','Sampled')} ${new Date(s.sampledAtUnixMs).toLocaleString()} · ${t('采样耗时','Sampling')} ${s.measurementDurationMs.toFixed(1)} ms · ${totals.complete?t('进程采样完整','Process sampling complete'):t('部分进程指标不可用，总量为已测部分','Some processes unavailable; total is measured subset')}`

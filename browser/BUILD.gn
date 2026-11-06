@@ -91,6 +91,8 @@ source_set("core") {
       "ecom/container_password_store.h",
       "ecom/memory_snapshot.cc",
       "ecom/memory_snapshot.h",
+      "ecom/memory_actions.cc",
+      "ecom/memory_actions.h",
       "ecom/shop_container_service.cc",
       "ecom/shop_container_service.h",
       "ecom/shop_identity_parser.cc",

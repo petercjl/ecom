@@ -580,7 +580,7 @@
       "output": {
         "snapshotVersion": 1,
         "snapshotId": "UUID",
-        "tabs": "stable session tab/window IDs, containerId, pageVersion, estimatedMemoryBytes|null, state, canFreeze/canDiscard, separate native reasons",
+        "tabs": "stable session tab/window IDs, containerId, pageVersion, estimatedMemoryBytes|null, state, canFreeze/canDiscard, separate native reasons; manualDiscard eligibility/reasons uses explicit MVP safeguards",
         "processes": "unique PID, kind, memoryBytes|null, residentBytes|null, tabIds, workerCount, hasUnmappedClients",
         "containers": "containerId, name, tabCount, measuredTabCount, estimatedMemoryBytes|null",
         "totals": "memoryBytes, residentBytes, attributedBytes, unattributedBytes, unavailableProcesses, complete",
@@ -614,7 +614,7 @@
       "output": {
         "snapshotVersion": 1,
         "snapshotId": "UUID",
-        "tabs": "stable session tab/window IDs, containerId, pageVersion, estimatedMemoryBytes|null, state, canFreeze/canDiscard, separate native reasons",
+        "tabs": "stable session tab/window IDs, containerId, pageVersion, estimatedMemoryBytes|null, state, canFreeze/canDiscard, separate native reasons; manualDiscard eligibility/reasons uses explicit MVP safeguards",
         "processes": "unique PID, kind, memoryBytes|null, residentBytes|null, tabIds, workerCount, hasUnmappedClients",
         "containers": "containerId, name, tabCount, measuredTabCount, estimatedMemoryBytes|null",
         "totals": "memoryBytes, residentBytes, attributedBytes, unattributedBytes, unavailableProcesses, complete",
@@ -648,7 +648,7 @@
       "output": {
         "snapshotVersion": 1,
         "snapshotId": "UUID",
-        "tabs": "stable session tab/window IDs, containerId, pageVersion, estimatedMemoryBytes|null, state, canFreeze/canDiscard, separate native reasons",
+        "tabs": "stable session tab/window IDs, containerId, pageVersion, estimatedMemoryBytes|null, state, canFreeze/canDiscard, separate native reasons; manualDiscard eligibility/reasons uses explicit MVP safeguards",
         "processes": "unique PID, kind, memoryBytes|null, residentBytes|null, tabIds, workerCount, hasUnmappedClients",
         "containers": "containerId, name, tabCount, measuredTabCount, estimatedMemoryBytes|null",
         "totals": "memoryBytes, residentBytes, attributedBytes, unattributedBytes, unavailableProcesses, complete",
@@ -682,7 +682,7 @@
       "output": {
         "snapshotVersion": 1,
         "snapshotId": "UUID",
-        "tabs": "stable session tab/window IDs, containerId, pageVersion, estimatedMemoryBytes|null, state, canFreeze/canDiscard, separate native reasons",
+        "tabs": "stable session tab/window IDs, containerId, pageVersion, estimatedMemoryBytes|null, state, canFreeze/canDiscard, separate native reasons; manualDiscard eligibility/reasons uses explicit MVP safeguards",
         "processes": "unique PID, kind, memoryBytes|null, residentBytes|null, tabIds, workerCount, hasUnmappedClients",
         "containers": "containerId, name, tabCount, measuredTabCount, estimatedMemoryBytes|null",
         "totals": "memoryBytes, residentBytes, attributedBytes, unattributedBytes, unavailableProcesses, complete",
@@ -697,6 +697,136 @@
         "PROTOCOL_MISMATCH",
         "INSTANCE_NOT_RUNNING",
         "INSTANCE_AMBIGUOUS"
+      ]
+    },
+    "tabs discard": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--tab": {
+          "type": "string",
+          "required": true
+        },
+        "--container": {
+          "type": "string",
+          "required": true,
+          "description": "Exact native container ID; @default selects the default session"
+        },
+        "--expected-page-version": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "page-discard",
+      "authorization": "Explicitly selected page runtime release or background reload in the original container; persistent account data remains browser-owned. Shared native protections are rechecked immediately before action.",
+      "output": {
+        "operationId": "UUID; use memory operation after unknown outcomes",
+        "status": "discarded/already-discarded or navigation-started/already-running; wake is not load/login completion",
+        "executed": "boolean",
+        "tabId": "exact selected tab",
+        "containerId": "original native container",
+        "expectedPageVersion": "version precondition",
+        "pageVersion": "post-action document version when executed",
+        "navigationPreserved": "verified target and visible URL preserved"
+      },
+      "errors": [
+        "BROWSER_UPGRADE_REQUIRED",
+        "INVALID_ARGUMENT",
+        "TAB_NOT_FOUND",
+        "TARGET_MISMATCH",
+        "PAGE_CHANGED",
+        "TAB_PROTECTED",
+        "DISCARD_REJECTED",
+        "TARGET_CHANGED_AFTER_ACTION",
+        "DISCARD_STATE_UNKNOWN",
+        "OPERATION_TIMEOUT"
+      ]
+    },
+    "tabs wake": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--tab": {
+          "type": "string",
+          "required": true
+        },
+        "--container": {
+          "type": "string",
+          "required": true,
+          "description": "Exact native container ID; @default selects the default session"
+        },
+        "--expected-page-version": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "background-navigation",
+      "authorization": "Explicitly selected page runtime release or background reload in the original container; persistent account data remains browser-owned. Shared native protections are rechecked immediately before action.",
+      "output": {
+        "operationId": "UUID; use memory operation after unknown outcomes",
+        "status": "discarded/already-discarded or navigation-started/already-running; wake is not load/login completion",
+        "executed": "boolean",
+        "tabId": "exact selected tab",
+        "containerId": "original native container",
+        "expectedPageVersion": "version precondition",
+        "pageVersion": "post-action document version when executed",
+        "navigationPreserved": "verified target and visible URL preserved"
+      },
+      "errors": [
+        "BROWSER_UPGRADE_REQUIRED",
+        "INVALID_ARGUMENT",
+        "TAB_NOT_FOUND",
+        "TARGET_MISMATCH",
+        "PAGE_CHANGED",
+        "TAB_PROTECTED",
+        "DISCARD_REJECTED",
+        "TARGET_CHANGED_AFTER_ACTION",
+        "DISCARD_STATE_UNKNOWN",
+        "OPERATION_TIMEOUT"
+      ]
+    },
+    "memory operation": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--operation-id": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Read the selected instance/profile in-memory action record; no action retry.",
+      "output": {
+        "status": "found or not-found",
+        "result": "original action response when retained",
+        "executed": "unknown when not found; never infer no execution"
+      },
+      "retention": "latest 128 actions per ordinary Profile in this running browser; lost on restart",
+      "errors": [
+        "BROWSER_UPGRADE_REQUIRED",
+        "INVALID_ARGUMENT",
+        "PROTOCOL_MISMATCH"
       ]
     }
   },

@@ -132,6 +132,10 @@ export async function openBusinessPageInConnection(connection,options,operation,
 function safeDiagnostics(value) {
   if(!value||typeof value!=='object')return undefined;
   const result={};
+  if(Array.isArray(value.tabProtection))result.tabProtection=value.tabProtection.slice(0,60).filter(r=>
+    r&&['mvp','discard','freeze','connected-freeze'].includes(r.source)&&
+    ((Number.isInteger(r.code)&&r.code>=0&&r.code<=30)||(typeof r.code==='string'&&/^[A-Z_]{1,40}$/.test(r.code)))
+  ).map(r=>({source:r.source,code:r.code}));
   if(typeof value.phase==='string'&&/^[a-z-]{1,32}$/.test(value.phase))result.phase=value.phase;
   if(Number.isInteger(value.netError)&&value.netError<=0&&value.netError>=-9999)result.netError=value.netError;
   if(['json','html','text','none'].includes(value.bodyKind))result.bodyKind=value.bodyKind;
