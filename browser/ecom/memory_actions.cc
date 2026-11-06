@@ -3,7 +3,6 @@
 #include "brave/browser/ecom/memory_auto.h"
 #include "content/public/browser/media_session.h"
 #include "services/media_session/public/mojom/media_session.mojom.h"
-#include "third_party/blink/public/mojom/frame/sudden_termination_disabler_type.mojom.h"
 
 #include <deque>
 #include <map>
@@ -134,11 +133,10 @@ base::DictValue DescribeManualDiscard(content::WebContents *wc) {
     }
     bool before_unload = false;
     wc->ForEachRenderFrameHost([&](content::RenderFrameHost *frame) {
-      before_unload |= frame->GetSuddenTerminationDisablerState(
-          blink::mojom::SuddenTerminationDisablerType::kBeforeUnloadHandler);
+      before_unload |= frame->CouldDisplayBeforeUnloadDialog();
     });
     if (before_unload)
-      block("BEFORE_UNLOAD", "Page has a before-unload handler");
+      block("BEFORE_UNLOAD", "Page can display a before-unload confirmation");
     if (wc->GetUserData(kTasks))
       block("TASK_IN_PROGRESS", "Native page task is in progress");
     if (!wc->GetLastCommittedURL().SchemeIsHTTPOrHTTPS())
