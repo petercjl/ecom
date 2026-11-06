@@ -1,4 +1,5 @@
 #include "brave/browser/ecom/shop_container_service.h"
+#include "brave/browser/ecom/memory_restore.h"
 
 #include <algorithm>
 #include <array>
@@ -658,6 +659,7 @@ class ShopService final : public base::SupportsUserData::Data,
       const bool background = request.FindBool("background").value_or(false);
       if (background && request.FindBool("reuse").value_or(false)) {
         bool reused = false;
+        base::DictValue restoration;
         const GURL target(url);
         ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
             [&](BrowserWindowInterface* browser) {
@@ -671,7 +673,8 @@ class ShopService final : public base::SupportsUserData::Data,
                       url::Origin::Create(current) ==
                           url::Origin::Create(target) &&
                       current.path() == target.path()) {
-                    contents->GetController().LoadIfNecessary();
+                    if (IsMemoryRestoreDeferred(contents) || contents->GetController().NeedsReload())
+                      restoration=RequestMemoryRestore(contents,"service",true);
                     reused = true;
                     return false;
                   }
@@ -679,12 +682,16 @@ class ShopService final : public base::SupportsUserData::Data,
               }
               return true;
             });
+        if (reused && restoration.FindBool("ok")==false) {
+          Send(std::move(callback),std::move(restoration));return;
+        }
         if (reused) {
           Send(std::move(callback), base::DictValue()
                                         .Set("ok", true)
                                         .Set("containerId", id)
                                         .Set("service", service)
                                         .Set("requestedUrl", url)
+                                        .Set("restoration",std::move(restoration))
                                         .Set("navigation", "reused"));
           return;
         }

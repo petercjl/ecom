@@ -8,6 +8,7 @@ export function validateSnapshot(body) {
       !Array.isArray(body.tabs)||!Array.isArray(body.containers)||!Array.isArray(body.processes)||
       !body.totals||!body.policy||!Number.isFinite(body.sampledAtUnixMs))
     throw fail('PROTOCOL_MISMATCH','Invalid memory snapshot');
+  if(body.restoration!==undefined)validateRestoreSettings({restoration:body.restoration});
   const pids=new Set(),tabs=new Set();
   const measurement=x=>x===null||(Number.isFinite(x)&&x>=0);
   for(const t of body.tabs){
@@ -58,12 +59,14 @@ export async function tabMemoryAction(action,options) {
 export async function tabMemoryActionInConnection(connection,action,target) {
   if(!['discard','wake'].includes(action))throw fail('INVALID_ARGUMENT','Unknown tab memory action');
   if(connection.endpoint.manualTabMemoryProtocol!==1)throw fail('BROWSER_UPGRADE_REQUIRED','This Ecom build does not advertise manual tab sleep');
-  const body=await callMailbox(connection,{method:'tabs.'+action,...target},15000);
-  const statuses=action==='discard'?['discarded','already-discarded']:['navigation-started','already-running'];
+  const queue=action==='wake'&&connection.endpoint.restoreQueueProtocol===1?{restoreQueueProtocol:1}:{};
+  const body=await callMailbox(connection,{method:'tabs.'+action,...target,...queue},15000);
+  const statuses=action==='discard'?['discarded','already-discarded']:['navigation-started','already-running',...(connection.endpoint.restoreQueueProtocol===1?['navigation-queued']:[])];
   if(body.tabId!==target.tabId||body.containerId!==target.containerId||body.expectedPageVersion!==target.expectedPageVersion||
       body.action!=='tabs.'+action||!statuses.includes(body.status)||typeof body.executed!=='boolean'||
       (body.executed&&(typeof body.pageVersion!=='string'||body.navigationPreserved!==true)))
     throw fail('PROTOCOL_MISMATCH','Action response does not match the pinned tab',{operationId:body.operationId,executed:'unknown'});
+  if(body.status==='navigation-queued'&&(body.restore?.phase!=='queued'||typeof body.restore?.requestId!=='string'))throw fail('PROTOCOL_MISMATCH','Queued restore has no native request identity',{executed:'unknown'});
   return {...body,instance:{id:connection.endpoint.instanceId,pid:connection.endpoint.pid,channel:connection.channel}};
 }
 export async function memoryOperation(options) {
@@ -113,5 +116,31 @@ export async function protectTab(options) {
   if(body.tabId!==target.tabId||body.containerId!==target.containerId||body.expectedPageVersion!==target.expectedPageVersion||body.keepAwake!==keepAwake||
       body.scope!=='tab-until-closed-or-browser-restart')
     throw fail('PROTOCOL_MISMATCH','Protection response does not match requested target',{operationId:body.operationId,executed:'unknown'});
+  return {...body,instance:{id:connection.endpoint.instanceId,pid:connection.endpoint.pid,channel:connection.channel}};
+}
+
+export function validateRestoreOptions(options) {
+  const max=Number(options['max-background']);
+  if(!['on','off'].includes(options['lazy-startup'])||!/^([1-4])$/.test(options['max-background']??''))
+    throw fail('INVALID_ARGUMENT','Specify --lazy-startup on|off and --max-background 1..4');
+  return {lazyStartup:options['lazy-startup']==='on',maxBackgroundRestores:max};
+}
+export function validateRestoreSettings(body) {
+  const r=body.restoration;
+  if(!r||r.protocolVersion!==1||typeof r.lazyStartup!=='boolean'||!Number.isInteger(r.maxBackgroundRestores)||r.maxBackgroundRestores<1||r.maxBackgroundRestores>4||
+      !['activeCount','queuedCount','peakActiveCount','deferredCount'].every(k=>Number.isInteger(r[k])&&r[k]>=0)||typeof r.managed!=='boolean'||!Array.isArray(r.recentRequests))
+    throw fail('PROTOCOL_MISMATCH','Invalid native restoration queue',{executed:'unknown'});
+  return body;
+}
+export async function restoreSettings(action,options) {
+  const payload=action==='set'?validateRestoreOptions(options):{};
+  return restoreSettingsInConnection(discover(options),action,payload);
+}
+export async function restoreSettingsInConnection(connection,action,payload={}) {
+  if(!['status','set'].includes(action))throw fail('INVALID_ARGUMENT','Unknown restore settings action');
+  if(connection.endpoint.restoreQueueProtocol!==1)throw fail('BROWSER_UPGRADE_REQUIRED','Restoration queue requires a compatible Ecom browser');
+  const body=validateRestoreSettings(await callMailbox(connection,{method:'memory.restore.'+action,...payload}));
+  if(action==='set'&&(body.restoration.lazyStartup!==payload.lazyStartup||body.restoration.maxBackgroundRestores!==payload.maxBackgroundRestores))
+    throw fail('PROTOCOL_MISMATCH','Restoration settings readback differs from request',{operationId:body.operationId,executed:'unknown'});
   return {...body,instance:{id:connection.endpoint.instanceId,pid:connection.endpoint.pid,channel:connection.channel}};
 }

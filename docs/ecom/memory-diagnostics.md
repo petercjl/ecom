@@ -84,3 +84,12 @@ ecom-cli tabs protect --tab ID --container ID --expected-page-version VERSION --
 `manualDiscard.editSignals` 返回原生 `hadFormInteraction`、`hadUserEdits` 与 `beforeUnloadDialogPossible`，另有检测可用状态；不可用的编辑标志为 null。离开监听加用户激活仅表示“可能显示确认”，单独不阻止休眠。实际保护继续由原生 PROACTIVE 表单／富文本编辑、任务、媒体等信号决定；不试运行网站离开处理器。内核编辑记录偏保守，并非网站“已保存”的业务证明；无法识别的自定义编辑器或任务应显式保持运行。
 
 编辑信号与离开监听的实测边界见 [编辑与取数保护验收](memory-edit-protection-validation-2026-11-06.md)。
+
+
+## P2：重启按需恢复与后台恢复队列
+
+默认重启只加载每个窗口的选中页，后台标签保留原生导航条目、会话和容器分区，访问或显式后台唤醒时再加载。GUI 与 `memory restore status|set` 共用持久设置；`--lazy-startup on|off` 下次会话恢复生效，`--max-background 1..4` 限制新后台恢复请求，默认 2。关闭按需模式时，后台页也通过同一队列依次加载；不修改会话存储来实现懒加载。
+
+`tabs wake` 同时支持待恢复和已卸载页，固定实例／标签／容器／页面版本。支持队列的调用方显式声明协议，返回 `navigation-queued` 或 `navigation-started`，带恢复请求 ID；`memory operation` 附带 `currentRestore`，快照增加顶层 `restoration` 与逐页 `restore`。旧调用方在槽位不足时返回 `RESTORE_QUEUE_BUSY`，避免绕过限制。新请求排队前和开始前分别校验目标；关闭与导航使旧任务清理或过期。显式待处理队列最多 32 项，会话自动恢复按真实恢复标签数量排队，完成历史有界。
+
+后台恢复槽保持到网页停止加载或关闭；降低并发等待已开始的加载完成。用户切换标签优先加载，不等待后台槽；普通用户导航和新建业务任务页不属于恢复队列。纯原生网络取数继续复用容器，不要求网页常驻；新建的页面辅助取数维持既有任务并发及保护。排队／导航开始不表示站点内容、登录或身份核验完成。失败可从新快照重试；未知状态先查记录。加载长时间未结束会保留其槽位，不自动中断用户页面，状态可见。

@@ -51,7 +51,10 @@
         "automatic",
         "keepAwake",
         "scope",
-        "editSignals"
+        "editSignals",
+        "restoration",
+        "restore",
+        "currentRestore"
       ],
       "side_effects": {
         "external_mutation": true,

@@ -1,6 +1,7 @@
 // Copyright 2026 Ecom Authors. MPL-2.0.
 #include "brave/browser/ecom/memory_actions.h"
 #include "brave/browser/ecom/memory_auto.h"
+#include "brave/browser/ecom/memory_restore.h"
 #include "content/public/browser/media_player_id.h"
 #include "content/public/browser/media_session.h"
 #include "services/media_session/public/mojom/media_session.mojom.h"
@@ -170,6 +171,8 @@ base::DictValue DescribeManualDiscard(content::WebContents *wc) {
   if (!wc || !pm::PerformanceManager::IsAvailable()) {
     block("UNAVAILABLE", "Native page state is unavailable");
   } else {
+    if (IsMemoryRestoreDeferred(wc))
+      block("RESTORE_PENDING", "Page is deferred or queued for restoration");
     if (IsMemoryTabKeptAwake(wc))
       block("KEEP_AWAKE", "Explicit keep-running protection is enabled");
     auto *playback = static_cast<Playback *>(wc->GetUserData(kPlayback));
@@ -269,6 +272,8 @@ base::DictValue RunMemoryTabCommand(Profile *profile,
   if (!profile || profile->IsOffTheRecord())
     return Error("PROFILE_UNSUPPORTED");
   const auto *auto_method = request.FindString("method");
+  if (auto_method && auto_method->starts_with("memory.restore."))
+    return RunMemoryRestoreCommand(profile, request);
   if (auto_method && (auto_method->starts_with("memory.auto.") ||
                       *auto_method == "tabs.protect"))
     return RunAutoMemoryCommand(profile, request);
@@ -287,10 +292,12 @@ base::DictValue RunMemoryTabCommand(Profile *profile,
           .Set("ok", true)
           .Set("status", "not-found")
           .Set("executed", "unknown");
-    return base::DictValue()
-        .Set("ok", true)
-        .Set("status", "found")
-        .Set("result", operations->results.at(*id).Clone());
+    auto result = operations->results.at(*id).Clone();
+    if (const auto* restore = result.FindDict("restore")) {
+      if (const auto* request_id = restore->FindString("requestId"))
+        result.Set("currentRestore", MemoryRestoreRequestStatus(profile,*request_id));
+    }
+    return base::DictValue().Set("ok",true).Set("status","found").Set("result",std::move(result));
   }
   const auto *id = request.FindString("operationId");
   const auto tab_id = request.FindInt("tabId");
@@ -331,6 +338,7 @@ base::DictValue RunMemoryTabCommand(Profile *profile,
     const auto before_url = wc->GetVisibleURL();
     const bool discarded =
         lifecycle->GetTabState() == mojom::LifecycleUnitState::DISCARDED;
+    base::DictValue restoration;
     if (action == "tabs.discard") {
       if (discarded)
         return base::DictValue()
@@ -359,7 +367,7 @@ base::DictValue RunMemoryTabCommand(Profile *profile,
               {page.get()}, Policy::DiscardReason::PROACTIVE, true))
         return Error("DISCARD_REJECTED");
     } else {
-      if (!discarded)
+      if (!discarded && !IsMemoryRestoreDeferred(wc) && !wc->GetController().NeedsReload())
         return base::DictValue()
             .Set("ok", true)
             .Set("executed", false)
@@ -367,8 +375,8 @@ base::DictValue RunMemoryTabCommand(Profile *profile,
       // Chromium's replacement-based discard explicitly clears needs_reload.
       // Request it before background loading; DidStartLoading updates
       // lifecycle.
-      wc->GetController().SetNeedsReload();
-      wc->GetController().LoadIfNecessary();
+      restoration = RequestMemoryRestore(wc,"explicit",request.FindInt("restoreQueueProtocol").value_or(0)==1);
+      if (!restoration.FindBool("ok").value_or(false)) return restoration;
     }
     // Discard can replace WebContents. Resolve the stable tab afresh.
     auto *after = FindTab(profile, *tab_id);
@@ -386,15 +394,14 @@ base::DictValue RunMemoryTabCommand(Profile *profile,
       // Replacement-based discard clears this flag. TabModel::LoadIfNeeded
       // needs it to reload when the user selects an unloaded background tab,
       // including when that window is not the focused browser window.
-      after->GetController().SetNeedsReload();
+      MarkMemoryRestoreDeferred(after,"discard");
     }
-    return base::DictValue()
-        .Set("ok", true)
-        .Set("executed", true)
-        .Set("status",
-             action == "tabs.discard" ? "discarded" : "navigation-started")
-        .Set("pageVersion", MemoryPageVersion(after))
-        .Set("navigationPreserved", true);
+    auto result=base::DictValue()
+        .Set("ok", true).Set("executed", true)
+        .Set("status",action=="tabs.discard"?"discarded":*restoration.FindString("status"))
+        .Set("pageVersion",MemoryPageVersion(after)).Set("navigationPreserved",true);
+    if (const auto* restore=restoration.FindDict("restore"))result.Set("restore",restore->Clone());
+    return result;
   };
   auto result = run();
   result.Set("operationId", operation);

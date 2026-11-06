@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {parse} from '../lib/cli.mjs';
-import {validateSnapshot,readMemoryInConnection,validateTabTarget,tabMemoryActionInConnection,validateAutoOptions,validateAutomatic,autoMemoryInConnection} from '../lib/memory.mjs';
+import {validateSnapshot,readMemoryInConnection,validateTabTarget,tabMemoryActionInConnection,validateAutoOptions,validateAutomatic,autoMemoryInConnection,validateRestoreOptions,validateRestoreSettings,restoreSettingsInConnection} from '../lib/memory.mjs';
 const sample=()=>({ok:true,snapshotVersion:1,snapshotId:'snapshot-fixture',metric:'macos-physical-footprint',sampledAtUnixMs:1,policy:{p0ReadOnly:true},tabs:[1,2].map(tabId=>({tabId,containerId:'shop-'+tabId,pageVersion:'doc-'+tabId,estimatedMemoryBytes:50,discardReasons:[],freezeReasons:[],connectedFreezeReasons:[]})),containers:[],processes:[{pid:123,memoryBytes:100,residentBytes:60,tabIds:[1,2]}],totals:{memoryBytes:100,residentBytes:60,attributedBytes:100,unattributedBytes:0}});
 test('all memory commands are read-only snapshots and reject targeting/mutation options',()=>{
   for(const action of ['status','tabs','processes','containers'])assert.equal(parse(['memory',action,'--json','--instance','selected']).options.instance,'selected');
@@ -110,4 +110,46 @@ test('native edit diagnostics distinguish leave listeners from edits and preserv
   for(const mutate of [s=>s.available='yes',s=>s.hadUserEdits=false,s=>s.beforeUnloadBlocks=true,s=>s.beforeUnloadDialogPossible=null]){
     const x=structuredClone(d);mutate(x.tabs[0].manualDiscard.editSignals);assert.throws(()=>validateSnapshot(x),e=>e.code==='PROTOCOL_MISMATCH');
   }
+});
+
+test('restoration settings validate exact bounds and remain separate from sleep policy',()=>{
+  assert.deepEqual(validateRestoreOptions(parse(['memory','restore','set','--lazy-startup','on','--max-background','2']).options),{lazyStartup:true,maxBackgroundRestores:2});
+  for(const argv of [['memory','restore','set'],['memory','restore','set','--lazy-startup','yes','--max-background','2'],['memory','restore','set','--lazy-startup','on','--max-background','0'],['memory','restore','set','--lazy-startup','on','--max-background','5'],['memory','restore','status','--max-background','2']])assert.throws(()=>parse(argv),e=>e.code==='INVALID_ARGUMENT');
+});
+test('restoration mailbox preserves settings and rejects mismatched queue readback',{skip:process.platform==='win32'},async()=>{
+  const folder=fs.mkdtempSync(path.join(os.tmpdir(),'ecom-restore-test-'));fs.chmodSync(folder,0o700);
+  const endpoint={instanceId:'restore-fixture',pid:process.pid,authToken:'fixture-only',restoreQueueProtocol:1};
+  fs.writeFileSync(path.join(folder,'endpoint.json'),JSON.stringify(endpoint),{mode:0o600});
+  const restoration={protocolVersion:1,lazyStartup:true,maxBackgroundRestores:2,activeCount:0,queuedCount:0,peakActiveCount:0,deferredCount:5,managed:false,recentRequests:[]};let bad=false,calls=0;
+  const timer=setInterval(()=>{
+    for(const file of fs.readdirSync(folder).filter(n=>n.endsWith('.request.json'))){
+      const req=JSON.parse(fs.readFileSync(path.join(folder,file)));calls++;assert.equal(req.instanceId,endpoint.instanceId);
+      if(req.method==='memory.restore.set'){restoration.lazyStartup=req.lazyStartup;restoration.maxBackgroundRestores=req.maxBackgroundRestores;}
+      fs.writeFileSync(path.join(folder,file.replace('.request.json','.response.json')),JSON.stringify({ok:true,restoration:{...restoration,...(bad?{maxBackgroundRestores:4}:{})},schemaVersion:1,instanceId:endpoint.instanceId,operationId:file.replace('.request.json','')}),{mode:0o600});fs.unlinkSync(path.join(folder,file));
+    }
+  },10);
+  const connection={folder,endpoint,channel:'dev'};
+  try {
+    assert.equal((await restoreSettingsInConnection(connection,'status')).restoration.deferredCount,5);
+    assert.equal((await restoreSettingsInConnection(connection,'set',{lazyStartup:false,maxBackgroundRestores:1})).restoration.maxBackgroundRestores,1);
+    bad=true;await assert.rejects(restoreSettingsInConnection(connection,'set',{lazyStartup:true,maxBackgroundRestores:2}),e=>e.code==='PROTOCOL_MISMATCH'&&e.executed==='unknown');
+    const n=calls;await assert.rejects(restoreSettingsInConnection({...connection,endpoint:{...endpoint,restoreQueueProtocol:0}},'status'),e=>e.code==='BROWSER_UPGRADE_REQUIRED');assert.equal(calls,n);
+    assert.throws(()=>validateRestoreSettings({restoration:{...restoration,maxBackgroundRestores:0}}),e=>e.code==='PROTOCOL_MISMATCH');
+  }finally{clearInterval(timer);fs.rmSync(folder,{recursive:true,force:true});}
+});
+test('queue-aware wake negotiates support and validates the accepted request',{skip:process.platform==='win32'},async()=>{
+  const folder=fs.mkdtempSync(path.join(os.tmpdir(),'ecom-queued-wake-'));fs.chmodSync(folder,0o700);
+  const endpoint={instanceId:'queue-fixture',pid:process.pid,authToken:'fixture-only',manualTabMemoryProtocol:1,restoreQueueProtocol:1};
+  fs.writeFileSync(path.join(folder,'endpoint.json'),JSON.stringify(endpoint),{mode:0o600});
+  const target={tabId:42,containerId:'account-a',expectedPageVersion:'frame:0'};let bad=false;
+  const timer=setInterval(()=>{
+    for(const file of fs.readdirSync(folder).filter(n=>n.endsWith('.request.json'))){
+      const req=JSON.parse(fs.readFileSync(path.join(folder,file)));assert.equal(req.restoreQueueProtocol,1);assert.equal(req.method,'tabs.wake');
+      fs.writeFileSync(path.join(folder,file.replace('.request.json','.response.json')),JSON.stringify({ok:true,action:'tabs.wake',...target,status:'navigation-queued',executed:true,pageVersion:'frame:0',navigationPreserved:true,...(!bad?{restore:{phase:'queued',requestId:'queue-request'}}:{}),schemaVersion:1,instanceId:endpoint.instanceId,operationId:file.replace('.request.json','')}),{mode:0o600});fs.unlinkSync(path.join(folder,file));
+    }
+  },10);
+  try {
+    assert.equal((await tabMemoryActionInConnection({folder,endpoint,channel:'dev'},'wake',target)).status,'navigation-queued');
+    bad=true;await assert.rejects(tabMemoryActionInConnection({folder,endpoint,channel:'dev'},'wake',target),e=>e.code==='PROTOCOL_MISMATCH');
+  }finally{clearInterval(timer);fs.rmSync(folder,{recursive:true,force:true});}
 });

@@ -13,6 +13,9 @@ const labels = {
   refresh: t('刷新快照', 'Refresh snapshot'), 'containers-title': t('容器与账号', 'Containers and accounts'),
   'tabs-title': t('标签页与休眠条件', 'Tabs and sleep eligibility'), 'processes-title': t('进程明细', 'Process details'),
   explanation: t('标签与容器内存是按关联进程分摊的估算，并非 JS 堆或可以立即释放的大小。共享内存只计一次；主进程、GPU 和未归因部分保留在公共开销中。', 'Tab and container memory is an estimated share of associated processes, not JS heap size or reclaimable bytes. Processes are counted once; browser, GPU and unattributed costs remain separate.'),
+  'restore-title':t('重启与按需恢复','Startup and on-demand restore'), 'restore-lazy-label':t('重启时只加载各窗口选中页','Load only each window’s selected tab on restart'),
+  'restore-limit-label':t('后台恢复并发（1–4）','Background restore limit (1–4)'), 'restore-save':t('保存恢复设置','Save restore settings'),
+  'restore-help':t('其余标签保留原容器，访问时加载。切换标签优先恢复；后台恢复按钮与 CLI 共用队列。启动选项下次会话恢复生效，并发设置用于新请求，已开始的加载继续完成。纯网络取数无需加载网页。','Other tabs keep their original containers and load on demand. Selecting a tab takes priority; background wake and CLI share one queue. Startup mode applies on the next session restore; the limit governs new admissions without interrupting active loads. Native network reads do not load tabs.'),
   'auto-title':t('自动休眠','Automatic sleep'), 'auto-enabled-label':t('启用后台标签自动休眠','Automatically sleep idle background tabs'),
   'auto-idle-label':t('闲置时间（分钟）','Idle time (minutes)'), 'auto-save':t('保存自动休眠设置','Save automatic sleep settings'),
   'auto-help':t('每 30 秒检查一次，每次最多休眠一页。正在取数、编辑表单、播放音视频、上传或共享设备的页面保持运行。恢复后重新计算闲置时间；可为持续工作页面开启“保持运行”。','Checks every 30 seconds and sleeps at most one tab per scan. Tasks, edited forms, media playback, uploads and shared devices stay active. The idle clock restarts after wake; use Keep running for ongoing work.'),
@@ -38,7 +41,8 @@ function reasons(tab, freeze) {
   if(freeze)for(const reason of tab.connectedFreezeReasons)div.append(node('small',t('关联页面：','Connected page: ')+(zh?freezeZh[reason.code]??reason.message:reason.message)))
   return div
 }
-const mvpZh={UNAVAILABLE:'原生状态不可用',NOT_WEB_PAGE:'内置页面保持运行',LOADING:'页面正在加载',UPLOADING:'正在上传',TASK_IN_PROGRESS:'原生页面任务正在执行',NATIVE_PROTECTION:'内核保护',KEEP_AWAKE:'已开启保持运行',BACKGROUND_MEDIA:'后台播放或暂挂播放，返回页面暂停后可释放',VIDEO_PLAYING:'正在播放视频（含静音）',MEDIA_PLAYING:'正在播放音视频',BEFORE_UNLOAD:'页面设有离开确认，保护未保存内容'}
+const restorePhases={deferred:t('按需恢复，尚未加载','Deferred until requested'),queued:t('排队等待恢复','Waiting in restore queue'),loading:t('后台恢复中','Restoring in background'),'foreground-loading':t('前台恢复中','Restoring in foreground'),ready:t('加载已结束','Load finished'),failed:t('恢复失败，可重试','Restore failed; retry'),superseded:t('页面已变化','Page changed')}
+const mvpZh={RESTORE_PENDING:'页面待恢复或已排队，无需再次休眠',UNAVAILABLE:'原生状态不可用',NOT_WEB_PAGE:'内置页面保持运行',LOADING:'页面正在加载',UPLOADING:'正在上传',TASK_IN_PROGRESS:'原生页面任务正在执行',NATIVE_PROTECTION:'内核保护',KEEP_AWAKE:'已开启保持运行',BACKGROUND_MEDIA:'后台播放或暂挂播放，返回页面暂停后可释放',VIDEO_PLAYING:'正在播放视频（含静音）',MEDIA_PLAYING:'正在播放音视频',BEFORE_UNLOAD:'页面设有离开确认，保护未保存内容'}
 function manualReason(reason) {
   if(!zh)return reason.message
   if(reason.source==='mvp')return mvpZh[reason.code]??reason.message
@@ -80,11 +84,12 @@ async function saveAutomatic() {
 }
 let actionPending=false
 function actionCell(tab) {
-  const div=node('div'), wake=tab.state==='discarded'
-  const button=node('button',wake?t('恢复','Wake'):t('休眠','Sleep'))
-  button.disabled=actionPending||(!wake&&tab.manualDiscard?.eligible!==true)
+  const div=node('div'), wake=tab.state==='discarded'||tab.state==='unloaded'||tab.restore?.deferred===true, queued=tab.restore?.phase==='queued'
+  const button=node('button',queued?t('等待恢复','Queued'):wake?t('恢复','Wake'):t('休眠','Sleep'))
+  button.disabled=actionPending||queued||(!wake&&tab.manualDiscard?.eligible!==true)
   button.addEventListener('click',()=>act(tab,wake?'wake':'discard'))
   div.append(button)
+  if(tab.restore)div.append(node('small',restorePhases[tab.restore.phase]??tab.restore.phase))
   const edits=tab.manualDiscard?.editSignals
   if(!wake&&edits){
     div.append(node('small',!edits.available?t('编辑检测不可用','Edit detection unavailable'):edits.hadFormInteraction||edits.hadUserEdits?t('已检测到表单或富文本编辑','Form or rich-text edits detected'):t('未检测到表单或富文本编辑','No form or rich-text edits detected')))
@@ -99,7 +104,7 @@ async function act(tab,action) {
   actionPending=true;$('refresh').disabled=true
   const operationId=crypto.randomUUID()
   try {
-    const result=await sendWithPromise('ecomMemoryCommand',JSON.stringify({method:'tabs.'+action,operationId,tabId:tab.tabId,containerId:tab.containerId,expectedPageVersion:tab.pageVersion}))
+    const result=await sendWithPromise('ecomMemoryCommand',JSON.stringify({method:'tabs.'+action,restoreQueueProtocol:1,operationId,tabId:tab.tabId,containerId:tab.containerId,expectedPageVersion:tab.pageVersion}))
     if(!result.ok)throw new Error(result.error?.code??'ACTION_FAILED')
     actionPending=false
     await refresh()
@@ -107,8 +112,26 @@ async function act(tab,action) {
   }catch(error){$('status').className='error';$('status').textContent=t('操作未完成：','Action not completed: ')+error.message+' · '+operationId}
   finally{actionPending=false;$('refresh').disabled=false}
 }
+async function saveRestore() {
+  if(actionPending)return
+  const limit=Number($('restore-limit').value)
+  if(!Number.isInteger(limit)||limit<1||limit>4){$('restore-state').textContent=t('请输入 1–4','Enter 1–4');return}
+  actionPending=true;$('restore-save').disabled=true
+  try {
+    const result=await sendWithPromise('ecomMemoryCommand',JSON.stringify({method:'memory.restore.set',lazyStartup:$('restore-lazy').checked,maxBackgroundRestores:limit}))
+    if(!result.ok)throw new Error(result.error?.code??'ACTION_FAILED')
+    actionPending=false;await refresh()
+  }catch(error){$('restore-state').textContent=t('设置未完成：','Settings update incomplete: ')+error.message}
+  finally{actionPending=false;$('restore-save').disabled=false}
+}
 function render(s) {
   const totals=s.totals
+  const restore=s.restoration
+  if(restore){
+    $('restore-lazy').checked=restore.lazyStartup;$('restore-limit').value=restore.maxBackgroundRestores
+    for(const id of ['restore-lazy','restore-limit','restore-save'])$(id).disabled=restore.managed
+    $('restore-state').textContent=(restore.lazyStartup?t('按需恢复','On-demand startup'):t('后台排队恢复全部标签','Queue all background tabs on startup'))+' · '+t('占用恢复槽：','Occupied slots: ')+restore.activeCount+' / '+restore.maxBackgroundRestores+' · '+t('排队：','Queued: ')+restore.queuedCount+' · '+t('待恢复标签：','Deferred tabs: ')+restore.deferredCount
+  }
   const a=s.automatic
   if(a){
     $('auto-enabled').checked=a.enabled;$('auto-idle').value=String(a.idleSeconds/60)
@@ -126,7 +149,7 @@ function render(s) {
   $('containers').replaceChildren(...s.containers.map(c=>row([names.get(c.containerId),c.tabCount,bytes(c.estimatedMemoryBytes),`${c.measuredTabCount} / ${c.tabCount}`])))
   const processList=id=>s.processes.filter(p=>p.tabIds.includes(id)).map(p=>p.pid).join(', ')||'—'
   $('tabs').replaceChildren(...s.tabs.map(tab=>{
-    const states={running:t('运行中','Running'),frozen:t('已冻结','Frozen'),discarded:t('已卸载','Discarded'),unloaded:t('未加载','Unloaded'),unavailable:t('不可用','Unavailable')}
+    const states={running:t('运行中','Running'),frozen:t('已冻结','Frozen'),discarded:t('已卸载','Discarded'),unloaded:t('待恢复','Deferred'),unavailable:t('不可用','Unavailable')}
     const title=node('div');title.append(node('b',tab.title||t('无标题','Untitled')),node('small',`#${tab.tabId} · ${tab.origin}`),node('small',t('窗口 ','Window ')+tab.windowId+(tab.selected?t(' · 已选中',' · selected'):'')+' · '+states[tab.state]))
     return row([title,names.get(tab.containerId)??tab.containerId,bytes(tab.estimatedMemoryBytes),processList(tab.tabId),reasons(tab,true),automaticCell(tab),actionCell(tab)])
   }))
@@ -141,4 +164,5 @@ async function refresh() {
 }
 $('refresh').addEventListener('click',refresh)
 $('auto-save').addEventListener('click',saveAutomatic)
+$('restore-save').addEventListener('click',saveRestore)
 refresh()

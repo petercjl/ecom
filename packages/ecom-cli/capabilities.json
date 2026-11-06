@@ -908,6 +908,50 @@
       },
       "sideEffects": "browser-settings",
       "authorization": "Set a run-scoped keep-running exception on the exact tab/container/page; does not wake an already discarded tab"
+    },
+    "memory restore status": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--profile": {
+          "type": "string"
+        }
+      },
+      "sideEffects": "none",
+      "authorization": "Read profile restoration settings, active background loads, queued requests and recent outcomes"
+    },
+    "memory restore set": {
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--lazy-startup": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off"
+          ],
+          "required": true
+        },
+        "--max-background": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "required": true
+        }
+      },
+      "sideEffects": "browser-settings",
+      "authorization": "Persist next-session lazy startup and the background restoration admission limit; user-selected tabs load immediately; do not interrupt admitted loads"
     }
   },
   "transport": {
@@ -1149,5 +1193,20 @@
     "beforeUnloadDialogPossible": "boolean; listener plus sticky user activation",
     "beforeUnloadBlocks": false,
     "classification": "native-edit-history-and-task-guards; no speculative unload dispatch"
+  },
+  "restorationQueue": {
+    "protocol": 1,
+    "lazyStartupDefault": true,
+    "maxBackgroundRestoresDefault": 2,
+    "maxBackgroundRestoresRange": [
+      1,
+      4
+    ],
+    "scope": "current profile; background restore requests, not arbitrary website navigations or fresh page-task tabs",
+    "foreground": "user selection bypasses waiting queue",
+    "explicitPendingCapacity": 32,
+    "history": "active/queued requests plus bounded completed records",
+    "wakeQueuedStatus": "navigation-queued",
+    "queuedActionLookup": "memory operation includes currentRestore; snapshots include tab.restore and top-level restoration"
   }
 }

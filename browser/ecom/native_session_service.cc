@@ -189,6 +189,7 @@ class NativeSessionService final : public ProfileObserver {
     metadata.Set("product", "Ecom");
     metadata.Set("memorySnapshotProtocol", 1);
     metadata.Set("autoTabMemoryProtocol", 1);
+    metadata.Set("restoreQueueProtocol", 1);
     metadata.Set("manualTabMemoryProtocol", 1);
     metadata.Set("executable",
                  base::CommandLine::ForCurrentProcess()->GetProgram().value());
@@ -293,7 +294,7 @@ class NativeSessionService final : public ProfileObserver {
       return;
     }
     const auto* method = request.FindString("method");
-    if (method && (*method == "tabs.discard" || *method == "tabs.wake" || *method == "memory.operation" || *method == "tabs.protect" || method->starts_with("memory.auto."))) {
+    if (method && (*method == "tabs.discard" || *method == "tabs.wake" || *method == "memory.operation" || *method == "tabs.protect" || method->starts_with("memory.auto.") || method->starts_with("memory.restore."))) {
       request.Set("operationId", id);
       Respond(id, RunMemoryTabCommand(profile_, request));
       return;
