@@ -13,3 +13,11 @@ No formal application was installed or published. Native formal-app smoke/update
 ## Direct-latest policy adoption
 
 The user changed the internal release policy on 2026-11-06: verified Dev behavior and automatic platform packaging checks permit direct latest publication; next and full installation/update/rollback exercises are optional directed checks. The candidate now binds the actual Dev validation record in dev-2026-11-06-help.md. Historical test flags above remain unchanged and are not represented as completed. Payload bytes, native source identity and checksum pins are unchanged. No npm publication was performed by this policy change.
+
+## Authorized formal installation and migration
+
+On 2026-11-06 the user explicitly authorized a permanent Mac formal installation and migration of the existing Brave containers, bookmarks and extensions. The exact signed 0.1.3 application was installed at /Applications/Ecom.app and passed post-install codesign verification. The former small formal test profile was preserved as a private local backup. Brave source data and the Dev data directory were retained. No account contents, credentials or migration data were added to the repository.
+
+The offline copy preserved three container IDs/names, 27 bookmark entries and nine user extension registrations, including one previously disabled extension. Four Cookie databases passed byte-identity and SQLite checks before startup; subsequent live databases remained populated. Original local developer-extension paths remain available to preserve path-derived IDs and settings. macOS Downloads-folder authorization was completed by the user. Website authentication and per-extension business behavior are not claimed by structural migration checks.
+
+Actual Ecom GUI inspection confirmed the nine extension cards, expected enabled/disabled states, three legacy containers and the bookmark manager. Legacy platform categories remain unset, as they were not part of the source container schema. Both formal Ecom and Ecom Dev were simultaneously running with distinct bundle identities and profiles and without debugging/headless switches. This completes formal native smoke and migration acceptance; it is not a public npm update/rollback round trip. Published status remains false.

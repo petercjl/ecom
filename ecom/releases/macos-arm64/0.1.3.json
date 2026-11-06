@@ -27,7 +27,7 @@
   "updaterSelfTest": true,
   "localUpdateRecoveryVerified": true,
   "codesignVerified": true,
-  "nativeSmokeTest": false,
+  "nativeSmokeTest": true,
   "updateRoundTripVerified": false,
   "published": false,
   "dmgBytes": 248839414,
@@ -43,5 +43,8 @@
     "verified": true,
     "sourceRevision": "8fd5a8313b8dbf0bfde1069287f3d620682ac958",
     "evidencePath": "docs/ecom/release-evidence/dev-2026-11-06-help.md"
-  }
+  },
+  "formalInstallationVerified": true,
+  "legacyBrowserMigrationVerified": true,
+  "formalDevDataIsolationVerified": true
 }
