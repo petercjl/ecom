@@ -1,0 +1,5 @@
+# Mac update entry Dev acceptance
+
+Verified source: df2997318cd4661dc189666b1c19732f5145e579. The unified build-dev entry completed seven incremental steps and restarted the isolated Dev instance without debugging. The standalone Swift updater compiled and passed its contract self-test. Detailed scope and the CLI capability gap are recorded in docs/ecom/macos-update-entry.md.
+
+The fixed help-menu action is shared with the existing native updater handler. Mac formal instances expose the action, while Dev carries no release identity and disables it. Manual checking reports the current version/channel, an available update or network failure, retaining separate download and restart consent. The user authorized Mac stable publication and replacement of the locally installed formal app. Formal GUI acceptance is performed after the signed package is built and installed; it is not inferred from the Dev build. Only version metadata and evidence change after the verified source before this build.
