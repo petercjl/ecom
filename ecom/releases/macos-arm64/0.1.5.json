@@ -27,9 +27,9 @@
   "updaterSelfTest": true,
   "localUpdateRecoveryVerified": true,
   "codesignVerified": true,
-  "nativeSmokeTest": false,
+  "nativeSmokeTest": true,
   "updateRoundTripVerified": false,
-  "published": false,
+  "published": true,
   "devValidation": {
     "verified": true,
     "sourceRevision": "df2997318cd4661dc189666b1c19732f5145e579",
@@ -37,5 +37,31 @@
   },
   "evidencePath": "docs/ecom/release-evidence/macos-arm64-0.1.5.md",
   "dmgBytes": 248721167,
-  "tarballBytes": 157812851
+  "tarballBytes": 157812851,
+  "publication": {
+    "workflowUrl": "https://github.com/petercjl/ecom/actions/runs/42339492388",
+    "version": "0.1.5",
+    "tag": "latest",
+    "verifiedAt": "2026-11-07T04:53:40.656Z",
+    "bytes": 157812851,
+    "integrity": "sha512-zOi/rIMPD1fdkvOK+dNop/glc3WVbB8TWGTckGvdRFlXvgNReqVOWSYuL7EBN1Ze/gKD3eMNb9bd2i2R2HtSUA==",
+    "tarballSha256": "e0beebb632ea485ab8e7bc125be1b6dae945b73ab7cd815768895aa082d05104",
+    "artifactVerified": true
+  },
+  "localInstallation": {
+    "verifiedAt": "2026-11-07T04:55:49.761Z",
+    "version": "0.1.5",
+    "application": "/Applications/Ecom.app",
+    "previousVersion": "0.1.3",
+    "previousApplicationRetained": true,
+    "codesignVerified": true,
+    "restoredTabs": 7,
+    "updateMenuVisible": true,
+    "manualResultDialogVisuallyVerified": false,
+    "profileRetained": true,
+    "containers": 4,
+    "extensionRecords": 15,
+    "bookmarksUnchanged": true,
+    "debuggingEnabled": false
+  }
 }
