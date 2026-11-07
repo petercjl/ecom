@@ -235,6 +235,10 @@ bool BraveBrowserCommandController::IsCommandEnabled(int id) const {
                ToolbarView::DisplayMode::kNormal;
   }
 
+#if BUILDFLAG(IS_MAC)
+  if (id == IDC_ECOM_CHECK_UPDATES)
+    return ecom::IsUpdateMenuAvailable();
+#endif
   return IsBraveCommands(id) ? brave_command_updater_.IsCommandEnabled(id)
                              : BrowserCommandController::IsCommandEnabled(id);
 }
@@ -429,7 +433,7 @@ void BraveBrowserCommandController::InitBraveCommandState() {
 
   UpdateCommandEnabled(IDC_READING_LIST_MENU_ADD_TAB, false);
   UpdateCommandEnabled(IDC_READING_LIST_MENU_SHOW_UI, false);
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
   UpdateCommandEnabled(IDC_ECOM_CHECK_UPDATES, true);
 #endif
 
@@ -704,6 +708,10 @@ bool BraveBrowserCommandController::ExecuteBraveCommandWithDisposition(
 #if BUILDFLAG(IS_WIN)
     case IDC_ECOM_CHECK_UPDATES:
       ecom::ShowWindowsUpdates(browser_->GetProfile());
+      break;
+#elif BUILDFLAG(IS_MAC)
+    case IDC_ECOM_CHECK_UPDATES:
+      ecom::ShowUpdateMenu(browser_->GetProfile());
       break;
 #endif
     case IDC_TOGGLE_PLAYLIST_SIDE_PANEL:

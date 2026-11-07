@@ -131,6 +131,7 @@ final class Updater: NSObject {
     let fm = FileManager.default
     let delegate = RegistrySession()
     var downloadRequested = false
+    var manualCheckRequested = false
     let controller: String?
     var requestedAction: String?
     var updatePhase = "none"
@@ -229,6 +230,8 @@ final class Updater: NSObject {
     }
     func check() async throws -> Bool {
         downloadRequested = false
+        manualCheckRequested = requestedAction != nil
+        requestedAction = nil
         let url = URL(string: "https://registry.npmjs.org/@petercjl%2fecom-macos-arm64/" + channel)!
         let (data, response) = try await session.data(from: url)
         // An unpublished first version is an ordinary no-update result.
@@ -242,7 +245,17 @@ final class Updater: NSObject {
               let tarball = dist["tarball"] as? String, let downloadURL = URL(string: tarball),
               let integrity = dist["integrity"] as? String else { throw UpdateFailure.invalid("registry metadata") }
         try require(RegistrySession.allowed(downloadURL) && integrity.hasPrefix("sha512-"), "registry integrity")
-        if !(try newer(version, than: current)) || owner.isTerminated { publishPhase("none"); return false }
+        if owner.isTerminated { return false }
+        if !(try newer(version, than: current)) {
+            publishPhase("none")
+            if manualCheckRequested {
+                let alert = NSAlert(); alert.messageText = "Ecom 已是最新版本"
+                alert.informativeText = "当前版本 \(current)，更新渠道 \(channel)。"
+                alert.addButton(withTitle: "知道了"); NSApp.activate(ignoringOtherApps: true); alert.runModal()
+            }
+            return false
+        }
+        if manualCheckRequested { requestedAction = "show" }
         if !(try await requestDownload(version)) { return false }
         downloadRequested = true
         publishPhase("downloading")
@@ -368,9 +381,11 @@ struct Main {
                     catch {
                         NSLog("Ecom update check failed: %@", String(describing: error))
                         updater.publishPhase(updater.downloadRequested ? "available" : "none")
-                        if updater.downloadRequested {
+                        if updater.downloadRequested || updater.manualCheckRequested {
                             let alert = NSAlert(); alert.messageText = "Ecom 更新未完成"
-                            alert.informativeText = "当前应用与账号数据已保留。请确认 Ecom 位于可写的应用目录，然后重试。"
+                            alert.informativeText = updater.downloadRequested
+                                ? "当前应用与账号数据已保留。请确认 Ecom 位于可写的应用目录，然后重试。"
+                                : "无法连接更新服务。请检查网络或代理设置后，从帮助菜单重试。当前版本 \(updater.current)。"
                             alert.addButton(withTitle: "知道了"); NSApp.activate(ignoringOtherApps: true); alert.runModal()
                         }
                     }

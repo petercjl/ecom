@@ -23,6 +23,11 @@ Notification& State() {
 void RegisterUpdateMenuHandler(UpdateMenuHandler handler) {
   State().handler = std::move(handler);
 }
+bool IsUpdateMenuAvailable() { return !State().handler.is_null(); }
+void ShowUpdateMenu(Profile* profile) {
+  if (State().handler)
+    State().handler.Run(profile, false);
+}
 void SetUpdateNotificationPhase(UpdatePhase phase) {
   if (State().phase == phase)
     return;
