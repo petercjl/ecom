@@ -14,6 +14,7 @@
 #include "brave/browser/ecom/memory_actions.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
@@ -42,12 +43,8 @@ class PageRead {
  public:
   using Reply = base::OnceCallback<void(base::DictValue)>;
 
-  PageRead(std::string container, GURL url, bool download,
-           Reply reply)
-      : container_(std::move(container)),
-        url_(std::move(url)),
-        download_(download),
-        reply_(std::move(reply)) {}
+  PageRead(std::string container, GURL url, bool download, Reply reply);
+  ~PageRead();
 
   void Start(Profile* profile) {
     BrowserWindowInterface* target = nullptr;
@@ -100,7 +97,7 @@ class PageRead {
       Wait();
       return;
     }
-    constexpr auto kRead = uR"JS(JSON.stringify((() => {
+    constexpr char16_t kRead[] = uR"JS(JSON.stringify((() => {
       const visible = e => e.getClientRects().length > 0;
       const videos = [...document.querySelectorAll('video')].filter(visible);
       const direct = new Set();
@@ -277,6 +274,15 @@ class PageRead {
   std::unique_ptr<network::SimpleURLLoader> loader_;
   base::WeakPtrFactory<PageRead> weak_{this};
 };
+inline PageRead::PageRead(std::string container, GURL url, bool download,
+           Reply reply)
+      : container_(std::move(container)),
+        url_(std::move(url)),
+        download_(download),
+        reply_(std::move(reply)) {}
+
+inline PageRead::~PageRead() = default;
+
 }  // namespace ecom
 
 #endif  // BRAVE_BROWSER_ECOM_PAGE_READ_H_
