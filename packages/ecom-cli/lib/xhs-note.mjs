@@ -254,7 +254,9 @@ export async function noteCommand(action, options, deps={}) {
       throw fail(error.code??'XHS_SUBMISSION_UNKNOWN','Submission outcome is uncertain; inspect xhs note status before any new attempt',
         {executed:'unknown',operationId:error.operationId,recovery:'xhs note status --preparation '+preparation});
     }
-    if (result.state === 'published') writeNew(resultPath,result);
+    if (result.state === 'published') {
+      try { writeNew(resultPath,result); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+    }
     return result;
   }
   throw fail('INVALID_ARGUMENT','Unknown note command');

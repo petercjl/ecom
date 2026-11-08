@@ -113,7 +113,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
         return {state:'published', noteId:id, evidence:'fixture-confirmation'};
     }
     const result = one(all('[role=alert],[role=status],.d-message,.publish-success')
-      .filter(e => /^(发布成功|笔记发布成功|已提交审核)$/.test(words(e))));
+      .filter(e => /^(发布成功|笔记发布成功|已提交审核)(?:[！!。\s]|$)/.test(words(e))));
     if (result) {
       note.acknowledged = true;
       const link = one([...result.querySelectorAll('a[href]')].filter(e =>
@@ -145,7 +145,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       if (note) return reply('form-changed');
       if (account.accountId !== a.account) return reply('account-mismatch');
       if (editor() || preview().length) return reply('form-not-empty');
-      const next = {account:a.account,title:a.title,text:a.text,count:a.files.length,phase:'uploading'};
+      const next = {account:a.account,title:a.title,text:a.text,count:a.files.length,phase:'uploading',started:Date.now()};
       store[a.id] = next;
       const transfer = new DataTransfer();
       for (const f of a.files) {
@@ -154,14 +154,25 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       }
       let uploadDispatched = false;
       let filled = false;
-      const started = Date.now();
-      const diagnostic = () => ({uploaded:preview().length, composer:!!editor(), filled});
+      const diagnostic = () => {
+        const form = editor();
+        return {uploaded:preview().length, composer:!!form, filled,
+          titleMatches:form?.title.value === next.title,
+          bodyMatches:!!form && readBody(form.body) === next.text,
+          ...(a.fixture && form ? {fixtureBody:readBody(form.body)} : {})};
+      };
+      const cleanup = () => {
+        observer.disconnect();
+        document.removeEventListener('load',run,true);
+      };
       const run = () => {
+        if (next.phase !== 'uploading') { cleanup(); return; }
         try {
           if (!onEntry || location.pathname !== '/publish/publish' || verification() || login() ||
-              !shell() || store.identity?.accountId !== next.account || Date.now()-started > 90000) {
+              !shell() || store.identity?.accountId !== next.account || Date.now()-next.started > 90000) {
             next.phase = 'upload-incomplete';
             next.diagnostic = diagnostic();
+            cleanup();
             return;
           }
           if (!uploadDispatched) {
@@ -190,16 +201,22 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
             if (valid) {
               next.previews = valid.images;
               next.phase = 'form-ready';
+              cleanup();
               return;
             }
           }
-          setTimeout(run,250);
-        } catch { next.phase = 'upload-incomplete'; next.diagnostic = diagnostic(); }
+          next.diagnostic = diagnostic();
+        } catch { next.phase = 'upload-incomplete'; next.diagnostic = diagnostic(); cleanup(); }
       };
+      const observer = new MutationObserver(run);
+      observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,characterData:true});
+      document.addEventListener('load',run,true);
+      setTimeout(run,90000);
       if (!imageInput()) {
         const tab = imageTab();
         if (!tab) {
           next.phase = 'unsupported-form';
+          cleanup();
           return reply(next.phase);
         }
         tab.click();
@@ -228,7 +245,8 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       if (!form || !same(form.images,note.previews)) return reply('form-changed');
       return reply('form-ready',{...identity(),imageCount:note.count});
     }
-    return reply(note.phase,{...identity(),...(note.diagnostic?{formEvidence:note.diagnostic}:{})});
+    const phase = note.phase === 'uploading' && Date.now()-note.started > 90000 ? 'upload-incomplete' : note.phase;
+    return reply(phase,{...identity(),...(note.diagnostic?{formEvidence:note.diagnostic}:{})});
   } catch {
     return reply(note?.clicked ? 'submission-unknown' : 'unsupported-form');
   }
