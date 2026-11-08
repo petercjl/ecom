@@ -228,7 +228,8 @@ public:
         callback_(std::move(callback)) {}
 
   void Start() override {
-    if (operation_ == "xhs.search-page" && SupportsSignedBusinessRoutes()) {
+    if ((operation_ == "xhs.search-page" || operation_ == "xhs.creator-probe") &&
+        SupportsSignedBusinessRoutes()) {
       OpenXhsSearch();
       return;
     }
@@ -288,6 +289,8 @@ private:
     auto url = net::AppendQueryParameter(
         GURL("https://www.xiaohongshu.com/search_result"), "keyword", keyword);
     url = net::AppendQueryParameter(url, "source", "web_explore_feed");
+    if (operation_ == "xhs.creator-probe")
+      url = GURL("https://creator.xiaohongshu.com/publish/publish");
     NavigateParams navigation(profile_, url, ui::PAGE_TRANSITION_FROM_API);
     navigation.disposition = WindowOpenDisposition::NEW_BACKGROUND_TAB;
     navigation.storage_partition_config = content::StoragePartitionConfig::Create(
@@ -313,7 +316,29 @@ private:
       return;
     }
     auto* frame = xhs_page_->GetPrimaryMainFrame();
-    if (!frame || frame->GetLastCommittedURL().host() != "www.xiaohongshu.com") {
+    if (operation_ == "xhs.creator-probe" && frame &&
+        frame->GetLastCommittedOrigin().Serialize() ==
+            "https://creator.xiaohongshu.com") {
+      frame->ExecuteJavaScriptInIsolatedWorld(
+          uR"JS((() => {
+            if (location.origin !== 'https://creator.xiaohongshu.com') return '';
+            const visible = e => !!e.getClientRects().length;
+            const fields = [...document.querySelectorAll('input,textarea,[contenteditable],button,[role=tab]')].slice(0,60).map(e => ({
+              tag:e.tagName,type:e.type||'',className:String(e.className).slice(0,150),
+              placeholder:e.getAttribute('placeholder')||'',accept:e.getAttribute('accept')||'',
+              label:e.tagName==='BUTTON'||e.getAttribute('role')==='tab'?e.textContent.trim().slice(0,50):'',
+              visible:visible(e)
+            }));
+            const links = [...document.links].filter(visible).slice(0,35).map(e=>({path:e.pathname,label:e.textContent.trim().slice(0,50)}));
+            const labels = [...document.querySelectorAll('span,div')].filter(e=>!e.children.length && visible(e)).map(e=>e.textContent.trim()).filter(t=>/^(上传图文|发布笔记|登录|扫码登录|创作服务平台|内容管理|作品管理)$/.test(t)).slice(0,20);
+            return JSON.stringify({path:location.pathname,fields,links,labels});
+          })())JS",
+          base::BindOnce(&Read::XhsCreatorProbed, weak_.GetWeakPtr()),
+          ISOLATED_WORLD_ID_CHROME_INTERNAL);
+      return;
+    }
+    if (operation_ == "xhs.creator-probe" || !frame ||
+        frame->GetLastCommittedURL().host() != "www.xiaohongshu.com") {
       ScheduleXhsPoll();
       return;
     }
@@ -339,6 +364,18 @@ private:
         base::UTF8ToUTF16(script),
         base::BindOnce(&Read::XhsPageRead, weak_.GetWeakPtr()),
         ISOLATED_WORLD_ID_CHROME_INTERNAL);
+  }
+  void XhsCreatorProbed(base::Value value) {
+    auto json = value.is_string()
+                    ? base::JSONReader::Read(value.GetString(), base::JSON_PARSE_RFC)
+                    : std::nullopt;
+    if (!json || !json->is_dict() ||
+        (!json->GetDict().FindString("path")->starts_with("/login") &&
+         json->GetDict().FindList("labels")->empty())) {
+      ScheduleXhsPoll();
+      return;
+    }
+    Finish(std::move(*json));
   }
   void ScheduleXhsPoll() {
     xhs_poll_.Start(FROM_HERE, base::Milliseconds(500),
