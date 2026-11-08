@@ -50,7 +50,8 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
     return one(labeled.length ? labeled : editable.filter(e =>
       e.matches('[role=textbox],.tiptap,.ProseMirror,.ql-editor,#post-textarea') || a.fixture));
   };
-  const publishButton = () => one(all('button,[role=button]').filter(e => words(e) === '发布'));
+  const publishButtons = () => all('button,[role=button]').filter(e => words(e) === '发布');
+  const publishButton = () => one(publishButtons());
   const editor = () => {
     const title = titleField(), body = bodyField(), publish = publishButton();
     return title && body && publish ? {title, body, publish} : null;
@@ -101,7 +102,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
     field.dispatchEvent(new Event('input',{bubbles:true}));
     field.dispatchEvent(new Event('change',{bubbles:true}));
   };
-  const fillBody = (field, text) => {
+  const fillBody = (field, text, paragraphs = false) => {
     field.focus({preventScroll:true});
     const range = document.createRange();
     range.selectNodeContents(field);
@@ -111,23 +112,35 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
     // Chromium insertText can introduce an extra paragraph separator. Build
     // escaped text nodes and explicit line breaks for exact body readback.
     const fragment = document.createElement('div');
-    for (const [index,line] of text.split('\n').entries()) {
-      if (index) fragment.append(document.createElement('br'));
-      fragment.append(document.createTextNode(line));
+    const appendLines = (target, value) => {
+      for (const [index,line] of value.split('\n').entries()) {
+        if (index) target.append(document.createElement('br'));
+        target.append(document.createTextNode(line));
+      }
+    };
+    if (paragraphs) {
+      for (const value of text.split('\n\n')) {
+        const paragraph = document.createElement('p');
+        appendLines(paragraph,value);
+        fragment.append(paragraph);
+      }
+    } else {
+      appendLines(fragment,text);
+      if (text.endsWith('\n')) fragment.append(document.createElement('br'));
     }
-    if (text.endsWith('\n')) fragment.append(document.createElement('br'));
     document.execCommand('insertHTML',false,fragment.innerHTML);
     selection.removeAllRanges();
   };
+  const reviewText = value => value.replace(/\u00a0/g,' ').replace(/[ \t]+(?=\n|$)/g,'');
   const uploadBusy = () => all('.img-preview-area [aria-busy=true], .img-preview-area .mask.uploading, .img-preview-area .mask.failed, .upload-progress,.upload-loading').length > 0;
   const readReview = n => {
     const title = titleField(), body = bodyField();
     const images = preview();
     const fieldState = (value, expected) => value === undefined ? 'missing' :
       value === expected ? 'matched' : !value.trim() ? 'empty' : 'different';
-    return {title:fieldState(title?.value,n.title),body:fieldState(body ? readBody(body) : undefined,n.text),
+    return {title:fieldState(title?.value,n.title),body:fieldState(body ? reviewText(readBody(body)) : undefined,reviewText(n.text)),
       imageCount:images.length,imagesMatch:!!n.previews && same(images,n.previews) && !uploadBusy(),
-      publishEnabled:readyButton(publishButton())};
+      publishEnabled:publishButtons().some(readyButton)};
   };
   const reviewResult = n => {
     const fields = readReview(n);
@@ -288,7 +301,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       if (!fields.imagesMatch || fields.title === 'different' || fields.body === 'different')
         return reviewResult(note);
       if (fields.title === 'empty') fillTitle(titleField(),note.title);
-      if (fields.body === 'empty') fillBody(bodyField(),note.text);
+      if (fields.body === 'empty') fillBody(bodyField(),note.text,!a.fixture);
       return reviewResult(note);
     }
     if (a.action === 'submit') {

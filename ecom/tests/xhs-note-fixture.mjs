@@ -158,10 +158,28 @@ try {
   assert.equal(refused.state,'not-submitted',JSON.stringify(refused));
   assert.equal((await command('status',third.pinned)).state,'not-submitted');
   assert.equal(writes.filter(x=>x.path==='/fixture/publish').length,2);
+  activeAccount=account;
+  const open=await command('open',[...base,'--fixture-port',String(server.address().port)]);
+  assert.equal(open.state,'account-ready');
+  const pinned=[...base,'--fixture','--instance',open.instance.id,'--preparation',open.preparationId];
+  const input=[...pinned,'--manifest',changed,'--account-id',account,'--digest',thirdCheck.manifestDigest];
+  const before=writes.length;
+  const uploaded=await command('upload',input);
+  assert.equal(uploaded.state,'images-ready',JSON.stringify(uploaded));
+  assert.equal(uploaded.fields.title,'empty');
+  assert.equal(uploaded.fields.body,'empty');
+  assert.deepEqual(writes.at(-1).data.map(s=>sha(Buffer.from(s,'base64'))),expectedHashes);
+  assert.equal((await command('fill',input)).state,'review-ready');
+  const review=await command('status',pinned);
+  assert.equal(review.state,'review-ready');
+  assert.equal(review.confirmation,undefined);
+  assert.deepEqual(review.fields,{title:'matched',body:'matched',imageCount:2,imagesMatch:true,publishEnabled:true});
+  assert.equal((await command('fill',input)).state,'review-ready');
+  assert.equal(writes.length,before+1);
   console.log(JSON.stringify({ok:true,fixture:true,preflight:'verified',prepare:'verified',
     mediaOrder:'verified',accountMismatch:'refused',changedDigest:'refused',
     missingConfirmation:'refused',published:'verified',unknown:'no replay',freshAccountMismatch:'no submit',
-    unknownPreparationId:unknown.preparationId,publishRequests:2}));
+    unknownPreparationId:unknown.preparationId,publishRequests:2,splitReview:'verified without submit'}));
 } finally {
   server.closeAllConnections();
   await new Promise(resolve=>server.close(resolve));
