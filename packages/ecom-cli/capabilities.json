@@ -1324,6 +1324,43 @@
         "XHS_FIXTURE_DEV_REQUIRED",
         "XHS_REVIEW_INPUT_MISMATCH"
       ]
+    },
+    "xhs note verify": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--preparation": {
+          "type": "string",
+          "required": true
+        },
+        "--fixture": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "none",
+      "authorization": "Read back title, body and ordered previews for human review; report the publish control independently",
+      "output": "content-verified when the ordered previews and both text fields match; publishControl reports enabled or unconfirmed",
+      "compatibility": "Requires xhsNoteReviewProtocol 1 on macOS",
+      "errors": [
+        "XHS_CONTAINER_REQUIRED",
+        "BROWSER_UPGRADE_REQUIRED",
+        "PROTOCOL_MISMATCH",
+        "XHS_PREPARATION_NOT_FOUND",
+        "XHS_PREPARATION_EXPIRED",
+        "XHS_PAGE_CHANGED",
+        "XHS_FIXTURE_DEV_REQUIRED"
+      ]
     }
   },
   "transport": {

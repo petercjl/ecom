@@ -173,6 +173,9 @@ try {
   const review=await command('status',pinned);
   assert.equal(review.state,'review-ready');
   assert.equal(review.confirmation,undefined);
+  const checked=await command('verify',pinned);
+  assert.equal(checked.state,'content-verified');
+  assert.equal(checked.publishControl,'enabled');
   assert.deepEqual(review.fields,{title:'matched',body:'matched',imageCount:2,imagesMatch:true,publishEnabled:true});
   assert.equal((await command('fill',input)).state,'review-ready');
   assert.equal(writes.length,before+1);

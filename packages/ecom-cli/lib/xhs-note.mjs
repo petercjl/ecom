@@ -22,7 +22,7 @@ export function validateNoteOptions(action, options) {
   if (options['fixture-port'] !== undefined && (!/^\d{4,5}$/.test(options['fixture-port']) ||
       Number(options['fixture-port']) < 1024 || Number(options['fixture-port']) > 65535))
     throw fail('INVALID_ARGUMENT','Specify a loopback fixture port from 1024 to 65535');
-  if (['status','prepare','submit','upload','fill'].includes(action) && !uuid.test(options.preparation??''))
+  if (['status','verify','prepare','submit','upload','fill'].includes(action) && !uuid.test(options.preparation??''))
     throw fail('INVALID_ARGUMENT','Specify --preparation with the ID returned by open');
   if (['prepare','submit','upload','fill'].includes(action) &&
       (!uuid.test(options.instance??'') || !accountPattern.test(options['account-id']??'')))
@@ -187,7 +187,7 @@ export async function noteCommand(action, options, deps={}) {
   };
   if (connection.endpoint.xhsNoteProtocol !== 1)
     throw fail('BROWSER_UPGRADE_REQUIRED','Xiaohongshu note actions require Ecom with xhsNoteProtocol 1');
-  if (['upload','fill'].includes(action) && connection.endpoint.xhsNoteReviewProtocol !== 1)
+  if (['upload','fill','verify'].includes(action) && connection.endpoint.xhsNoteReviewProtocol !== 1)
     throw fail('BROWSER_UPGRADE_REQUIRED','Split note preparation requires xhsNoteReviewProtocol 1');
   const call = deps.call??callMailbox;
   const native = async (verb, extra={}) => {
@@ -226,6 +226,17 @@ export async function noteCommand(action, options, deps={}) {
   if (action === 'open') {
     // Creator identity can arrive before the upload controls render.
     return until(await native('open',fixture?{fixturePort:Number(options['fixture-port'])}:{}),['opening','unsupported-form'],15000);
+  }
+  if (action === 'verify') {
+    const result = await until(await native('status'),['opening'],9000);
+    const fields = result.fields;
+    if (!['images-ready','review-incomplete','review-ready'].includes(result.state) || !fields)
+      return result;
+    const contentVerified = fields.title === 'matched' && fields.body === 'matched' &&
+      fields.imagesMatch === true && fields.imageCount === result.imageCount &&
+      Number.isInteger(result.imageCount) && result.imageCount >= 1 && result.imageCount <= 18;
+    return {...result,state:contentVerified?'content-verified':'review-incomplete',
+      contentVerified,publishControl:fields.publishEnabled?'enabled':'unconfirmed'};
   }
   if (action === 'status') {
     try {
