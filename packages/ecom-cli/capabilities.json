@@ -957,6 +957,42 @@
       },
       "sideEffects": "browser-settings",
       "authorization": "Persist next-session lazy startup and the background restoration admission limit; user-selected tabs load immediately; do not interrupt admitted loads"
+    },
+    "xhs note preflight": {
+      "options": {
+        "--manifest": {
+          "type": "string",
+          "required": true
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "none",
+      "authorization": "Read and check explicitly supplied local note files",
+      "output": {
+        "state": "preflight-passed",
+        "submitted": false
+      }
+    },
+    "xhs note probe": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "navigation",
+      "authorization": "Open and inspect the creator entry in the selected Ecom container"
     }
   },
   "transport": {

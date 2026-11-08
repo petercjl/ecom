@@ -3,6 +3,7 @@ import path from 'node:path';
 import {root,pkg,fail} from './common.mjs';
 import {discover,listContainers,inspectContainer,requestSession,validateReadUrl,qianniuLoginStep} from './browser.mjs';
 import {searchXhs} from './xhs.mjs';
+import {noteCommand} from './xhs-note.mjs';
 import {readMemory,tabMemoryAction,memoryOperation,validateTabTarget,autoMemory,protectTab,validateAutoOptions,restoreSettings,validateRestoreOptions} from './memory.mjs';
 import {source,status,installSkill,checkUpdate,updateInstall} from './maintenance.mjs';
 import {inventory,operationSchema,runRead,openOperation,planMutation,showPlan,authorizePlan,nativeRegistryHash} from './sycm.mjs';
@@ -17,7 +18,7 @@ export function parse(argv) {
     const key=word.slice(2);
     if(Object.hasOwn(options,key)) throw fail('INVALID_ARGUMENT','Duplicate option '+word);
     if(['json','help','yes','foreground'].includes(key))options[key]=true;
-    else if(['agent','target','profile','instance','name','version','container','url','method','operation','params-json','plan','confirm','service','keyword','via','tab','expected-page-version','operation-id','enabled','idle-seconds','keep-awake','lazy-startup','max-background'].includes(key)&&argv[i+1]&&!argv[i+1].startsWith('--')) options[key]=argv[++i];
+    else if(['agent','target','profile','instance','name','version','container','url','method','operation','params-json','plan','confirm','service','keyword','via','manifest','account-id','preparation','tab','expected-page-version','operation-id','enabled','idle-seconds','keep-awake','lazy-startup','max-background'].includes(key)&&argv[i+1]&&!argv[i+1].startsWith('--')) options[key]=argv[++i];
     else throw fail('INVALID_ARGUMENT','Unknown option or missing value: '+word);
   }
   let command=positions.join(' ')||'help';
@@ -48,7 +49,7 @@ export function parse(argv) {
 }
 export async function main(argv) {
   const {command,options,requested}=parse(argv);
-  if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli containers list|inspect | shops open|login-status|submit-login | xhs search --via page | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
+  if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli containers list|inspect | shops open|login-status|submit-login | xhs search --via page | xhs note preflight|probe | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
   if(command==='version')return {ok:true,package:pkg.name,version:pkg.version,protocolVersion:1};
   if(['memory status','memory tabs','memory processes','memory containers'].includes(command))return readMemory(options);
   if(['tabs discard','tabs wake'].includes(command))return tabMemoryAction(command.slice(5),options);
@@ -62,6 +63,7 @@ export async function main(argv) {
   if(command==='skill install'||command==='skill update')return installSkill(options);
   if(command==='update check')return checkUpdate();
   if(command==='update install')return updateInstall(options);
+  if(command.startsWith('xhs note '))return noteCommand(command.slice(9),options);
   if(command==='xhs search') {
     const update=await checkUpdate({automatic:true});
     if(update.available)process.stderr.write('Ecom CLI update available: '+update.latest+'\n');
