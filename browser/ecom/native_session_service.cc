@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <array>
 #include <map>
 #include <memory>
 #include <optional>
@@ -13,6 +14,8 @@
 
 #include "base/base64.h"
 #include "base/command_line.h"
+#include "base/containers/span.h"
+#include "base/files/file.h"
 #include "base/files/file_enumerator.h"
 #include "base/files/file_path.h"
 #include "base/files/file_path_watcher.h"
@@ -257,16 +260,10 @@ class NativeSessionService final : public ProfileObserver {
       }
       base::DeleteFile(path);
       std::string bytes(static_cast<size_t>(info.st_size), '\0');
-      size_t offset = 0;
-      while (offset < bytes.size()) {
-        const ssize_t size = read(fd.get(), bytes.data() + offset,
-                                  bytes.size() - offset);
-        if (size <= 0)
-          return false;
-        offset += static_cast<size_t>(size);
-      }
-      char trailing;
-      if (read(fd.get(), &trailing, 1) != 0 ||
+      base::File input(std::move(fd));
+      std::array<uint8_t, 1> trailing;
+      if (input.ReadAtCurrentPos(base::as_writable_byte_span(bytes)) != bytes.size() ||
+          input.ReadAtCurrentPos(trailing) != 0 ||
           base::HexEncodeLower(crypto::hash::Sha256(bytes)) != *digest) {
         return false;
       }
