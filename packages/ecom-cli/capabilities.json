@@ -993,6 +993,136 @@
       },
       "sideEffects": "navigation",
       "authorization": "Open and inspect the creator entry in the selected Ecom container"
+    },
+    "xhs note open": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--fixture-port": {
+          "type": "string"
+        }
+      },
+      "sideEffects": "navigation",
+      "authorization": "Open a new background creator tab in the selected Xiaohongshu container; local loopback fixture only when specified",
+      "output": "opening, login-required, verification-required, account-unverified, account-ready, unsupported-form",
+      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS"
+    },
+    "xhs note status": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--preparation": {
+          "type": "string",
+          "required": true
+        },
+        "--fixture": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "none",
+      "authorization": "Inspect a pinned tab, creator identity or saved submission attempt",
+      "output": "preparation ID, account ID, state and available submission evidence",
+      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS"
+    },
+    "xhs note prepare": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--instance": {
+          "type": "string",
+          "required": true
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--preparation": {
+          "type": "string",
+          "required": true
+        },
+        "--fixture": {
+          "type": "boolean"
+        },
+        "--account-id": {
+          "type": "string",
+          "required": true
+        },
+        "--manifest": {
+          "type": "string",
+          "required": true
+        },
+        "--digest": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "external-write",
+      "authorization": "Upload ordered image bytes and fill a blank composer; may create platform draft state; never clicks Publish",
+      "output": "uploading, form-ready with confirmation, or specific unavailable/changed state",
+      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS"
+    },
+    "xhs note submit": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--instance": {
+          "type": "string",
+          "required": true
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--preparation": {
+          "type": "string",
+          "required": true
+        },
+        "--fixture": {
+          "type": "boolean"
+        },
+        "--account-id": {
+          "type": "string",
+          "required": true
+        },
+        "--confirm": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "external-write",
+      "authorization": "Explicitly publish the reviewed ordinary image note once; unknown results require status or creator note management review",
+      "output": "submitted, published with note ID, submission-unknown or a pre-click refusal",
+      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS"
     }
   },
   "transport": {
