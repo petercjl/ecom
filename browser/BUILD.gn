@@ -118,6 +118,9 @@ source_set("core") {
     sources += [
       "ecom/native_session_service.cc",
       "ecom/native_session_service.h",
+      "ecom/xhs_note_service.cc",
+      "ecom/xhs_note_service.h",
+      "ecom/xhs_note_script.h",
     ]
   }
   deps = brave_chrome_browser_deps + [

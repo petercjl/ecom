@@ -11,11 +11,13 @@
 #include <string_view>
 #include <utility>
 
+#include "base/base64.h"
 #include "base/command_line.h"
 #include "base/files/file_enumerator.h"
 #include "base/files/file_path.h"
 #include "base/files/file_path_watcher.h"
 #include "base/files/file_util.h"
+#include "base/files/scoped_file.h"
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
@@ -24,6 +26,7 @@
 #include "base/message_loop/message_pump_type.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_util.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/threading/thread.h"
 #include "base/time/time.h"
@@ -34,6 +37,7 @@
 #include "brave/browser/ecom/memory_actions.h"
 #include "brave/browser/ecom/shop_container_service.h"
 #include "brave/browser/ecom/sycm_read_registry.h"
+#include "brave/browser/ecom/xhs_note_service.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "brave/components/containers/core/browser/pref_names.h"
 #include "brave/components/containers/core/browser/prefs.h"
@@ -43,6 +47,7 @@
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/storage_partition_config.h"
+#include "crypto/hash.h"
 #include "net/base/net_errors.h"
 #include "net/cookies/site_for_cookies.h"
 #include "net/http/http_response_headers.h"
@@ -146,6 +151,7 @@ class NativeSessionService final : public ProfileObserver {
     weak_.InvalidateWeakPtrs();
     requests_.clear();
     business_reads_.clear();
+    xhs_notes_.reset();
     profile_->RemoveObserver(this);
     profile_ = nullptr;
     if (io_.IsRunning()) {
@@ -202,6 +208,7 @@ class NativeSessionService final : public ProfileObserver {
         metadata.Set("signedBusinessRouteProtocol", 1);
         metadata.Set("xhsPageSearchProtocol", 1);
         metadata.Set("xhsCreatorProbeProtocol", 1);
+        metadata.Set("xhsNoteProtocol", 1);
       }
       metadata.Set("businessPageOpenProtocol", 1);
       metadata.Set("businessReadRegistryHash", kSycmReadRegistryHash);
@@ -214,6 +221,66 @@ class NativeSessionService final : public ProfileObserver {
   }
 
   void StopIO() { watcher_.reset(); }
+
+  // Read only authenticated one-use files in the existing private mailbox.
+  // Do not give a renderer access to a local path.
+  bool LoadXhsMedia(base::DictValue& request) {
+    constexpr size_t kImageLimit = 10 * 1024 * 1024;
+    constexpr size_t kTotalLimit = 24 * 1024 * 1024;
+    const auto* entries = request.FindList("media");
+    if (request.contains("files") || !entries || entries->empty() ||
+        entries->size() > 18) {
+      return false;
+    }
+    base::ListValue files;
+    size_t total = 0;
+    for (const auto& entry : *entries) {
+      const auto* item = entry.GetIfDict();
+      const auto* stage = item ? item->FindString("stage") : nullptr;
+      const auto* digest = item ? item->FindString("sha256") : nullptr;
+      const auto* type = item ? item->FindString("type") : nullptr;
+      if (!stage || !base::Uuid::ParseLowercase(*stage).is_valid() ||
+          !digest || digest->size() != 64 || !type ||
+          (*type != "image/png" && *type != "image/jpeg")) {
+        return false;
+      }
+      const auto path = folder_.AppendASCII(*stage + ".xhs-media");
+      base::ScopedFD fd(open(path.value().c_str(),
+                             O_RDONLY | O_NOFOLLOW | O_NONBLOCK));
+      struct stat info;
+      if (!fd.is_valid() || fstat(fd.get(), &info) || info.st_uid != getuid() ||
+          (info.st_mode & 0777) != 0600 || !S_ISREG(info.st_mode) ||
+          info.st_nlink != 1 || info.st_size <= 0 ||
+          static_cast<size_t>(info.st_size) > kImageLimit ||
+          total + static_cast<size_t>(info.st_size) > kTotalLimit) {
+        return false;
+      }
+      base::DeleteFile(path);
+      std::string bytes(static_cast<size_t>(info.st_size), '\0');
+      size_t offset = 0;
+      while (offset < bytes.size()) {
+        const ssize_t size = read(fd.get(), bytes.data() + offset,
+                                  bytes.size() - offset);
+        if (size <= 0)
+          return false;
+        offset += static_cast<size_t>(size);
+      }
+      char trailing;
+      if (read(fd.get(), &trailing, 1) != 0 ||
+          base::HexEncodeLower(crypto::hash::Sha256(bytes)) != *digest) {
+        return false;
+      }
+      total += bytes.size();
+      files.Append(base::DictValue()
+                       .Set("name", "image-" + base::NumberToString(files.size() + 1) +
+                                        (*type == "image/png" ? ".png" : ".jpg"))
+                       .Set("type", *type)
+                       .Set("data", base::Base64Encode(bytes)));
+    }
+    request.Remove("media");
+    request.Set("files", std::move(files));
+    return true;
+  }
 
   void ScanIO(const base::FilePath&, bool error) {
     if (error || !PrivatePath(folder_, true)) {
@@ -255,6 +322,16 @@ class NativeSessionService final : public ProfileObserver {
         continue;
       }
       base::DeleteFile(file);
+      auto* method = message->GetDict().FindString("method");
+      if (method && *method == "xhs.note.prepare" &&
+          (!SupportsSignedBusinessRoutes() || !LoadXhsMedia(message->GetDict()))) {
+        WriteResponseIO(id, base::DictValue()
+                                .Set("ok", false)
+                                .Set("error", base::DictValue()
+                                                  .Set("code", "XHS_MEDIA_INVALID")
+                                                  .Set("executed", false)));
+        continue;
+      }
       ui_->PostTask(FROM_HERE,
                     base::BindOnce(&NativeSessionService::Dispatch, ui_weak_,
                                    id, std::move(message->GetDict())));
@@ -339,6 +416,18 @@ class NativeSessionService final : public ProfileObserver {
       return;
     }
     const auto* container_id = request.FindString("containerId");
+    if (method && method->starts_with("xhs.note.")) {
+      if (!SupportsSignedBusinessRoutes() ||
+          origin_.Serialize() != "https://sycm.taobao.com") {
+        Fail(id, "XHS_NOTE_UNSUPPORTED");
+        return;
+      }
+      if (!xhs_notes_)
+        xhs_notes_ = std::make_unique<XhsNoteService>(profile_);
+      xhs_notes_->Run(id, request, base::BindOnce(
+          &NativeSessionService::Respond, weak_.GetWeakPtr(), id));
+      return;
+    }
     if (method && *method == "business.read") {
       Business(id, std::move(request));
       return;
@@ -595,6 +684,7 @@ class NativeSessionService final : public ProfileObserver {
   std::map<std::string, std::unique_ptr<network::SimpleURLLoader>> requests_;
   std::map<std::string, std::unique_ptr<BusinessRead>> business_reads_;
   base::WeakPtr<NativeSessionService> ui_weak_;
+  std::unique_ptr<XhsNoteService> xhs_notes_;
   base::WeakPtrFactory<NativeSessionService> weak_{this};
 };
 
