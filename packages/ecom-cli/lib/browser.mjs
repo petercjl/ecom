@@ -18,6 +18,8 @@ export function discover({profile,instance}={}) {
   for(const line of ps(['-axo','pid=,uid=,comm=']).split('\n')) {
     const m=line.trim().match(/^(\d+)\s+(\d+)\s+(.+)$/);
     if(!m || Number(m[2])!==process.getuid() || !/\/(Ecom Dev|Ecom)\.app\/Contents\/MacOS\/\1$/.test(m[3])) continue;
+    const channel=m[3].includes('/Ecom Dev.app/')?'dev':'stable';
+    if (!profile && !instance && channel !== 'stable') continue;
     let command; try {command=ps(['-ww','-p',m[1],'-o','command=']).trim();}catch{continue;}
     if(/--(?:remote-debugging|headless|enable-automation)/.test(command)) continue;
     const selected=processProfile(m[3],command);
@@ -28,9 +30,9 @@ export function discover({profile,instance}={}) {
     const endpoint=JSON.parse(fs.readFileSync(file,'utf8'));
     if(endpoint.product!=='Ecom' || endpoint.schemaVersion!==1 || endpoint.pid!==Number(m[1]) || endpoint.executable!==m[3] || endpoint.userDataDir!==selected || !/^[\da-f-]{36}$/.test(endpoint.instanceId) || typeof endpoint.authToken!=='string') continue;
     if(instance && endpoint.instanceId!==instance) continue;
-    candidates.push({folder,endpoint,channel:m[3].includes('/Ecom Dev.app/')?'dev':'stable'});
+    candidates.push({folder,endpoint,channel});
   }
-  if(candidates.length!==1) throw fail(candidates.length?'INSTANCE_AMBIGUOUS':'INSTANCE_NOT_RUNNING',candidates.length?'Multiple Ecom instances; specify --profile or --instance':'Open an Ecom build supporting this CLI in normal desktop mode');
+  if(candidates.length!==1) throw fail(candidates.length?'INSTANCE_AMBIGUOUS':'INSTANCE_NOT_RUNNING',candidates.length?'Multiple Ecom instances; specify --profile or --instance':(profile||instance?'Open the selected Ecom instance in normal desktop mode':'Open the stable Ecom app, or explicitly select Ecom Dev with --profile or --instance'));
   return candidates[0];
 }
 const instanceOf=({endpoint,channel})=>({id:endpoint.instanceId,pid:endpoint.pid,channel});

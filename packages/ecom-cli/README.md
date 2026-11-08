@@ -30,7 +30,7 @@ Task entry checks stable `latest` at most daily, with a 1.5 second bound. Detect
 
 ## Developer contract
 
-`ecom-cli help --json`, `version --json`, `capabilities --json`, `schema --json`, and `doctor --json` expose supported commands and versioned results. Errors use JSON with stable codes; exit code 2 means invalid arguments, 1 means operational failure. stdout contains results; stderr contains diagnostics. Multiple Ecom instances require explicit `--profile` or `--instance` selection. Connection authenticates through owner-only local mailbox files, verifies the live Ecom executable, and uses no remote debugging port.
+`ecom-cli help --json`, `version --json`, `capabilities --json`, `schema --json`, and `doctor --json` expose supported commands and versioned results. Errors use JSON with stable codes; exit code 2 means invalid arguments, 1 means operational failure. stdout contains results; stderr contains diagnostics. The CLI selects stable Ecom by default. Select Dev explicitly with `--profile` or `--instance`. If more than one instance matches, pin the desired profile or instance. Connection authenticates through owner-only local mailbox files, verifies the live Ecom executable, and uses no remote debugging port.
 
 The browser owns sessions, containers and authorization. This package owns discovery, read-only transport and managed installation. The Skill documents invocation, diagnosis and recovery. Additional browser capabilities will extend this same command/Skill contract.
 

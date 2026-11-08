@@ -120,12 +120,14 @@ export async function noteCommand(action, options, deps={}) {
   }
   if (!options.container) throw fail('INVALID_ARGUMENT','Specify --container');
   const connection = (deps.discover??discover)(options);
+  const fixture = options.fixture === true || options['fixture-port'] !== undefined;
+  if (fixture && connection.channel !== 'dev')
+    throw fail('XHS_FIXTURE_DEV_REQUIRED','Loopback fixtures require an explicitly selected Ecom Dev instance');
   const {container} = await (deps.inspect??inspectInConnection)(connection,options.container);
   if (container.platform !== 'xiaohongshu')
     throw fail('XHS_CONTAINER_REQUIRED','Select a Xiaohongshu account container');
   const preparation = options.preparation;
   const instance = {id:connection.endpoint.instanceId,channel:connection.channel};
-  const fixture = options.fixture === true || options['fixture-port'] !== undefined;
   const receiptPath = preparation && uuid.test(preparation)
     ? path.join(connection.folder,preparation+'.xhs-attempt.json') : null;
   const resultPath = receiptPath?.replace('.xhs-attempt.json','.xhs-result.json');
@@ -183,7 +185,7 @@ export async function noteCommand(action, options, deps={}) {
     }
   };
   if (connection.endpoint.xhsNoteProtocol !== 1)
-    throw fail('BROWSER_UPGRADE_REQUIRED','Xiaohongshu note actions require Ecom Dev with xhsNoteProtocol 1');
+    throw fail('BROWSER_UPGRADE_REQUIRED','Xiaohongshu note actions require Ecom with xhsNoteProtocol 1');
   const call = deps.call??callMailbox;
   const native = async (verb, extra={}) => {
     const result = await call(connection,{method:'xhs.note.'+verb,containerId:container.id,

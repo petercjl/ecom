@@ -997,11 +997,12 @@
       "sideEffects": "navigation",
       "authorization": "Open a new background creator tab in the selected Xiaohongshu container; local loopback fixture only when specified",
       "output": "opening, login-required, verification-required, account-unverified, account-ready, unsupported-form",
-      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS",
+      "compatibility": "Requires xhsNoteProtocol 1 in Ecom on macOS. Loopback fixtures require Ecom Dev.",
       "errors": [
         "XHS_CONTAINER_REQUIRED",
         "BROWSER_UPGRADE_REQUIRED",
-        "PROTOCOL_MISMATCH"
+        "PROTOCOL_MISMATCH",
+        "XHS_FIXTURE_DEV_REQUIRED"
       ]
     },
     "xhs note status": {
@@ -1030,14 +1031,15 @@
       "sideEffects": "none",
       "authorization": "Inspect a pinned tab, creator identity or saved submission attempt",
       "output": "preparation ID, account ID, state and available submission evidence",
-      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS",
+      "compatibility": "Requires xhsNoteProtocol 1 in Ecom on macOS. Loopback fixtures require Ecom Dev.",
       "errors": [
         "XHS_CONTAINER_REQUIRED",
         "BROWSER_UPGRADE_REQUIRED",
         "PROTOCOL_MISMATCH",
         "XHS_PREPARATION_NOT_FOUND",
         "XHS_PREPARATION_EXPIRED",
-        "XHS_PAGE_CHANGED"
+        "XHS_PAGE_CHANGED",
+        "XHS_FIXTURE_DEV_REQUIRED"
       ]
     },
     "xhs note prepare": {
@@ -1079,7 +1081,7 @@
       "sideEffects": "external-write",
       "authorization": "Upload ordered image bytes and fill a blank composer; may create platform draft state; never clicks Publish",
       "output": "uploading, form-ready with confirmation, or specific unavailable/changed state",
-      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS",
+      "compatibility": "Requires xhsNoteProtocol 1 in Ecom on macOS. Loopback fixtures require Ecom Dev.",
       "errors": [
         "XHS_CONTAINER_REQUIRED",
         "BROWSER_UPGRADE_REQUIRED",
@@ -1091,7 +1093,8 @@
         "XHS_SAME_NOTE_ATTEMPTED",
         "XHS_MANIFEST_CHANGED",
         "XHS_MEDIA_INVALID",
-        "XHS_FORM_UNAVAILABLE"
+        "XHS_FORM_UNAVAILABLE",
+        "XHS_FIXTURE_DEV_REQUIRED"
       ]
     },
     "xhs note submit": {
@@ -1129,7 +1132,7 @@
       "sideEffects": "external-write",
       "authorization": "Explicitly publish the reviewed ordinary image note once; unknown results require status or creator note management review",
       "output": "not-submitted, submitted, published with note ID, or submission-unknown",
-      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS",
+      "compatibility": "Requires xhsNoteProtocol 1 in Ecom on macOS. Loopback fixtures require Ecom Dev.",
       "errors": [
         "XHS_CONTAINER_REQUIRED",
         "BROWSER_UPGRADE_REQUIRED",
@@ -1141,7 +1144,8 @@
         "XHS_SAME_NOTE_ATTEMPTED",
         "XHS_CONFIRMATION_MISMATCH",
         "XHS_SUBMISSION_ALREADY_ATTEMPTED",
-        "OPERATION_TIMEOUT"
+        "OPERATION_TIMEOUT",
+        "XHS_FIXTURE_DEV_REQUIRED"
       ]
     }
   },
@@ -1399,5 +1403,14 @@
     "history": "active/queued requests plus bounded completed records",
     "wakeQueuedStatus": "navigation-queued",
     "queuedActionLookup": "memory operation includes currentRestore; snapshots include tab.restore and top-level restoration"
+  },
+  "instanceSelection": {
+    "defaultChannel": "stable",
+    "explicitSelectors": [
+      "--profile",
+      "--instance"
+    ],
+    "devRequiresExplicitSelection": true,
+    "multipleMatches": "INSTANCE_AMBIGUOUS"
   }
 }

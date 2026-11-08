@@ -210,8 +210,8 @@ class NativeSessionService final : public ProfileObserver {
       if (SupportsSignedBusinessRoutes()) {
         metadata.Set("signedBusinessRouteProtocol", 1);
         metadata.Set("xhsPageSearchProtocol", 1);
-        metadata.Set("xhsNoteProtocol", 1);
       }
+      metadata.Set("xhsNoteProtocol", 1);
       metadata.Set("businessPageOpenProtocol", 1);
       metadata.Set("businessReadRegistryHash", kSycmReadRegistryHash);
     }
@@ -320,7 +320,8 @@ class NativeSessionService final : public ProfileObserver {
       base::DeleteFile(file);
       auto* method = message->GetDict().FindString("method");
       if (method && *method == "xhs.note.prepare" &&
-          (!SupportsSignedBusinessRoutes() || !LoadXhsMedia(message->GetDict()))) {
+          (origin_.Serialize() != "https://sycm.taobao.com" ||
+           !LoadXhsMedia(message->GetDict()))) {
         WriteResponseIO(id, base::DictValue()
                                 .Set("ok", false)
                                 .Set("error", base::DictValue()
@@ -413,9 +414,12 @@ class NativeSessionService final : public ProfileObserver {
     }
     const auto* container_id = request.FindString("containerId");
     if (method && method->starts_with("xhs.note.")) {
-      if (!SupportsSignedBusinessRoutes() ||
-          origin_.Serialize() != "https://sycm.taobao.com") {
+      if (origin_.Serialize() != "https://sycm.taobao.com") {
         Fail(id, "XHS_NOTE_UNSUPPORTED");
+        return;
+      }
+      if (request.contains("fixturePort") && !SupportsSignedBusinessRoutes()) {
+        Fail(id, "XHS_FIXTURE_DEV_REQUIRED");
         return;
       }
       if (!xhs_notes_)
