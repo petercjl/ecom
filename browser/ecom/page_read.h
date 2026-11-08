@@ -101,13 +101,20 @@ class PageRead {
     constexpr char16_t kRead[] = uR"JS(JSON.stringify((() => {
       const visible = e => e.getClientRects().length > 0;
       const videos = [...document.querySelectorAll('video')].filter(visible);
-      const title = document.title.trim();
+      const title = document.title.trim() ||
+        document.querySelector('meta[property="og:title"]')?.content.trim() || '';
       const text = (document.body?.innerText || '').trim();
       const loading = document.readyState === 'loading';
+      const workReady = !loading && !!text &&
+        !/(?:视频数据加载中|正在加载视频|loading video)/i.test(text);
       const readyVideos = videos.filter(v => v.readyState >= 1 &&
         Number.isFinite(v.duration) && v.duration > 0 && v.videoWidth > 0);
       const direct = new Set();
-      for (const v of readyVideos) {
+      // The player may declare preload=none. Its source is usable
+      // once the rendered work is present, even before playback starts.
+      const candidates = readyVideos.length ? readyVideos :
+        videos.length === 1 && workReady ? videos : [];
+      for (const v of candidates) {
         const src = v.currentSrc || v.src || v.querySelector('source[src]')?.src;
         if (src?.startsWith('https:') && !v.mediaKeys) direct.add(src);
       }
@@ -118,8 +125,8 @@ class PageRead {
       }
       return {
         ready: !loading && !!(title || text),
-        workReady: !loading && !!title && !!text,
-        title: title.slice(0, 512),
+        workReady,
+        title: (title || text.split("\n").find(line => line.length > 20) || "").slice(0, 512),
         text: text.slice(0, 12000),
         players: videos.slice(0, 6).map(v => ({
           duration: Number.isFinite(v.duration) ? v.duration : null,
