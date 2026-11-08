@@ -36,6 +36,14 @@ const creatorUrl = 'https://creator.xiaohongshu.com/publish/publish';
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const invalid = message => fail('INVALID_NOTE', message, {executed:false});
 
+function writeAttempt(file, value) {
+  const fd = fs.openSync(file,'wx',0o600);
+  try {
+    fs.writeFileSync(fd,JSON.stringify(value)+'\n');
+    fs.fsyncSync(fd);
+  } finally { fs.closeSync(fd); }
+}
+
 function readBounded(file, limit) {
   let fd;
   try {
@@ -254,14 +262,16 @@ export async function noteCommand(action, options, deps={}) {
       throw fail('XHS_CONFIRMATION_MISMATCH','Use the confirmation returned by this ready preparation');
     const attempt = {preparationId:preparation,containerId:container.id,instance,fixture,accountId,manifestDigest:state.manifestDigest};
     const claim = claimPath(accountId,state.manifestDigest);
-    try { writeNew(claim,attempt); }
-    catch (error) {
-      if (error.code === 'EEXIST') alreadyClaimed(claim);
-      throw error;
-    }
-    try { writeNew(receiptPath,attempt); }
+    alreadyClaimed(claim);
+    try { writeAttempt(receiptPath,attempt); }
     catch (error) {
       if (error.code === 'EEXIST') throw fail('XHS_SUBMISSION_ALREADY_ATTEMPTED','Inspect xhs note status; the preparation already has a submission attempt',{executed:'unknown'});
+      throw error;
+    }
+    try { writeAttempt(claim,attempt); }
+    catch (error) {
+      settle({...state,state:'not-submitted',reason:'local-attempt-claim-failed'},attempt);
+      if (error.code === 'EEXIST') alreadyClaimed(claim);
       throw error;
     }
     let result;

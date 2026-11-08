@@ -75,10 +75,11 @@ document.querySelector('button').onclick = () => {
 </script>`;
 const writes = [];
 let mode = 'success';
+let activeAccount = account;
 const server = http.createServer(async (req,res)=>{
   const send=(status,type,value)=>{res.writeHead(status,{'content-type':type,'cache-control':'no-store'});res.end(value);};
   if(req.url==='/publish/publish')return send(200,'text/html; charset=utf-8',html);
-  if(req.url==='/fixture/account')return send(200,'application/json',JSON.stringify({success:true,data:{userId:account,nickname:'Fixture'}}));
+  if(req.url==='/fixture/account')return send(200,'application/json',JSON.stringify({success:true,data:{userId:activeAccount,nickname:'Fixture'}}));
   if(req.method!=='POST'||!['/fixture/upload','/fixture/publish'].includes(req.url))return send(404,'text/plain','');
   const chunks=[];
   for await (const chunk of req) chunks.push(chunk);
@@ -148,9 +149,19 @@ try {
   await command('submit',second.submit,'XHS_SUBMISSION_ALREADY_ATTEMPTED');
   await prepare({manifestFile:another,digest:next.manifestDigest,expectedError:'XHS_SAME_NOTE_ATTEMPTED'});
   assert.equal(writes.filter(x=>x.path==='/fixture/publish').length,2);
+  const changed=path.join(dir,'changed.json');
+  await fs.writeFile(changed,JSON.stringify({title:title+'三',body,topics:[topic],images:['0.png','1.png']}),{flag:'wx'});
+  const thirdCheck=await command('preflight',['--manifest',changed,'--json']);
+  const third=await prepare({manifestFile:changed,digest:thirdCheck.manifestDigest});
+  activeAccount='c'.repeat(24);
+  const refused=await command('submit',third.submit);
+  assert.equal(refused.state,'not-submitted',JSON.stringify(refused));
+  assert.equal((await command('status',third.pinned)).state,'not-submitted');
+  assert.equal(writes.filter(x=>x.path==='/fixture/publish').length,2);
   console.log(JSON.stringify({ok:true,fixture:true,preflight:'verified',prepare:'verified',
     mediaOrder:'verified',accountMismatch:'refused',changedDigest:'refused',
-    missingConfirmation:'refused',published:'verified',unknown:'no replay',publishRequests:2}));
+    missingConfirmation:'refused',published:'verified',unknown:'no replay',freshAccountMismatch:'no submit',
+    unknownPreparationId:unknown.preparationId,publishRequests:2}));
 } finally {
   server.closeAllConnections();
   await new Promise(resolve=>server.close(resolve));
