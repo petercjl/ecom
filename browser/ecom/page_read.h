@@ -72,6 +72,7 @@ class PageRead {
       return;
     }
     page_ = contents->GetWeakPtr();
+    started_ = base::TimeTicks::Now();
     page_->SetAudioMuted(true);
     protection_ = ProtectMemoryPageTask(contents);
     timer_.Start(FROM_HERE, base::Seconds(24),
@@ -102,13 +103,13 @@ class PageRead {
       const videos = [...document.querySelectorAll('video')].filter(visible);
       const title = document.title.trim();
       const text = (document.body?.innerText || '').trim();
-      const loading = !title || !text || document.readyState === 'loading';
+      const loading = document.readyState === 'loading';
       const readyVideos = videos.filter(v => v.readyState >= 1 &&
         Number.isFinite(v.duration) && v.duration > 0 && v.videoWidth > 0);
       const direct = new Set();
       for (const v of readyVideos) {
         const src = v.currentSrc || v.src || v.querySelector('source[src]')?.src;
-        if (src?.startsWith('https:') && !v.mediaKeys && !v.loop) direct.add(src);
+        if (src?.startsWith('https:') && !v.mediaKeys) direct.add(src);
       }
       if (!direct.size && !videos.some(v => v.mediaKeys)) {
         for (const m of document.querySelectorAll('meta[property="og:video:secure_url"],meta[property="og:video:url"],meta[property="og:video"]')) {
@@ -116,7 +117,8 @@ class PageRead {
         }
       }
       return {
-        ready: !loading,
+        ready: !loading && !!(title || text),
+        workReady: !loading && !!title && !!text,
         title: title.slice(0, 512),
         text: text.slice(0, 12000),
         players: videos.slice(0, 6).map(v => ({
@@ -151,7 +153,8 @@ class PageRead {
       return;
     }
     auto& data = parsed->GetDict();
-    if (!data.FindBool("ready").value_or(false)) {
+    if (!download_ && !data.FindBool("ready").value_or(false) &&
+        base::TimeTicks::Now() - started_ < base::Seconds(7)) {
       Wait();
       return;
     }
@@ -159,7 +162,12 @@ class PageRead {
     title_ = title ? *title : "";
     if (!download_) {
       data.Remove("media");
+      data.Remove("workReady");
       Finish(base::DictValue().Set("ok", true).Set("page", std::move(data)));
+      return;
+    }
+    if (!data.FindBool("workReady").value_or(false)) {
+      Wait();
       return;
     }
     if (data.FindBool("protected").value_or(false)) {
@@ -276,6 +284,7 @@ class PageRead {
   const bool download_;
   Reply reply_;
   std::string title_;
+  base::TimeTicks started_;
   base::WeakPtr<content::WebContents> page_;
   base::ScopedClosureRunner protection_;
   base::OneShotTimer timer_;
