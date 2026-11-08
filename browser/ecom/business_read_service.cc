@@ -330,8 +330,13 @@ private:
               visible:visible(e)
             }));
             const links = [...document.links].filter(visible).slice(0,35).map(e=>({path:e.pathname,label:e.textContent.trim().slice(0,50)}));
-            const labels = [...document.querySelectorAll('span,div')].filter(e=>!e.children.length && visible(e)).map(e=>e.textContent.trim()).filter(t=>/^(上传图文|发布笔记|登录|扫码登录|创作服务平台|内容管理|作品管理)$/.test(t)).slice(0,20);
-            return JSON.stringify({path:location.pathname,fields,links,labels});
+            const labels = [...document.querySelectorAll('span,div')].filter(e=>!e.children.length && visible(e)).map(e=>e.textContent.trim()).filter(t=>/^(上传图文|发布笔记|登录|扫码登录|创作服务平台|内容管理|作品管理|手机号登录)$/.test(t)).slice(0,20);
+            const nav = [...document.querySelectorAll('[class*=user], [class*=account], [class*=avatar], [class*=publish], [class*=upload]')]
+              .filter(e=>visible(e)&&String(e.className).length<100).slice(0,60).map(e=>({
+                tag:e.tagName,className:String(e.className),label:e.textContent.trim().slice(0,55)
+              }));
+            const endpoints = [...new Set(performance.getEntriesByType('resource').filter(e=>['fetch','xmlhttprequest'].includes(e.initiatorType)).map(e=>new URL(e.name)).filter(u=>u.hostname.endsWith('.xiaohongshu.com')).map(u=>u.origin+u.pathname))].slice(0,40);
+            return JSON.stringify({path:location.pathname,fields,links,labels,nav,endpoints});
           })())JS",
           base::BindOnce(&Read::XhsCreatorProbed, weak_.GetWeakPtr()),
           ISOLATED_WORLD_ID_CHROME_INTERNAL);
@@ -369,9 +374,13 @@ private:
     auto json = value.is_string()
                     ? base::JSONReader::Read(value.GetString(), base::JSON_PARSE_RFC)
                     : std::nullopt;
-    if (!json || !json->is_dict() ||
-        (!json->GetDict().FindString("path")->starts_with("/login") &&
-         json->GetDict().FindList("labels")->empty())) {
+    const auto* data = json ? json->GetIfDict() : nullptr;
+    const auto* labels = data ? data->FindList("labels") : nullptr;
+    const auto* path = data ? data->FindString("path") : nullptr;
+    if (!path || !labels ||
+        (!path->starts_with("/login") &&
+         !labels->contains("上传图文") && !labels->contains("扫码登录") &&
+         !labels->contains("登录"))) {
       ScheduleXhsPoll();
       return;
     }
