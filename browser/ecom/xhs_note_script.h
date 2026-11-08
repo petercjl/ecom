@@ -25,12 +25,13 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
   const store = globalThis.ecomXhsNote ??= {};
   const note = store[a.id];
   const idValid = id => typeof id === 'string' && /^[a-f0-9]{24}$/.test(id);
-  const shell = () => a.fixture || all('.user-info').some(e => words(e).includes('退出登录'));
-  const imageInput = () => one([...document.querySelectorAll('input[type=file]')]
+  const shell = () => a.fixture || all('.user-info .user_avatar').length === 1;
+  const imageInput = () => one([...document.querySelectorAll(
+      a.fixture ? 'input[type=file]' : '.upload-input[type=file][multiple]')]
     .filter(e => /image|\.png|\.jpe?g/i.test(e.accept) && visible(e.parentElement)));
   const imageTab = () => {
-    const exact = all('.creator-tab,[role=tab],.tab-item,.tab').filter(e => words(e) === '上传图文');
-    if (exact.length) return one(exact);
+    const exact = all(a.fixture ? '[role=tab]' : '.creator-tab').filter(e => words(e) === '上传图文');
+    if (exact.length) return exact[0];
     const leaves = all('div,span').filter(e => !e.children.length && words(e) === '上传图文');
     const controls = [...new Set(leaves.map(e =>
       e.closest('button,[role=tab],[class*=tab]') || e).filter(e => words(e) === '上传图文'))];
@@ -47,7 +48,6 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
   const checkAccount = () => {
     if (store.identityPending) return;
     store.identityPending = true;
-    store.identity = undefined;
     const endpoint = a.fixture ? '/fixture/account' : '/api/galaxy/user/info';
     fetch(endpoint, {credentials:'same-origin', cache:'no-store', redirect:'error',
       signal:AbortSignal.timeout(7000)})
@@ -67,7 +67,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
   };
   const readyAccount = () => {
     if (!shell()) return false;
-    if (!account || Date.now()-account.at > 15000) {
+    if (!account || Date.now()-account.at > 30000) {
       checkAccount();
       return false;
     }
@@ -77,7 +77,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
   const readBody = field => field.innerText.replace(/\r\n/g,'\n');
   const preview = () => {
     const selector = a.fixture ? '[data-xhs-image] img' :
-      '.image-preview-list img, .image-list img, .img-preview img, .image-preview img, .image-item img, .img-item img';
+      '.img-preview-area .flex-list .img-container img';
     return all(selector).filter(e => e.complete && e.naturalWidth > 0)
       .map(e => e.currentSrc || e.src);
   };
@@ -101,7 +101,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
     const images = preview();
     return form && images.length === n.count && form.title.value === n.title &&
       readBody(form.body) === n.text && readyButton(form.publish) &&
-      !all('[aria-busy=true],.upload-progress,.upload-loading').length
+      !all('.img-preview-area [aria-busy=true], .img-preview-area .mask.uploading, .img-preview-area .mask.failed, .upload-progress,.upload-loading').length
       ? {form,images} : null;
   };
   const observed = () => {
@@ -137,6 +137,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
     if (login()) return reply('login-required');
     if (!onEntry) return reply('page-changed');
     if (!readyAccount()) {
+      if (note?.phase === 'uploading') return reply('uploading');
       return reply(account?.status === 'login-required' ? 'login-required' :
         account?.status === 'account-unverified' ? 'account-unverified' : 'opening');
     }
@@ -154,11 +155,13 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       let uploadDispatched = false;
       let filled = false;
       const started = Date.now();
+      const diagnostic = () => ({uploaded:preview().length, composer:!!editor(), filled});
       const run = () => {
         try {
           if (!onEntry || location.pathname !== '/publish/publish' || verification() || login() ||
               !shell() || store.identity?.accountId !== next.account || Date.now()-started > 90000) {
             next.phase = 'upload-incomplete';
+            next.diagnostic = diagnostic();
             return;
           }
           if (!uploadDispatched) {
@@ -191,7 +194,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
             }
           }
           setTimeout(run,250);
-        } catch { next.phase = 'upload-incomplete'; }
+        } catch { next.phase = 'upload-incomplete'; next.diagnostic = diagnostic(); }
       };
       if (!imageInput()) {
         const tab = imageTab();
@@ -225,7 +228,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       if (!form || !same(form.images,note.previews)) return reply('form-changed');
       return reply('form-ready',{...identity(),imageCount:note.count});
     }
-    return reply(note.phase,identity());
+    return reply(note.phase,{...identity(),...(note.diagnostic?{formEvidence:note.diagnostic}:{})});
   } catch {
     return reply(note?.clicked ? 'submission-unknown' : 'unsupported-form');
   }

@@ -1,13 +1,13 @@
 ---
 name: ecom-cli
-description: Use Ecom for browser memory diagnostics and automatic idle sleep settings, on-demand startup restoration and background restore limits, protected tab sleep/wake, account container inspection, registered Shengyicanmou data reads, local mutation planning, authorized Qianniu login recovery, native-session requests, or CLI and companion Skill maintenance. Business analysis and operating decisions belong to the caller.
+description: Use Ecom for browser memory diagnostics and automatic idle sleep settings, on-demand startup restoration and background restore limits, protected tab sleep/wake, account container inspection, registered Shengyicanmou data reads, local mutation planning, authorized Qianniu login recovery, Xiaohongshu search and ordinary image note preparation or publication, native-session requests, or CLI and companion Skill maintenance. Business analysis and operating decisions belong to the caller.
 ---
 
 # Ecom CLI
 
 ## Input → strategy → output
 
-Input is an Ecom container listing/detail request, an authorized read-only endpoint plus target container, a connection diagnosis, or selected-Agent maintenance intent. The current Agent needs local command execution, file access and Node.js 22+. Output is a container list, projected account metadata, native-redacted JSON response with pinned target identity, connection diagnosis, or installation receipt with a separate host discovery check. Container names may identify accounts; disclose only within the user's request.
+Input is an Ecom container listing/detail request, an authorized endpoint plus target container, an explicitly ordered Xiaohongshu image note manifest, a connection diagnosis, or selected-Agent maintenance intent. The current Agent needs local command execution, file access and Node.js 22+. Output is a container list, projected account metadata, native-redacted JSON response with pinned target identity, connection diagnosis, or installation receipt with a separate host discovery check. Container names may identify accounts; disclose only within the user's request.
 
 ## Main line
 
@@ -25,6 +25,16 @@ For an authorized Xiaohongshu search, select the existing Xiaohongshu container 
 This mode uses a temporary background website tab and the container's existing session. It does not activate the current tab; its temporary tab closes after success when it remains in the background. A user-selected or navigated tab is preserved. `pageClosed` reports cleanup. This is page-assisted DOM extraction, not Cookie-only HTTP search or an API response capture. Use it when page-assisted reading is within the request; a strict no-page requirement is currently unsupported. Requires a compatible Ecom Dev with `xhsPageSearchProtocol=1`. No separate xhscli or CDP browser is needed.
 
 On `XHS_LOGIN_REQUIRED` or `XHS_VERIFICATION_REQUIRED`, preserve the original container and report that first-party action is required. Do not repeatedly submit searches. On timeout, retain the operation ID and inspect its outcome before retrying. Page readiness and container labels do not establish authenticated platform identity; report only the search data actually returned. Resume main-line result validation after success.
+
+## Xiaohongshu image notes
+
+Use this branch for ordinary image notes in a specified Xiaohongshu container. The caller selects the title, body, topics and image order. Requires a compatible macOS Ecom Dev reporting `xhsNoteProtocol: 1` in `doctor`; open a normal Ecom session and pin the instance. Topics are literal hashtag text in the body. Product attachments, video and platform topic picker interactions are outside this contract.
+
+1. Supply a UTF-8 JSON manifest with `title`, `body`, optional `topics` (plain names without the hash prefix) and `images` (ordered local paths, relative to the manifest or absolute). Run `xhs note preflight --manifest FILE --json`. Review the title, body, image order, and `manifestDigest`. This reads local files only.
+2. Run `xhs note open --container ID --instance INSTANCE --json`. Keep the returned `preparationId` and verify the returned creator `accountId` belongs to the intended account before uploading. A container label alone does not establish creator identity. If login or verification is required, let the user finish in the opened tab of the same container, then run `xhs note status` with that preparation ID. Stop on ambiguous identity, a nonempty composer, or a form change.
+3. With permission to upload, run `xhs note prepare --container ID --instance INSTANCE --preparation PREPARATION --account-id ACCOUNT --manifest FILE --digest DIGEST --json`. This uploads images and fills the live composer; the website may save a draft. `form-ready` confirms the page readback and returns a confirmation tied to this preparation. Show the reviewed materials and creator account before external publication.
+4. Only with explicit authority to publish that note, run `xhs note submit --container ID --instance INSTANCE --preparation PREPARATION --account-id ACCOUNT --confirm CONFIRMATION --json`. Use the exact confirmation from the ready form. `submitted` is a creator acknowledgement; only `published` with a note ID and creator evidence establishes success. `submission-unknown` requires status or manual inspection of the account's note management. Keep the preparation and operation IDs. Never replay a possibly sent submission, including by opening a new preparation for the same note.
+5. Run `xhs note status --container ID --preparation PREPARATION --json` on the same profile to inspect the form or saved attempt. Preserve the original tab on login, verification or unknown outcome. A restarted browser cannot restore a prepared form, but a saved submission attempt remains queryable in that profile.
 
 ## Qianniu login recovery
 

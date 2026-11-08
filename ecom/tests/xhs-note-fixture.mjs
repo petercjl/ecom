@@ -120,7 +120,7 @@ try {
       assert.equal(writes.length,0);
     }
     const prepare=await command('prepare',[...input,'--account-id',account,'--digest',preflight.manifestDigest]);
-    assert.equal(prepare.state,'form-ready',JSON.stringify(prepare));
+    assert.equal(prepare.state,'form-ready',JSON.stringify({prepare,writes:writes.map(x=>x.path)}));
     assert.equal(prepare.imageCount,2);
     return {pinned,prepare,submit:[...pinned,'--account-id',account,'--confirm',prepare.confirmation]};
   };

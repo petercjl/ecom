@@ -231,7 +231,7 @@ export async function noteCommand(action, options, deps={}) {
         return {stage,type,sha256};
       });
       return await until(await native('prepare',{accountId,manifestDigest:note.digest,
-        title:note.summary.title,text:note.text,media}),['uploading'],95000);
+        title:note.summary.title,text:note.text,media}),['uploading','opening'],95000);
     } finally {
       for (const file of staged) {
         try { fs.unlinkSync(file); } catch (error) { if (error.code !== 'ENOENT') throw error; }
