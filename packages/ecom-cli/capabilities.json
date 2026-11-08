@@ -1147,6 +1147,58 @@
         "OPERATION_TIMEOUT",
         "XHS_FIXTURE_DEV_REQUIRED"
       ]
+    },
+    "page read": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--url": {
+          "type": "string",
+          "required": true
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Open the specified HTTPS page in a temporary background tab in the selected container",
+      "compatibility": "Ecom Dev with backgroundPageProtocol 1"
+    },
+    "media download": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--url": {
+          "type": "string",
+          "required": true
+        },
+        "--output": {
+          "type": "string",
+          "required": true
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Open the specified HTTPS page in a temporary background tab in the selected container and save one unambiguous direct video to a new local file",
+      "compatibility": "Ecom Dev with backgroundPageProtocol 1"
     }
   },
   "transport": {

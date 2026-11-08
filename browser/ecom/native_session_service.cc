@@ -38,6 +38,7 @@
 #include "brave/browser/ecom/business_read_service.h"
 #include "brave/browser/ecom/memory_snapshot.h"
 #include "brave/browser/ecom/memory_actions.h"
+#include "brave/browser/ecom/page_read.h"
 #include "brave/browser/ecom/shop_container_service.h"
 #include "brave/browser/ecom/sycm_read_registry.h"
 #include "brave/browser/ecom/xhs_note_service.h"
@@ -155,6 +156,7 @@ class NativeSessionService final : public ProfileObserver {
     requests_.clear();
     business_reads_.clear();
     xhs_notes_.reset();
+    pages_.clear();
     profile_->RemoveObserver(this);
     profile_ = nullptr;
     if (io_.IsRunning()) {
@@ -210,6 +212,7 @@ class NativeSessionService final : public ProfileObserver {
       if (SupportsSignedBusinessRoutes()) {
         metadata.Set("signedBusinessRouteProtocol", 1);
         metadata.Set("xhsPageSearchProtocol", 1);
+        metadata.Set("backgroundPageProtocol", 1);
       }
       metadata.Set("xhsNoteProtocol", 1);
       metadata.Set("businessPageOpenProtocol", 1);
@@ -413,6 +416,37 @@ class NativeSessionService final : public ProfileObserver {
       return;
     }
     const auto* container_id = request.FindString("containerId");
+    if (method && (*method == "page.read" || *method == "media.download")) {
+      const auto* url_text = request.FindString("url");
+      GURL url(url_text ? *url_text : "");
+      if (!SupportsSignedBusinessRoutes() ||
+          origin_.Serialize() != "https://sycm.taobao.com") {
+        Fail(id, "BACKGROUND_PAGE_UNSUPPORTED");
+        return;
+      }
+      if (!container_id || !url_text || url_text->size() > 8192 ||
+          !IsPageReadUrl(url)) {
+        Fail(id, "INVALID_ARGUMENT");
+        return;
+      }
+      if (!containers::GetContainerFromPrefs(*profile_->GetPrefs(),
+                                             *container_id)) {
+        Fail(id, "CONTAINER_NOT_FOUND");
+        return;
+      }
+      if (pages_.size() >= 2) {
+        Fail(id, "BUSY");
+        return;
+      }
+      auto operation = std::make_unique<PageRead>(
+          *container_id, std::move(url), *method == "media.download",
+          base::BindOnce(&NativeSessionService::PageFinished,
+                         weak_.GetWeakPtr(), id));
+      auto* task = operation.get();
+      pages_.emplace(id, std::move(operation));
+      task->Start(profile_);
+      return;
+    }
     if (method && method->starts_with("xhs.note.")) {
       if (origin_.Serialize() != "https://sycm.taobao.com") {
         Fail(id, "XHS_NOTE_UNSUPPORTED");
@@ -487,6 +521,11 @@ class NativeSessionService final : public ProfileObserver {
       return;
     }
     Fetch(id, *container_id, url);
+  }
+
+  void PageFinished(std::string id, base::DictValue result) {
+    Respond(id, std::move(result));
+    pages_.erase(id);
   }
 
   void Business(const std::string& id, base::DictValue request) {
@@ -683,6 +722,7 @@ class NativeSessionService final : public ProfileObserver {
   std::map<std::string, std::unique_ptr<BusinessRead>> business_reads_;
   base::WeakPtr<NativeSessionService> ui_weak_;
   std::unique_ptr<XhsNoteService> xhs_notes_;
+  std::map<std::string, std::unique_ptr<PageRead>> pages_;
   base::WeakPtrFactory<NativeSessionService> weak_{this};
 };
 

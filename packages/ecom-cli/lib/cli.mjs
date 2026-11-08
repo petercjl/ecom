@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {root,pkg,fail} from './common.mjs';
 import {discover,listContainers,inspectContainer,requestSession,validateReadUrl,qianniuLoginStep} from './browser.mjs';
+import {pageCommand,validatePageOptions} from './page.mjs';
 import {searchXhs} from './xhs.mjs';
 import {noteCommand,validateNoteOptions} from './xhs-note.mjs';
 import {readMemory,tabMemoryAction,memoryOperation,validateTabTarget,autoMemory,protectTab,validateAutoOptions,restoreSettings,validateRestoreOptions} from './memory.mjs';
@@ -18,7 +19,7 @@ export function parse(argv) {
     const key=word.slice(2);
     if(Object.hasOwn(options,key)) throw fail('INVALID_ARGUMENT','Duplicate option '+word);
     if(['json','help','yes','foreground','fixture'].includes(key))options[key]=true;
-    else if(['agent','target','profile','instance','name','version','container','url','method','operation','params-json','plan','confirm','service','keyword','via','manifest','account-id','preparation','digest','fixture-port','tab','expected-page-version','operation-id','enabled','idle-seconds','keep-awake','lazy-startup','max-background'].includes(key)&&argv[i+1]&&!argv[i+1].startsWith('--')) options[key]=argv[++i];
+    else if(['agent','target','profile','instance','name','version','container','url','method','operation','params-json','plan','confirm','service','keyword','via','manifest','account-id','preparation','digest','fixture-port','tab','expected-page-version','operation-id','enabled','idle-seconds','keep-awake','lazy-startup','max-background','output'].includes(key)&&argv[i+1]&&!argv[i+1].startsWith('--')) options[key]=argv[++i];
     else throw fail('INVALID_ARGUMENT','Unknown option or missing value: '+word);
   }
   let command=positions.join(' ')||'help';
@@ -29,6 +30,7 @@ export function parse(argv) {
   if(options.name&&options.name!=='ecom-cli')throw fail('INVALID_ARGUMENT','Unknown Skill name');
   if(command.startsWith('xhs note '))validateNoteOptions(command.slice(9),options);
   if(command==='xhs search'&&(!options.container||typeof options.keyword!=='string'||!options.keyword.trim()||Buffer.byteLength(options.keyword.trim())>180||options.via!=='page'))throw fail('INVALID_ARGUMENT','Specify --container, --keyword (up to 180 UTF-8 bytes), and --via page; Cookie-only search is not yet supported');
+  if(['page read','media download'].includes(command))validatePageOptions(command,options);
   if(command==='containers inspect'&&!options.container)throw fail('INVALID_ARGUMENT','containers inspect requires --container');
   if(['tabs discard','tabs wake','tabs protect'].includes(command))validateTabTarget(options);
   if(command==='tabs protect'&&!['on','off'].includes(options['keep-awake']))throw fail('INVALID_ARGUMENT','Specify --keep-awake on|off');
@@ -50,7 +52,8 @@ export function parse(argv) {
 }
 export async function main(argv) {
   const {command,options,requested}=parse(argv);
-  if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli containers list|inspect | shops open|login-status|submit-login | xhs search --via page | xhs note preflight|open|prepare|status|submit | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
+  if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli containers list|inspect | shops open|login-status|submit-login | xhs search --via page | xhs note preflight|open|prepare|status|submit | page read | media download | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
+  if(['page read','media download'].includes(command))return pageCommand(command,options);
   if(command==='version')return {ok:true,package:pkg.name,version:pkg.version,protocolVersion:1};
   if(['memory status','memory tabs','memory processes','memory containers'].includes(command))return readMemory(options);
   if(['tabs discard','tabs wake'].includes(command))return tabMemoryAction(command.slice(5),options);
