@@ -11,8 +11,8 @@ const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
 const accountPattern = /^[0-9a-f]{24}$/;
 const states = new Set(['opening','login-required','verification-required','page-changed',
   'account-unverified','account-ready','account-mismatch','unsupported-form',
-  'uploading','upload-incomplete','form-not-empty','form-changed','form-ready',
-  'submission-unknown','submitted','published']);
+  'uploading','upload-incomplete','form-readback-mismatch','form-not-empty','form-changed','form-ready',
+  'submission-checking','submission-unknown','not-submitted','submitted','published']);
 export function validateNoteOptions(action, options) {
   if (['preflight','prepare'].includes(action) && !options.manifest)
     throw fail('INVALID_ARGUMENT','Specify --manifest');
@@ -101,7 +101,7 @@ export function readNote(file, keepBytes = false) {
   if (new Set(media.map(m=>m.sha256)).size !== media.length)
     throw invalid('Image bytes must be unique');
   const summary = {title,body,topics,images:media.map(({bytes,...m})=>m)};
-  return {summary,text,digest:hash(JSON.stringify(summary)),media};
+  return {summary,text,digest:hash(JSON.stringify({title,text,images:media.map(m=>m.sha256)})),media};
 }
 
 export async function noteCommand(action, options, deps={}) {
@@ -112,17 +112,6 @@ export async function noteCommand(action, options, deps={}) {
   }
   if (!options.container) throw fail('INVALID_ARGUMENT','Specify --container');
   const connection = (deps.discover??discover)(options);
-  if (action === 'probe') {
-    if (connection.endpoint.xhsCreatorProbeProtocol !== 1)
-      throw fail('BROWSER_UPGRADE_REQUIRED','Creator probe requires a compatible Ecom Dev');
-    const {container} = await (deps.inspect??inspectInConnection)(connection,options.container);
-    if (container.platform !== 'xiaohongshu') throw fail('XHS_CONTAINER_REQUIRED','Select a Xiaohongshu account container');
-    const result = await (deps.call??callMailbox)(connection,{method:'business.read',operation:'xhs.creator-probe',containerId:container.id,params:{}},30000);
-    if (result.containerId !== container.id || result.businessOperation !== 'xhs.creator-probe')
-      throw fail('PROTOCOL_MISMATCH','Unexpected creator page response',{operationId:result.operationId,executed:'unknown'});
-    return {ok:true,schemaVersion:1,operationId:result.operationId,container,
-      instance:{id:connection.endpoint.instanceId,channel:connection.channel},creatorUrl,probe:result.data};
-  }
   const {container} = await (deps.inspect??inspectInConnection)(connection,options.container);
   if (container.platform !== 'xiaohongshu')
     throw fail('XHS_CONTAINER_REQUIRED','Select a Xiaohongshu account container');
@@ -142,6 +131,16 @@ export async function noteCommand(action, options, deps={}) {
         throw fail('XHS_PREPARATION_NOT_FOUND','Attempt belongs to a different container or fixture');
       return item;
     } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+  };
+  const claimPath = (accountId,digest) => path.join(connection.folder,
+    hash(JSON.stringify([container.id,fixture,accountId,digest]))+'.xhs-claim.json');
+  const alreadyClaimed = file => {
+    try {
+      privatePath(file);
+      const previous = JSON.parse(fs.readFileSync(file,'utf8'));
+      throw fail('XHS_SAME_NOTE_ATTEMPTED','This account already has a submission attempt for the same material',
+        {executed:'unknown',recovery:'xhs note status --preparation '+previous.preparationId});
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
   };
   const prior = action === 'status' || action === 'submit' ? receipt() : null;
   const settled = () => {
@@ -163,6 +162,18 @@ export async function noteCommand(action, options, deps={}) {
   if (prior && action === 'submit')
     throw fail('XHS_SUBMISSION_ALREADY_ATTEMPTED','This preparation has a saved submission attempt; use xhs note status',{executed:'unknown'});
   if (prior && (prior.instance.id !== instance.id || settled())) return recovered();
+  const settle = (result, attempt) => {
+    if (!['published','not-submitted'].includes(result.state)) return;
+    try { writeNew(resultPath,result); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+    if (result.state === 'not-submitted') {
+      const claim = claimPath(attempt.accountId,attempt.manifestDigest);
+      try {
+        privatePath(claim);
+        if (JSON.parse(fs.readFileSync(claim,'utf8')).preparationId === preparation)
+          fs.unlinkSync(claim);
+      } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    }
+  };
   if (connection.endpoint.xhsNoteProtocol !== 1)
     throw fail('BROWSER_UPGRADE_REQUIRED','Xiaohongshu note actions require Ecom Dev with xhsNoteProtocol 1');
   const call = deps.call??callMailbox;
@@ -178,6 +189,7 @@ export async function noteCommand(action, options, deps={}) {
         (data.state === 'published' && !accountPattern.test(data.noteId??'')) ||
         (data.state === 'form-ready' && (!data.confirmation ||
           data.confirmation !== result.preparationId+':'+data.manifestDigest ||
+          !/^[0-9a-f]{64}$/.test(data.manifestDigest??'') ||
           !Number.isInteger(data.imageCount) || data.imageCount<1 || data.imageCount>18)))
       throw fail('PROTOCOL_MISMATCH','Native note response did not match the selected preparation',{executed:'unknown',operationId:result.operationId});
     return {ok:true,schemaVersion:1,...data,operationId:result.operationId,instance,
@@ -199,10 +211,8 @@ export async function noteCommand(action, options, deps={}) {
   if (action === 'status') {
     try {
       const result = await native('status');
-      if (prior && result.state === 'published') {
-        try { writeNew(resultPath,result); } catch (error) { if (error.code !== 'EEXIST') throw error; }
-      }
-      return prior && !['published','submitted','submission-unknown'].includes(result.state) ? recovered() : result;
+      if (prior) settle(result,prior);
+      return prior && !['published','submitted','not-submitted','submission-checking','submission-unknown'].includes(result.state) ? recovered() : result;
     } catch (error) {
       if (prior && ['XHS_PREPARATION_NOT_FOUND','XHS_PREPARATION_EXPIRED','OPERATION_TIMEOUT','INSTANCE_CHANGED'].includes(error.code))
         return recovered();
@@ -219,6 +229,7 @@ export async function noteCommand(action, options, deps={}) {
     const note = readNote(options.manifest,true);
     if (note.digest !== options.digest)
       throw fail('XHS_MANIFEST_CHANGED','Repeat preflight and review the current manifest digest');
+    alreadyClaimed(claimPath(accountId,note.digest));
     const staged = [];
     try {
       privatePath(connection.folder,true);
@@ -242,6 +253,12 @@ export async function noteCommand(action, options, deps={}) {
     if (state.state !== 'form-ready' || state.confirmation !== options.confirm)
       throw fail('XHS_CONFIRMATION_MISMATCH','Use the confirmation returned by this ready preparation');
     const attempt = {preparationId:preparation,containerId:container.id,instance,fixture,accountId,manifestDigest:state.manifestDigest};
+    const claim = claimPath(accountId,state.manifestDigest);
+    try { writeNew(claim,attempt); }
+    catch (error) {
+      if (error.code === 'EEXIST') alreadyClaimed(claim);
+      throw error;
+    }
     try { writeNew(receiptPath,attempt); }
     catch (error) {
       if (error.code === 'EEXIST') throw fail('XHS_SUBMISSION_ALREADY_ATTEMPTED','Inspect xhs note status; the preparation already has a submission attempt',{executed:'unknown'});
@@ -249,13 +266,15 @@ export async function noteCommand(action, options, deps={}) {
     }
     let result;
     try {
-      result = await until(await native('submit',{accountId,confirm:options.confirm}),['submission-unknown'],8000);
+      result = await until(await native('submit',{accountId,confirm:options.confirm}),['submission-checking','submission-unknown'],12000);
     } catch (error) {
       throw fail(error.code??'XHS_SUBMISSION_UNKNOWN','Submission outcome is uncertain; inspect xhs note status before any new attempt',
         {executed:'unknown',operationId:error.operationId,recovery:'xhs note status --preparation '+preparation});
     }
-    if (result.state === 'published') {
-      try { writeNew(resultPath,result); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+    settle(result,attempt);
+    if (result.state === 'submission-checking') {
+      return {...result,state:'submission-unknown',
+        recovery:'Inspect xhs note status before considering another submission'};
     }
     return result;
   }

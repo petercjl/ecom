@@ -210,7 +210,6 @@ class NativeSessionService final : public ProfileObserver {
       if (SupportsSignedBusinessRoutes()) {
         metadata.Set("signedBusinessRouteProtocol", 1);
         metadata.Set("xhsPageSearchProtocol", 1);
-        metadata.Set("xhsCreatorProbeProtocol", 1);
         metadata.Set("xhsNoteProtocol", 1);
       }
       metadata.Set("businessPageOpenProtocol", 1);
@@ -521,7 +520,6 @@ class NativeSessionService final : public ProfileObserver {
     if ((*operation == "xhs.search-cookie-probe" ||
          *operation == "xhs.search-v2-cookie-probe" ||
          *operation == "xhs.search-page" ||
-         *operation == "xhs.creator-probe" ||
          *operation == "xhs.self-cookie-probe") && SupportsSignedBusinessRoutes()) {
       const auto* platform = shop ? shop->FindString("platform") : nullptr;
       const auto* keyword = params->FindString("keyword");
@@ -530,8 +528,7 @@ class NativeSessionService final : public ProfileObserver {
         Fail(id, "XHS_CONTAINER_REQUIRED");
         return;
       }
-      const bool self_probe = *operation == "xhs.self-cookie-probe" ||
-                              *operation == "xhs.creator-probe";
+      const bool self_probe = *operation == "xhs.self-cookie-probe";
       if ((self_probe && !params->empty()) ||
           (!self_probe && (params->size() != 2 || !keyword || keyword->empty() ||
           keyword->size() > 180 || !search_id || search_id->size() != 21 ||

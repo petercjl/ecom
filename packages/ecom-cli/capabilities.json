@@ -975,25 +975,6 @@
         "submitted": false
       }
     },
-    "xhs note probe": {
-      "options": {
-        "--container": {
-          "type": "string",
-          "required": true
-        },
-        "--instance": {
-          "type": "string"
-        },
-        "--profile": {
-          "type": "string"
-        },
-        "--json": {
-          "type": "boolean"
-        }
-      },
-      "sideEffects": "navigation",
-      "authorization": "Open and inspect the creator entry in the selected Ecom container"
-    },
     "xhs note open": {
       "options": {
         "--container": {
@@ -1016,7 +997,12 @@
       "sideEffects": "navigation",
       "authorization": "Open a new background creator tab in the selected Xiaohongshu container; local loopback fixture only when specified",
       "output": "opening, login-required, verification-required, account-unverified, account-ready, unsupported-form",
-      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS"
+      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS",
+      "errors": [
+        "XHS_CONTAINER_REQUIRED",
+        "BROWSER_UPGRADE_REQUIRED",
+        "PROTOCOL_MISMATCH"
+      ]
     },
     "xhs note status": {
       "options": {
@@ -1044,7 +1030,15 @@
       "sideEffects": "none",
       "authorization": "Inspect a pinned tab, creator identity or saved submission attempt",
       "output": "preparation ID, account ID, state and available submission evidence",
-      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS"
+      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS",
+      "errors": [
+        "XHS_CONTAINER_REQUIRED",
+        "BROWSER_UPGRADE_REQUIRED",
+        "PROTOCOL_MISMATCH",
+        "XHS_PREPARATION_NOT_FOUND",
+        "XHS_PREPARATION_EXPIRED",
+        "XHS_PAGE_CHANGED"
+      ]
     },
     "xhs note prepare": {
       "options": {
@@ -1085,7 +1079,20 @@
       "sideEffects": "external-write",
       "authorization": "Upload ordered image bytes and fill a blank composer; may create platform draft state; never clicks Publish",
       "output": "uploading, form-ready with confirmation, or specific unavailable/changed state",
-      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS"
+      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS",
+      "errors": [
+        "XHS_CONTAINER_REQUIRED",
+        "BROWSER_UPGRADE_REQUIRED",
+        "PROTOCOL_MISMATCH",
+        "XHS_PREPARATION_NOT_FOUND",
+        "XHS_PREPARATION_EXPIRED",
+        "XHS_PAGE_CHANGED",
+        "XHS_ACCOUNT_NOT_VERIFIED",
+        "XHS_SAME_NOTE_ATTEMPTED",
+        "XHS_MANIFEST_CHANGED",
+        "XHS_MEDIA_INVALID",
+        "XHS_FORM_UNAVAILABLE"
+      ]
     },
     "xhs note submit": {
       "options": {
@@ -1121,8 +1128,21 @@
       },
       "sideEffects": "external-write",
       "authorization": "Explicitly publish the reviewed ordinary image note once; unknown results require status or creator note management review",
-      "output": "submitted, published with note ID, submission-unknown or a pre-click refusal",
-      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS"
+      "output": "not-submitted, submitted, published with note ID, or submission-unknown",
+      "compatibility": "Requires xhsNoteProtocol 1 in Ecom Dev on macOS",
+      "errors": [
+        "XHS_CONTAINER_REQUIRED",
+        "BROWSER_UPGRADE_REQUIRED",
+        "PROTOCOL_MISMATCH",
+        "XHS_PREPARATION_NOT_FOUND",
+        "XHS_PREPARATION_EXPIRED",
+        "XHS_PAGE_CHANGED",
+        "XHS_ACCOUNT_NOT_VERIFIED",
+        "XHS_SAME_NOTE_ATTEMPTED",
+        "XHS_CONFIRMATION_MISMATCH",
+        "XHS_SUBMISSION_ALREADY_ATTEMPTED",
+        "OPERATION_TIMEOUT"
+      ]
     }
   },
   "transport": {

@@ -17,7 +17,7 @@ const dir = await fs.mkdtemp(path.join(os.tmpdir(),'ecom-note-fixture-'));
 const account = 'a'.repeat(24);
 const noteId = 'b'.repeat(24);
 const body = '第一段。\n\n第二段 🐶';
-const title = '图文集成测试';
+const title = '图文集成测试'+path.basename(dir).slice(-6);
 const topic = '本地测试';
 const sha = bytes=>createHash('sha256').update(bytes).digest('hex');
 function png(color) {
@@ -108,23 +108,24 @@ try {
   await fs.writeFile(manifest,JSON.stringify({title,body,topics:[topic],images:['0.png','1.png']}),{flag:'wx'});
   const preflight=await command('preflight',['--manifest',manifest,'--json']);
   assert.deepEqual(preflight.note.images.map(m=>m.sha256),expectedHashes);
-  const prepare=async (testRejections=false)=>{
+  const prepare=async ({testRejections=false, manifestFile=manifest, digest=preflight.manifestDigest, expectedError}={})=>{
     const open=await command('open',[...base,'--fixture-port',String(server.address().port)]);
     assert.equal(open.state,'account-ready',JSON.stringify(open));
     assert.equal(open.accountId,account);
     const pinned=[...base,'--fixture','--instance',open.instance.id,'--preparation',open.preparationId];
-    const input=[...pinned,'--manifest',manifest];
+    const input=[...pinned,'--manifest',manifestFile];
     if(testRejections) {
       await command('prepare',[...input,'--account-id','c'.repeat(24),'--digest',preflight.manifestDigest],'XHS_ACCOUNT_NOT_VERIFIED');
       await command('prepare',[...input,'--account-id',account,'--digest','f'.repeat(64)],'XHS_MANIFEST_CHANGED');
       assert.equal(writes.length,0);
     }
-    const prepare=await command('prepare',[...input,'--account-id',account,'--digest',preflight.manifestDigest]);
+    const prepare=await command('prepare',[...input,'--account-id',account,'--digest',digest],expectedError);
+    if(expectedError)return;
     assert.equal(prepare.state,'form-ready',JSON.stringify({prepare,writes:writes.map(x=>x.path)}));
     assert.equal(prepare.imageCount,2);
     return {pinned,prepare,submit:[...pinned,'--account-id',account,'--confirm',prepare.confirmation]};
   };
-  const first=await prepare(true);
+  const first=await prepare({testRejections:true});
   assert.equal(writes.length,1);
   assert.deepEqual(writes[0].data.map(s=>sha(Buffer.from(s,'base64'))),expectedHashes);
   await command('submit',[...first.pinned,'--account-id',account,'--confirm',
@@ -137,11 +138,15 @@ try {
   await command('submit',first.submit,'XHS_SUBMISSION_ALREADY_ATTEMPTED');
   assert.equal((await command('status',first.pinned)).noteId,noteId);
   mode='unknown';
-  const second=await prepare();
+  const another=path.join(dir,'second.json');
+  await fs.writeFile(another,JSON.stringify({title:title+'二',body,topics:[topic],images:['0.png','1.png']}),{flag:'wx'});
+  const next=await command('preflight',['--manifest',another,'--json']);
+  const second=await prepare({manifestFile:another,digest:next.manifestDigest});
   const unknown=await command('submit',second.submit);
   assert.equal(unknown.state,'submission-unknown',JSON.stringify(unknown));
   assert.equal((await command('status',second.pinned)).state,'submission-unknown');
   await command('submit',second.submit,'XHS_SUBMISSION_ALREADY_ATTEMPTED');
+  await prepare({manifestFile:another,digest:next.manifestDigest,expectedError:'XHS_SAME_NOTE_ATTEMPTED'});
   assert.equal(writes.filter(x=>x.path==='/fixture/publish').length,2);
   console.log(JSON.stringify({ok:true,fixture:true,preflight:'verified',prepare:'verified',
     mediaOrder:'verified',accountMismatch:'refused',changedDigest:'refused',

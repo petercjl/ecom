@@ -45,24 +45,27 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
     return title && body && publish ? {title, body, publish} : null;
   };
   const account = store.identity;
+  const fetchAccount = async () => {
+    const endpoint = a.fixture ? '/fixture/account' : '/api/galaxy/user/info';
+    try {
+      const r = await fetch(endpoint, {credentials:'same-origin', cache:'no-store', redirect:'error',
+        signal:AbortSignal.timeout(7000)});
+      if (r.status === 401 || r.status === 403) return {status:'login-required'};
+      if (!r.ok || !r.headers.get('content-type')?.includes('json')) return {status:'account-unverified'};
+      const j = await r.json();
+      if ((j?.success !== true && j?.code !== 0) || j?.success === false ||
+          (j.code !== undefined && j.code !== 0)) return {status:'account-unverified'};
+      const d = j.data?.userInfo ?? j.data?.user_info ?? j.data;
+      const accountId = d?.userId ?? d?.user_id ?? d?.userid ?? d?.id;
+      const nickname = d?.nickname ?? d?.nickName ?? d?.nick_name ?? d?.userName ?? d?.name;
+      if (!idValid(accountId)) return {status:'account-unverified'};
+      return {status:'verified', accountId, nickname:typeof nickname === 'string' ? nickname.slice(0,100) : ''};
+    } catch { return {status:'account-unverified'}; }
+  };
   const checkAccount = () => {
     if (store.identityPending) return;
     store.identityPending = true;
-    const endpoint = a.fixture ? '/fixture/account' : '/api/galaxy/user/info';
-    fetch(endpoint, {credentials:'same-origin', cache:'no-store', redirect:'error',
-      signal:AbortSignal.timeout(7000)})
-      .then(async r => {
-        if (r.status === 401 || r.status === 403) return {status:'login-required'};
-        if (!r.ok || !r.headers.get('content-type')?.includes('json')) return {status:'account-unverified'};
-        const j = await r.json();
-        if (j?.success !== true && j?.code !== 0) return {status:'account-unverified'};
-        const d = j.data?.userInfo ?? j.data?.user_info ?? j.data;
-        const accountId = d?.userId ?? d?.user_id ?? d?.userid ?? d?.id;
-        const nickname = d?.nickname ?? d?.nickName ?? d?.name;
-        if (!idValid(accountId)) return {status:'account-unverified'};
-        return {status:'verified', accountId, nickname:typeof nickname === 'string' ? nickname.slice(0,100) : ''};
-      }).then(value => { store.identity = {...value, at:Date.now()}; })
-      .catch(() => { store.identity = {status:'account-unverified',at:Date.now()}; })
+    fetchAccount().then(value => { store.identity = {...value, at:Date.now()}; })
       .finally(() => { store.identityPending = false; });
   };
   const readyAccount = () => {
@@ -93,7 +96,15 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
     const selection = getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
-    document.execCommand('insertText',false,n.text);
+    // Chromium insertText can introduce an extra paragraph separator. Build
+    // escaped text nodes and explicit line breaks for exact body readback.
+    const fragment = document.createElement('div');
+    for (const [index,line] of n.text.split('\n').entries()) {
+      if (index) fragment.append(document.createElement('br'));
+      fragment.append(document.createTextNode(line));
+    }
+    if (n.text.endsWith('\n')) fragment.append(document.createElement('br'));
+    document.execCommand('insertHTML',false,fragment.innerHTML);
     selection.removeAllRanges();
   };
   const current = n => {
@@ -133,6 +144,9 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       const result = observed();
       return reply(result.state,{accountId:note.account,...result});
     }
+    if (a.action === 'status' && note?.submission) {
+      return reply(note.submission.state,{accountId:note.account,...note.submission});
+    }
     if (verification()) return reply('verification-required');
     if (login()) return reply('login-required');
     if (!onEntry) return reply('page-changed');
@@ -158,8 +172,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
         const form = editor();
         return {uploaded:preview().length, composer:!!form, filled,
           titleMatches:form?.title.value === next.title,
-          bodyMatches:!!form && readBody(form.body) === next.text,
-          ...(a.fixture && form ? {fixtureBody:readBody(form.body)} : {})};
+          bodyMatches:!!form && readBody(form.body) === next.text};
       };
       const cleanup = () => {
         observer.disconnect();
@@ -170,7 +183,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
         try {
           if (!onEntry || location.pathname !== '/publish/publish' || verification() || login() ||
               !shell() || store.identity?.accountId !== next.account || Date.now()-next.started > 90000) {
-            next.phase = 'upload-incomplete';
+            next.phase = filled ? 'form-readback-mismatch' : 'upload-incomplete';
             next.diagnostic = diagnostic();
             cleanup();
             return;
@@ -225,18 +238,32 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       return reply(next.phase,identity());
     }
     if (a.action === 'submit') {
-      if (!note || note.phase !== 'form-ready' || note.clicked ||
+      if (!note || note.phase !== 'form-ready' || note.clicked || note.submission ||
           note.account !== a.account || account.accountId !== a.account)
-        return reply('form-changed');
-      const form = current(note);
-      if (!form || !same(form.images,note.previews)) return reply('form-changed');
-      note.clicked = true;
-      // Watch the platform acknowledgement even if it is a transient toast.
-      const watcher = new MutationObserver(() => { observed(); });
-      watcher.observe(document.documentElement,{childList:true,subtree:true,attributes:true});
-      setTimeout(() => watcher.disconnect(),20000);
-      form.form.publish.click();
-      return reply('submission-unknown',{...identity(),evidence:'publish-click-dispatched'});
+        return reply('not-submitted',{reason:'form-or-account-changed'});
+      note.submission = {state:'submission-checking'};
+      fetchAccount().then(fresh => {
+        if (fresh.status !== 'verified' || fresh.accountId !== note.account ||
+            location.origin !== a.origin || location.pathname !== '/publish/publish' ||
+            verification() || login() || !shell()) {
+          note.submission = {state:'not-submitted',reason:'account-or-page-changed'};
+          return;
+        }
+        const form = current(note);
+        if (!form || !same(form.images,note.previews)) {
+          note.submission = {state:'not-submitted',reason:'form-changed'};
+          return;
+        }
+        // Watch the platform acknowledgement even if it is a transient toast.
+        const watcher = new MutationObserver(() => { observed(); });
+        watcher.observe(document.documentElement,{childList:true,subtree:true,attributes:true});
+        setTimeout(() => watcher.disconnect(),20000);
+        note.clicked = true;
+        form.form.publish.click();
+      }).catch(() => {
+        if (!note.clicked) note.submission = {state:'not-submitted',reason:'form-unavailable'};
+      });
+      return reply('submission-checking',identity());
     }
     if (!note) return reply(imageInput() || imageTab() ? 'account-ready' : 'unsupported-form',identity());
     if (note.account !== account.accountId) return reply('account-mismatch');
@@ -245,7 +272,8 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       if (!form || !same(form.images,note.previews)) return reply('form-changed');
       return reply('form-ready',{...identity(),imageCount:note.count});
     }
-    const phase = note.phase === 'uploading' && Date.now()-note.started > 90000 ? 'upload-incomplete' : note.phase;
+    const phase = note.phase === 'uploading' && Date.now()-note.started > 90000
+      ? note.diagnostic?.filled ? 'form-readback-mismatch' : 'upload-incomplete' : note.phase;
     return reply(phase,{...identity(),...(note.diagnostic?{formEvidence:note.diagnostic}:{})});
   } catch {
     return reply(note?.clicked ? 'submission-unknown' : 'unsupported-form');
