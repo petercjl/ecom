@@ -100,10 +100,15 @@ class PageRead {
     constexpr char16_t kRead[] = uR"JS(JSON.stringify((() => {
       const visible = e => e.getClientRects().length > 0;
       const videos = [...document.querySelectorAll('video')].filter(visible);
+      const title = document.title.trim();
+      const text = (document.body?.innerText || '').trim();
+      const loading = !title || !text || document.readyState === 'loading';
+      const readyVideos = videos.filter(v => v.readyState >= 1 &&
+        Number.isFinite(v.duration) && v.duration > 0 && v.videoWidth > 0);
       const direct = new Set();
-      for (const v of videos) {
+      for (const v of readyVideos) {
         const src = v.currentSrc || v.src || v.querySelector('source[src]')?.src;
-        if (src?.startsWith('https:') && !v.mediaKeys) direct.add(src);
+        if (src?.startsWith('https:') && !v.mediaKeys && !v.loop) direct.add(src);
       }
       if (!direct.size && !videos.some(v => v.mediaKeys)) {
         for (const m of document.querySelectorAll('meta[property="og:video:secure_url"],meta[property="og:video:url"],meta[property="og:video"]')) {
@@ -111,9 +116,14 @@ class PageRead {
         }
       }
       return {
-        ready: document.readyState !== 'loading',
-        title: document.title.slice(0, 512),
-        text: (document.body?.innerText || '').slice(0, 12000),
+        ready: !loading,
+        title: title.slice(0, 512),
+        text: text.slice(0, 12000),
+        players: videos.slice(0, 6).map(v => ({
+          duration: Number.isFinite(v.duration) ? v.duration : null,
+          ready: v.readyState, loop: v.loop,
+          kind: (v.currentSrc || v.src || '').split(':', 1)[0]
+        })),
         videos: videos.length,
         protected: videos.some(v => !!v.mediaKeys),
         media: [...direct].slice(0, 2)
