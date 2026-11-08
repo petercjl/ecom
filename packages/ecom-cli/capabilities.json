@@ -1030,7 +1030,7 @@
       },
       "sideEffects": "none",
       "authorization": "Inspect a pinned tab, creator identity or saved submission attempt",
-      "output": "preparation ID, account ID, state and available submission evidence",
+      "output": "Preparation ID, account ID, image and field readback, review readiness, or submission evidence for the legacy flow",
       "compatibility": "Requires xhsNoteProtocol 1 in Ecom on macOS. Loopback fixtures require Ecom Dev.",
       "errors": [
         "XHS_CONTAINER_REQUIRED",
@@ -1212,6 +1212,118 @@
         "bytes": "saved bytes",
         "closeRequested": "temporary tab close request status"
       }
+    },
+    "xhs note upload": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--instance": {
+          "type": "string",
+          "required": true
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--preparation": {
+          "type": "string",
+          "required": true
+        },
+        "--fixture": {
+          "type": "boolean"
+        },
+        "--account-id": {
+          "type": "string",
+          "required": true
+        },
+        "--manifest": {
+          "type": "string",
+          "required": true
+        },
+        "--digest": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "external-write",
+      "authorization": "Upload ordered images to a blank creator page for human review",
+      "output": "images-ready with image count, or upload progress",
+      "compatibility": "Requires xhsNoteReviewProtocol 1 on macOS",
+      "errors": [
+        "XHS_CONTAINER_REQUIRED",
+        "BROWSER_UPGRADE_REQUIRED",
+        "PROTOCOL_MISMATCH",
+        "XHS_PREPARATION_NOT_FOUND",
+        "XHS_PREPARATION_EXPIRED",
+        "XHS_PAGE_CHANGED",
+        "XHS_ACCOUNT_NOT_VERIFIED",
+        "XHS_SAME_NOTE_ATTEMPTED",
+        "XHS_MANIFEST_CHANGED",
+        "XHS_MEDIA_INVALID",
+        "XHS_FORM_UNAVAILABLE",
+        "XHS_FIXTURE_DEV_REQUIRED",
+        "XHS_REVIEW_INPUT_MISMATCH"
+      ]
+    },
+    "xhs note fill": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--instance": {
+          "type": "string",
+          "required": true
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--preparation": {
+          "type": "string",
+          "required": true
+        },
+        "--fixture": {
+          "type": "boolean"
+        },
+        "--account-id": {
+          "type": "string",
+          "required": true
+        },
+        "--manifest": {
+          "type": "string",
+          "required": true
+        },
+        "--digest": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "external-write",
+      "authorization": "Fill missing title and body fields on the pinned uploaded note; preserve different existing values",
+      "output": "review-ready or review-incomplete with separate image, title, body and publish-control checks",
+      "compatibility": "Requires xhsNoteReviewProtocol 1 on macOS",
+      "errors": [
+        "XHS_CONTAINER_REQUIRED",
+        "BROWSER_UPGRADE_REQUIRED",
+        "PROTOCOL_MISMATCH",
+        "XHS_PREPARATION_NOT_FOUND",
+        "XHS_PREPARATION_EXPIRED",
+        "XHS_PAGE_CHANGED",
+        "XHS_ACCOUNT_NOT_VERIFIED",
+        "XHS_SAME_NOTE_ATTEMPTED",
+        "XHS_MANIFEST_CHANGED",
+        "XHS_MEDIA_INVALID",
+        "XHS_FORM_UNAVAILABLE",
+        "XHS_FIXTURE_DEV_REQUIRED",
+        "XHS_REVIEW_INPUT_MISMATCH"
+      ]
     }
   },
   "transport": {

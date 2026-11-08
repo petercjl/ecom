@@ -52,7 +52,7 @@ export function parse(argv) {
 }
 export async function main(argv) {
   const {command,options,requested}=parse(argv);
-  if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli containers list|inspect | shops open|login-status|submit-login | xhs search --via page | xhs note preflight|open|prepare|status|submit | page read | media download | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
+  if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli containers list|inspect | shops open|login-status|submit-login | xhs search --via page | xhs note preflight|open|upload|fill|status|prepare|submit | page read | media download | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
   if(['page read','media download'].includes(command))return pageCommand(command,options);
   if(command==='version')return {ok:true,package:pkg.name,version:pkg.version,protocolVersion:1};
   if(['memory status','memory tabs','memory processes','memory containers'].includes(command))return readMemory(options);
@@ -87,7 +87,7 @@ export async function main(argv) {
     return authorizePlan(options);
   }
   if(command==='doctor') {
-    let instance,error;try{const found=discover(options);instance={id:found.endpoint.instanceId,pid:found.endpoint.pid,channel:found.channel,businessReadProtocol:found.endpoint.businessReadProtocol??0,businessRouteProtocol:found.endpoint.businessRouteProtocol??0,signedBusinessRouteProtocol:found.endpoint.signedBusinessRouteProtocol??0,businessPageOpenProtocol:found.endpoint.businessPageOpenProtocol??0,xhsNoteProtocol:found.endpoint.xhsNoteProtocol??0,businessRegistryMatches:found.endpoint.businessReadRegistryHash===nativeRegistryHash()};}catch(e){error={code:e.code,message:e.message};}
+    let instance,error;try{const found=discover(options);instance={id:found.endpoint.instanceId,pid:found.endpoint.pid,channel:found.channel,businessReadProtocol:found.endpoint.businessReadProtocol??0,businessRouteProtocol:found.endpoint.businessRouteProtocol??0,signedBusinessRouteProtocol:found.endpoint.signedBusinessRouteProtocol??0,businessPageOpenProtocol:found.endpoint.businessPageOpenProtocol??0,xhsNoteProtocol:found.endpoint.xhsNoteProtocol??0,xhsNoteReviewProtocol:found.endpoint.xhsNoteReviewProtocol??0,businessRegistryMatches:found.endpoint.businessReadRegistryHash===nativeRegistryHash()};}catch(e){error={code:e.code,message:e.message};}
     return {ok:!error,package:pkg.name,version:pkg.version,node:process.version,platform:process.platform,transport:'private-local-mailbox',debuggingRequired:false,instance,...(error?{error}:{}),skillSource:source().path};
   }
   if(['containers list','containers inspect','session request'].includes(command)) {

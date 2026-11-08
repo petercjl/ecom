@@ -39,11 +39,20 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       e.closest('button,[role=tab],[class*=tab]') || e).filter(e => words(e) === '上传图文'))];
     return one(controls);
   };
-  const editor = () => {
-    const title = one(all('input').filter(e => /填写标题|输入标题|添加标题/.test(e.placeholder || '')));
-    const body = one(all('[contenteditable=true]').filter(e =>
+  const titleField = () => one(all('input').filter(e =>
+    /填写标题|输入标题|添加标题/.test(e.placeholder || '')));
+  const bodyField = () => {
+    const editable = all('[contenteditable]').filter(e => e.isContentEditable);
+    const labeled = editable.filter(e =>
+      /输入正文描述/.test(e.getAttribute('aria-label') || '') ||
+      !!e.querySelector('[data-placeholder^="输入正文描述"]') ||
+      (e.getAttribute('data-placeholder') || '').startsWith('输入正文描述'));
+    return one(labeled.length ? labeled : editable.filter(e =>
       e.matches('[role=textbox],.tiptap,.ProseMirror,.ql-editor,#post-textarea') || a.fixture));
-    const publish = one(all('button').filter(e => words(e) === '发布'));
+  };
+  const publishButton = () => one(all('button,[role=button]').filter(e => words(e) === '发布'));
+  const editor = () => {
+    const title = titleField(), body = bodyField(), publish = publishButton();
     return title && body && publish ? {title, body, publish} : null;
   };
   const account = store.identity;
@@ -86,27 +95,47 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       .map(e => e.currentSrc || e.src);
   };
   const same = (x,y) => x.length === y.length && x.every((v,i)=>v === y[i]);
-  const readyButton = e => !e.disabled && e.getAttribute('aria-disabled') !== 'true';
-  const fill = (form, n) => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(form.title,n.title);
-    form.title.dispatchEvent(new Event('input',{bubbles:true}));
-    form.title.dispatchEvent(new Event('change',{bubbles:true}));
-    form.body.focus({preventScroll:true});
+  const readyButton = e => !!e && !e.disabled && e.getAttribute('aria-disabled') !== 'true';
+  const fillTitle = (field, title) => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(field,title);
+    field.dispatchEvent(new Event('input',{bubbles:true}));
+    field.dispatchEvent(new Event('change',{bubbles:true}));
+  };
+  const fillBody = (field, text) => {
+    field.focus({preventScroll:true});
     const range = document.createRange();
-    range.selectNodeContents(form.body);
+    range.selectNodeContents(field);
     const selection = getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
     // Chromium insertText can introduce an extra paragraph separator. Build
     // escaped text nodes and explicit line breaks for exact body readback.
     const fragment = document.createElement('div');
-    for (const [index,line] of n.text.split('\n').entries()) {
+    for (const [index,line] of text.split('\n').entries()) {
       if (index) fragment.append(document.createElement('br'));
       fragment.append(document.createTextNode(line));
     }
-    if (n.text.endsWith('\n')) fragment.append(document.createElement('br'));
+    if (text.endsWith('\n')) fragment.append(document.createElement('br'));
     document.execCommand('insertHTML',false,fragment.innerHTML);
     selection.removeAllRanges();
+  };
+  const uploadBusy = () => all('.img-preview-area [aria-busy=true], .img-preview-area .mask.uploading, .img-preview-area .mask.failed, .upload-progress,.upload-loading').length > 0;
+  const readReview = n => {
+    const title = titleField(), body = bodyField();
+    const images = preview();
+    const fieldState = (value, expected) => value === undefined ? 'missing' :
+      value === expected ? 'matched' : !value.trim() ? 'empty' : 'different';
+    return {title:fieldState(title?.value,n.title),body:fieldState(body ? readBody(body) : undefined,n.text),
+      imageCount:images.length,imagesMatch:!!n.previews && same(images,n.previews) && !uploadBusy(),
+      publishEnabled:readyButton(publishButton())};
+  };
+  const reviewResult = n => {
+    const fields = readReview(n);
+    const ready = fields.imagesMatch && fields.title === 'matched' &&
+      fields.body === 'matched' && fields.publishEnabled;
+    const state = ready ? 'review-ready' : !n.fillRequested && fields.imagesMatch
+      ? 'images-ready' : 'review-incomplete';
+    return reply(state,{...identity(),imageCount:fields.imageCount,fields});
   };
   const current = n => {
     const form = editor();
@@ -159,11 +188,11 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       return reply(account.status === 'login-required' && !composerVisible
         ? 'login-required' : 'account-unverified');
     }
-    if (a.action === 'prepare') {
+    if (a.action === 'prepare' || a.action === 'upload') {
       if (note) return reply('form-changed');
       if (account.accountId !== a.account) return reply('account-mismatch');
-      if (editor() || preview().length) return reply('form-not-empty');
-      const next = {account:a.account,title:a.title,text:a.text,count:a.files.length,phase:'uploading',started:Date.now()};
+      if (titleField() || bodyField() || preview().length) return reply('form-not-empty');
+      const next = {account:a.account,title:a.title,text:a.text,count:a.files.length,phase:'uploading',reviewOnly:a.action === 'upload',started:Date.now()};
       store[a.id] = next;
       const transfer = new DataTransfer();
       for (const f of a.files) {
@@ -204,14 +233,24 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
               input.dispatchEvent(new Event('change',{bubbles:true}));
             }
           }
-          const form = editor();
+          if (next.reviewOnly && uploadDispatched && !uploadBusy()) {
+            const images = preview();
+            if (images.length === next.count) {
+              next.previews = images;
+              next.phase = 'images-ready';
+              cleanup();
+              return;
+            }
+          }
+          const form = next.reviewOnly ? null : editor();
           if (uploadDispatched && form && !filled && preview().length === next.count) {
             if (form.title.value || readBody(form.body).trim()) {
               next.phase = 'form-not-empty';
               return;
             }
             filled = true;
-            fill(form,next);
+            fillTitle(form.title,next.title);
+            fillBody(form.body,next.text);
           }
           if (filled) {
             const valid = current(next);
@@ -240,6 +279,17 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       }
       run();
       return reply(next.phase,identity());
+    }
+    if (a.action === 'fill') {
+      if (!note?.reviewOnly || note.account !== a.account || account.accountId !== a.account)
+        return reply('account-mismatch');
+      const fields = readReview(note);
+      note.fillRequested = true;
+      if (!fields.imagesMatch || fields.title === 'different' || fields.body === 'different')
+        return reviewResult(note);
+      if (fields.title === 'empty') fillTitle(titleField(),note.title);
+      if (fields.body === 'empty') fillBody(bodyField(),note.text);
+      return reviewResult(note);
     }
     if (a.action === 'submit') {
       if (!note || note.phase !== 'form-ready' || note.clicked || note.submission ||
@@ -271,6 +321,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
     }
     if (!note) return reply(imageInput() || imageTab() ? 'account-ready' : 'unsupported-form',identity());
     if (note.account !== account.accountId) return reply('account-mismatch');
+    if (note.reviewOnly && note.previews) return reviewResult(note);
     if (note.phase === 'form-ready') {
       const form = current(note);
       if (!form || !same(form.images,note.previews)) return reply('form-changed');

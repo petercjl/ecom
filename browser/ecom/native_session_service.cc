@@ -215,6 +215,7 @@ class NativeSessionService final : public ProfileObserver {
         metadata.Set("backgroundPageProtocol", 1);
       }
       metadata.Set("xhsNoteProtocol", 1);
+      metadata.Set("xhsNoteReviewProtocol", 1);
       metadata.Set("businessPageOpenProtocol", 1);
       metadata.Set("businessReadRegistryHash", kSycmReadRegistryHash);
     }
@@ -322,7 +323,7 @@ class NativeSessionService final : public ProfileObserver {
       }
       base::DeleteFile(file);
       auto* method = message->GetDict().FindString("method");
-      if (method && *method == "xhs.note.prepare" &&
+      if (method && (*method == "xhs.note.prepare" || *method == "xhs.note.upload") &&
           (origin_.Serialize() != "https://sycm.taobao.com" ||
            !LoadXhsMedia(message->GetDict()))) {
         WriteResponseIO(id, base::DictValue()

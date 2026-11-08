@@ -83,6 +83,7 @@ struct XhsNoteService::Page {
   base::TimeTicks expires;
   bool fixture = false;
   bool prepare_started = false;
+  bool review_only = false;
   bool submit_attempted = false;
 };
 
@@ -158,9 +159,11 @@ void XhsNoteService::Run(const std::string& operation_id,
   }
 
   const bool is_status = method == "xhs.note.status";
-  const bool is_prepare = method == "xhs.note.prepare";
+  const bool is_upload = method == "xhs.note.upload";
+  const bool is_prepare = method == "xhs.note.prepare" || is_upload;
+  const bool is_fill = method == "xhs.note.fill";
   const bool is_submit = method == "xhs.note.submit";
-  if (!is_status && !is_prepare && !is_submit) {
+  if (!is_status && !is_prepare && !is_fill && !is_submit) {
     std::move(done).Run(Error("UNSUPPORTED_COMMAND"));
     return;
   }
@@ -218,13 +221,22 @@ void XhsNoteService::Run(const std::string& operation_id,
     page.digest = digest;
     page.document = frame->GetWeakDocumentPtr();
     page.prepare_started = true;
+    page.review_only = is_upload;
     page.protection = ProtectMemoryPageTask(contents);
     // The confirmation binds this document, account and material digest to one
     // reviewed preparation. The ID is never reused across tabs.
     page.confirmation = preparation + ":" + digest;
   }
+  if (is_fill) {
+    if (!page.review_only || Field(request, "accountId") != page.account ||
+        Field(request, "manifestDigest") != page.digest) {
+      std::move(done).Run(Error("XHS_REVIEW_INPUT_MISMATCH"));
+      return;
+    }
+    args.Set("account", page.account);
+  }
   if (is_submit) {
-    if (!page.prepare_started || page.submit_attempted ||
+    if (!page.prepare_started || page.review_only || page.submit_attempted ||
         Field(request, "accountId") != page.account ||
         Field(request, "confirm") != page.confirmation) {
       std::move(done).Run(Error(page.submit_attempted

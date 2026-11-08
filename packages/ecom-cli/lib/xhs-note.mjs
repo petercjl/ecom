@@ -12,21 +12,22 @@ const accountPattern = /^[0-9a-f]{24}$/;
 const states = new Set(['opening','login-required','verification-required','page-changed',
   'account-unverified','account-ready','account-mismatch','unsupported-form',
   'uploading','upload-incomplete','form-readback-mismatch','form-not-empty','form-changed','form-ready',
+  'images-ready','review-incomplete','review-ready',
   'submission-checking','submission-unknown','not-submitted','submitted','published']);
 export function validateNoteOptions(action, options) {
-  if (['preflight','prepare'].includes(action) && !options.manifest)
+  if (['preflight','prepare','upload','fill'].includes(action) && !options.manifest)
     throw fail('INVALID_ARGUMENT','Specify --manifest');
   if (action === 'preflight') return;
   if (!options.container) throw fail('INVALID_ARGUMENT','Specify --container');
   if (options['fixture-port'] !== undefined && (!/^\d{4,5}$/.test(options['fixture-port']) ||
       Number(options['fixture-port']) < 1024 || Number(options['fixture-port']) > 65535))
     throw fail('INVALID_ARGUMENT','Specify a loopback fixture port from 1024 to 65535');
-  if (['status','prepare','submit'].includes(action) && !uuid.test(options.preparation??''))
+  if (['status','prepare','submit','upload','fill'].includes(action) && !uuid.test(options.preparation??''))
     throw fail('INVALID_ARGUMENT','Specify --preparation with the ID returned by open');
-  if (['prepare','submit'].includes(action) &&
+  if (['prepare','submit','upload','fill'].includes(action) &&
       (!uuid.test(options.instance??'') || !accountPattern.test(options['account-id']??'')))
     throw fail('INVALID_ARGUMENT','Pin --instance and the verified --account-id');
-  if (action==='prepare'&&!/^[0-9a-f]{64}$/.test(options.digest??''))
+  if (['prepare','upload','fill'].includes(action)&&!/^[0-9a-f]{64}$/.test(options.digest??''))
     throw fail('INVALID_ARGUMENT','Specify --digest from the reviewed preflight');
   if (action==='submit'&&(!options.confirm?.startsWith(options.preparation+':') ||
       !/^[0-9a-f]{64}$/.test(options.confirm.slice(37))))
@@ -186,6 +187,8 @@ export async function noteCommand(action, options, deps={}) {
   };
   if (connection.endpoint.xhsNoteProtocol !== 1)
     throw fail('BROWSER_UPGRADE_REQUIRED','Xiaohongshu note actions require Ecom with xhsNoteProtocol 1');
+  if (['upload','fill'].includes(action) && connection.endpoint.xhsNoteReviewProtocol !== 1)
+    throw fail('BROWSER_UPGRADE_REQUIRED','Split note preparation requires xhsNoteReviewProtocol 1');
   const call = deps.call??callMailbox;
   const native = async (verb, extra={}) => {
     const result = await call(connection,{method:'xhs.note.'+verb,containerId:container.id,
@@ -196,6 +199,11 @@ export async function noteCommand(action, options, deps={}) {
         (verb !== 'open' && result.preparationId !== (extra.preparationId??preparation)) ||
         !data || !states.has(data.state) ||
         (data.accountId !== undefined && !accountPattern.test(data.accountId)) ||
+        (data.state === 'review-ready' && (!Number.isInteger(data.imageCount) ||
+          data.imageCount < 1 || data.imageCount > 18 ||
+          data.fields?.imageCount !== data.imageCount || data.fields?.imagesMatch !== true ||
+          data.fields?.title !== 'matched' || data.fields?.body !== 'matched' ||
+          data.fields?.publishEnabled !== true)) ||
         (data.state === 'published' && !accountPattern.test(data.noteId??'')) ||
         (data.state === 'form-ready' && (!data.confirmation ||
           data.confirmation !== result.preparationId+':'+data.manifestDigest ||
@@ -230,11 +238,19 @@ export async function noteCommand(action, options, deps={}) {
       throw error;
     }
   }
-  const state = await native('status');
+  const state = await until(await native('status'),['opening'],9000);
   const accountId = options['account-id'];
   if (state.accountId !== accountId)
     throw fail('XHS_ACCOUNT_NOT_VERIFIED','The current creator account did not match --account-id: '+state.state);
-  if (action === 'prepare') {
+  if (action === 'fill') {
+    const note = readNote(options.manifest);
+    if (note.digest !== options.digest || state.manifestDigest !== note.digest)
+      throw fail('XHS_MANIFEST_CHANGED','The manifest does not match the uploaded images and text');
+    if (!['images-ready','review-incomplete','review-ready'].includes(state.state))
+      throw fail('XHS_FORM_UNAVAILABLE','Check image upload status before filling: '+state.state);
+    return native('fill',{accountId,manifestDigest:note.digest});
+  }
+  if (action === 'prepare' || action === 'upload') {
     if (state.state !== 'account-ready')
       throw fail('XHS_FORM_UNAVAILABLE','Open a fresh creator preparation and inspect the account: '+state.state);
     const note = readNote(options.manifest,true);
@@ -252,7 +268,7 @@ export async function noteCommand(action, options, deps={}) {
         try { fs.writeFileSync(fd,bytes); } finally { fs.closeSync(fd); }
         return {stage,type,sha256};
       });
-      return await until(await native('prepare',{accountId,manifestDigest:note.digest,
+      return await until(await native(action,{accountId,manifestDigest:note.digest,
         title:note.summary.title,text:note.text,media}),['uploading','opening'],95000);
     } finally {
       for (const file of staged) {
