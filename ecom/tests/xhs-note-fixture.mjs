@@ -37,7 +37,7 @@ function png(color) {
 const files = [png([9,10,11]),png([50,51,52])];
 const expectedHashes = files.map(sha);
 const html = `<!doctype html><meta charset="utf-8">
-<button role="tab">上传图文</button><main></main>
+<input placeholder="手机号（联系信息）"><button role="tab">上传图文</button><main></main>
 <script>
 const main = document.querySelector('main');
 document.querySelector('button').onclick = () => {

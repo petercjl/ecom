@@ -20,12 +20,14 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
   const words = e => e.innerText.trim();
   const onEntry = location.pathname === '/publish/publish';
   const verification = () => all('[class*=captcha-modal],iframe[src*=captcha],[class*=verify-modal]').length > 0;
-  const login = () => location.pathname.startsWith('/login') ||
-    all('input').some(e => /手机号|验证码/.test(e.placeholder || ''));
+  const login = () => /^\/login(?:\/|$)/.test(location.pathname) ||
+    all('[role=dialog], .login-modal, .login-container').some(dialog =>
+      [...dialog.querySelectorAll('input')].some(input =>
+        visible(input) && /手机号|验证码/.test(input.placeholder || '')) &&
+      /扫码登录|手机号登录|验证码登录|登录小红书/.test(words(dialog)));
   const store = globalThis.ecomXhsNote ??= {};
   const note = store[a.id];
   const idValid = id => typeof id === 'string' && /^[a-f0-9]{24}$/.test(id);
-  const shell = () => a.fixture || all('.user-info .user_avatar').length === 1;
   const imageInput = () => one([...document.querySelectorAll(
       a.fixture ? 'input[type=file]' : '.upload-input[type=file][multiple]')]
     .filter(e => /image|\.png|\.jpe?g/i.test(e.accept) && visible(e.parentElement)));
@@ -50,7 +52,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
     try {
       const r = await fetch(endpoint, {credentials:'same-origin', cache:'no-store', redirect:'error',
         signal:AbortSignal.timeout(7000)});
-      if (r.status === 401 || r.status === 403) return {status:'login-required'};
+      if (r.status === 401) return {status:'login-required'};
       if (!r.ok || !r.headers.get('content-type')?.includes('json')) return {status:'account-unverified'};
       const j = await r.json();
       if ((j?.success !== true && j?.code !== 0) || j?.success === false ||
@@ -69,7 +71,6 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       .finally(() => { store.identityPending = false; });
   };
   const readyAccount = () => {
-    if (!shell()) return false;
     if (!account || Date.now()-account.at > 30000) {
       checkAccount();
       return false;
@@ -152,8 +153,11 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
     if (!onEntry) return reply('page-changed');
     if (!readyAccount()) {
       if (note?.phase === 'uploading') return reply('uploading');
-      return reply(account?.status === 'login-required' ? 'login-required' :
-        account?.status === 'account-unverified' ? 'account-unverified' : 'opening');
+      const fresh = account && Date.now()-account.at <= 30000;
+      if (!fresh) return reply('opening');
+      const composerVisible = !!(imageTab() || imageInput() || editor());
+      return reply(account.status === 'login-required' && !composerVisible
+        ? 'login-required' : 'account-unverified');
     }
     if (a.action === 'prepare') {
       if (note) return reply('form-changed');
@@ -182,7 +186,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
         if (next.phase !== 'uploading') { cleanup(); return; }
         try {
           if (!onEntry || location.pathname !== '/publish/publish' || verification() || login() ||
-              !shell() || store.identity?.accountId !== next.account || Date.now()-next.started > 90000) {
+              store.identity?.accountId !== next.account || Date.now()-next.started > 90000) {
             next.phase = filled ? 'form-readback-mismatch' : 'upload-incomplete';
             next.diagnostic = diagnostic();
             cleanup();
@@ -245,7 +249,7 @@ inline constexpr char kXhsNoteScript[] = R"JS(((a) => {
       fetchAccount().then(fresh => {
         if (fresh.status !== 'verified' || fresh.accountId !== note.account ||
             location.origin !== a.origin || location.pathname !== '/publish/publish' ||
-            verification() || login() || !shell()) {
+            verification() || login()) {
           note.submission = {state:'not-submitted',reason:'account-or-page-changed'};
           return;
         }
