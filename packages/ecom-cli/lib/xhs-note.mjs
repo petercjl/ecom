@@ -216,7 +216,8 @@ export async function noteCommand(action, options, deps={}) {
     return current;
   };
   if (action === 'open') {
-    return until(await native('open',fixture?{fixturePort:Number(options['fixture-port'])}:{}),['opening'],15000);
+    // Creator identity can arrive before the upload controls render.
+    return until(await native('open',fixture?{fixturePort:Number(options['fixture-port'])}:{}),['opening','unsupported-form'],15000);
   }
   if (action === 'status') {
     try {
