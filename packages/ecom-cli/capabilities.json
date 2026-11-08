@@ -1170,7 +1170,12 @@
       },
       "sideEffects": "local-write",
       "authorization": "Open the specified HTTPS page in a temporary background tab in the selected container",
-      "compatibility": "Ecom Dev with backgroundPageProtocol 1"
+      "compatibility": "Ecom Dev with backgroundPageProtocol 1",
+      "output": {
+        "page": "bounded title, text and visible player metadata",
+        "containerId": "selected container",
+        "closeRequested": "temporary tab close request status"
+      }
     },
     "media download": {
       "options": {
@@ -1198,7 +1203,15 @@
       },
       "sideEffects": "local-write",
       "authorization": "Open the specified HTTPS page in a temporary background tab in the selected container and save one unambiguous direct video to a new local file",
-      "compatibility": "Ecom Dev with backgroundPageProtocol 1"
+      "compatibility": "Ecom Dev with backgroundPageProtocol 1",
+      "output": {
+        "output": "new local video file",
+        "pageUrl": "effective media page",
+        "title": "page work title",
+        "mimeType": "response type",
+        "bytes": "saved bytes",
+        "closeRequested": "temporary tab close request status"
+      }
     }
   },
   "transport": {

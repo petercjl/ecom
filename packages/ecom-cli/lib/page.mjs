@@ -14,6 +14,17 @@ export function validatePageOptions(command, options) {
     throw fail('INVALID_ARGUMENT', 'Specify a new local file with --output');
 }
 
+// Douyin's own embed uses the same public work ID as the desktop work URL.
+export function mediaPageUrl(url) {
+  const target = new URL(url);
+  const work = target.pathname.match(/^\/video\/(\d{16,22})\/?$/);
+  if (target.origin !== 'https://www.douyin.com' || !work ||
+      target.search || target.hash) return target.href;
+  const player = new URL('https://open.douyin.com/player/video');
+  player.searchParams.set('vid', work[1]);
+  return player.href;
+}
+
 export async function pageCommand(command, options) {
   validatePageOptions(command, options);
   const output = command === 'media download' ? path.resolve(options.output) : null;
@@ -25,10 +36,11 @@ export async function pageCommand(command, options) {
     throw fail('BROWSER_UPGRADE_REQUIRED', 'Use an Ecom build with background page protocol 1');
   const {containers} = await readMailbox(connection);
   const {id} = resolveContainer(containers, options.container);
+  const pageUrl = output ? mediaPageUrl(options.url) : new URL(options.url).href;
   const result = await callMailbox(connection, {
     method: output ? 'media.download' : 'page.read',
     containerId: id,
-    url: new URL(options.url).href,
+    url: pageUrl,
   }, output ? 92000 : 29000);
   if (result.containerId !== id)
     throw fail('PROTOCOL_MISMATCH', 'Response did not match the selected container');
@@ -47,5 +59,5 @@ export async function pageCommand(command, options) {
   } finally {
     fs.unlinkSync(artifact);
   }
-  return {...receipt, output};
+  return {...receipt, output, pageUrl};
 }
