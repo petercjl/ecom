@@ -6,6 +6,44 @@
     "ecom-cli"
   ],
   "commandContracts": {
+    "item media": {
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--item-id": {
+          "type": "string",
+          "required": true
+        },
+        "--out": {
+          "type": "string",
+          "required": true
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Open a fresh foreground product tab in the selected Taobao container and write a new private JSON media report",
+      "requires": {
+        "itemMediaTargetProtocol": 1,
+        "transport": "fixed-port Ecom Dev CDP",
+        "verifiedPlatform": "macOS Dev"
+      },
+      "output": {
+        "status": "completed or partial",
+        "coverage": "Counts and coverage for main images, videos, description images, and SKU images",
+        "targetId": "Native CDP target bound to the selected container",
+        "output": "New private JSON report"
+      }
+    },
     "cdp endpoint": {
       "options": {
         "--profile": {

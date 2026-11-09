@@ -57,6 +57,7 @@
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/site_instance.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/storage_partition_config.h"
 #include "content/public/browser/web_contents.h"
@@ -710,6 +711,15 @@ class ShopService final : public base::SupportsUserData::Data,
                                : WindowOpenDisposition::NEW_FOREGROUND_TAB;
       params.storage_partition_config = content::StoragePartitionConfig::Create(
           profile_, containers::kContainersStoragePartitionDomain, id, false);
+      if (media_capture) {
+        // An ordinary about:blank navigation can use the default partition.
+        // Reserve a fixed-partition WebContents before any network navigation.
+        auto site = content::SiteInstance::CreateForFixedStoragePartition(
+            profile_, GURL("https://item.taobao.com/"),
+            *params.storage_partition_config);
+        params.contents_to_insert = content::WebContents::Create(
+            content::WebContents::CreateParams(profile_, std::move(site)));
+      }
       Navigate(&params);
       if (!params.navigated_or_inserted_contents ||
           containers::GetContainerIdForWebContents(
