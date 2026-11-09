@@ -36,7 +36,7 @@
         }
       },
       "sideEffects": "local-write",
-      "authorization": "Open a fresh foreground product tab in the selected Taobao container and write a new private JSON media report",
+      "authorization": "Open and close a fresh foreground capture tab in the selected Taobao container and write a new private JSON media report",
       "requires": {
         "itemMediaTargetProtocol": 1,
         "transport": "fixed-port Ecom Dev CDP",

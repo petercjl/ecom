@@ -319,6 +319,49 @@ async function captureAttempt(endpoint, binding, itemId, url) {
   return report;
 }
 
+async function closeCaptureTab(endpoint, targetId) {
+  try {
+    return await withTarget(endpoint.webSocketDebuggerUrl, () => {}, async request => {
+      try {
+        await request('Target.closeTarget', {targetId});
+      } catch {
+        // The user or site may already have closed the tab.
+      }
+      const deadline = Date.now() + 3000;
+      do {
+        const {targetInfos} = await request('Target.getTargets');
+        if (!targetInfos.some(target => target.targetId === targetId)) return {status:'closed'};
+        await pause(100);
+      } while (Date.now() < deadline);
+      throw fail('ITEM_TAB_CLOSE_FAILED', 'The capture tab is still open');
+    });
+  } catch (error) {
+    return {status:'unconfirmed', error:mediaError(error)};
+  }
+}
+
+async function collectAttempts(endpoint, binding, itemId, url, explicitUrl) {
+  let selected = await captureAttempt(endpoint, binding, itemId, url);
+  let source = explicitUrl ? 'explicit-url' : 'short-url';
+  const attempts = [{source, coverage:selected.coverage, error:selected.error}];
+  if (shouldSearch(selected, explicitUrl)) {
+    const fallback = {source:'title-search'};
+    attempts.push(fallback);
+    try {
+      const link = await findProductLink(endpoint, binding, selected);
+      const candidate = await captureAttempt(endpoint, binding, itemId, link);
+      Object.assign(fallback, {coverage:candidate.coverage, error:candidate.error});
+      if (!candidate.error && improvesCoverage(selected, candidate)) {
+        selected = candidate;
+        source = fallback.source;
+      }
+    } catch (error) {
+      fallback.error = mediaError(error);
+    }
+  }
+  return {...selected, source, attempts};
+}
+
 export async function collectItemMedia(options) {
   validateItemMediaOptions(options);
   const url = itemUrl(options);
@@ -339,30 +382,20 @@ export async function collectItemMedia(options) {
   }
   const itemId = options['item-id'];
   const startedAt = new Date().toISOString();
-  let selected = await captureAttempt(endpoint, binding, itemId, url);
-  let source = options.url ? 'explicit-url' : 'short-url';
-  const attempts = [{source, coverage:selected.coverage, error:selected.error}];
-  if (shouldSearch(selected, options.url)) {
-    const fallback = {source:'title-search'};
-    attempts.push(fallback);
-    try {
-      const link = await findProductLink(endpoint, binding, selected);
-      const candidate = await captureAttempt(endpoint, binding, itemId, link);
-      Object.assign(fallback, {coverage:candidate.coverage, error:candidate.error});
-      if (!candidate.error && improvesCoverage(selected, candidate)) {
-        selected = candidate;
-        source = fallback.source;
-      }
-    } catch (error) {
-      fallback.error = mediaError(error);
-    }
+  let collected;
+  let cleanup;
+  try {
+    collected = await collectAttempts(endpoint, binding, itemId, url, options.url);
+  } finally {
+    cleanup = await closeCaptureTab(endpoint, binding.targetId);
   }
-  const report = {schemaVersion:1, ...selected, container, targetId:binding.targetId, source, attempts,
+  const report = {schemaVersion:1, ...collected, container, targetId:binding.targetId, cleanup,
     operationId:binding.operationId, requestedUrl:new URL(url).origin + '/item.htm?id=' + itemId, startedAt, transport:'container-cdp'};
   report.status = !report.error && Object.values(report.coverage).every(entry => known(entry.status))
     ? 'completed' : 'partial';
   report.finishedAt = new Date().toISOString();
   writeNew(output, report);
   return {ok:!report.error, status:report.status, output, container, targetId:binding.targetId,
-    itemId:report.itemId, source, attempts, coverage:report.coverage, ...(report.error ? {error:report.error} : {})};
+    itemId:report.itemId, source:report.source, attempts:report.attempts, coverage:report.coverage, cleanup,
+    ...(report.error ? {error:report.error} : {})};
 }
