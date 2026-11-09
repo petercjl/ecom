@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {root,pkg,fail} from './common.mjs';
 import {discover,listContainers,inspectContainer,requestSession,validateReadUrl,qianniuLoginStep} from './browser.mjs';
+import {cdpCommand} from './cdp.mjs';
 import {pageCommand,validatePageOptions} from './page.mjs';
 import {searchXhs} from './xhs.mjs';
 import {noteCommand,validateNoteOptions} from './xhs-note.mjs';
@@ -19,7 +20,7 @@ export function parse(argv) {
     const key=word.slice(2);
     if(Object.hasOwn(options,key)) throw fail('INVALID_ARGUMENT','Duplicate option '+word);
     if(['json','help','yes','foreground','fixture'].includes(key))options[key]=true;
-    else if(['agent','target','profile','instance','name','version','container','url','method','operation','params-json','plan','confirm','service','keyword','via','manifest','account-id','preparation','digest','fixture-port','tab','expected-page-version','operation-id','enabled','idle-seconds','keep-awake','lazy-startup','max-background','output'].includes(key)&&argv[i+1]&&!argv[i+1].startsWith('--')) options[key]=argv[++i];
+    else if(['agent','target','profile','instance','name','version','container','url','method','operation','params-json','plan','confirm','service','keyword','via','manifest','account-id','preparation','digest','fixture-port','tab','expected-page-version','operation-id','enabled','idle-seconds','keep-awake','lazy-startup','max-background','output','cdp-method','cdp-target'].includes(key)&&argv[i+1]&&!argv[i+1].startsWith('--')) options[key]=argv[++i];
     else throw fail('INVALID_ARGUMENT','Unknown option or missing value: '+word);
   }
   let command=positions.join(' ')||'help';
@@ -52,7 +53,8 @@ export function parse(argv) {
 }
 export async function main(argv) {
   const {command,options,requested}=parse(argv);
-  if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli containers list|inspect | shops open|login-status|submit-login | xhs search --via page | xhs note preflight|open|upload|fill|verify|status|prepare|submit | page read | media download | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
+  if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli containers list|inspect | shops open|login-status|submit-login | xhs search --via page | xhs note preflight|open|upload|fill|verify|status|prepare|submit | cdp endpoint|tabs|call | page read | media download | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
+  if(command.startsWith('cdp '))return cdpCommand(command.slice(4),options);
   if(['page read','media download'].includes(command))return pageCommand(command,options);
   if(command==='version')return {ok:true,package:pkg.name,version:pkg.version,protocolVersion:1};
   if(['memory status','memory tabs','memory processes','memory containers'].includes(command))return readMemory(options);

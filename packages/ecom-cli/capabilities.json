@@ -6,6 +6,55 @@
     "ecom-cli"
   ],
   "commandContracts": {
+    "cdp endpoint": {
+      "options": {
+        "--profile": {
+          "type": "string",
+          "required": true
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "none",
+      "authorization": "Discover the browser-level CDP WebSocket in an explicitly enabled local Ecom Dev profile"
+    },
+    "cdp tabs": {
+      "options": {
+        "--profile": {
+          "type": "string",
+          "required": true
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "none",
+      "authorization": "List debuggable targets in an explicitly enabled local Ecom Dev profile"
+    },
+    "cdp call": {
+      "options": {
+        "--profile": {
+          "type": "string",
+          "required": true
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--cdp-method": {
+          "type": "string",
+          "required": true
+        },
+        "--cdp-target": {
+          "type": "string"
+        },
+        "--params-json": {
+          "type": "string"
+        }
+      },
+      "sideEffects": "browser-operation",
+      "authorization": "Run one CDP command on an explicit target or the browser endpoint in an explicitly enabled local Ecom Dev profile"
+    },
     "shops open": {
       "options": {
         "--container": {

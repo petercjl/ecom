@@ -5,6 +5,11 @@ description: Use Ecom for browser memory diagnostics and automatic idle sleep se
 
 # Ecom CLI
 
+
+## General web operations via CDP
+
+When explicitly asked to use CDP, target the Ecom Dev profile started in CDP mode. Use `cdp tabs --profile PATH --json` to select the intended website tab by target ID. Use `cdp call --profile PATH --cdp-target ID --cdp-method Runtime.evaluate --params-json JSON --json` for a single command. Use `cdp endpoint --profile PATH --json` to attach a CDP client for event subscriptions and multi-step workflows. Confirm the target when multiple tabs match. An explicitly enabled CDP endpoint gives local clients browser-wide access, including other tabs. Treat WebSocket addresses and protocol results as local data. Regular business commands retain their own container and authorization contracts.
+
 ## Input → strategy → output
 
 Input is an Ecom container listing/detail request, an authorized endpoint plus target container, an explicitly ordered Xiaohongshu image note manifest, a connection diagnosis, or selected-Agent maintenance intent. The current Agent needs local command execution, file access and Node.js 22+. Output is a container list, projected account metadata, native-redacted JSON response with pinned target identity, connection diagnosis, or installation receipt with a separate host discovery check. Container names may identify accounts; disclose only within the user's request.

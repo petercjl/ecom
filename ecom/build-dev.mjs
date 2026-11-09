@@ -71,14 +71,16 @@ function prepareComponentExecutable(runDir) {
 }
 
 async function main() {
-  if (process.argv.includes('--help')) { console.log('用法：node ecom/build-dev.mjs [--source-ref <已提交版本>]\n本地增量编译成功后，正常退出并重新启动当前工作区的 Ecom Dev。当前验证平台：macOS。'); return; }
-  const args = process.argv.slice(2);
+  if (process.argv.includes('--help')) { console.log('用法：node ecom/build-dev.mjs [--source-ref <已提交版本>] [--cdp]\n本地增量编译成功后，正常退出并重新启动当前工作区的 Ecom Dev。当前验证平台：macOS。'); return; }
+  const launchArgs = process.argv.slice(2);
+  const cdp = launchArgs.includes("--cdp");
+  const args = launchArgs.filter(arg => arg !== "--cdp");
   if (args.length && (args.length !== 2 || args[0] !== '--source-ref' || args[1].startsWith('--'))) throw new Error('支持 --source-ref <已提交版本>；使用 --help 查看用法');
   if (process.platform !== 'darwin') throw new Error('此入口当前用于 macOS Dev；Windows 构建与重启流程待验证');
   const validNode = file => { const version = spawnSync(file, ['--version'], { encoding: 'utf8' }).stdout || ''; const [major, minor] = version.replace(/^v/, '').split('.').map(Number); return major === 24 && minor >= 16; };
   const node = [process.env.ECOM_NODE, process.execPath, path.join(os.homedir(), '.local/share/ecom-toolchain/node_modules/node/bin/node')].filter(Boolean).find(validNode);
   if (!node) throw new Error('需要 Node >=24.16 <25；请安装或通过 ECOM_NODE 指定');
-  if (fs.realpathSync(node) !== fs.realpathSync(process.execPath)) { const result = spawnSync(node, [fileURLToPath(import.meta.url), ...args], { stdio: 'inherit' }); process.exitCode = result.status ?? 1; return; }
+  if (fs.realpathSync(node) !== fs.realpathSync(process.execPath)) { const result = spawnSync(node, [fileURLToPath(import.meta.url), ...launchArgs], { stdio: 'inherit' }); process.exitCode = result.status ?? 1; return; }
   const env = { ...process.env, PATH: [path.dirname(node), path.join(os.homedir(), '.local/share/ecom-toolchain/node_modules/.bin'), process.env.PATH].join(path.delimiter) };
   const selected = spawnSync('xcode-select', ['-p'], { encoding: 'utf8' }).stdout?.trim();
   const candidates = env.DEVELOPER_DIR ? [env.DEVELOPER_DIR] : [selected, ...fs.readdirSync('/Applications').filter(name => /^Xcode.*\.app$/.test(name)).sort().reverse().map(name => path.join('/Applications', name, 'Contents/Developer'))];
@@ -119,7 +121,7 @@ async function main() {
     const log = path.join(runDir, 'start.log');
     if (fs.existsSync(log)) throw new Error('启动日志已存在');
     const fd = fs.openSync(log, 'wx', 0o600);
-    const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'start', 'Component', ...selection, '--no-first-run', '--no-default-browser-check', '--restore-last-session', '--ecom-native-cli-origin=https://sycm.taobao.com', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone'], { cwd: root, env, stdio: ['ignore', fd, fd], detached: true });
+    const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'start', 'Component', ...selection, ...(cdp ? ['--ecom-local-cdp'] : []), '--no-first-run', '--no-default-browser-check', '--restore-last-session', '--ecom-native-cli-origin=https://sycm.taobao.com', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone'], { cwd: root, env, stdio: ['ignore', fd, fd], detached: true });
     child.on('error', () => {}); child.unref(); fs.closeSync(fd);
     for (let n = 0; n < 480; n++) {
       const current = runningDev();
@@ -127,6 +129,17 @@ async function main() {
         await pause(2000);
         const ready = runningDev();
         if (!ready || ready.pid !== current.pid) throw new Error('Dev 启动后未保持运行');
+        if (cdp) {
+          const endpoint = path.join(profile, 'DevToolsActivePort');
+          if (!fs.existsSync(endpoint)) continue;
+          const port = Number(fs.readFileSync(endpoint, 'utf8').split('\n')[0]);
+          if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('CDP 端口无效');
+          const listeners = query('lsof', ['-nP', '-a', '-p', String(ready.pid), '-iTCP', '-sTCP:LISTEN', '-Fn']);
+          const addresses = listeners.split('\n').filter(line => line.startsWith('n')).map(line => line.slice(1));
+          if (!addresses.length || addresses.some(address => !['127.0.0.1:' + port, '[::1]:' + port].includes(address))) throw new Error('CDP 监听地址校验失败');
+          console.log(JSON.stringify({ ok: true, sourceRevision: base, pid: ready.pid, profile, log, launchMode: 'cdp', debugging: true, port }));
+          return;
+        }
         verifyInteractiveDev(ready);
         console.log(JSON.stringify({ ok: true, sourceRevision: base, pid: ready.pid, profile, log, launchMode: 'interactive', debugging: false })); return;
       }

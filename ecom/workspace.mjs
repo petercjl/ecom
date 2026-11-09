@@ -79,7 +79,11 @@ export function bootstrapDependencies(workspace) {
 export function developmentStartArgs(repo, args) {
   if (args.some(arg => arg === '--enable_brave_update' || arg.startsWith('--enable_brave_update='))) throw failure('ECOM_UPDATE_CHANNEL', 'Ecom updates use its own release channel');
   if (args.some(arg => /^--(?:remote-debugging(?:-|=|$)|headless(?:=|$)|enable-automation(?:=|$)|auto-open-devtools-for-tabs(?:=|$))/.test(arg))) throw failure('ECOM_INTERACTIVE_ONLY', 'Ecom currently starts as an interactive browser without remote debugging or automation launch options');
+  const cdp = args.includes("--ecom-local-cdp");
+  args = args.filter(arg => arg !== "--ecom-local-cdp");
   const customProfile = args.some(arg => arg === '--user-data-dir' || arg.startsWith('--user-data-dir=') || arg === '--user_data_dir_name' || arg.startsWith('--user_data_dir_name='));
+  if (cdp && customProfile) throw failure("ECOM_CDP_PROFILE", "Local CDP uses the workspace Dev profile");
+  if (cdp) args.push("--remote-debugging-port=0");
   return customProfile ? args : [...args, '--user-data-dir=' + path.join(repo, '.brave-build/profiles/Ecom-Dev')];
 }
 async function main() {
