@@ -7,6 +7,7 @@ import {exists, fail, writeNew} from './common.mjs';
 const detailPath = '/h5/mtop.taobao.detail.getdesc/7.0/';
 const blocked = /FAIL_SYS_USER_VALIDATE|RGV587|SESSION_EXPIRED|ILLEGAL_ACCESS|TOKEN_EXPIRED|TOKEN_EMPTY/;
 const productHosts = new Set(['item.taobao.com', 'detail.tmall.com']);
+const searchRedirectHosts = new Set(['click.simba.taobao.com', 'mclick.simba.taobao.com']);
 const domain = (host, suffix) => host === suffix || host.endsWith('.' + suffix);
 
 export function validateItemMediaOptions(options) {
@@ -24,14 +25,23 @@ function itemUrl(options) {
 }
 
 export function isProductUrl(value, itemId) {
+  return matchesItemUrl(value, itemId, productHosts, '/item.htm');
+}
+
+function matchesItemUrl(value, itemId, hosts, pathname) {
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' && productHosts.has(url.hostname) &&
-        !url.username && !url.password && !url.port && url.pathname === '/item.htm' &&
+    return url.protocol === 'https:' && hosts.has(url.hostname) &&
+        !url.username && !url.password && !url.port && url.pathname === pathname &&
         url.searchParams.getAll('id').length === 1 && url.searchParams.get('id') === itemId;
   } catch {
     return false;
   }
+}
+
+export function selectSearchProductLink(links, itemId) {
+  return links.find(link => isProductUrl(link, itemId)) ??
+    links.find(link => matchesItemUrl(link, itemId, searchRedirectHosts, '/cc_im'));
 }
 
 function assetUrl(value, video = false) {
@@ -260,7 +270,9 @@ async function capture(endpoint, binding, report, url) {
 
 async function findProductLink(endpoint, binding, {itemId, detail}) {
   const url = new URL('https://s.taobao.com/search');
+  url.searchParams.set('page', '1');
   url.searchParams.set('q', detail.title.trim());
+  url.searchParams.set('tab', 'all');
   return withTarget(endpoint.httpUrl.replace('http:', 'ws:') + '/devtools/page/' + binding.targetId, () => {}, async request => {
     const nav = await request('Page.navigate', {url:url.href});
     if (nav.errorText) throw fail('ITEM_SEARCH_NAVIGATION_FAILED', 'The Taobao search page could not be opened');
@@ -276,7 +288,7 @@ async function findProductLink(endpoint, binding, {itemId, detail}) {
       const state = response.result?.value;
       if (state?.login) throw fail('TAOBAO_LOGIN_REQUIRED', 'Sign in manually in the selected container');
       if (state?.blocked) throw fail('TAOBAO_ACCESS_RESTRICTED', 'Taobao search requires verification in the selected container');
-      const match = state?.links?.find(link => isProductUrl(link, itemId));
+      const match = selectSearchProductLink(state?.links ?? [], itemId);
       if (match) return match;
       await pause(300);
     } while (Date.now() < deadline);

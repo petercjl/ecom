@@ -1,10 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {parse} from '../lib/cli.mjs';
-import {improvesCoverage, isProductUrl, normalizeItemMedia, readDescription, shouldSearch} from '../lib/item-media.mjs';
+import {improvesCoverage, isProductUrl, normalizeItemMedia, readDescription, selectSearchProductLink, shouldSearch} from '../lib/item-media.mjs';
 
 const itemId = '100000000001';
 const image = n => 'https://img.alicdn.com/' + n + '.jpg';
+
+test('title search accepts exact Taobao redirect cards and prefers a direct product link', () => {
+  const redirect = 'https://mclick.simba.taobao.com/cc_im?id=' + itemId + '&spm=sample';
+  const direct = 'https://item.taobao.com/item.htm?id=' + itemId;
+  assert.equal(selectSearchProductLink([redirect.replace(itemId, '2'), redirect], itemId), redirect);
+  assert.equal(selectSearchProductLink([redirect, direct], itemId), direct);
+  assert.equal(selectSearchProductLink([redirect.replace('mclick.simba.taobao.com', 'other.example'),
+    redirect.replace('/cc_im', '/other'), redirect + '&id=2'], itemId), undefined);
+  assert.equal(isProductUrl(redirect, itemId), false);
+});
 
 test('item media searches incomplete short-link results and only accepts exact product URLs', () => {
   const first = {detail:{title:'Sample product'}, coverage:{mainImages:{status:'captured', count:3}}};
