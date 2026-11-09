@@ -115,7 +115,10 @@ async function main() {
     const previous = runningDev();
     if (port) {
       const occupied = spawnSync('lsof', ['-nP', '-iTCP:' + port, '-sTCP:LISTEN', '-Fp'], { encoding: 'utf8' });
-      if (![0, 1].includes(occupied.status) || occupied.stdout.trim().split('\n').some(line => line && line !== 'p' + previous?.pid)) {
+      const owners = occupied.stdout.split('\n').filter(line => line.startsWith('p'));
+      const free = occupied.status === 1 && !occupied.stdout.trim() && !occupied.stderr.trim();
+      const ownedByDev = occupied.status === 0 && owners.length === 1 && owners[0] === 'p' + previous?.pid;
+      if (!free && !ownedByDev) {
         throw new Error('指定 CDP 端口已被占用或无法检查，保留当前 Dev');
       }
     }
