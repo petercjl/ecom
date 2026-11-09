@@ -1,6 +1,6 @@
 {
   "name": "@petercjl/ecom-cli",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Agent CLI and portable Skill for Ecom browser containers",
   "type": "module",
   "license": "MPL-2.0",

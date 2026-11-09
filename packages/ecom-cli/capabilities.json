@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@petercjl/ecom-cli",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "skills": [
     "ecom-cli"
   ],
