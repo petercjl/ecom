@@ -93,11 +93,67 @@
   "localUpdateRecoveryVerified": false,
   "updateRoundTripVerified": false,
   "rollbackRoundTripVerified": false,
-  "published": false,
+  "published": true,
   "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.8.md",
   "devValidation": {
     "verified": true,
     "sourceRevision": "b5967b983a5c06b6fee941311b8bc7d4aa8abb7e",
     "evidencePath": "docs/ecom/release-evidence/dev-2026-11-09-container-home-cdp.md"
+  },
+  "publication": {
+    "workflowUrl": "https://github.com/petercjl/ecom/actions/runs/42565911790",
+    "ok": true,
+    "verifiedAt": "2026-11-09T05:29:37.431590+00:00",
+    "version": "0.1.8",
+    "channel": "latest",
+    "verificationHost": "macOS build host",
+    "packages": [
+      {
+        "version": "0.1.8",
+        "bytes": 7333,
+        "sha256": "7d0c835e202c15dfe8b28842c4e7e0d485cd9ab87419e579485985add1dcdb50",
+        "integrity": "sha512-1NvWxAlq9yBqkjDRb3DYKB8tTIero3qXgdStH15Oq0YJsiQjDDfBW/ivYS0K73BokHywHpIhjBCrIxiKdmH5OQ=="
+      },
+      {
+        "version": "0.1.8-payload.0",
+        "bytes": 49987238,
+        "sha256": "10766370eb4ebf965ef5a4e5a243094bde81bc7eeb1b944c6a911d180d845113",
+        "integrity": "sha512-Q/GzThhuUvMWip+3N4cpF1t6qHEVqymrDQ1lBFj2oZdr5uKs70pEhWdWvLXC4ZiHW/PaQ1sIKgRfB6oyQvs0Eg=="
+      },
+      {
+        "version": "0.1.8-payload.1",
+        "bytes": 50022267,
+        "sha256": "9a89ac223135e3e502c8a55f98df9d1567865afa627840bd927220a5b217ded2",
+        "integrity": "sha512-vaF7Adf3r701ufpBx/5QQDuLu9GiH8jMRuO0EyGQjM/nWdY7SCbwDEbOmgB63biCAZhf65iW4O256e/UJ1tNiA=="
+      },
+      {
+        "version": "0.1.8-payload.2",
+        "bytes": 50022273,
+        "sha256": "c91d68406d5294fc6751c50ae2ed3a213fdaf75535eb78cd49eab0e8bbbecb54",
+        "integrity": "sha512-LD+W9oAU01UpVMXsIPGhCG4cqvOwv/yklfln06xZc1VBLX3EvjHBb1XAAMySuD8ntioXu3nPR46B5eFabX4z0A=="
+      },
+      {
+        "version": "0.1.8-payload.3",
+        "bytes": 50021463,
+        "sha256": "781b9ffabca43638440635ae880c2822949f48a0c2ee9ff0b931a02cd2d107d3",
+        "integrity": "sha512-NWI4pKEh4l1ktjoogwLXzqnZHnFZXPhUPXiPjy6No9rILX0HqFUTfks/V49KWePl+gIyn2N5mB+ZfxglD8i1aw=="
+      },
+      {
+        "version": "0.1.8-payload.4",
+        "bytes": 50001312,
+        "sha256": "b1ee543652797217391afad8356be7c8bfefc03f85fdc5f42feb24a29b65d7e9",
+        "integrity": "sha512-HewCGoxIuXzypHs3T9CNRF112ctzwsNcKub495V+kcIoPO5pkxzxiZn7DDUQcMdDM30kyduzQIeHQvpAE3tKGQ=="
+      },
+      {
+        "version": "0.1.8-payload.5",
+        "bytes": 672513,
+        "sha256": "f3edddd0fb96785a19940be3bfd74e33b67a423c86c8d700cee81e2d7fc8fe12",
+        "integrity": "sha512-4R2S/IglFwJQ2n6zpEdjSNeYJ6EmSV0spL91L7vxPQ4+TPKu7YfHJDg2pe3J2bcKi3gzlnVDzgWEDoVyH85N3w=="
+      }
+    ],
+    "reconstructedInstallerVerified": true,
+    "temporaryActionsArtifactsRemaining": 0,
+    "temporaryRelayStopped": true,
+    "temporaryRelayCopyRemoved": true
   }
 }

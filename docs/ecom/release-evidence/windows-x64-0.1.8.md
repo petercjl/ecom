@@ -5,3 +5,5 @@ Native build source `d3506f73fac33e5eea7c1b87f6f550812bade693` was prepared from
 The Windows x64 incremental build on the physical peter-new machine exited successfully. Packaging passed updater self-test, installer reconstruction and corrupted-part rejection.
 
 Formal installed-browser smoke and public update or rollback round trips were not performed for this candidate.
+
+GitHub Actions published through OIDC. Public npm latest resolved to 0.1.8. The primary tarball and all six parts were downloaded on the Mac build host, matched pinned SHA-256 and SHA-512 values, and reconstructed the byte-identical installer. The temporary Actions artifact was deleted, the relay was stopped, and its transfer archive mirror was removed. The original installer remains on peter-new.
