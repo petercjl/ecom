@@ -71,11 +71,15 @@ function prepareComponentExecutable(runDir) {
 }
 
 async function main() {
-  if (process.argv.includes('--help')) { console.log('用法：node ecom/build-dev.mjs [--source-ref <已提交版本>] [--cdp]\n本地增量编译成功后，正常退出并重新启动当前工作区的 Ecom Dev。当前验证平台：macOS。'); return; }
+  if (process.argv.includes('--help')) { console.log('用法：node ecom/build-dev.mjs [--source-ref <已提交版本>] [--cdp-port=<固定端口>]\n本地增量编译成功后，正常退出并重新启动当前工作区的 Ecom Dev。当前验证平台：macOS。'); return; }
   const launchArgs = process.argv.slice(2);
-  const cdp = launchArgs.includes("--cdp");
-  const args = launchArgs.filter(arg => arg !== "--cdp");
-  if (args.length && (args.length !== 2 || args[0] !== '--source-ref' || args[1].startsWith('--'))) throw new Error('支持 --source-ref <已提交版本>；使用 --help 查看用法');
+  const cdpFlags = launchArgs.filter(arg => arg.startsWith('--cdp-port='));
+  const port = cdpFlags[0]?.slice('--cdp-port='.length);
+  if (cdpFlags.length && (cdpFlags.length !== 1 || !/^[1-9][0-9]{0,4}$/.test(port ?? '') || Number(port) > 65535)) {
+    throw new Error('请用 --cdp-port=<固定端口> 指定一个 1 至 65535 的端口');
+  }
+  const args = launchArgs.filter(arg => !cdpFlags.includes(arg));
+  if (args.length && (args.length !== 2 || args[0] !== '--source-ref' || args[1].startsWith('--'))) throw new Error('支持 --source-ref <已提交版本> 和 --cdp-port=<固定端口>；使用 --help 查看用法');
   if (process.platform !== 'darwin') throw new Error('此入口当前用于 macOS Dev；Windows 构建与重启流程待验证');
   const validNode = file => { const version = spawnSync(file, ['--version'], { encoding: 'utf8' }).stdout || ''; const [major, minor] = version.replace(/^v/, '').split('.').map(Number); return major === 24 && minor >= 16; };
   const node = [process.env.ECOM_NODE, process.execPath, path.join(os.homedir(), '.local/share/ecom-toolchain/node_modules/node/bin/node')].filter(Boolean).find(validNode);
@@ -109,6 +113,12 @@ async function main() {
     });
     if (git(root, ['rev-parse', 'HEAD']) !== sourceHead || git(root, ['status', '--porcelain'])) throw new Error('编译期间源码已变化，保留当前 Dev；提交后重新构建');
     const previous = runningDev();
+    if (port) {
+      const occupied = spawnSync('lsof', ['-nP', '-iTCP:' + port, '-sTCP:LISTEN', '-Fp'], { encoding: 'utf8' });
+      if (![0, 1].includes(occupied.status) || occupied.stdout.trim().split('\n').some(line => line && line !== 'p' + previous?.pid)) {
+        throw new Error('指定 CDP 端口已被占用或无法检查，保留当前 Dev');
+      }
+    }
     if (previous) { console.log('编译成功，正在正常退出 Ecom Dev…'); await quitDev(previous); }
     const oldEndpoint = path.join(profile, 'DevToolsActivePort');
     if (fs.existsSync(oldEndpoint)) {
@@ -121,7 +131,7 @@ async function main() {
     const log = path.join(runDir, 'start.log');
     if (fs.existsSync(log)) throw new Error('启动日志已存在');
     const fd = fs.openSync(log, 'wx', 0o600);
-    const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'start', 'Component', ...selection, ...(cdp ? ['--ecom-local-cdp'] : []), '--no-first-run', '--no-default-browser-check', '--restore-last-session', '--ecom-native-cli-origin=https://sycm.taobao.com', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone'], { cwd: root, env, stdio: ['ignore', fd, fd], detached: true });
+    const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'start', 'Component', ...selection, ...(port ? ['--ecom-local-cdp=' + port] : []), '--no-first-run', '--no-default-browser-check', '--restore-last-session', '--ecom-native-cli-origin=https://sycm.taobao.com', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone'], { cwd: root, env, stdio: ['ignore', fd, fd], detached: true });
     child.on('error', () => {}); child.unref(); fs.closeSync(fd);
     for (let n = 0; n < 480; n++) {
       const current = runningDev();
@@ -129,15 +139,26 @@ async function main() {
         await pause(2000);
         const ready = runningDev();
         if (!ready || ready.pid !== current.pid) throw new Error('Dev 启动后未保持运行');
-        if (cdp) {
-          const endpoint = path.join(profile, 'DevToolsActivePort');
-          if (!fs.existsSync(endpoint)) continue;
-          const port = Number(fs.readFileSync(endpoint, 'utf8').split('\n')[0]);
-          if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('CDP 端口无效');
-          const listeners = query('lsof', ['-nP', '-a', '-p', String(ready.pid), '-iTCP', '-sTCP:LISTEN', '-Fn']);
-          const addresses = listeners.split('\n').filter(line => line.startsWith('n')).map(line => line.slice(1));
-          if (!addresses.length || addresses.some(address => !['127.0.0.1:' + port, '[::1]:' + port].includes(address))) throw new Error('CDP 监听地址校验失败');
-          console.log(JSON.stringify({ ok: true, sourceRevision: base, pid: ready.pid, profile, log, launchMode: 'cdp', debugging: true, port }));
+        if (port) {
+          const listeners = spawnSync('lsof', ['-nP', '-a', '-p', String(ready.pid), '-iTCP', '-sTCP:LISTEN', '-Fn'], { encoding: 'utf8' });
+          if (listeners.status === 1 && !listeners.stdout.trim()) continue;
+          const addresses = listeners.stdout.split('\n').filter(line => line.startsWith('n')).map(line => line.slice(1));
+          try {
+            if (listeners.status !== 0 || !addresses.length || addresses.some(address => address !== '127.0.0.1:' + port)) {
+              throw new Error('CDP 未监听指定的本机端口');
+            }
+            const response = await fetch('http://127.0.0.1:' + port + '/json/version', { redirect: 'error', signal: AbortSignal.timeout(3000) });
+            if (!response.ok) throw new Error('CDP 端点未就绪');
+            const url = new URL((await response.json()).webSocketDebuggerUrl);
+            if (url.origin !== 'ws://127.0.0.1:' + port || !/^\/devtools\/browser\/[\da-f-]+$/i.test(url.pathname)) {
+              throw new Error('CDP WebSocket 地址校验失败');
+            }
+            fs.writeFileSync(oldEndpoint, port + '\n' + url.pathname + '\n', { flag: 'wx', mode: 0o600 });
+          } catch (error) {
+            await quitDev(ready);
+            throw error;
+          }
+          console.log(JSON.stringify({ ok: true, sourceRevision: base, pid: ready.pid, profile, log, launchMode: 'cdp', debugging: true, port: Number(port) }));
           return;
         }
         verifyInteractiveDev(ready);
