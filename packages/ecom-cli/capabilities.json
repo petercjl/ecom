@@ -20,6 +20,10 @@
           "type": "string",
           "required": true
         },
+        "--url": {
+          "type": "string",
+          "description": "Optional Taobao or Tmall product URL matching the item ID"
+        },
         "--profile": {
           "type": "string"
         },

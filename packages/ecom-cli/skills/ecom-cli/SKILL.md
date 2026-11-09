@@ -29,7 +29,7 @@ Use `shops open --container VALUE --json` to open the saved homepage in a foregr
 
 ## Taobao product media
 
-Use `item media --container VALUE --item-id ID --out NEW.json --json` with an explicitly selected Ecom Dev instance and its fixed CDP port. This command opens a new foreground tab bound to the selected Taobao container, listens for the product description response before navigation, and writes a private JSON report with ordered main images, video sources and covers, description images, and SKU image mappings. It verifies the returned item ID. Inspect each coverage entry and distinguish explicit absence from unavailable or partial results. An access restriction or login prompt stops collection. Keep the same container tab for manual handling and use a new output path for a later authorized retry.
+Use `item media --container VALUE --item-id ID --out NEW.json --json` with an explicitly selected Ecom Dev instance and its fixed CDP port. If supplied, `--url` selects the Taobao or Tmall product host and must match the item ID. The request uses the canonical item URL. This command opens a new foreground tab bound to the selected Taobao container, listens for the product description response before navigation, and writes a private JSON report with ordered main images, video sources and covers, description images, and SKU image mappings. It verifies the returned item ID. Inspect each coverage entry and distinguish explicit absence from unavailable or partial results. An access restriction or login prompt stops collection. Keep the same container tab for manual handling and use a new output path for a later authorized retry.
 
 ## Background page reads and media downloads
 

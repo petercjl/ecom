@@ -717,8 +717,12 @@ class ShopService final : public base::SupportsUserData::Data,
         auto site = content::SiteInstance::CreateForFixedStoragePartition(
             profile_, GURL("https://item.taobao.com/"),
             *params.storage_partition_config);
-        params.contents_to_insert = content::WebContents::Create(
-            content::WebContents::CreateParams(profile_, std::move(site)));
+        content::WebContents::CreateParams create_params(profile_,
+                                                        std::move(site));
+        create_params.desired_renderer_state =
+            content::WebContents::CreateParams::
+                kInitializeAndWarmupRendererProcess;
+        params.contents_to_insert = content::WebContents::Create(create_params);
       }
       Navigate(&params);
       if (!params.navigated_or_inserted_contents ||

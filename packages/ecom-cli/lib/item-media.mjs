@@ -16,6 +16,21 @@ export function validateItemMediaOptions(options) {
   }
 }
 
+function itemUrl(options) {
+  const itemId = options['item-id'];
+  const canonical = host => 'https://' + host + '/item.htm?id=' + itemId;
+  if (!options.url) return canonical('item.taobao.com');
+  try {
+    const url = new URL(options.url);
+    if (url.protocol === 'https:' && productHosts.has(url.hostname) &&
+        !url.username && !url.password && !url.port && url.pathname === '/item.htm' &&
+        url.searchParams.getAll('id').length === 1 && url.searchParams.get('id') === itemId) {
+      return canonical(url.hostname);
+    }
+  } catch {}
+  throw fail('INVALID_ARGUMENT', '--url must be a Taobao or Tmall item URL with the matching --item-id');
+}
+
 function assetUrl(value, video = false) {
   if (typeof value !== 'string' || !value.trim()) return null;
   try {
@@ -187,7 +202,7 @@ function coverage(report) {
   };
 }
 
-async function capture(endpoint, binding, report) {
+async function capture(endpoint, binding, report, url) {
   const watched = new Set();
   let descriptionError;
   let navigationFrame;
@@ -215,7 +230,7 @@ async function capture(endpoint, binding, report) {
   await withTarget(endpoint.httpUrl.replace('http:', 'ws:') + '/devtools/page/' + binding.targetId, event, async request => {
     await request('Page.enable');
     await request('Network.enable', {maxTotalBufferSize:8 * 1024 * 1024, maxResourceBufferSize:4 * 1024 * 1024});
-    const nav = await request('Page.navigate', {url:'https://item.taobao.com/item.htm?id=' + report.itemId});
+    const nav = await request('Page.navigate', {url});
     navigationFrame = nav.frameId;
     if (nav.errorText) throw fail('ITEM_NAVIGATION_FAILED', 'The product page could not be opened');
     const deadline = Date.now() + 26000;
@@ -241,6 +256,7 @@ async function capture(endpoint, binding, report) {
 
 export async function collectItemMedia(options) {
   validateItemMediaOptions(options);
+  const url = itemUrl(options);
   const output = path.resolve(options.out);
   if (exists(output)) throw fail('OUTPUT_EXISTS', 'Use a new JSON output path');
   const connection = discover(options, {allowFixedDevCdp:true});
@@ -257,9 +273,9 @@ export async function collectItemMedia(options) {
     throw fail('PROTOCOL_MISMATCH', 'Ecom did not return a bound capture tab', {operationId:binding.operationId, executed:'unknown'});
   }
   const report = {schemaVersion:1, itemId:options['item-id'], container, targetId:binding.targetId,
-    operationId:binding.operationId, startedAt:new Date().toISOString(), transport:'container-cdp'};
+    operationId:binding.operationId, requestedUrl:url, startedAt:new Date().toISOString(), transport:'container-cdp'};
   try {
-    await capture(endpoint, binding, report);
+    await capture(endpoint, binding, report, url);
   } catch (error) {
     report.error = {code:error.code ?? 'MEDIA_COLLECTION_FAILED', message:error.code ? error.message : 'Media collection stopped'};
   }
