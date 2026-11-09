@@ -202,6 +202,7 @@ class NativeSessionService final : public ProfileObserver {
     metadata.Set("autoTabMemoryProtocol", 1);
     metadata.Set("restoreQueueProtocol", 1);
     metadata.Set("manualTabMemoryProtocol", 1);
+    metadata.Set("itemMediaTargetProtocol", 1);
     metadata.Set("executable",
                  base::CommandLine::ForCurrentProcess()->GetProgram().value());
     metadata.Set("userDataDir", folder_.DirName().DirName().value());

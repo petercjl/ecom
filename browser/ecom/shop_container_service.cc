@@ -54,6 +54,7 @@
 #include "components/password_manager/core/browser/password_store/password_store_interface.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
+#include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/storage_partition.h"
@@ -612,7 +613,14 @@ class ShopService final : public base::SupportsUserData::Data,
       std::string url;
       const auto* metadata = Metadata().FindDict(id);
       const auto platform_id = Field(*metadata, "platform");
-      if (const auto* operation = request.FindString("businessOperation")) {
+      const bool media_capture = service == "item-media";
+      if (media_capture) {
+        if (platform_id != "taobao") {
+          Send(std::move(callback), Error("SERVICE_UNSUPPORTED"));
+          return;
+        }
+        url = "about:blank";
+      } else if (const auto* operation = request.FindString("businessOperation")) {
         if (const auto* route = request.Find("route");
             route && (!route->is_dict() ||
                       !MatchesBusinessReadRoute(*operation, route->GetDict()))) {
@@ -709,12 +717,18 @@ class ShopService final : public base::SupportsUserData::Data,
         Send(std::move(callback), Error("CONTAINER_NAVIGATION_FAILED"));
         return;
       }
-      Send(std::move(callback), base::DictValue()
-                                    .Set("ok", true)
-                                    .Set("containerId", id)
-                                    .Set("service", service)
-                                    .Set("requestedUrl", url)
-                                    .Set("navigation", "started"));
+      auto result = base::DictValue()
+                        .Set("ok", true)
+                        .Set("containerId", id)
+                        .Set("service", service)
+                        .Set("requestedUrl", url)
+                        .Set("navigation", "started");
+      if (media_capture) {
+        result.Set("targetId", content::DevToolsAgentHost::GetOrCreateFor(
+                                   params.navigated_or_inserted_contents)
+                                   ->GetId());
+      }
+      Send(std::move(callback), std::move(result));
       return;
     }
     if ((method == "shops.verify" || method == "shops.confirm") &&
