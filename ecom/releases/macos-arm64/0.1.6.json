@@ -29,7 +29,7 @@
   "codesignVerified": true,
   "nativeSmokeTest": false,
   "updateRoundTripVerified": false,
-  "published": false,
+  "published": true,
   "evidencePath": "docs/ecom/release-evidence/macos-arm64-0.1.6.md",
   "devValidation": {
     "verified": true,
@@ -37,5 +37,15 @@
     "evidencePath": "docs/ecom/release-evidence/dev-2026-11-09-container-home-cdp.md"
   },
   "dmgBytes": 248696007,
-  "tarballBytes": 157824943
+  "tarballBytes": 157824943,
+  "publication": {
+    "workflowUrl": "https://github.com/petercjl/ecom/actions/runs/42565440348",
+    "version": "0.1.6",
+    "tag": "latest",
+    "verifiedAt": "2026-11-09T05:24:56.787677+00:00",
+    "bytes": 157824943,
+    "integrity": "sha512-Oh4UtaMS1jqP08mVUFALCNF9ubJWZiKf+ZHTGED5IJmLaqDOBMBhRSDmFPA02Ay0lA/FGCZwhqW7osObbWleqA==",
+    "tarballSha256": "53d0af67c32931b5fd4211ef384c74c653063911557a8b879866e66366a15308",
+    "artifactVerified": true
+  }
 }
