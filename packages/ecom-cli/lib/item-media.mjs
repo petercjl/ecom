@@ -18,17 +18,20 @@ export function validateItemMediaOptions(options) {
 
 function itemUrl(options) {
   const itemId = options['item-id'];
-  const canonical = host => 'https://' + host + '/item.htm?id=' + itemId;
-  if (!options.url) return canonical('item.taobao.com');
-  try {
-    const url = new URL(options.url);
-    if (url.protocol === 'https:' && productHosts.has(url.hostname) &&
-        !url.username && !url.password && !url.port && url.pathname === '/item.htm' &&
-        url.searchParams.getAll('id').length === 1 && url.searchParams.get('id') === itemId) {
-      return canonical(url.hostname);
-    }
-  } catch {}
+  if (!options.url) return 'https://item.taobao.com/item.htm?id=' + itemId;
+  if (isProductUrl(options.url, itemId)) return options.url;
   throw fail('INVALID_ARGUMENT', '--url must be a Taobao or Tmall item URL with the matching --item-id');
+}
+
+export function isProductUrl(value, itemId) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && productHosts.has(url.hostname) &&
+        !url.username && !url.password && !url.port && url.pathname === '/item.htm' &&
+        url.searchParams.getAll('id').length === 1 && url.searchParams.get('id') === itemId;
+  } catch {
+    return false;
+  }
 }
 
 function assetUrl(value, video = false) {
@@ -113,15 +116,21 @@ export function readDescription(text, itemId) {
   return {images, sourceComponent:[...new Set(nodes.map(node => node.key))].join(',')};
 }
 
-function pageState() {
+function pageState(itemId) {
   const text = document.body?.innerText ?? '';
-  if (/访问异常提示|当前访问存在异常|安全验证|拖动滑块/.test(text)) return {blocked:true};
+  const hosts = ['item.taobao.com', 'detail.tmall.com'];
+  if (hosts.includes(location.hostname) &&
+      new URL(location.href).searchParams.get('id') !== itemId) return {mismatch:true};
+  if (/安全验证|拖动滑块/.test(text)) return {blocked:true};
   if (/^(login|passport)([.-]|$)/.test(location.hostname)) return {login:true};
+  if (!hosts.includes(location.hostname)) return null;
   const result = window.__ICE_APP_CONTEXT__?.loaderData?.home?.data?.res;
-  if (!result?.item) return null;
+  const limited = /访问异常提示|当前访问存在异常/.test(text);
+  if (!result?.item) return {limited};
   const pick = (source, names) => Object.fromEntries(names.map(name => [name, source?.[name]]));
   const videos = result.componentsVO?.headImageVO?.videos;
   return {
+    limited,
     item: pick(result.item, ['itemId','title','images']),
     shop: pick(result.seller, ['shopName','shopId']),
     props: result.skuBase?.props?.map(p => ({...pick(p,['pid','name']), values:p.values?.map(v=>pick(v,['vid','name','image']))})),
@@ -198,23 +207,14 @@ function coverage(report) {
     mainImages: {status: mainCount ? 'captured' : 'unavailable', count:mainCount},
     mainVideos: {status:report.mainVideos?.status ?? 'unavailable', count:report.mainVideos?.records.length ?? 0},
     descriptionImages: {status:report.description ? 'captured' : 'unavailable', count:report.description?.images.length ?? 0},
-    skuImages: {status:report.detail?.properties?.length ? 'captured' : 'unavailable', count:skuCount},
+    skuImages: {status:!report.detail?.properties ? 'unavailable' : skuCount ? 'captured' : 'absent', count:skuCount},
   };
 }
 
 async function capture(endpoint, binding, report, url) {
   const watched = new Set();
   let descriptionError;
-  let navigationFrame;
-  let changed = false;
   const event = ({method, params}, request) => {
-    if (method === 'Page.frameNavigated' && navigationFrame && !params.frame.parentId) {
-      try {
-        const url = new URL(params.frame.url);
-        if (!productHosts.has(url.hostname) && !domain(url.hostname,'taobao.com') && !domain(url.hostname,'tmall.com')) changed = true;
-        if (productHosts.has(url.hostname) && url.searchParams.get('id') !== report.itemId) changed = true;
-      } catch { changed = true; }
-    }
     if (method === 'Network.requestWillBeSent') {
       watched.delete(params.requestId);
       if (matchingDescription(params.request, report.itemId)) watched.add(params.requestId);
@@ -231,27 +231,92 @@ async function capture(endpoint, binding, report, url) {
     await request('Page.enable');
     await request('Network.enable', {maxTotalBufferSize:8 * 1024 * 1024, maxResourceBufferSize:4 * 1024 * 1024});
     const nav = await request('Page.navigate', {url});
-    navigationFrame = nav.frameId;
     if (nav.errorText) throw fail('ITEM_NAVIGATION_FAILED', 'The product page could not be opened');
     const deadline = Date.now() + 26000;
     let detailsDeadline = deadline;
+    let limited = false;
     do {
-      if (changed) throw fail('ITEM_ID_MISMATCH', 'The bound tab moved away from the requested item');
       if (descriptionError?.code === 'TAOBAO_ACCESS_RESTRICTED' || descriptionError?.code === 'ITEM_ID_MISMATCH') throw descriptionError;
-      const response = await request('Runtime.evaluate', {expression:'(' + pageState.toString() + ')()', returnByValue:true});
+      const response = await request('Runtime.evaluate', {expression:'(' + pageState.toString() + ')(' + JSON.stringify(report.itemId) + ')', returnByValue:true});
       const state = response.result?.value;
+      if (state?.mismatch) throw fail('ITEM_ID_MISMATCH', 'The bound tab moved to another product');
       if (state?.blocked) throw fail('TAOBAO_ACCESS_RESTRICTED', 'Taobao displays an access restriction in the selected container');
       if (state?.login) throw fail('TAOBAO_LOGIN_REQUIRED', 'Sign in manually in the selected container');
+      limited = Boolean(state?.limited);
       if (state?.item && !report.detail) {
         Object.assign(report, normalizeItemMedia(state, report.itemId));
         detailsDeadline = Math.min(deadline, Date.now() + 10000);
       }
+      if (limited && report.detail) break;
       if (report.detail && report.description) return;
       await pause(250);
     } while (Date.now() < detailsDeadline);
+    if (descriptionError?.code === 'TAOBAO_ACCESS_RESTRICTED' || descriptionError?.code === 'ITEM_ID_MISMATCH') throw descriptionError;
+    if (limited) throw fail('TAOBAO_LIMITED_PRODUCT_PAGE', 'Taobao loaded a product page with an abnormal-access notice');
     if (!report.detail) throw fail('DETAIL_STATE_UNAVAILABLE', 'The bound item page did not expose product data');
     if (descriptionError) throw fail(descriptionError.code ?? 'DESCRIPTION_RESPONSE_INVALID', 'The description response could not be read');
   });
+}
+
+async function findProductLink(endpoint, binding, {itemId, detail}) {
+  const url = new URL('https://s.taobao.com/search');
+  url.searchParams.set('q', detail.title.trim());
+  return withTarget(endpoint.httpUrl.replace('http:', 'ws:') + '/devtools/page/' + binding.targetId, () => {}, async request => {
+    const nav = await request('Page.navigate', {url:url.href});
+    if (nav.errorText) throw fail('ITEM_SEARCH_NAVIGATION_FAILED', 'The Taobao search page could not be opened');
+    const deadline = Date.now() + 15000;
+    do {
+      const response = await request('Runtime.evaluate', {expression:`(() => {
+        const text = document.body?.innerText ?? '';
+        if (/^(login|passport)([.-]|$)/.test(location.hostname)) return {login:true};
+        if (/安全验证|拖动滑块/.test(text)) return {blocked:true};
+        if (location.origin !== 'https://s.taobao.com' || location.pathname !== '/search') return {};
+        return {links:Array.from(document.querySelectorAll('a[class*="doubleCardWrapper"][href]'), link => link.href)};
+      })()`, returnByValue:true});
+      const state = response.result?.value;
+      if (state?.login) throw fail('TAOBAO_LOGIN_REQUIRED', 'Sign in manually in the selected container');
+      if (state?.blocked) throw fail('TAOBAO_ACCESS_RESTRICTED', 'Taobao search requires verification in the selected container');
+      const match = state?.links?.find(link => isProductUrl(link, itemId));
+      if (match) return match;
+      await pause(300);
+    } while (Date.now() < deadline);
+    throw fail('ITEM_SEARCH_MATCH_NOT_FOUND', 'The Taobao search results did not contain the exact item ID');
+  });
+}
+
+const known = status => status === 'captured' || status === 'absent';
+
+export function shouldSearch(report, explicitUrl) {
+  if (explicitUrl || !report.detail?.title?.trim()) return false;
+  if (report.error && !['TAOBAO_LIMITED_PRODUCT_PAGE', 'DESCRIPTION_API_FAILED',
+      'DESCRIPTION_SCHEMA_CHANGED', 'DESCRIPTION_RESPONSE_INVALID'].includes(report.error.code)) return false;
+  return report.error?.code === 'TAOBAO_LIMITED_PRODUCT_PAGE' || report.coverage.mainImages.count < 5 ||
+    Object.values(report.coverage).some(entry => !known(entry.status));
+}
+
+export function improvesCoverage(first, candidate) {
+  const categories = Object.keys(first.coverage);
+  return categories.every(key => candidate.coverage[key].count >= first.coverage[key].count &&
+    (!known(first.coverage[key].status) || known(candidate.coverage[key].status))) &&
+    ((!candidate.error && first.error) || categories.some(key =>
+      candidate.coverage[key].count > first.coverage[key].count ||
+      (known(candidate.coverage[key].status) && !known(first.coverage[key].status))));
+}
+
+const mediaError = error => ({
+  code:error.code ?? 'MEDIA_COLLECTION_FAILED',
+  message:error.code ? error.message : 'Media collection stopped',
+});
+
+async function captureAttempt(endpoint, binding, itemId, url) {
+  const report = {itemId};
+  try {
+    await capture(endpoint, binding, report, url);
+  } catch (error) {
+    report.error = mediaError(error);
+  }
+  report.coverage = coverage(report);
+  return report;
 }
 
 export async function collectItemMedia(options) {
@@ -272,18 +337,32 @@ export async function collectItemMedia(options) {
       !/^[a-f\d]{32}$/i.test(binding.targetId ?? '')) {
     throw fail('PROTOCOL_MISMATCH', 'Ecom did not return a bound capture tab', {operationId:binding.operationId, executed:'unknown'});
   }
-  const report = {schemaVersion:1, itemId:options['item-id'], container, targetId:binding.targetId,
-    operationId:binding.operationId, requestedUrl:url, startedAt:new Date().toISOString(), transport:'container-cdp'};
-  try {
-    await capture(endpoint, binding, report, url);
-  } catch (error) {
-    report.error = {code:error.code ?? 'MEDIA_COLLECTION_FAILED', message:error.code ? error.message : 'Media collection stopped'};
+  const itemId = options['item-id'];
+  const startedAt = new Date().toISOString();
+  let selected = await captureAttempt(endpoint, binding, itemId, url);
+  let source = options.url ? 'explicit-url' : 'short-url';
+  const attempts = [{source, coverage:selected.coverage, error:selected.error}];
+  if (shouldSearch(selected, options.url)) {
+    const fallback = {source:'title-search'};
+    attempts.push(fallback);
+    try {
+      const link = await findProductLink(endpoint, binding, selected);
+      const candidate = await captureAttempt(endpoint, binding, itemId, link);
+      Object.assign(fallback, {coverage:candidate.coverage, error:candidate.error});
+      if (!candidate.error && improvesCoverage(selected, candidate)) {
+        selected = candidate;
+        source = fallback.source;
+      }
+    } catch (error) {
+      fallback.error = mediaError(error);
+    }
   }
-  report.coverage = coverage(report);
-  report.status = !report.error && Object.values(report.coverage).every(entry => ['captured','absent'].includes(entry.status))
+  const report = {schemaVersion:1, ...selected, container, targetId:binding.targetId, source, attempts,
+    operationId:binding.operationId, requestedUrl:new URL(url).origin + '/item.htm?id=' + itemId, startedAt, transport:'container-cdp'};
+  report.status = !report.error && Object.values(report.coverage).every(entry => known(entry.status))
     ? 'completed' : 'partial';
   report.finishedAt = new Date().toISOString();
   writeNew(output, report);
   return {ok:!report.error, status:report.status, output, container, targetId:binding.targetId,
-    itemId:report.itemId, coverage:report.coverage, ...(report.error ? {error:report.error} : {})};
+    itemId:report.itemId, source, attempts, coverage:report.coverage, ...(report.error ? {error:report.error} : {})};
 }

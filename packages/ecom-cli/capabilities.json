@@ -7,6 +7,7 @@
   ],
   "commandContracts": {
     "item media": {
+      "description": "Collect ordered product media. With an item ID alone, try the short URL first and search the observed title once if coverage is incomplete. Follow only a result with the exact item ID.",
       "options": {
         "--container": {
           "type": "string",
@@ -22,7 +23,7 @@
         },
         "--url": {
           "type": "string",
-          "description": "Optional Taobao or Tmall product URL matching the item ID"
+          "description": "Optional exact Taobao or Tmall product URL matching the item ID, used for a single capture"
         },
         "--profile": {
           "type": "string"
