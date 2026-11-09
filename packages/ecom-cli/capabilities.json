@@ -63,7 +63,8 @@
         },
         "--service": {
           "type": "string",
-          "required": true
+          "enum": ["home", "qianniu"],
+          "default": "home"
         },
         "--profile": {
           "type": "string"
@@ -76,7 +77,7 @@
         }
       },
       "sideEffects": "navigation",
-      "authorization": "Open the registered Qianniu entry in a foreground tab in the selected container"
+      "authorization": "Open the saved homepage or explicit Qianniu entry in a foreground tab in the selected container"
     },
     "shops login-status": {
       "options": {

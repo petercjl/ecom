@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {root,pkg,fail} from './common.mjs';
-import {discover,listContainers,inspectContainer,requestSession,validateReadUrl,qianniuLoginStep} from './browser.mjs';
+import {discover,listContainers,inspectContainer,requestSession,validateReadUrl,openContainerHome,qianniuLoginStep} from './browser.mjs';
 import {cdpCommand} from './cdp.mjs';
 import {pageCommand,validatePageOptions} from './page.mjs';
 import {searchXhs} from './xhs.mjs';
@@ -38,7 +38,10 @@ export function parse(argv) {
   if(command==='memory auto set')validateAutoOptions(options);
   if(command==='memory restore set')validateRestoreOptions(options);
   if(command==='memory operation'&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(options['operation-id']??''))throw fail('INVALID_ARGUMENT','Specify --operation-id UUID');
-  if(qianniuCommands.includes(command)&&(!options.container||options.service!=='qianniu')) {
+  if(command==='shops open'&&(!options.container||!['home','qianniu'].includes(options.service??'home'))) {
+    throw fail('INVALID_ARGUMENT','Specify --container and optionally --service home|qianniu');
+  }
+  if(command!=='shops open'&&qianniuCommands.includes(command)&&(!options.container||options.service!=='qianniu')) {
     throw fail('INVALID_ARGUMENT','Specify --container and --service qianniu');
   }
   if(command==='session request') {
@@ -75,6 +78,7 @@ export async function main(argv) {
     if(update.available)process.stderr.write('Ecom CLI update available: '+update.latest+'\n');
     return searchXhs(options);
   }
+  if(command==='shops open'&&options.service!=='qianniu')return openContainerHome(options);
   if(qianniuCommands.includes(command))return qianniuLoginStep(command.slice(6),options);
   if(command==='sycm capabilities')return inventory();
   if(command==='sycm operations'){const result=inventory();return {ok:true,schemaVersion:1,source:result.source,count:result.operations.length,operations:result.operations};}

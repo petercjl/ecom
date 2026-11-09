@@ -12,7 +12,7 @@ export function processProfile(executable,command) {
   if(executable.endsWith('/Ecom.app/Contents/MacOS/Ecom'))return path.join(os.homedir(),'Library','Application Support','Ecom','Ecom');
   return null;
 }
-export function discover({profile,instance}={}) {
+export function discover({profile,instance}={}, {allowFixedDevCdp=false}={}) {
   if(process.platform!=='darwin') throw fail('PLATFORM_UNSUPPORTED','Browser transport currently supports macOS; no debugging fallback is available');
   const candidates=[];
   for(const line of ps(['-axo','pid=,uid=,comm=']).split('\n')) {
@@ -21,7 +21,13 @@ export function discover({profile,instance}={}) {
     const channel=m[3].includes('/Ecom Dev.app/')?'dev':'stable';
     if (!profile && !instance && channel !== 'stable') continue;
     let command; try {command=ps(['-ww','-p',m[1],'-o','command=']).trim();}catch{continue;}
-    if(/--(?:remote-debugging|headless|enable-automation)/.test(command)) continue;
+    const debugFlags = command.match(/(?:^| )--remote-debugging[^ ]*/g) ?? [];
+    if (/--(?:headless|enable-automation)/.test(command)) continue;
+    if (debugFlags.length) {
+      const fixedPort = debugFlags[0].match(/^ --remote-debugging-port=([1-9][0-9]{0,4})$/);
+      if (!allowFixedDevCdp || channel !== 'dev' || debugFlags.length !== 1 ||
+          !fixedPort || Number(fixedPort[1]) > 65535) continue;
+    }
     const selected=processProfile(m[3],command);
     if(!selected || !path.isAbsolute(selected) || (profile && path.resolve(profile)!==path.resolve(selected))) continue;
     const folder=path.join(selected,'Default','.ecom-native-cli'), file=path.join(folder,'endpoint.json');
@@ -78,6 +84,21 @@ export async function inspectInConnection(connection,selector) {
     login:{state:string(row.state)??'unconfigured',service:string(row.authentication?.service),authenticationState:string(row.authentication?.state),verificationSupported:row.verificationSupported===true,checking:row.checking===true,checkedAt:string(row.checkedAt),identityBound:!!row.identity,identityConfirmed:row.state==='ready'&&!!row.identity,expiry:row.expiry?{kind:string(row.expiry.kind),cookieExpiresAt:string(row.expiry.cookieExpiresAt)}:null}};
   return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),container};
 }
+export async function openContainerHome(options) {
+  const connection = discover(options, {allowFixedDevCdp: true});
+  const listed = await readMailbox(connection);
+  const container = resolveContainer(listed.containers, options.container);
+  const body = await callMailbox(connection, {method:'shops.open', containerId:container.id, service:'home'});
+  const requestedUrl = homeUrl(body.requestedUrl);
+  if (body.containerId !== container.id || body.service !== 'home' ||
+      body.navigation !== 'started' || !requestedUrl) {
+    throw fail('PROTOCOL_MISMATCH', 'Unexpected container homepage response',
+      {operationId:body.operationId, executed:'unknown'});
+  }
+  return {ok:true, schemaVersion:1, operationId:body.operationId, instance:instanceOf(connection),
+    container, service:'home', status:'started', requestedUrl};
+}
+
 export async function qianniuLoginStep(action, options) {
   const connection=discover(options);
   const listed=await readMailbox(connection);
