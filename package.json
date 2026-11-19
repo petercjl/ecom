@@ -101,7 +101,7 @@
         "revision": "a20039648c0de69d8156906b18052bd47e9bf230"
       }
     },
-    "siso_jobs_limit": 6,
+    "siso_jobs_limit": 4,
     "gn": {
       "args": {
         "enable_ai_chat": false,
