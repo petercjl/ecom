@@ -20,7 +20,7 @@ for (const name of ['BRANDING', 'BRANDING.development']) {
   assert.match(branding, /^MAC_TEAM_ID=$/m);
 }
 assert.equal(pkg.private, true);
-assert.equal(pkg.config.siso_jobs_limit, 6);
+assert.equal(pkg.config.siso_jobs_limit, 4);
 for (const flag of ['symbol_level', 'v8_symbol_level', 'blink_symbol_level']) assert.equal(pkg.config.gn.args[flag], 0);
 assert.equal(pkg.config.gn.args.concurrent_links, 1);
 assert.equal(baseline.development.mode, 'independent-snapshot');

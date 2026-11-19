@@ -70,22 +70,34 @@ function prepareComponentExecutable(runDir) {
   if (fs.statSync(executable).nlink !== 1 || checksum(executable) !== checksum(backup)) throw new Error('Dev 主程序准备校验失败');
 }
 
+export function devBuildJobs(args) {
+  const flags = args.filter(arg => arg === '--jobs' || arg.startsWith('--jobs='));
+  if (!flags.length) return { args, jobs: undefined, ninjaArgs: [] };
+  const value = flags[0].slice('--jobs='.length);
+  if (flags.length !== 1 || !/^[1-9][0-9]*$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) > 256) {
+    throw new Error('请用 --jobs=<1 至 256 的整数> 指定本次编译并发');
+  }
+  return { args: args.filter(arg => !flags.includes(arg)), jobs: Number(value), ninjaArgs: ['--ninja', 'j:' + value] };
+}
+
 async function main() {
-  if (process.argv.includes('--help')) { console.log('用法：node ecom/build-dev.mjs [--source-ref <已提交版本>] [--cdp-port=<固定端口>]\n本地增量编译成功后，正常退出并重新启动当前工作区的 Ecom Dev。当前验证平台：macOS。'); return; }
+  if (process.argv.includes('--help')) { console.log('用法：node ecom/build-dev.mjs [--source-ref <已提交版本>] [--cdp-port=<固定端口>] [--jobs=<并发数>]\n本地增量编译成功后，正常退出并重新启动当前工作区的 Ecom Dev。本次并发覆盖不修改日常默认配置。当前验证平台：macOS。'); return; }
   const launchArgs = process.argv.slice(2);
-  const cdpFlags = launchArgs.filter(arg => arg.startsWith('--cdp-port='));
+  const concurrency = devBuildJobs(launchArgs);
+  const cdpFlags = concurrency.args.filter(arg => arg.startsWith('--cdp-port='));
   const port = cdpFlags[0]?.slice('--cdp-port='.length);
   if (cdpFlags.length && (cdpFlags.length !== 1 || !/^[1-9][0-9]{0,4}$/.test(port ?? '') || Number(port) > 65535)) {
     throw new Error('请用 --cdp-port=<固定端口> 指定一个 1 至 65535 的端口');
   }
-  const args = launchArgs.filter(arg => !cdpFlags.includes(arg));
-  if (args.length && (args.length !== 2 || args[0] !== '--source-ref' || args[1].startsWith('--'))) throw new Error('支持 --source-ref <已提交版本> 和 --cdp-port=<固定端口>；使用 --help 查看用法');
+  const args = concurrency.args.filter(arg => !cdpFlags.includes(arg));
+  if (args.length && (args.length !== 2 || args[0] !== '--source-ref' || args[1].startsWith('--'))) throw new Error('支持 --source-ref <已提交版本>、--cdp-port=<固定端口> 和 --jobs=<并发数>；使用 --help 查看用法');
   if (process.platform !== 'darwin') throw new Error('此入口当前用于 macOS Dev；Windows 构建与重启流程待验证');
   const validNode = file => { const version = spawnSync(file, ['--version'], { encoding: 'utf8' }).stdout || ''; const [major, minor] = version.replace(/^v/, '').split('.').map(Number); return major === 24 && minor >= 16; };
   const node = [process.env.ECOM_NODE, process.execPath, path.join(os.homedir(), '.local/share/ecom-toolchain/node_modules/node/bin/node')].filter(Boolean).find(validNode);
   if (!node) throw new Error('需要 Node >=24.16 <25；请安装或通过 ECOM_NODE 指定');
   if (fs.realpathSync(node) !== fs.realpathSync(process.execPath)) { const result = spawnSync(node, [fileURLToPath(import.meta.url), ...launchArgs], { stdio: 'inherit' }); process.exitCode = result.status ?? 1; return; }
   const env = { ...process.env, PATH: [path.dirname(node), path.join(os.homedir(), '.local/share/ecom-toolchain/node_modules/.bin'), process.env.PATH].join(path.delimiter) };
+  if (concurrency.jobs) env.SISO_LIMITS = [...(env.SISO_LIMITS || '').split(',').filter(item => item && item.split('=')[0].trim() !== 'local'), 'local=' + concurrency.jobs].join(',');
   const selected = spawnSync('xcode-select', ['-p'], { encoding: 'utf8' }).stdout?.trim();
   const candidates = env.DEVELOPER_DIR ? [env.DEVELOPER_DIR] : [selected, ...fs.readdirSync('/Applications').filter(name => /^Xcode.*\.app$/.test(name)).sort().reverse().map(name => path.join('/Applications', name, 'Contents/Developer'))];
   env.DEVELOPER_DIR = candidates.find(dir => dir && fs.existsSync(path.join(dir, 'usr/bin/xcodebuild')));
@@ -108,7 +120,7 @@ async function main() {
   try {
     console.log('开始本地增量编译 Ecom Dev…');
     await new Promise((resolve, reject) => {
-      const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'build', 'Component', ...selection, '--target_arch', process.arch, '--use_remoteexec', 'false', '--offline'], { cwd: root, env, stdio: 'inherit' });
+      const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'build', 'Component', ...selection, '--target_arch', process.arch, '--use_remoteexec', 'false', '--offline', ...concurrency.ninjaArgs], { cwd: root, env, stdio: 'inherit' });
       child.once('error', reject); child.once('exit', code => code === 0 ? resolve() : reject(new Error('编译未成功，未执行 Dev 退出或重启动作')));
     });
     if (git(root, ['rev-parse', 'HEAD']) !== sourceHead || git(root, ['status', '--porcelain'])) throw new Error('编译期间源码已变化，保留当前 Dev；提交后重新构建');
