@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ecom · 网址打开规则</title><link rel="stylesheet" href="routing.css"></head>
+<body><main>
+  <a id="back" href="chrome://shops/">返回账号管理</a>
+  <header><div><p class="eyebrow">ECOM WORKSPACE</p><h1 id="title"></h1><p id="intro"></p></div><button id="add"></button></header>
+  <section class="toolbar"><label><input id="global" type="checkbox"><span id="global-label"></span></label><button id="refresh"></button></section>
+  <p id="message" role="status" aria-live="polite"></p>
+  <section id="rules" aria-label="URL rules"></section>
+  <section class="card"><h2 id="test-title"></h2><form id="test-form"><label for="test-url" id="test-label"></label><div class="inline"><input id="test-url" type="url" required placeholder="https://item.taobao.com/item.htm?id=123"><button id="test-submit"></button></div></form><p id="test-help"></p><div id="test-result" aria-live="polite"></div></section>
+  <dialog id="editor"><form id="edit-form">
+    <h2 id="edit-title"></h2><label for="rule-name" id="name-label"></label><input id="rule-name" maxlength="100" required>
+    <label for="target" id="target-label"></label><select id="target"></select><p id="target-help"></p>
+    <label><input type="checkbox" id="rule-enabled"><span id="enabled-label"></span></label>
+    <h3 id="conditions-title"></h3><p id="conditions-help"></p><div id="conditions"></div><button id="condition-add" type="button"></button>
+    <details><summary id="bulk-label"></summary><textarea id="bulk" rows="4" placeholder="https://example.com/a&#10;https://example.com/b"></textarea><button id="bulk-add" type="button"></button></details>
+    <p id="edit-error" role="alert"></p><footer><button id="cancel" type="button"></button><button id="save" type="submit"></button></footer>
+  </form></dialog>
+</main><script type="module" src="routing.js"></script></body></html>

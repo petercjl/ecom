@@ -11,6 +11,9 @@ action("resources") {
     "memory.html",
     "memory.js",
     "memory.css",
+    "routing.html",
+    "routing.js",
+    "routing.css",
   ]
   inputs += [ "//brave/node_modules/@brave/leo/icons/container-personal.svg" ]
   inputs += [ "//brave/node_modules/@brave/leo/icons/container-work.svg" ]

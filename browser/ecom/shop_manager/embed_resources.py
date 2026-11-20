@@ -15,7 +15,9 @@ def main():
     for filename, name in [('index.html', 'Html'), ('manager.css', 'Css'),
                            ('manager.js', 'Js'), ('model.js', 'Model'),
                            ('memory.html', 'MemoryHtml'), ('memory.js', 'MemoryJs'),
-                           ('memory.css', 'MemoryCss')]:
+                           ('memory.css', 'MemoryCss'),
+                           ('routing.html', 'RoutingHtml'), ('routing.js', 'RoutingJs'),
+                           ('routing.css', 'RoutingCss')]:
         text = (args.source / filename).read_text()
         assert ')ECOMRESOURCE"' not in text
         parts.append(f'inline constexpr char kShopManager{name}[] = R"ECOMRESOURCE({text})ECOMRESOURCE";\n')

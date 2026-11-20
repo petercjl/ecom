@@ -1,4 +1,5 @@
 #include "brave/browser/ecom/shop_container_service.h"
+#include "brave/browser/ecom/url_routing.h"
 #include "brave/browser/ecom/memory_restore.h"
 
 #include <algorithm>
@@ -562,12 +563,19 @@ class ShopService final : public base::SupportsUserData::Data,
                                     .Set("containerId", id)
                                     .Set("name", c->name)
                                     .Set("openTabs", OpenTabCount(profile_, id))
+                                    .Set("routingRules", UrlRoutingReferences(profile_, id))
                                     .Set("confirmationId", token)
                                     .Set("cleanup", "native-container-gc")
                                     .Set("reversible", false)));
       return;
     }
     if (method == "shops.delete") {
+      for (const auto& reference : UrlRoutingReferences(profile_, id)) {
+        if (reference.GetDict().FindBool("enabled").value_or(false)) {
+          Send(std::move(callback), Error("CONTAINER_ROUTING_RULE_IN_USE"));
+          return;
+        }
+      }
       auto plan = delete_plans_.find(id);
       if (plan == delete_plans_.end() ||
           plan->second.token != Field(request, "confirmationId") ||
@@ -705,6 +713,12 @@ class ShopService final : public base::SupportsUserData::Data,
           return;
         }
       }
+      const auto route = ResolveUrlRouting(profile_, GURL(url));
+      if (!route.empty() && (!route.FindBool("available").value_or(false) ||
+          *route.FindString("containerId") != id)) {
+        Send(std::move(callback), Error("URL_CONTAINER_CONFLICT"));
+        return;
+      }
       NavigateParams params(profile_, GURL(url), ui::PAGE_TRANSITION_FROM_API);
       params.disposition = background
                                ? WindowOpenDisposition::NEW_BACKGROUND_TAB
@@ -725,6 +739,8 @@ class ShopService final : public base::SupportsUserData::Data,
         params.contents_to_insert = content::WebContents::Create(create_params);
       }
       Navigate(&params);
+      if (media_capture && params.navigated_or_inserted_contents)
+        PinUrlRoutingPage(params.navigated_or_inserted_contents);
       if (!params.navigated_or_inserted_contents ||
           containers::GetContainerIdForWebContents(
               params.navigated_or_inserted_contents) != id) {

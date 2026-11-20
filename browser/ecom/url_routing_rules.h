@@ -1,0 +1,16 @@
+// Copyright 2026 Ecom Authors. MPL-2.0.
+#ifndef BRAVE_BROWSER_ECOM_URL_ROUTING_RULES_H_
+#define BRAVE_BROWSER_ECOM_URL_ROUTING_RULES_H_
+#include <string>
+#include "base/values.h"
+class GURL;
+namespace ecom {
+inline constexpr char kUrlRoutingPref[] = "ecom.url_routing";
+base::DictValue DefaultUrlRoutingConfig();
+// Normalize URL components and reject malformed or unbounded rule input.
+std::string NormalizeUrlRoutingRule(base::DictValue& rule);
+bool UrlRoutingConditionMatches(const base::DictValue& condition, const GURL& url);
+const base::DictValue* FindUrlRoutingRule(const base::DictValue& config,
+                                        const GURL& url);
+}  // namespace ecom
+#endif

@@ -59,7 +59,13 @@
         "manifestDigest",
         "accountId",
         "state",
-        "noteId"
+        "noteId",
+        "configuration",
+        "rule",
+        "ruleId",
+        "matches",
+        "resolution",
+        "networkRequests"
       ],
       "side_effects": {
         "external_mutation": true,

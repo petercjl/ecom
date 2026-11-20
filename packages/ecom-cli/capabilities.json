@@ -1457,6 +1457,191 @@
         "XHS_PAGE_CHANGED",
         "XHS_FIXTURE_DEV_REQUIRED"
       ]
+    },
+    "routing list": {
+      "description": "Read URL routing rules and available persistent containers. Includes a disabled, unassigned Taobao/Tmall example.",
+      "options": {
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "read-only",
+      "nativeProtocol": "urlRoutingProtocol=1",
+      "platforms": [
+        "macos"
+      ],
+      "windowsStatus": "native transport not implemented"
+    },
+    "routing inspect": {
+      "description": "Read one URL routing rule.",
+      "options": {
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--rule-id": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "read-only",
+      "nativeProtocol": "urlRoutingProtocol=1",
+      "platforms": [
+        "macos"
+      ],
+      "windowsStatus": "native transport not implemented"
+    },
+    "routing save": {
+      "description": "Create or update a native URL routing rule. Choosing a container does not implicitly enable it.",
+      "options": {
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--expected-revision": {
+          "type": "integer",
+          "required": true,
+          "description": "Revision from routing list; rejects concurrent edits"
+        },
+        "--rule-json": {
+          "type": "JSON object",
+          "required": true,
+          "description": "Rule name, enabled boolean, stable containerId, conditions; omit id to create. Enabled rules require a chosen persistent container."
+        }
+      },
+      "sideEffects": "profile-settings-write",
+      "nativeProtocol": "urlRoutingProtocol=1",
+      "platforms": [
+        "macos"
+      ],
+      "windowsStatus": "native transport not implemented"
+    },
+    "routing delete": {
+      "description": "Remove one rule without deleting container data.",
+      "options": {
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--expected-revision": {
+          "type": "integer",
+          "required": true,
+          "description": "Revision from routing list; rejects concurrent edits"
+        },
+        "--rule-id": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "profile-settings-write",
+      "nativeProtocol": "urlRoutingProtocol=1",
+      "platforms": [
+        "macos"
+      ],
+      "windowsStatus": "native transport not implemented"
+    },
+    "routing reorder": {
+      "description": "Set first-match rule order.",
+      "options": {
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--expected-revision": {
+          "type": "integer",
+          "required": true,
+          "description": "Revision from routing list; rejects concurrent edits"
+        },
+        "--rule-ids-json": {
+          "type": "JSON array",
+          "required": true
+        }
+      },
+      "sideEffects": "profile-settings-write",
+      "nativeProtocol": "urlRoutingProtocol=1",
+      "platforms": [
+        "macos"
+      ],
+      "windowsStatus": "native transport not implemented"
+    },
+    "routing test": {
+      "description": "Match a URL locally, including disabled examples, with zero network requests.",
+      "options": {
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--url": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "sideEffects": "read-only",
+      "nativeProtocol": "urlRoutingProtocol=1",
+      "platforms": [
+        "macos"
+      ],
+      "windowsStatus": "native transport not implemented"
+    },
+    "routing set-enabled": {
+      "description": "Set the global routing switch without changing individual rules.",
+      "options": {
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--expected-revision": {
+          "type": "integer",
+          "required": true,
+          "description": "Revision from routing list; rejects concurrent edits"
+        },
+        "--enabled": {
+          "type": "on|off",
+          "required": true
+        }
+      },
+      "sideEffects": "profile-settings-write",
+      "nativeProtocol": "urlRoutingProtocol=1",
+      "platforms": [
+        "macos"
+      ],
+      "windowsStatus": "native transport not implemented"
     }
   },
   "transport": {

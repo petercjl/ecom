@@ -4,6 +4,7 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "brave/browser/brave_content_browser_client.h"
+#include "brave/browser/ecom/url_routing_throttle.h"
 
 #include <algorithm>
 #include <optional>
@@ -1505,6 +1506,7 @@ void BraveContentBrowserClient::CreateThrottlesForNavigation(
 #endif
 
   ChromeContentBrowserClient::CreateThrottlesForNavigation(registry);
+  ecom::UrlRoutingThrottle::MaybeCreateAndAdd(registry);
 
   content::NavigationHandle& navigation_handle = registry.GetNavigationHandle();
   content::BrowserContext* context =

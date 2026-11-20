@@ -2,6 +2,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. https://mozilla.org/MPL/2.0/.
 #include "brave/browser/ecom/shop_manager_ui.h"
+#include "brave/browser/ecom/url_routing.h"
 
 #include <string>
 #include <utility>
@@ -34,8 +35,18 @@ class MemoryHandler final : public content::WebUIMessageHandler {
         base::BindRepeating(&MemoryHandler::Read, base::Unretained(this)));
     web_ui()->RegisterMessageCallback("ecomMemoryCommand",
         base::BindRepeating(&MemoryHandler::Command, base::Unretained(this)));
+    web_ui()->RegisterMessageCallback("ecomRoutingCommand",
+        base::BindRepeating(&MemoryHandler::Routing, base::Unretained(this)));
   }
  private:
+  void Routing(const base::ListValue& args) {
+    if (args.size() != 2 || !args[0].is_string() || !args[1].is_string() ||
+        args[1].GetString().size() > 24000) return;
+    auto request = base::JSONReader::ReadDict(args[1].GetString(), base::JSON_PARSE_RFC);
+    if (!request) return;
+    AllowJavascript();
+    Done(args[0].Clone(), RunUrlRoutingCommand(Profile::FromWebUI(web_ui()), *request));
+  }
   void Command(const base::ListValue& args) {
     if (args.size() != 2 || !args[0].is_string() || !args[1].is_string() || args[1].GetString().size() > 4096) return;
     auto request = base::JSONReader::ReadDict(args[1].GetString(), base::JSON_PARSE_RFC);
@@ -77,6 +88,7 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
         return path.empty() || path == "index.html" || path == "manager.css" ||
                path == "manager.js" || path == "model.js" ||
                path == "memory.html" || path == "memory.js" || path == "memory.css" ||
+               path == "routing.html" || path == "routing.js" || path == "routing.css" ||
                path.starts_with("icons/");
       }),
       base::BindRepeating([](const std::string& path,
@@ -88,6 +100,12 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
           data = kShopManagerJs;
         } else if (path == "model.js") {
           data = kShopManagerModel;
+        } else if (path == "routing.html") {
+          data = kShopManagerRoutingHtml;
+        } else if (path == "routing.js") {
+          data = kShopManagerRoutingJs;
+        } else if (path == "routing.css") {
+          data = kShopManagerRoutingCss;
         } else if (path == "memory.html") {
           data = kShopManagerMemoryHtml;
         } else if (path == "memory.js") {

@@ -14,6 +14,7 @@ namespace ecom {
 void InitializeMemoryPage(content::WebContents *contents);
 // Native page-backed tasks retain this guard until completion or cancellation.
 base::ScopedClosureRunner ProtectMemoryPageTask(content::WebContents *contents);
+bool HasNativePageTask(content::WebContents* contents);
 std::string MemoryPageVersion(content::WebContents *contents);
 // Shared manual/automatic discards retain native protections and a 30-second
 // recent-use minimum. The automatic scheduler also checks its full idle window.

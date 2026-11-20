@@ -162,6 +162,11 @@ export async function openBusinessPageInConnection(connection,options,operation,
 function safeDiagnostics(value) {
   if(!value||typeof value!=='object')return undefined;
   const result={};
+  if(value.routing&&typeof value.routing==='object'&&
+    typeof value.routing.ruleId==='string'&&value.routing.ruleId.length<=128&&
+    typeof value.routing.containerId==='string'&&value.routing.containerId.length<=128&&
+    typeof value.routing.available==='boolean')
+    result.routing={ruleId:value.routing.ruleId,containerId:value.routing.containerId,available:value.routing.available};
   if(Array.isArray(value.tabProtection))result.tabProtection=value.tabProtection.slice(0,60).filter(r=>
     r&&['mvp','discard','freeze','connected-freeze'].includes(r.source)&&
     ((Number.isInteger(r.code)&&r.code>=0&&r.code<=30)||(typeof r.code==='string'&&/^[A-Z_]{1,40}$/.test(r.code)))

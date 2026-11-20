@@ -386,6 +386,11 @@ export async function collectItemMedia(options) {
   const endpoint = await cdpCommand('endpoint', {profile:connection.endpoint.userDataDir});
   const listed = await readMailbox(connection);
   const container = resolveContainer(listed.containers, options.container);
+  if (connection.endpoint.urlRoutingProtocol === 1) {
+    const {resolution} = await callMailbox(connection, {method:'routing.test',url});
+    if (resolution?.matched && (!resolution.available || resolution.containerId !== container.id))
+      throw fail('URL_CONTAINER_CONFLICT','The product URL rule selects another container; inspect routing test before choosing the account',{executed:false});
+  }
   const binding = await callMailbox(connection, {method:'shops.open', service:'item-media', containerId:container.id});
   if (binding.containerId !== container.id || binding.service !== 'item-media' ||
       binding.navigation !== 'started' || binding.requestedUrl !== 'about:blank' ||

@@ -4,6 +4,7 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "brave/browser/brave_profile_prefs.h"
+#include "brave/browser/ecom/url_routing.h"
 
 #include <string>
 
@@ -424,6 +425,7 @@ void RegisterProfilePrefsForMigration(
 }
 
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+  ecom::RegisterUrlRoutingPrefs(registry);
   ecom::RegisterAutoMemoryPrefs(registry);
   ecom::RegisterMemoryRestorePrefs(registry);
   brave_shields::BraveShieldsWebContentsObserver::RegisterProfilePrefs(

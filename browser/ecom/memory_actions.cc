@@ -126,6 +126,10 @@ void InitializeMemoryPage(content::WebContents *wc) {
     wc->SetUserData(kPlayback, std::make_unique<Playback>(wc));
 }
 
+bool HasNativePageTask(content::WebContents* contents) {
+  return contents && contents->GetUserData(kTasks);
+}
+
 base::ScopedClosureRunner ProtectMemoryPageTask(content::WebContents *wc) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   auto *tasks = static_cast<PageTasks *>(wc->GetUserData(kTasks));

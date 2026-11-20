@@ -1,4 +1,5 @@
 #include "brave/browser/ecom/native_session_service.h"
+#include "brave/browser/ecom/url_routing.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -202,6 +203,7 @@ class NativeSessionService final : public ProfileObserver {
     metadata.Set("autoTabMemoryProtocol", 1);
     metadata.Set("restoreQueueProtocol", 1);
     metadata.Set("manualTabMemoryProtocol", 1);
+    metadata.Set("urlRoutingProtocol", 1);
     metadata.Set("itemMediaTargetProtocol", 1);
     metadata.Set("executable",
                  base::CommandLine::ForCurrentProcess()->GetProgram().value());
@@ -374,6 +376,26 @@ class NativeSessionService final : public ProfileObserver {
       return;
     }
     const auto* method = request.FindString("method");
+    if (method && method->starts_with("routing.")) {
+      Respond(id, RunUrlRoutingCommand(profile_, request));
+      return;
+    }
+    if (method && (*method == "page.read" || *method == "media.download")) {
+      const auto* url = request.FindString("url");
+      const auto* target = request.FindString("containerId");
+      if (url && target) {
+        auto resolution = ResolveUrlRouting(profile_, GURL(*url));
+        if (!resolution.empty() &&
+            (!resolution.FindBool("available").value_or(false) ||
+             *resolution.FindString("containerId") != *target)) {
+          Respond(id, base::DictValue().Set("ok", false)
+              .Set("error", base::DictValue().Set("code", "URL_CONTAINER_CONFLICT")
+                   .Set("executed", false)
+                   .Set("diagnostics", base::DictValue().Set("routing", std::move(resolution)))));
+          return;
+        }
+      }
+    }
     if (method && (*method == "tabs.discard" || *method == "tabs.wake" || *method == "memory.operation" || *method == "tabs.protect" || method->starts_with("memory.auto.") || method->starts_with("memory.restore."))) {
       request.Set("operationId", id);
       Respond(id, RunMemoryTabCommand(profile_, request));

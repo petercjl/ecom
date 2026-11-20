@@ -1,9 +1,19 @@
 ---
 name: ecom-cli
-description: Use Ecom for browser memory diagnostics and automatic idle sleep settings, on-demand startup restoration and background restore limits, protected tab sleep/wake, account container inspection, registered Shengyicanmou data reads, local mutation planning, authorized Qianniu login recovery, Xiaohongshu search and ordinary image note preparation or publication, native-session requests, or CLI and companion Skill maintenance. Business analysis and operating decisions belong to the caller.
+description: Use Ecom for configurable URL-to-container opening rules, browser memory diagnostics and automatic idle sleep settings, on-demand startup restoration and background restore limits, protected tab sleep/wake, account container inspection, registered Shengyicanmou data reads, local mutation planning, authorized Qianniu login recovery, Xiaohongshu search and ordinary image note preparation or publication, native-session requests, or CLI and companion Skill maintenance. Business analysis and operating decisions belong to the caller.
 ---
 
 # Ecom CLI
+
+## URL opening rules
+
+For authorized URL-to-container settings, select the intended instance and require `urlRoutingProtocol=1`. Read `routing list --json`; `routing inspect --rule-id ID` selects one rule. The built-in Taobao/Tmall example is disabled and has no target container. Keep both choices until the user explicitly chooses a persistent container and enables the rule; saving a target alone does not enable it. Rule names and patterns remain editable examples, not proof of platform access.
+
+Use `routing test --url URL` for local matching without visiting the website. It reports matching conditions including disabled rules, and the first enabled rule's effective target. For edits, use `routing save --rule-json JSON --expected-revision N`; omit the rule ID to create, retain it to update. Supply name, enabled boolean, containerId and conditions. Conditions use either `{type:"exact",url:HTTP_URL}` or `{type:"pattern",scheme:"http+https"|"https"|"http",host:HOST,path:PATH_GLOB,includeSubdomains:BOOLEAN,query:[{name:KEY,operator:"exists"|"equals",value:VALUE}]}`. `exists` requires a nonempty value; `equals` requires value. Conditions within a rule are OR; fields in one condition are AND. HTTP(S) only, host-label boundaries, path `*`, and parsed query predicates prevent arbitrary substring matching.
+
+Use `routing delete --rule-id ID`, `routing reorder --rule-ids-json JSON`, or `routing set-enabled --enabled on|off`, each with the latest `--expected-revision`. Reorder supplies all IDs exactly once; set-enabled controls the global switch and preserves individual switches. On `ROUTING_REVISION_CONFLICT`, reread state and reconcile the requested change before resubmitting. On unknown execution, inspect the current revision and exact rule rather than repeating the mutation. Return to main-line result validation after the operation.
+
+GUI navigation can open a matching page in another container while preserving the source page. Explicit native page tasks retain their selected account: on `URL_CONTAINER_CONFLICT`, use `routing test` to review the rule and ask the caller to resolve the intended identity; never silently substitute an account. Session network requests keep their explicit container. Missing targets and cross-container forms stop instead of silently falling back or replaying POST data. Native GUI routing is implemented for desktop builds; CLI browser transport remains macOS until separately validated on Windows.
 
 
 ## General web operations via CDP
