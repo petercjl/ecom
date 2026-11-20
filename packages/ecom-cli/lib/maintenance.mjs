@@ -5,6 +5,9 @@ import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {root,pkg,fail,exists,tree,writeNew} from './common.mjs';
 const receiptName='.ecom-receipt.json';
+const legacyPackage='@petercjl/ecom-cli';
+const ownsReceipt=(receipt,target,agent)=>receipt?.target===target&&receipt?.agent===agent;
+const isPredecessor=receipt=>pkg.name==='@lumyne/ecom-cli'&&receipt?.package===legacyPackage;
 const runtimeNames=['package.json','capabilities.json','bin','lib','scripts','skills','README.md','INSTALL.md','UPDATE.md','LICENSE'];
 function runtimeFiles(base) {
   const files={};
@@ -45,8 +48,10 @@ export function targetOf(options) {
 export function status(options,base=root) {
   const target=targetOf(options), meta=path.join(target,receiptName), installed=exists(target);
   let receipt;try{if(exists(meta)&&fs.lstatSync(meta).isFile()) receipt=JSON.parse(fs.readFileSync(meta,'utf8'));}catch{}
-  const managed=receipt?.package===pkg.name && receipt?.target===target && receipt?.agent===options.agent;
-  const files=installed?tree(target):{}, old=managed?receipt.files:{}, edited=managed && JSON.stringify(files)!==JSON.stringify(old);
+  const owned=ownsReceipt(receipt,target,options.agent);
+  const managed=owned&&receipt?.package===pkg.name, predecessor=owned&&isPredecessor(receipt);
+  const recognized=managed||predecessor;
+  const files=installed?tree(target):{}, old=recognized?receipt.files:{}, edited=recognized && JSON.stringify(files)!==JSON.stringify(old);
   const identity=source(base), canonical=tree(identity.path);
   const canonicalCurrent=managed && Object.entries(canonical).every(([name,hash])=>files[name]===hash) && Object.keys(files).filter(n=>!n.startsWith('.runtime/')).length===Object.keys(canonical).length;
   const canonicalRuntime=runtimeFiles(base);
@@ -54,12 +59,15 @@ export function status(options,base=root) {
   let runtimeVersion;try{runtimeVersion=JSON.parse(fs.readFileSync(path.join(target,'.runtime/package.json'),'utf8')).version;}catch{}
   const current=!!(managed&&!edited&&canonicalCurrent&&runtimeCurrent&&runtimeVersion===identity.version&&receipt.version===identity.version);
   const layoutRecovery=managed&&legacyBackup(target,receipt.backup);
-  return {...identity,target,installed,managed,current,edited:!!edited,adapter:'generic',agent:options.agent,entry:path.join(target,'.runtime/bin/ecom-cli.mjs'),verification:{verified:current,algorithm:'sha256'},recovery:{required:installed&&(!current||layoutRecovery),action:edited?'Preserve local edits; reconcile them before update':layoutRecovery?'Run skill update using this new entry to relocate legacy backups outside host discovery':'Run skill update for this exact target'},hostDiscovery:{authority:'host',verified:false},...(managed?{installedVersion:receipt.version,backup:receipt.backup??null,migratedBackups:receipt.migratedBackups??[]}:{})};
+  return {...identity,target,installed,managed,current,edited:!!edited,adapter:'generic',agent:options.agent,entry:path.join(target,'.runtime/bin/ecom-cli.mjs'),verification:{verified:current,algorithm:'sha256'},recovery:{required:installed&&(!current||layoutRecovery),action:edited?'Preserve local edits; reconcile them before update':predecessor?'Run skill migrate --from-package '+legacyPackage+' for this exact target':layoutRecovery?'Run skill update using this new entry to relocate legacy backups outside host discovery':'Run skill update for this exact target'},hostDiscovery:{authority:'host',verified:false},migration:{available:!!predecessor,fromPackage:predecessor?legacyPackage:null,toPackage:pkg.name,explicitCommand:'skill migrate --from-package '+legacyPackage},...(recognized?{installedVersion:receipt.version,installedPackage:receipt.package,backup:receipt.backup??null,migratedBackups:receipt.migratedBackups??[]}:{})};
 }
 export function installSkill(options,base=root) {
   const before=status(options,base), target=before.target;
+  const migrating=options['from-package']===legacyPackage&&pkg.name==='@lumyne/ecom-cli';
+  if(options['from-package']&&!migrating)throw fail('INVALID_ARGUMENT','Only the declared predecessor package can be migrated');
+  if(migrating&&!before.installed)throw fail('MIGRATION_SOURCE_NOT_FOUND','The selected target has no predecessor installation');
   if(before.current&&!before.recovery.required) return {...before,changed:false};
-  if(before.installed&&!before.managed) throw fail('UNMANAGED_TARGET','Existing Skill is user-owned; choose a fresh destination');
+  if(before.installed&&!before.managed&&!(migrating&&before.migration.available)) throw fail('UNMANAGED_TARGET','Existing Skill is user-owned; choose a fresh destination');
   if(before.edited) throw fail('LOCAL_EDITS','Managed Skill has local edits; preserve and reconcile them before update');
   const parent=path.dirname(target);fs.mkdirSync(parent,{recursive:true});
   const recovery=recoveryDirectory(target);
@@ -79,24 +87,24 @@ export function installSkill(options,base=root) {
     const manifest=source(base);
     // Recheck edits after staging, before replacement.
     const again=status(options,base);
-    if(again.edited || again.installed!==before.installed) throw fail('TARGET_CHANGED','Skill changed during preparation');
+    if(again.edited || again.installed!==before.installed || again.managed!==before.managed || again.installedPackage!==before.installedPackage) throw fail('TARGET_CHANGED','Skill changed during preparation');
     let legacy=before.backup;
     while(legacyBackup(target,legacy)) {
       const info=fs.lstatSync(legacy);
       if(!info.isDirectory()||info.isSymbolicLink())throw fail('UNSAFE_PATH','Legacy backup must be a physical directory');
       const record=JSON.parse(fs.readFileSync(path.join(legacy,receiptName),'utf8'));
-      if(record.package!==pkg.name||record.target!==target||record.agent!==options.agent)throw fail('UNMANAGED_TARGET','Legacy backup ownership does not match selected target');
+      if((record.package!==pkg.name&&!(migrating&&record.package===legacyPackage))||record.target!==target||record.agent!==options.agent)throw fail('UNMANAGED_TARGET','Legacy backup ownership does not match selected target');
       const destination=path.join(recovery,'legacy-'+crypto.randomUUID());
       fs.renameSync(legacy,destination);
       migratedBackups.push({from:legacy,to:destination,version:record.version});
       legacy=record.backup;
     }
-    writeNew(path.join(staging,receiptName),{schemaVersion:1,package:pkg.name,name:'ecom-cli',version:manifest.version,target,agent:options.agent,operationId,backup,migratedBackups,files:tree(staging)});
+    writeNew(path.join(staging,receiptName),{schemaVersion:1,package:pkg.name,name:'ecom-cli',version:manifest.version,target,agent:options.agent,operationId,backup,migratedBackups,...(before.migration.available?{migratedFrom:{package:before.installedPackage,version:before.installedVersion}}:{}),files:tree(staging)});
     if(backup) fs.renameSync(target,backup);
     try {fs.renameSync(staging,target);activated=true;}catch(e){if(backup&&!exists(target))fs.renameSync(backup,target);throw e;}
     const result=status(options,base);
     if(!result.current) throw fail('VERIFY_FAILED','Installation integrity verification failed');
-    return {...result,changed:true,operationId,backup,completion:{cli:true,skill:true,hostDiscovery:false},remainingActions:['Load installed SKILL.md through the current Agent discovery mechanism']};
+    return {...result,changed:true,...(before.migration.available?{migratedFrom:{package:before.installedPackage,version:before.installedVersion}}:{}),operationId,backup,completion:{cli:true,skill:true,hostDiscovery:false},remainingActions:['Load installed SKILL.md through the current Agent discovery mechanism']};
   } catch(e) {
     if(!activated)for(const moved of migratedBackups.toReversed())if(!exists(moved.from)&&exists(moved.to)){try{fs.renameSync(moved.to,moved.from);}catch{/* Preserve both recorded identities for manual recovery. */}}
     if(!activated&&exists(staging)) fs.rmSync(staging,{recursive:true});
@@ -113,14 +121,14 @@ export async function checkUpdate({automatic=false}={}) {
   if(automatic&&process.env.ECOM_CLI_UPDATE_CHECK==='0') return {ok:true,disabled:true};
   const cache=path.join(cacheRoot(),'update.json');
   let old;try {old=JSON.parse(fs.readFileSync(cache,'utf8'));}catch{}
-  if(automatic&&old?.version===pkg.version&&Date.now()-old.checkedAt<86400000) return {...old,cached:true};
+  if(automatic&&old?.package===pkg.name&&old?.version===pkg.version&&Date.now()-old.checkedAt<86400000) return {...old,cached:true};
   let result;
   try {
-    const response=await fetch('https://registry.npmjs.org/@petercjl%2fecom-cli/latest',{signal:AbortSignal.timeout(1500)});
+    const response=await fetch('https://registry.npmjs.org/'+pkg.name.replace('/', '%2f')+'/latest',{signal:AbortSignal.timeout(1500)});
     if(!response.ok) throw Error('registry');
     const data=await response.json();if(data.name!==pkg.name||!/^\d+\.\d+\.\d+$/.test(data.version))throw Error('shape');
-    result={ok:true,version:pkg.version,latest:data.version,available:newerStableVersion(data.version,pkg.version),checkedAt:Date.now(),channel:'latest'};
-  }catch{result={ok:false,code:'REGISTRY_UNAVAILABLE',version:pkg.version,checkedAt:Date.now(),retained:true};}
+    result={ok:true,package:pkg.name,version:pkg.version,latest:data.version,available:newerStableVersion(data.version,pkg.version),checkedAt:Date.now(),channel:'latest'};
+  }catch{result={ok:false,package:pkg.name,code:'REGISTRY_UNAVAILABLE',version:pkg.version,checkedAt:Date.now(),retained:true};}
   if(automatic) {
     try {fs.mkdirSync(cacheRoot(),{recursive:true,mode:0o700});if(!exists(cache))writeNew(cache,result);else {const archive=cache+'.previous-'+crypto.randomUUID();fs.renameSync(cache,archive);writeNew(cache,result);}}catch{/* Detection must not block read-only work. */}
   }
@@ -141,7 +149,7 @@ export async function updateInstall(options) {
   const npm=process.platform==='win32'?'npm.cmd':'npm';
   const acquired=spawnSync(npm,['install','--prefix',directory,'--ignore-scripts','--no-audit','--no-fund',pkg.name+'@'+selected],{encoding:'utf8',timeout:120000,shell:process.platform==='win32',env:{...process.env,npm_config_dry_run:'false',npm_config_json:'false'}});
   if(acquired.status!==0) throw fail('PACKAGE_ACQUISITION_FAILED','Candidate installation failed; existing runtime and Skill retained',{operationId,recovery:{journal,stage:'acquisition',action:'Inspect candidate and operation record before retrying'}});
-  const candidate=path.join(directory,'node_modules/@petercjl/ecom-cli');
+  const candidate=path.join(directory,'node_modules',...pkg.name.split('/'));
   if(source(candidate).version!==selected) throw fail('VERSION_MISMATCH','Acquired candidate version differs from requested version',{operationId,recovery:{journal}});
   // The acquired version owns its installer semantics; historical callers may
   // require one new-entry skill update to reconcile their legacy backup layout.

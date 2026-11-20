@@ -39,19 +39,21 @@ for(const archive of archives.versions)test(`published ${archive.version} update
     assert.ok(difference>=0,'Archive is newer than the candidate source');
     const version=difference===0?`${major}.${minor}.${patch+1}`:pkg.version;
     for(const name of ['package.json','capabilities.json','skills/ecom-cli/package.json']) {
-      const file=path.join(candidate,name),data=JSON.parse(fs.readFileSync(file));data.version=version;fs.writeFileSync(file,JSON.stringify(data));
+      const file=path.join(candidate,name),data=JSON.parse(fs.readFileSync(file));data.version=version;if(name==='capabilities.json')data.package=archives.package;else data.name=archives.package;fs.writeFileSync(file,JSON.stringify(data));
     }
     const packed=JSON.parse(npmRun(['pack','--json','--pack-destination',tmp],candidate))[0];
     const tarball=fs.readFileSync(path.join(tmp,packed.filename));
     server=http.createServer((req,res)=>{
       if(req.url==='/candidate.tgz'){res.end(tarball);return;}
       res.setHeader('content-type','application/json');
-      res.end(JSON.stringify({name:pkg.name,'dist-tags':{latest:version},versions:{[version]:{name:pkg.name,version,dist:{tarball:`http://127.0.0.1:${server.address().port}/candidate.tgz`,integrity:packed.integrity}}}}));
+      res.end(JSON.stringify({name:archives.package,'dist-tags':{latest:version},versions:{[version]:{name:archives.package,version,dist:{tarball:`http://127.0.0.1:${server.address().port}/candidate.tgz`,integrity:packed.integrity}}}}));
     });
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     const bootstrap=path.join(tmp,'bootstrap');npmRun(['install','--prefix',bootstrap,'--ignore-scripts','--no-audit','--no-fund',file],tmp);
     const old=path.join(bootstrap,'node_modules/@petercjl/ecom-cli/bin/ecom-cli.mjs');
-    const env={...process.env,ECOM_CLI_STATE_DIR:path.join(tmp,'state'),ECOM_CLI_UPDATE_CHECK:'0',npm_config_registry:`http://127.0.0.1:${server.address().port}`};
+    const npmrc=path.join(tmp,'fixture.npmrc');
+    fs.writeFileSync(npmrc,`@petercjl:registry=http://127.0.0.1:${server.address().port}\n`,{flag:'wx'});
+    const env={...process.env,ECOM_CLI_STATE_DIR:path.join(tmp,'state'),ECOM_CLI_UPDATE_CHECK:'0',npm_config_userconfig:npmrc,npm_config_registry:`http://127.0.0.1:${server.address().port}`};
     const invoke=async(entry,args,extra={})=>{
       const response=await call(entry,args,{...env,...extra});
       assert.ok(response.result,response.stderr||response.stdout);return response.result;

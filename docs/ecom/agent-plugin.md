@@ -1,6 +1,6 @@
 # Ecom Agent 插件
 
-通过公开 npm 包 `@petercjl/ecom-cli` 分发 CLI 与配套 portable Skill，稳定版使用 `latest`。canonical 源码为 `packages/ecom-cli`；浏览器源码和用户会话独立于 npm 载荷。
+通过公开 npm 包 `@lumyne/ecom-cli` 分发 CLI 与配套 portable Skill，稳定版使用 `latest`。canonical 源码为 `packages/ecom-cli`；浏览器源码和用户会话独立于 npm 载荷。
 
 ## 首版能力
 
@@ -20,4 +20,18 @@
 
 ## 发布路径
 
-GitHub Actions 的 macOS、Windows 包测试通过后，发布任务使用 npm Trusted Publishing。新包首次建立采用单独最小 bootstrap 预发布；正式功能版本与后续发布均通过 OIDC。发布后从公共注册表安装准确版本，验证真实入口和选定 Agent 的配套 Skill。
+CLI 使用本机 npm-release-kit 完成测试、固定制品准备与经授权的发布；GitHub 保存源码。稳定渠道为 latest。发布后核对公共注册表准确版本及制品完整性，再通过包管理入口同步当前 Agent 的独立 CLI 与 Skill。
+
+## 网页打开规则
+
+用户直接向当前 Agent 说明网址范围、目标容器和启用意图，例如：
+
+> 使用 Ecom CLI，把淘宝和天猫商品详情页设置为用“买家账号”容器打开，并启用这条规则。
+
+CLI 提供列表、查看、保存、指定容器、启用／停用、排序、删除和本地匹配检查。浏览器负责实际匹配、容器隔离和设置校验；CLI 复用同一原生能力。内置淘宝／天猫示例默认关闭且未指定容器，用户要求配置后才按其意图赋值和启用。
+
+## 旧包迁移
+
+> 把我的 Ecom CLI 从 @petercjl/ecom-cli 迁移到 @lumyne/ecom-cli，并迁移当前 Agent 的配套 Skill。
+
+新包提供显式旧包迁移入口，核对旧安装的归属、文件完整性和目标后生成恢复备份。迁移保留浏览器账号、Cookie 和规则数据；已有本地修改需先核对和保留。旧包更新命令继续查询旧 scope，跨 scope 迁移由新包入口完成。

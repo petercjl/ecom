@@ -1,6 +1,6 @@
 {
-  "name": "@petercjl/ecom-cli",
-  "version": "0.3.3",
+  "name": "@lumyne/ecom-cli",
+  "version": "0.4.0",
   "private": true,
   "type": "module"
 }

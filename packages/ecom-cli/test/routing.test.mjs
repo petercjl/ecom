@@ -31,5 +31,33 @@ test('routing uses authenticated native transport and rejects unknown mutation o
   }finally{clearInterval(timer);fs.rmSync(folder,{recursive:true,force:true});}
 });
 test('malformed routing state is not accepted as success',()=>{
-  const r=sample();assert.equal(validateRoutingState(r).configuration.rules[0].targetState,'unassigned');r.configuration.rules.push({...r.configuration.rules[0]});assert.throws(()=>validateRoutingState(r),e=>e.code==='PROTOCOL_MISMATCH');
+  const r=sample();assert.equal(validateRoutingState(r).configuration.rules[0].targetState,'unassigned');r.configuration.rules.push({...r.configuration.rules[0]});assert.throws(()=>validateRoutingState(r),e=>e.code==='PROTOCOL_MISMATCH');const bad=sample();bad.containers=[{id:'same',name:'one'},{id:'same',name:'two'}];assert.throws(()=>validateRoutingState(bad),e=>e.code==='PROTOCOL_MISMATCH');
+});
+
+test('target and switch commands preserve existing rule fields and reject ambiguous or stale changes',async()=>{
+  const folder=fs.mkdtempSync(path.join(os.tmpdir(),'ecom-routing-patch-'));fs.chmodSync(folder,0o700);
+  const endpoint={instanceId:'routing-patch',authToken:'fixture',urlRoutingProtocol:1,pid:123};
+  fs.writeFileSync(path.join(folder,'endpoint.json'),JSON.stringify(endpoint),{mode:0o600,flag:'wx'});
+  const state=sample();state.configuration.rules[0].conditions=[{type:'exact',url:'https://example.org/item'}];
+  state.containers=[{id:'buyer',name:'Buyer'},{id:'first',name:'Same'},{id:'second',name:'Same'}];let writes=0;
+  const timer=setInterval(()=>{for(const file of fs.readdirSync(folder).filter(x=>x.endsWith('.request.json'))){
+    const req=JSON.parse(fs.readFileSync(path.join(folder,file)));const result=structuredClone(state);
+    if(req.method==='routing.save'){writes++;assert.equal(req.expectedRevision,state.configuration.revision);state.configuration.rules[0]={...req.rule,targetState:req.rule.containerId?'available':'unassigned'};state.configuration.revision++;Object.assign(result,structuredClone(state),{executed:true});}
+    else assert.equal(req.method,'routing.list');
+    fs.writeFileSync(path.join(folder,file.replace('.request.json','.response.json')),JSON.stringify({...result,schemaVersion:1,instanceId:endpoint.instanceId,operationId:file.replace('.request.json','')}),{mode:0o600});fs.unlinkSync(path.join(folder,file));
+  }},5);
+  const connection={folder,endpoint,channel:'dev'},opts=()=>({'rule-id':'example-taobao-product-detail','expected-revision':String(state.configuration.revision)});
+  try{
+    await assert.rejects(routingInConnection(connection,'enable',opts()),e=>e.code==='TARGET_CONTAINER_REQUIRED');assert.equal(writes,0);
+    await assert.rejects(routingInConnection(connection,'set-container',{...opts(),container:'Same'}),e=>e.code==='CONTAINER_AMBIGUOUS');assert.equal(writes,0);
+    await assert.rejects(routingInConnection(connection,'set-container',{...opts(),container:'missing'}),e=>e.code==='CONTAINER_NOT_FOUND');
+    const assigned=await routingInConnection(connection,'set-container',{...opts(),container:'Buyer'});
+    assert.equal(assigned.configuration.rules[0].containerId,'buyer');assert.equal(assigned.configuration.rules[0].enabled,false);
+    assert.deepEqual(assigned.configuration.rules[0].conditions,[{type:'exact',url:'https://example.org/item'}]);
+    assert.equal((await routingInConnection(connection,'enable',opts())).configuration.rules[0].enabled,true);
+    assert.equal((await routingInConnection(connection,'disable',opts())).configuration.rules[0].enabled,false);
+    const before=writes;await assert.rejects(routingInConnection(connection,'enable',{...opts(),'expected-revision':'0'}),e=>e.code==='ROUTING_REVISION_CONFLICT'&&e.executed===false);assert.equal(writes,before);
+    assert.equal(parse(['routing','set-container','--rule-id','x','--container','buyer','--expected-revision','0']).command,'routing set-container');
+    assert.throws(()=>parse(['routing','enable','--rule-id','x']),e=>e.code==='INVALID_ARGUMENT');
+  }finally{clearInterval(timer);fs.rmSync(folder,{recursive:true,force:true});}
 });

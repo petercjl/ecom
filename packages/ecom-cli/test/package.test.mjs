@@ -36,7 +36,7 @@ test('actual npm packed install, update repair, isolation, local-edits and docto
     const packed=JSON.parse(runNpm(['pack','--json','--pack-destination',tmp],root))[0];
     const tarball=path.join(tmp,packed.filename), bootstrap=path.join(tmp,'bootstrap');
     runNpm(['install','--prefix',bootstrap,'--ignore-scripts','--no-audit','--no-fund',tarball]);
-    const entry=path.join(bootstrap,'node_modules/@petercjl/ecom-cli/bin/ecom-cli.mjs');
+    const entry=path.join(bootstrap,'node_modules/@lumyne/ecom-cli/bin/ecom-cli.mjs');
     assert.equal(invoke(entry,['version','--json']).version,pkg.version);
     const a=path.join(tmp,'host-a','ecom-cli'), b=path.join(tmp,'host-b','ecom-cli');
     const args=(verb,target,agent='generic')=>['skill',verb,'--agent',agent,'--target',target,'--json'];
@@ -44,7 +44,7 @@ test('actual npm packed install, update repair, isolation, local-edits and docto
     const installed=invoke(entry,args('install',b,'custom-agent'));assert.equal(installed.current,true);
     assert.equal(invoke(entry,args('install',a)).changed,false); // same-version verified no-op
     // A same-version source may contain different runtime bytes than a development candidate.
-    const sourceBrowser=path.join(bootstrap,'node_modules/@petercjl/ecom-cli/lib/browser.mjs');
+    const sourceBrowser=path.join(bootstrap,'node_modules/@lumyne/ecom-cli/lib/browser.mjs');
     fs.appendFileSync(sourceBrowser,'\n// same-version candidate correction\n');
     const stale=invoke(entry,args('status',a));assert.equal(stale.current,false);assert.equal(stale.edited,false);
     const refreshed=invoke(entry,args('update',a));assert.equal(refreshed.changed,true);assert.equal(refreshed.current,true);
@@ -136,7 +136,7 @@ test('real npm candidate update activates both runtime and Skill and preserves r
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     const registry='http://127.0.0.1:'+server.address().port;
     const npmrc=path.join(tmp,'test.npmrc');
-    fs.writeFileSync(npmrc,'@petercjl:registry='+registry+'\n',{flag:'wx'});
+    fs.writeFileSync(npmrc,'@lumyne:registry='+registry+'\n',{flag:'wx'});
     const target=path.join(tmp,'skills/ecom-cli'), entry=path.join(root,'bin/ecom-cli.mjs'),args=['--agent','fixture-host','--target',target,'--json'];
     assert.equal(invoke(entry,['skill','install',...args]).current,true);
     const call=(env={})=>new Promise(resolve=>{

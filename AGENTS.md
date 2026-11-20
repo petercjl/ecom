@@ -24,7 +24,7 @@ Ecom 首先采用与 Chrome 几乎一致的桌面浏览器外观和基础交互�
 
 ## Agent CLI：核心开发约束
 
-CLI 与配套 portable Skill 通过公开 npm 包 `@petercjl/ecom-cli` 统一分发，稳定版使用 `latest`。源码位于 `packages/ecom-cli`。浏览器内账号管理页提供面向当前 Agent 的安装、使用与更新提示词。产品命令覆盖只读 `containers list`、`containers inspect` 和指定容器的 `session request` HTTPS JSON GET，复用普通 Ecom 的受限本地通信；功能扩展同步维护能力清单、参数与输出契约、测试及 canonical Skill。安装和更新覆盖当前 Agent 的 CLI 与物理隔离 Skill 运行时，完成状态分别核对包完整性和宿主发现；本机同步范围为 Codex。
+CLI 与配套 portable Skill 通过公开 npm 包 `@lumyne/ecom-cli` 统一分发，稳定版使用 `latest`。CLI 按当前 npm-release-kit 在本机测试、准备固定制品和经授权发布；桌面二进制载荷按下方平台发布流程执行。源码位于 `packages/ecom-cli`。浏览器内账号管理页提供面向当前 Agent 的安装、使用与更新提示词。产品命令覆盖只读 `containers list`、`containers inspect` 和指定容器的 `session request` HTTPS JSON GET，复用普通 Ecom 的受限本地通信；功能扩展同步维护能力清单、参数与输出契约、测试及 canonical Skill。安装和更新覆盖当前 Agent 的 CLI 与物理隔离 Skill 运行时，完成状态分别核对包完整性和宿主发现；本机同步范围为 Codex。
 
 Ecom 的核心目标之一是让 Agent 通过稳定 CLI 调用浏览器的各类功能。CLI 是一等产品入口，与 Chrome 式桌面界面并行设计。此约束适用于 Ecom 原生浏览器的全部开发。
 
@@ -133,7 +133,7 @@ Chromium 与已有原生组件承担网页引擎及会话基础；Ecom 承担产
 - 更新通过 npm 分发。应用自动检测新版本；用户点击“更新”才下载；准备完成后再次征得用户同意，再退出、应用更新并重启。
 - 同事通过桌面界面使用和更新，不要求安装 Node.js、npm 或操作终端。
 - 首次安装文件与 npm 更新载荷必须关联到相同原生产物身份，明确平台/架构选择、版本与完整性校验、更新失败恢复和用户数据保留方案。
-- 默认 npm scope 为 `@petercjl`。具体包名、公开/私有、首次安装文件交付方式和发布动作留待确认。内部使用不等同于 npm 私有包；公开产物不得包含内部配置、Cookie、账号或其他私密资料。
+- 新包默认使用 Lumyne 品牌的 `@lumyne` scope。已发布的其他 `@petercjl` 包按原名更新；Ecom CLI 明确迁移到 `@lumyne/ecom-cli`。具体包名、公开/私有、首次安装文件交付方式和发布动作留待确认。内部使用不等同于 npm 私有包；公开产物不得包含内部配置、Cookie、账号或其他私密资料。
 - 发布采用 GitHub Actions + npm Trusted Publishing，执行前加载当前 `npm-release-kit` 并运行 doctor。新包遵守一次性 bootstrap 授权与后续 OIDC 规则。稳定版使用 latest，预发布使用 next；发布前确认类型和 tag，发布后核验公共注册表的准确版本及真实安装入口。
 - npm 能力包开发加载当前 `cross-agent-npm-package-development`；配套 Skill 的创建/修改以当前 `portable-skill-creator` 为入口。仅在提供真实 Agent 能力时设计 CLI/Skill，不为桌面二进制载荷机械添加 Agent 接口。
 - 默认只同步本机 Codex；其他 Agent 的安装与配置须有明确授权。产品与文档面向具备所需能力的任意 Agent，真实测试范围单独记录。

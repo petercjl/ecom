@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "package": "@petercjl/ecom-cli",
-  "version": "0.3.3",
+  "package": "@lumyne/ecom-cli",
+  "version": "0.4.0",
   "skills": [
     "ecom-cli"
   ],
@@ -1471,12 +1471,13 @@
           "type": "boolean"
         }
       },
-      "sideEffects": "read-only",
+      "sideEffects": "local-write",
       "nativeProtocol": "urlRoutingProtocol=1",
       "platforms": [
         "macos"
       ],
-      "windowsStatus": "native transport not implemented"
+      "windowsStatus": "native transport not implemented",
+      "authorization": "Authenticated native settings operation; list, inspect and test write only local request/response files. Test makes no website request."
     },
     "routing inspect": {
       "description": "Read one URL routing rule.",
@@ -1495,12 +1496,13 @@
           "required": true
         }
       },
-      "sideEffects": "read-only",
+      "sideEffects": "local-write",
       "nativeProtocol": "urlRoutingProtocol=1",
       "platforms": [
         "macos"
       ],
-      "windowsStatus": "native transport not implemented"
+      "windowsStatus": "native transport not implemented",
+      "authorization": "Authenticated native settings operation; list, inspect and test write only local request/response files. Test makes no website request."
     },
     "routing save": {
       "description": "Create or update a native URL routing rule. Choosing a container does not implicitly enable it.",
@@ -1515,22 +1517,25 @@
           "type": "boolean"
         },
         "--expected-revision": {
-          "type": "integer",
+          "type": "string",
           "required": true,
-          "description": "Revision from routing list; rejects concurrent edits"
+          "description": "Revision from routing list; rejects concurrent edits",
+          "format": "integer"
         },
         "--rule-json": {
-          "type": "JSON object",
+          "type": "string",
           "required": true,
-          "description": "Rule name, enabled boolean, stable containerId, conditions; omit id to create. Enabled rules require a chosen persistent container."
+          "description": "Rule name, enabled boolean, stable containerId, conditions; omit id to create. Enabled rules require a chosen persistent container.",
+          "format": "JSON object"
         }
       },
-      "sideEffects": "profile-settings-write",
+      "sideEffects": "local-write",
       "nativeProtocol": "urlRoutingProtocol=1",
       "platforms": [
         "macos"
       ],
-      "windowsStatus": "native transport not implemented"
+      "windowsStatus": "native transport not implemented",
+      "authorization": "Authenticated native settings operation; list, inspect and test write only local request/response files. Test makes no website request."
     },
     "routing delete": {
       "description": "Remove one rule without deleting container data.",
@@ -1545,21 +1550,23 @@
           "type": "boolean"
         },
         "--expected-revision": {
-          "type": "integer",
+          "type": "string",
           "required": true,
-          "description": "Revision from routing list; rejects concurrent edits"
+          "description": "Revision from routing list; rejects concurrent edits",
+          "format": "integer"
         },
         "--rule-id": {
           "type": "string",
           "required": true
         }
       },
-      "sideEffects": "profile-settings-write",
+      "sideEffects": "local-write",
       "nativeProtocol": "urlRoutingProtocol=1",
       "platforms": [
         "macos"
       ],
-      "windowsStatus": "native transport not implemented"
+      "windowsStatus": "native transport not implemented",
+      "authorization": "Authenticated native settings operation; list, inspect and test write only local request/response files. Test makes no website request."
     },
     "routing reorder": {
       "description": "Set first-match rule order.",
@@ -1574,21 +1581,24 @@
           "type": "boolean"
         },
         "--expected-revision": {
-          "type": "integer",
+          "type": "string",
           "required": true,
-          "description": "Revision from routing list; rejects concurrent edits"
+          "description": "Revision from routing list; rejects concurrent edits",
+          "format": "integer"
         },
         "--rule-ids-json": {
-          "type": "JSON array",
-          "required": true
+          "type": "string",
+          "required": true,
+          "format": "JSON array"
         }
       },
-      "sideEffects": "profile-settings-write",
+      "sideEffects": "local-write",
       "nativeProtocol": "urlRoutingProtocol=1",
       "platforms": [
         "macos"
       ],
-      "windowsStatus": "native transport not implemented"
+      "windowsStatus": "native transport not implemented",
+      "authorization": "Authenticated native settings operation; list, inspect and test write only local request/response files. Test makes no website request."
     },
     "routing test": {
       "description": "Match a URL locally, including disabled examples, with zero network requests.",
@@ -1607,12 +1617,13 @@
           "required": true
         }
       },
-      "sideEffects": "read-only",
+      "sideEffects": "local-write",
       "nativeProtocol": "urlRoutingProtocol=1",
       "platforms": [
         "macos"
       ],
-      "windowsStatus": "native transport not implemented"
+      "windowsStatus": "native transport not implemented",
+      "authorization": "Authenticated native settings operation; list, inspect and test write only local request/response files. Test makes no website request."
     },
     "routing set-enabled": {
       "description": "Set the global routing switch without changing individual rules.",
@@ -1627,21 +1638,146 @@
           "type": "boolean"
         },
         "--expected-revision": {
-          "type": "integer",
+          "type": "string",
           "required": true,
-          "description": "Revision from routing list; rejects concurrent edits"
+          "description": "Revision from routing list; rejects concurrent edits",
+          "format": "integer"
         },
         "--enabled": {
-          "type": "on|off",
+          "type": "string",
+          "required": true,
+          "format": "on|off"
+        }
+      },
+      "sideEffects": "local-write",
+      "nativeProtocol": "urlRoutingProtocol=1",
+      "platforms": [
+        "macos"
+      ],
+      "windowsStatus": "native transport not implemented",
+      "authorization": "Authenticated native settings operation; list, inspect and test write only local request/response files. Test makes no website request."
+    },
+    "routing set-container": {
+      "description": "Assign an existing persistent container by stable ID or unique name, preserving enable state and all conditions.",
+      "options": {
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--rule-id": {
+          "type": "string",
+          "required": true
+        },
+        "--expected-revision": {
+          "type": "string",
+          "required": true,
+          "format": "nonnegative-integer",
+          "description": "Latest revision from routing list; rejects concurrent edits"
+        },
+        "--container": {
+          "type": "string",
           "required": true
         }
       },
-      "sideEffects": "profile-settings-write",
+      "sideEffects": "local-write",
+      "authorization": "Explicit URL routing configuration in the selected Ecom profile; no website request",
       "nativeProtocol": "urlRoutingProtocol=1",
       "platforms": [
         "macos"
       ],
       "windowsStatus": "native transport not implemented"
+    },
+    "routing enable": {
+      "description": "Enable a rule with an assigned valid container.",
+      "options": {
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--rule-id": {
+          "type": "string",
+          "required": true
+        },
+        "--expected-revision": {
+          "type": "string",
+          "required": true,
+          "format": "nonnegative-integer",
+          "description": "Latest revision from routing list; rejects concurrent edits"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Explicit URL routing configuration in the selected Ecom profile; no website request",
+      "nativeProtocol": "urlRoutingProtocol=1",
+      "platforms": [
+        "macos"
+      ],
+      "windowsStatus": "native transport not implemented"
+    },
+    "routing disable": {
+      "description": "Disable a rule while preserving its container and conditions.",
+      "options": {
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--rule-id": {
+          "type": "string",
+          "required": true
+        },
+        "--expected-revision": {
+          "type": "string",
+          "required": true,
+          "format": "nonnegative-integer",
+          "description": "Latest revision from routing list; rejects concurrent edits"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Explicit URL routing configuration in the selected Ecom profile; no website request",
+      "nativeProtocol": "urlRoutingProtocol=1",
+      "platforms": [
+        "macos"
+      ],
+      "windowsStatus": "native transport not implemented"
+    },
+    "skill migrate": {
+      "description": "Explicitly migrate the selected unedited @petercjl/ecom-cli managed Skill to this package, retaining a full recovery backup and isolated runtime.",
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--agent": {
+          "type": "string",
+          "required": true
+        },
+        "--target": {
+          "type": "string",
+          "required": true
+        },
+        "--from-package": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "@petercjl/ecom-cli"
+          ]
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "User-authorized package scope migration for this selected Agent only"
     }
   },
   "transport": {
@@ -1907,5 +2043,13 @@
     ],
     "devRequiresExplicitSelection": true,
     "multipleMatches": "INSTANCE_AMBIGUOUS"
+  },
+  "packageMigration": {
+    "schemaVersion": 1,
+    "fromPackage": "@petercjl/ecom-cli",
+    "toPackage": "@lumyne/ecom-cli",
+    "command": "skill migrate",
+    "browserData": "unchanged",
+    "legacyUpdater": "Remains on the old scope; acquire the new package and explicitly migrate the selected managed target."
   }
 }

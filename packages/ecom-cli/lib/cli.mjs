@@ -22,7 +22,7 @@ export function parse(argv) {
     const key=word.slice(2);
     if(Object.hasOwn(options,key)) throw fail('INVALID_ARGUMENT','Duplicate option '+word);
     if(['json','help','yes','foreground','fixture'].includes(key))options[key]=true;
-    else if(['rule-json','rule-id','rule-ids-json','expected-revision','agent','target','profile','instance','name','version','container','url','method','operation','params-json','plan','confirm','service','keyword','via','manifest','account-id','preparation','digest','fixture-port','tab','expected-page-version','operation-id','enabled','idle-seconds','keep-awake','lazy-startup','max-background','output','cdp-method','cdp-target','item-id','out'].includes(key)&&argv[i+1]&&!argv[i+1].startsWith('--')) options[key]=argv[++i];
+    else if(['from-package','rule-json','rule-id','rule-ids-json','expected-revision','agent','target','profile','instance','name','version','container','url','method','operation','params-json','plan','confirm','service','keyword','via','manifest','account-id','preparation','digest','fixture-port','tab','expected-page-version','operation-id','enabled','idle-seconds','keep-awake','lazy-startup','max-background','output','cdp-method','cdp-target','item-id','out'].includes(key)&&argv[i+1]&&!argv[i+1].startsWith('--')) options[key]=argv[++i];
     else throw fail('INVALID_ARGUMENT','Unknown option or missing value: '+word);
   }
   let command=positions.join(' ')||'help';
@@ -60,8 +60,8 @@ export function parse(argv) {
 }
 export async function main(argv) {
   const {command,options,requested}=parse(argv);
-  if(command.startsWith('routing '))return routingCommand(command.slice(8),options);
-  if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli routing list|inspect|save|delete|reorder|test|set-enabled | containers list|inspect | shops open|login-status|submit-login | xhs search --via page | xhs note preflight|open|upload|fill|verify|status|prepare|submit | item media | cdp endpoint|tabs|call | page read | media download | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
+  if(command.startsWith('routing ')){const update=await checkUpdate({automatic:true});if(update.available)process.stderr.write('Ecom CLI update available: '+update.latest+'\n');return routingCommand(command.slice(8),options);}
+  if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli routing list|inspect|save|set-container|enable|disable|delete|reorder|test|set-enabled | containers list|inspect | shops open|login-status|submit-login | xhs search --via page | xhs note preflight|open|upload|fill|verify|status|prepare|submit | item media | cdp endpoint|tabs|call | page read | media download | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update|migrate | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
   if(command==='item media')return collectItemMedia(options);
   if(command.startsWith('cdp '))return cdpCommand(command.slice(4),options);
   if(['page read','media download'].includes(command))return pageCommand(command,options);
@@ -75,6 +75,7 @@ export async function main(argv) {
   if(command==='capabilities'||command==='schema')return {ok:true,...capabilities()};
   if(command==='skill source') {const item=source();return {...capabilities(),...item,complete:true,items:[item]};}
   if(command==='skill status')return status(options);
+  if(command==='skill migrate'){if(options['from-package']!=='@petercjl/ecom-cli')throw fail('INVALID_ARGUMENT','Specify --from-package @petercjl/ecom-cli');return installSkill(options);}
   if(command==='skill install'||command==='skill update')return installSkill(options);
   if(command==='update check')return checkUpdate();
   if(command==='update install')return updateInstall(options);

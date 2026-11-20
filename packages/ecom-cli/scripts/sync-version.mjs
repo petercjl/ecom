@@ -9,5 +9,7 @@ for(const name of ['capabilities.json','skills/ecom-cli/package.json']) {
   const value=JSON.parse(fs.readFileSync(file,'utf8'));
   const backup=path.join(os.tmpdir(),'ecom-version-backup-'+crypto.randomUUID());fs.copyFileSync(file,backup,fs.constants.COPYFILE_EXCL);
   value.version=pkg.version;
+  if(name==='capabilities.json')value.package=pkg.name;
+  else value.name=pkg.name;
   fs.writeFileSync(file,JSON.stringify(value,null,2)+'\n');
 }

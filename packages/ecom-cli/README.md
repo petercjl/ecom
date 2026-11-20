@@ -6,7 +6,7 @@ Agent CLI and portable Skill for the Ecom desktop browser. List existing contain
 
 Send to your current Agent:
 
-> 帮我安装 @petercjl/ecom-cli，并安装它的配套 Skill。
+> 帮我安装 @lumyne/ecom-cli，并安装它的配套 Skill。
 
 The Agent needs local Node.js 22+ and terminal/file access. Installation includes the CLI and an isolated copy of the Skill in that Agent's own resolved Skill directory. See [INSTALL.md](INSTALL.md) for the bootstrap contract, including installation with npm scripts disabled.
 
@@ -22,9 +22,27 @@ Provide the account name or stable container ID. For requests, supply an authori
 
 Container names may identify accounts. Use a trusted Agent and share results intentionally. Installing the plugin does not authorize website operations, cookie export or account modification.
 
+## 网页打开规则
+
+直接告诉当前 Agent 需要打开的网址和目标容器：
+
+> 使用 Ecom CLI，把淘宝和天猫商品详情页设置为用“买家账号”容器打开，并启用这条规则。
+
+> 使用 Ecom CLI，把我提供的这批网址设置为用指定容器打开。
+
+> 使用 Ecom CLI，检查这个网址会用哪个容器打开。
+
+Agent 会读取既有规则、定位容器并完成配置与本地匹配检查。内置淘宝／天猫示例默认关闭且未分配容器；指定容器和启用是独立操作。配置和测试不访问目标网站，也不代表网站登录已经核验。
+
+## 从旧包迁移
+
+> 把我的 Ecom CLI 从 @petercjl/ecom-cli 迁移到 @lumyne/ecom-cli，并迁移当前 Agent 的配套 Skill。
+
+迁移保留当前 Agent 安装的完整恢复备份，核对本地修改，保持浏览器账号与规则数据。旧包的自动更新仍指向旧 scope；跨 scope 迁移使用新包的显式入口。其他 Agent 的安装独立保留。
+
 ## Update
 
-> 帮我更新 @petercjl/ecom-cli 和它的配套 Skill。
+> 帮我更新 @lumyne/ecom-cli 和它的配套 Skill。
 
 Task entry checks stable `latest` at most daily, with a 1.5 second bound. Detection only notifies; updating requires authorization. An offline check retains the installed runtime. Each selected Skill contains its own complete CLI runtime; activate the entry returned by the installer. Other Agents remain independent. See [UPDATE.md](UPDATE.md).
 
@@ -32,7 +50,7 @@ Task entry checks stable `latest` at most daily, with a 1.5 second bound. Detect
 
 `ecom-cli help --json`, `version --json`, `capabilities --json`, `schema --json`, and `doctor --json` expose supported commands and versioned results. Errors use JSON with stable codes; exit code 2 means invalid arguments, 1 means operational failure. stdout contains results; stderr contains diagnostics. The CLI selects stable Ecom by default. Select Dev explicitly with `--profile` or `--instance`. If more than one instance matches, pin the desired profile or instance. Connection authenticates through owner-only local mailbox files, verifies the live Ecom executable, and uses no remote debugging port.
 
-The browser owns sessions, containers and authorization. This package owns discovery, read-only transport and managed installation. The Skill documents invocation, diagnosis and recovery. Additional browser capabilities will extend this same command/Skill contract.
+The browser owns sessions, containers and authorization. This package owns discovery, read-only transport and managed installation. The Skill documents invocation, diagnosis and recovery. URL routing commands include `routing list|inspect|save|set-container|enable|disable|delete|reorder|test|set-enabled`. Changes require `--expected-revision` from the latest state. Target-only and rule-switch changes preserve all other fields; the native layer rechecks target validity and concurrent revisions. Additional browser capabilities extend this same command/Skill contract.
 
 ## 业务能力迁移（开发中）
 

@@ -7,6 +7,12 @@ description: Use Ecom for configurable URL-to-container opening rules, browser m
 
 ## URL opening rules
 
+Accept a natural-language request naming the URL scope, target container and intended enable state. Resolve an explicit browser instance and list current rules/containers first. Prefer editing an existing matching rule, including the Taobao/Tmall example, to creating a duplicate. Resolve a unique exact container name to its stable ID; ask only when the target or intended URL scope is ambiguous. Keep matching as narrow as the requested pages: exact URLs for an explicit list, parsed host/path/query patterns for an explicitly requested page family. Show a concise result in the user's terms rather than asking them to edit JSON.
+
+For a target-only change, call `routing set-container --rule-id ID --container ID_OR_UNIQUE_NAME --expected-revision N`; it preserves matching conditions and the enable state. `routing enable` and `routing disable`, with `--rule-id ID --expected-revision N`, change only that rule's switch. Read back after each change to obtain the new revision. Enable only when requested, and preserve the global switch unless its change was authorized. A globally disabled system must be reported even if an individual rule is enabled.
+
+For a new matching pattern, save it disabled, use `routing test` on representative matching and excluded URLs, then enable if requested. Test existing matching behavior before enabling an existing example. Report effective target, individual/global switch state and any earlier rule taking priority. Configuration success and local matching do not prove actual website login or account identity. Return to main-line result validation after configuration.
+
 For authorized URL-to-container settings, select the intended instance and require `urlRoutingProtocol=1`. Read `routing list --json`; `routing inspect --rule-id ID` selects one rule. The built-in Taobao/Tmall example is disabled and has no target container. Keep both choices until the user explicitly chooses a persistent container and enables the rule; saving a target alone does not enable it. Rule names and patterns remain editable examples, not proof of platform access.
 
 Use `routing test --url URL` for local matching without visiting the website. It reports matching conditions including disabled rules, and the first enabled rule's effective target. For edits, use `routing save --rule-json JSON --expected-revision N`; omit the rule ID to create, retain it to update. Supply name, enabled boolean, containerId and conditions. Conditions use either `{type:"exact",url:HTTP_URL}` or `{type:"pattern",scheme:"http+https"|"https"|"http",host:HOST,path:PATH_GLOB,includeSubdomains:BOOLEAN,query:[{name:KEY,operator:"exists"|"equals",value:VALUE}]}`. `exists` requires a nonempty value; `equals` requires value. Conditions within a rule are OR; fields in one condition are AND. HTTP(S) only, host-label boundaries, path `*`, and parsed query predicates prevent arbitrary substring matching.
@@ -22,7 +28,7 @@ When explicitly asked to use CDP, target the Ecom Dev profile started in CDP mod
 
 ## Input → strategy → output
 
-Input is an Ecom container listing/detail request, an authorized endpoint plus target container, an explicitly ordered Xiaohongshu image note manifest, a connection diagnosis, or selected-Agent maintenance intent. The current Agent needs local command execution, file access and Node.js 22+. Output is a container list, projected account metadata, native-redacted JSON response with pinned target identity, connection diagnosis, or installation receipt with a separate host discovery check. Container names may identify accounts; disclose only within the user's request.
+Input includes natural-language URL-to-container configuration, an Ecom container listing/detail request, an authorized endpoint plus target container, an explicitly ordered Xiaohongshu image note manifest, a connection diagnosis, or selected-Agent maintenance intent. The current Agent needs local command execution, file access and Node.js 22+. Output is a container list, projected account metadata, native-redacted JSON response with pinned target identity, connection diagnosis, or installation receipt with a separate host discovery check. Container names may identify accounts; disclose only within the user's request.
 
 ## Main line
 
@@ -117,9 +123,11 @@ Require matching instance/container/tab and post-action status. `discarded` repo
 
 ## Installation and update branch
 
-Enter this branch before business calls when the user requests installation or updates. Read the selected package's INSTALL.md / UPDATE.md from its discovered source, then return to main-line step 1 after maintenance.
+The canonical package is `@lumyne/ecom-cli`. Enter this branch before business calls when the user requests installation, updates or migration. Read the selected package's INSTALL.md / UPDATE.md from its discovered source, then return to main-line step 1 after maintenance.
 
 Resolve the current Agent's exact Skill destination from host configuration; use its actual name with the generic adapter. `skill source --json` identifies canonical bytes. `skill status --agent NAME --target PATH --json` verifies the selected target without writes. Use `skill install` or `skill update` with those declared flags for physical isolated copies; installed copies contain their own complete runtime. Installation covers both CLI and Skill; npm bootstrap success alone is partial.
+
+For an authorized scope migration from `@petercjl/ecom-cli`, acquire `@lumyne/ecom-cli` and use its entry to read `skill status` for the exact current Agent target. A verified predecessor is reported under `migration.available`; the normal installer preserves it. Invoke `skill migrate --from-package @petercjl/ecom-cli --agent NAME --target PATH --json`. The package verifies ownership and unedited bytes, preserves a full recovery backup, and returns the new target-owned runtime entry. Verify new package/version and `current=true`, load the updated Skill through host discovery, then return to main-line step 1. An old updater continues to query the old scope and cannot perform this scope migration. Preserve the old installation on any conflict.
 
 For an authorized package update, invoke the installed entry's `update install --agent NAME --target PATH --yes --json`. It acquires stable latest and activates CLI plus Skill together. Use the new entry from its receipt, verify CLI/Skill versions and SHA-256 `current=true`, then refresh and load this exact Skill through host discovery. Preserve receipts and backups. Local edits and unmanaged destinations require reconciliation before replacement; other Agent installations remain untouched. Automatic task-entry checks only notify; offline checks retain the installed runtime.
 
