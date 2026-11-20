@@ -5,6 +5,7 @@
 #include <memory>
 #include <set>
 #include "base/feature_list.h"
+#include "base/json/json_writer.h"
 #include "base/uuid.h"
 #include "base/supports_user_data.h"
 #include "brave/browser/ecom/url_routing_rules.h"
@@ -178,6 +179,9 @@ base::DictValue RunUrlRoutingCommand(Profile* profile, const base::DictValue& re
   const int revision = saved.FindInt("revision").value_or(0);
   if (revision == std::numeric_limits<int>::max()) return Error("ROUTING_REVISION_LIMIT");
   next.Set("revision", revision + 1);
+  const auto serialized = base::WriteJson(next);
+  if (!serialized || serialized->size() > 256 * 1024)
+    return Error("ROUTING_CONFIGURATION_TOO_LARGE");
   profile->GetPrefs()->SetDict(kUrlRoutingPref, std::move(next));
   auto result = State(profile);
   result.Set("executed", true);

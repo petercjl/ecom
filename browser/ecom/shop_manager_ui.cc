@@ -40,8 +40,13 @@ class MemoryHandler final : public content::WebUIMessageHandler {
   }
  private:
   void Routing(const base::ListValue& args) {
-    if (args.size() != 2 || !args[0].is_string() || !args[1].is_string() ||
-        args[1].GetString().size() > 24000) return;
+    if (args.size() != 2 || !args[0].is_string() || !args[1].is_string()) return;
+    if (args[1].GetString().size() > 24000) {
+      AllowJavascript();
+      Done(args[0].Clone(), base::DictValue().Set("ok", false)
+          .Set("error", base::DictValue().Set("code", "ROUTING_REQUEST_TOO_LARGE")));
+      return;
+    }
     auto request = base::JSONReader::ReadDict(args[1].GetString(), base::JSON_PARSE_RFC);
     if (!request) return;
     AllowJavascript();

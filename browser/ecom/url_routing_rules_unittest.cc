@@ -23,7 +23,7 @@ TEST(UrlRoutingRules, ExampleIsDisabledUnassignedAndEditable) {
 TEST(UrlRoutingRules, HostPathAndQueryBoundaries) {
   auto config = DefaultUrlRoutingConfig();
   const auto& c = config.FindList("rules")->front().GetDict().FindList("conditions")->front().GetDict();
-  for (const char* url : {"https://item.taobao.com/item.htm?id=123", "http://ITEM.TAOBAO.COM/item.htm?a=b&id=3", "https://item.taobao.com/item.htm?id=&id=4"})
+  for (const char* url : {"https://item.taobao.com/item.htm?id=123", "http://ITEM.TAOBAO.COM/item.htm?a=b&id=3", "https://item.taobao.com/item.htm?id=&id=4", "https://item.taobao.com./item.htm?%69d=1"})
     EXPECT_TRUE(UrlRoutingConditionMatches(c, GURL(url))) << url;
   for (const char* url : {"https://item.taobao.com.example.org/item.htm?id=1", "https://example.org/?url=https://item.taobao.com/item.htm&id=1", "https://item.taobao.com/item.html?id=1", "https://item.taobao.com/item.htm?id=", "https://item.taobao.com/item.htm?other=1", "https://user:secret@item.taobao.com/item.htm?id=1", "https://sub.item.taobao.com/item.htm?id=1"})
     EXPECT_FALSE(UrlRoutingConditionMatches(c, GURL(url))) << url;
@@ -40,7 +40,7 @@ TEST(UrlRoutingRules, ExactFragmentsSubdomainsAndPriority) {
   exact.Set("type", "exact"); exact.Set("url", "https://example.org/a?q=1#old");
   EXPECT_TRUE(UrlRoutingConditionMatches(exact, GURL("https://example.org/a?q=1#new")));
   EXPECT_FALSE(UrlRoutingConditionMatches(exact, GURL("https://example.org/a?q=2")));
-  auto& c = rule.FindList("conditions")->front().GetDict();
+  auto& c = config.FindList("rules")->front().GetDict().FindList("conditions")->front().GetDict();
   c.Set("includeSubdomains", true); c.Set("path", "/item.*");
   EXPECT_TRUE(UrlRoutingConditionMatches(c, GURL("https://sub.item.taobao.com/item.htm?id=1")));
 }

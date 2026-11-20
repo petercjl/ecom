@@ -2,6 +2,7 @@
 #include "brave/browser/ecom/url_routing_rules.h"
 #include "base/json/json_reader.h"
 #include "base/strings/pattern.h"
+#include "base/strings/escape.h"
 #include "base/strings/string_util.h"
 #include "net/base/url_util.h"
 #include "url/gurl.h"
@@ -15,6 +16,11 @@ std::string Text(const base::DictValue& d, const char* key) {
 bool SafeUrl(const GURL& url) {
   return url.is_valid() && url.SchemeIsHTTPOrHTTPS() && url.has_host() &&
          !url.has_username() && !url.has_password();
+}
+std::string Host(const GURL& url) {
+  auto host = url.host();
+  if (!host.empty() && host.back() == '.') host.pop_back();
+  return host;
 }
 }  // namespace
 
@@ -66,7 +72,7 @@ std::string NormalizeUrlRoutingRule(base::DictValue& rule) {
         (scheme != "http" && scheme != "https" && scheme != "http+https") ||
         !subdomains || !subdomains->is_bool())
       return "INVALID_ROUTING_PATTERN";
-    condition.Set("host", host.host());
+    condition.Set("host", Host(host));
     if (const auto* query_value = condition.Find("query")) {
       if (!query_value->is_list() || query_value->GetList().size() > 10)
         return "INVALID_ROUTING_QUERY";
@@ -94,9 +100,9 @@ bool UrlRoutingConditionMatches(const base::DictValue& c, const GURL& url) {
   const auto host = Text(c, "host");
   const auto scheme = Text(c, "scheme");
   if (scheme != "http+https" && scheme != url.scheme()) return false;
-  if (url.host() != host &&
+  if (Host(url) != host &&
       !(c.FindBool("includeSubdomains").value_or(false) &&
-        base::EndsWith(url.host(), "." + host))) return false;
+        base::EndsWith(Host(url), "." + host))) return false;
   if (!base::MatchPattern(url.path(), Text(c, "path"))) return false;
   if (const auto* queries = c.FindList("query")) {
     for (const auto& value : *queries) {
@@ -104,7 +110,11 @@ bool UrlRoutingConditionMatches(const base::DictValue& c, const GURL& url) {
       const auto& q = value.GetDict();
       bool found = false;
       for (net::QueryIterator it(url); !it.IsAtEnd(); it.Advance()) {
-        if (it.GetKey() == Text(q, "name") &&
+        const auto key = base::UnescapeURLComponent(it.GetKey(),
+            base::UnescapeRule::SPACES | base::UnescapeRule::PATH_SEPARATORS |
+            base::UnescapeRule::URL_SPECIAL_CHARS_EXCEPT_PATH_SEPARATORS |
+            base::UnescapeRule::REPLACE_PLUS_WITH_SPACE);
+        if (key == Text(q, "name") &&
             (Text(q, "operator") == "equals"
                  ? it.GetUnescapedValue() == Text(q, "value")
                  : !it.GetUnescapedValue().empty())) {
