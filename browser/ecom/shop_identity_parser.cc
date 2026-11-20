@@ -183,4 +183,26 @@ std::string RedactIdentityError(std::string_view message,
   re2::RE2::GlobalReplace(&safe, R"re([0-9]{6,})re", "[REDACTED]");
   return safe;
 }
+std::string ParseTaobaoBuyerLogin(std::string_view json) {
+  const auto value = base::JSONReader::Read(json, base::JSON_PARSE_RFC);
+  if (!value || !value->is_dict()) {
+    return "unknown";
+  }
+  const auto& envelope = value->GetDict();
+  const auto* api = envelope.FindString("api");
+  const auto* ret = envelope.FindList("ret");
+  if (!api || !base::EqualsCaseInsensitiveASCII(*api, "mtop.user.getUserSimple") ||
+      !ret || ret->size() != 1 || !(*ret)[0].is_string()) {
+    return "unknown";
+  }
+  const auto& result = (*ret)[0].GetString();
+  if (result.starts_with("FAIL_SYS_SESSION_EXPIRED::")) {
+    return "signed-out";
+  }
+  const auto* data = envelope.FindDict("data");
+  return result.starts_with("SUCCESS::") && data &&
+                 !IdentityId(*data, "userNumId").empty()
+             ? "authenticated"
+             : "unknown";
+}
 }  // namespace ecom

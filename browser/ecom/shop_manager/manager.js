@@ -13,6 +13,7 @@ import {
   homePresets,
   normalizeHomeUrl,
   homeLabel,
+  taobaoAccountType,
 } from './model.js'
 
 const zh = {
@@ -248,6 +249,7 @@ Object.assign(zh, {
   buyer: '买家账号',
   buyerAccount: '淘宝买家账号',
   buyerLoginUnknown: '买家登录状态待核验',
+  buyerNeedsLogin: '淘宝账号需登录',
   taobaoHome: '淘宝首页',
   ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER:
     '已配置账号用途保持不变，其他用途请添加新容器。',
@@ -323,6 +325,7 @@ Object.assign(en, {
   buyer: 'Buyer',
   buyerAccount: 'Taobao buyer account',
   buyerLoginUnknown: 'Buyer login not verified',
+  buyerNeedsLogin: 'Taobao sign-in required',
   taobaoHome: 'Taobao home',
   ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER:
     'Keep the configured account purpose. Use a new container for another purpose.',
@@ -842,7 +845,9 @@ function render() {
     tr.append(first)
     tr.append(node('td', displayPlatform(row, copy === zh)))
     const status = node('td')
-    status.append(node('span', text(row.state), 'badge ' + row.state))
+    const statusText = row.authentication?.service === 'taobao'
+      && row.state === 'login-required' ? text('buyerNeedsLogin') : text(row.state)
+    status.append(node('span', statusText, 'badge ' + row.state))
     if (row.checking) status.title = text('checking')
     tr.append(status)
 
@@ -1103,6 +1108,7 @@ $('create-form').addEventListener('submit', async (event) => {
       color: $('create-color').value,
       customPlatformName: $('custom-platform-name').value,
       homeUrl: homepage,
+      accountType: taobaoAccountType(option.dataset.platform, homepage),
       entryUrl: homepage,
       ...(iconUrl ? { customPlatformIconUrl: iconUrl } : {}),
     })
@@ -1222,6 +1228,7 @@ $('edit-form').addEventListener('submit', async (event) => {
     request.browserTimezone = $('edit-timezone').value
     request.webRtcPolicy = $('edit-webrtc-policy').value
     request.homeUrl = normalizeHomeUrl($('edit-home-url').value)
+    request.accountType = taobaoAccountType(request.platform, request.homeUrl)
     if (request.platform === 'custom') {
       request.customPlatformName = $('edit-custom-platform-name').value
       request.entryUrl = request.homeUrl

@@ -8,6 +8,13 @@ export const pendingStates = new Set([
   'verification-unavailable',
 ])
 
+export function taobaoAccountType(platform, homepage) {
+  if (platform !== 'taobao') return undefined
+  const url = new URL(normalizeHomeUrl(homepage))
+  return ['www.taobao.com', 'www.tmall.com'].includes(url.hostname)
+    && url.pathname === '/' ? 'buyer' : 'merchant'
+}
+
 export function filterShops(
   rows,
   { scope = 'all', state = 'all', query = '' } = {},

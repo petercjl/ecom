@@ -81,6 +81,7 @@
 #include "services/network/public/mojom/fetch_api.mojom.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
 #include "third_party/re2/src/re2/re2.h"
+#include "third_party/boringssl/src/include/openssl/md5.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "url/gurl.h"
@@ -91,6 +92,8 @@ namespace {
 using Reply = base::OnceCallback<void(std::string)>;
 constexpr char kServiceKey[] = "ecom.shop.service";
 constexpr char kHome[] = "https://sycm.taobao.com/portal/home.htm";
+constexpr char kBuyerApi[] =
+    "https://h5api.m.taobao.com/h5/mtop.user.getusersimple/1.0/";
 base::DictValue Error(std::string code) {
   return base::DictValue()
       .Set("ok", false)
@@ -173,6 +176,20 @@ std::string HomeUrl(const base::DictValue& metadata) {
 }
 bool SupportsVerification(const base::DictValue& metadata) {
   return Field(metadata, "platform") == "taobao";
+}
+bool UsesBuyerVerification(const base::DictValue& metadata) {
+  if (Field(metadata, "platform") != "taobao") {
+    return false;
+  }
+  const auto type = Field(metadata, "accountType");
+  if (!type.empty()) {
+    return type == "buyer";
+  }
+  // Older platform selections persisted the homepage, but lost their purpose.
+  // Preserve bound merchant accounts; recover exact storefront presets only.
+  const GURL home(HomeUrl(metadata));
+  return !metadata.FindDict("identity") && home.path() == "/" &&
+         (home.host() == "www.taobao.com" || home.host() == "www.tmall.com");
 }
 // Older platform picker entries saved these built-in platforms as custom.
 std::string_view LegacyPresetPlatform(const base::DictValue& metadata) {
@@ -973,7 +990,8 @@ class ShopService final : public base::SupportsUserData::Data,
     if (!ValidPlatform(updated)) {
       return "INVALID_PLATFORM_INPUT";
     }
-    if (!old) {
+    if (!old || UsesBuyerVerification(*old) != UsesBuyerVerification(updated)) {
+      updated.Remove("candidate");
       for (const char* key : {"authentication", "diagnostics", "lastError",
                               "checkedAt", "expiry"}) {
         updated.Remove(key);
@@ -1015,6 +1033,9 @@ class ShopService final : public base::SupportsUserData::Data,
                    .spec());
     }
     item.Set("homeUrl", HomeUrl(request));
+    if (const auto* type = request.FindString("accountType")) {
+      item.Set("accountType", *type);
+    }
     for (const char* key :
          {"webRtcPolicy", "browserLanguage", "browserTimezone"}) {
       if (const auto* value = request.FindString(key)) {
@@ -1034,6 +1055,9 @@ class ShopService final : public base::SupportsUserData::Data,
       item.Remove("credentialOrigin");
       item.Remove("credentialImported");
       item.Set("verificationSupported", SupportsVerification(item));
+      if (Field(item, "platform") == "taobao") {
+        item.Set("accountType", UsesBuyerVerification(item) ? "buyer" : "merchant");
+      }
       item.Set("homeUrl", HomeUrl(item));
       item.Set("id", c->id);
       item.Set("name", c->name);
@@ -1158,6 +1182,12 @@ class ShopService final : public base::SupportsUserData::Data,
       return;
     }
     attempts_[id] = base::Time::Now();
+    if (UsesBuyerVerification(*Metadata().FindDict(id))) {
+      loaders_[id] = {nullptr, std::move(callback), 0};
+      ReadExpiry(id);
+      ReadBuyerCookies(id, false);
+      return;
+    }
     auto resource = std::make_unique<network::ResourceRequest>();
     resource->url = GURL(kHome);
     resource->load_flags = net::LOAD_BYPASS_CACHE | net::LOAD_DISABLE_CACHE;
@@ -1191,6 +1221,114 @@ class ShopService final : public base::SupportsUserData::Data,
         factory.get(),
         base::BindOnce(&ShopService::Verified, weak_.GetWeakPtr(), id),
         2 * 1024 * 1024);
+  }
+  void ReadBuyerCookies(const std::string& id, bool retried) {
+    const auto config = content::StoragePartitionConfig::Create(
+        profile_, containers::kContainersStoragePartitionDomain, id, false);
+    profile_->GetStoragePartition(config)
+        ->GetCookieManagerForBrowserProcess()
+        ->GetCookieList(
+            GURL(kBuyerApi), net::CookieOptions::MakeAllInclusive(),
+            net::CookiePartitionKeyCollection(),
+            base::BindOnce(&ShopService::BuyerCookiesRead, weak_.GetWeakPtr(),
+                           id, retried));
+  }
+  void BuyerCookiesRead(const std::string& id, bool retried,
+                       const net::CookieAccessResultList& cookies,
+                       const net::CookieAccessResultList&) {
+    if (!loaders_.contains(id)) {
+      return;
+    }
+    std::string token;
+    for (const auto& result : cookies) {
+      if (result.cookie.Name() == "_m_h5_tk") {
+        token = result.cookie.Value().substr(0, result.cookie.Value().find('_'));
+        break;
+      }
+    }
+    const auto timestamp = base::NumberToString(
+        base::Time::Now().InMillisecondsSinceUnixEpoch());
+    // MD5 is mandated by the site's MTop wire protocol, not a security choice.
+    const auto material = token + "&" + timestamp + "&12574478&{}";
+    std::array<uint8_t, MD5_DIGEST_LENGTH> digest;
+    MD5(reinterpret_cast<const uint8_t*>(material.data()), material.size(),
+        digest.data());
+    auto resource = std::make_unique<network::ResourceRequest>();
+    resource->url = GURL(std::string(kBuyerApi) +
+        "?jsv=2.7.3&appKey=12574478&t=" + timestamp +
+        "&sign=" + base::ToLowerASCII(base::HexEncode(digest)) +
+        "&api=mtop.user.getUserSimple&v=1.0&type=originaljson&dataType=json&data=%7B%7D");
+    resource->load_flags = net::LOAD_BYPASS_CACHE | net::LOAD_DISABLE_CACHE;
+    resource->credentials_mode = network::mojom::CredentialsMode::kInclude;
+    resource->redirect_mode = network::mojom::RedirectMode::kError;
+    resource->site_for_cookies = net::SiteForCookies::FromUrl(GURL("https://www.taobao.com/"));
+    resource->request_initiator = url::Origin::Create(GURL("https://www.taobao.com/"));
+    resource->referrer = GURL("https://www.taobao.com/");
+    resource->headers.SetHeader("Accept", "application/json");
+    resource->headers.SetHeader("User-Agent", embedder_support::GetUserAgent());
+    constexpr auto annotation =
+        net::DefineNetworkTrafficAnnotation("ecom_buyer_login_check", R"(
+      semantics { sender: "Ecom buyer login checks" description: "Checks the current buyer login using the same read-only user profile API as Taobao navigation. Returned profile values are discarded."
+        trigger: "Periodic check or user refresh." data: "Selected container cookies and native MTop signature." destination: WEBSITE }
+      policy { cookies_allowed: YES cookies_store: "Selected container" setting: "Taobao storefront containers."
+        policy_exception_justification: "User requested container login monitoring." })");
+    auto loader = network::SimpleURLLoader::Create(std::move(resource), annotation);
+    loader->SetTimeoutDuration(base::Seconds(8));
+    auto* pending = loader.get();
+    loaders_.at(id).loader = std::move(loader);
+    const auto config = content::StoragePartitionConfig::Create(
+        profile_, containers::kContainersStoragePartitionDomain, id, false);
+    pending->DownloadToString(
+        profile_->GetStoragePartition(config)->GetURLLoaderFactoryForBrowserProcess().get(),
+        base::BindOnce(&ShopService::BuyerVerified, weak_.GetWeakPtr(), id, retried),
+        256 * 1024);
+  }
+  void BuyerVerified(const std::string& id, bool retried,
+                     std::optional<std::string> body) {
+    const auto& loader = loaders_.at(id).loader;
+    const int status = loader->ResponseInfo() && loader->ResponseInfo()->headers
+                           ? loader->ResponseInfo()->headers->response_code() : 0;
+    const bool valid = body && loader->NetError() == net::OK && status == 200;
+    // MTop may issue a fresh signing cookie on its first request. Only repeat
+    // this read after an explicit token error, once, in the same partition.
+    if (valid && !retried &&
+        (body->find("FAIL_SYS_TOKEN_EMPTY::") != std::string::npos ||
+         body->find("FAIL_SYS_TOKEN_EXPIRED::") != std::string::npos)) {
+      ReadBuyerCookies(id, true);
+      return;
+    }
+    auto pending = std::move(loaders_.at(id));
+    loaders_.erase(id);
+    if (!Metadata().FindDict(id) ||
+        !containers::GetContainerFromPrefs(*profile_->GetPrefs(), id)) {
+      Send(std::move(pending.callback), Error("CONTAINER_NOT_FOUND"));
+      return;
+    }
+    auto item = Metadata().FindDict(id)->Clone();
+    const auto state = valid ? ParseTaobaoBuyerLogin(*body) : "unknown";
+    const auto now = base::NumberToString(base::Time::Now().ToTimeT());
+    auto auth = base::DictValue().Set("service", "taobao")
+        .Set("source", "taobao-user-simple-json").Set("state", state)
+        .Set("checkedAt", now);
+    if (state == "authenticated") {
+      auth.Set("lastSuccessfulAt", now);
+    }
+    item.Set("accountType", "buyer");
+    item.Set("authentication", std::move(auth));
+    item.Set("checkedAt", now);
+    item.Set("state", state == "authenticated" ? "signed-in" :
+                      state == "signed-out" ? "login-required" : "verification-required");
+    item.Remove("candidate");
+    item.Remove("diagnostics");
+    item.Remove("lastError");
+    if (state == "unknown") {
+      item.Set("lastError", "LOGIN_CHECK_UNAVAILABLE");
+      item.Set("diagnostics", base::DictValue()
+          .Set("buyerProbeHttpStatus", status)
+          .Set("buyerProbeNetworkError", pending.loader->NetError()));
+    }
+    Store(id, std::move(item));
+    Send(std::move(pending.callback), List());
   }
   void Verified(const std::string& id, std::optional<std::string> body) {
     auto pending = std::move(loaders_.at(id));

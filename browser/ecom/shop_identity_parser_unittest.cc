@@ -6,6 +6,23 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace ecom {
+TEST(ShopIdentityParser, BuyerLoginRequiresSuccessfulPlatformAccountResponse) {
+  EXPECT_EQ(ParseTaobaoBuyerLogin(
+      R"({"api":"mtop.user.getusersimple","ret":["SUCCESS::调用成功"],"data":{"userNumId":"12345"}})"),
+      "authenticated");
+  EXPECT_EQ(ParseTaobaoBuyerLogin(
+      R"({"api":"mtop.user.getUserSimple","ret":["FAIL_SYS_SESSION_EXPIRED::请登录"],"data":{}})"),
+      "signed-out");
+  for (const auto* response : {
+      R"({"api":"mtop.user.getUserSimple","ret":["SUCCESS::调用成功"],"data":{"userNumId":"0"}})",
+      R"({"api":"mtop.user.getUserSimple","ret":["SUCCESS::调用成功"],"data":{"nick":"cached-name"}})",
+      R"({"api":"other.api","ret":["SUCCESS::调用成功"],"data":{"userNumId":"123"}})",
+      R"({"api":"mtop.user.getUserSimple","ret":["FAIL_SYS_USER_VALIDATE::验证"],"data":{"userNumId":"123"}})",
+      R"({"api":"mtop.user.getUserSimple","ret":["FAIL_SYS_TOKEN_EXPIRED::令牌过期"],"data":{}})",
+      R"({"data":{"userNumId":"123"}})", "<html>login</html>"}) {
+    EXPECT_EQ(ParseTaobaoBuyerLogin(response), "unknown") << response;
+  }
+}
 TEST(ShopIdentityParser, PersonalViewProjectsOnlyVerifiedIdentityFields) {
   auto result = ParsePersonalViewShopIdentity(
       R"({"code":0,"data":{"runAsShopId":"12345","loginUserId":67890,"runAsShopTitle":"示例店铺","secret":"fixture-excluded"}})");

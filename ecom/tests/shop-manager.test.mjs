@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterShops, shopRequest, appearanceRequest, deletionRequest, displayPlatform, platformNames, shopServices, homePresets, normalizeHomeUrl, homeLabel} from '../../browser/ecom/shop_manager/model.js';
+import {filterShops, shopRequest, appearanceRequest, deletionRequest, displayPlatform, platformNames, shopServices, homePresets, normalizeHomeUrl, homeLabel, taobaoAccountType} from '../../browser/ecom/shop_manager/model.js';
+
+test('storefront presets choose buyer checks and merchant homes retain merchant checks',()=>{
+  for(const home of ['https://www.taobao.com/','https://www.tmall.com/'])
+    assert.equal(taobaoAccountType('taobao',home),'buyer');
+  for(const home of ['https://myseller.taobao.com/','https://sycm.taobao.com/portal/home.htm','https://one.alimama.com/','https://www.taobao.com.example.com/'])
+    assert.equal(taobaoAccountType('taobao',home),'merchant');
+  assert.equal(taobaoAccountType('jd','https://www.jd.com/'),undefined);
+  assert.throws(()=>taobaoAccountType('taobao','http://www.taobao.com/'),/INVALID_HOME_URL/);
+});
 
 const rows = [
   {id:'shop-a', name:'旗舰店', platform:'taobao', state:'ready', identity:{shopId:'123', accountId:'456', platformName:'平台店名'}},
