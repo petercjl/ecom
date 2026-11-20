@@ -109,6 +109,8 @@ source_set("core") {
       "ecom/memory_restore.h",
       "ecom/shop_container_service.cc",
       "ecom/shop_container_service.h",
+      "ecom/shop_check_schedule.cc",
+      "ecom/shop_check_schedule.h",
       "ecom/shop_identity_parser.cc",
       "ecom/shop_identity_parser.h",
       "ecom/shop_manager_ui.cc",

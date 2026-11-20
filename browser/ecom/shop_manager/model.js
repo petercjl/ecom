@@ -15,6 +15,14 @@ export function taobaoAccountType(platform, homepage) {
     && url.pathname === '/' ? 'buyer' : 'merchant'
 }
 
+export function lastCheckTime(value, locale) {
+  const seconds = Number(value)
+  if (!Number.isFinite(seconds) || seconds <= 0) return null
+  const date = new Date(seconds * 1000)
+  if (!Number.isFinite(date.getTime())) return null
+  return { datetime: date.toISOString(), label: date.toLocaleString(locale) }
+}
+
 export function filterShops(
   rows,
   { scope = 'all', state = 'all', query = '' } = {},

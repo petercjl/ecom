@@ -14,6 +14,7 @@ import {
   normalizeHomeUrl,
   homeLabel,
   taobaoAccountType,
+  lastCheckTime,
 } from './model.js'
 
 const zh = {
@@ -274,7 +275,7 @@ Object.assign(zh, {
   boundIdentityHint: '已绑定身份，本次尚未重新核对',
   loginService: '登录检查：生意参谋',
   LOGIN_CHECK_UNAVAILABLE: '暂时无法确认登录状态，请在原容器检查该服务。',
-  checked: '最近检查',
+  checked: '上次检测时间',
   icon: '容器图标',
   themeColor: '主题色',
   edit: '管理',
@@ -292,7 +293,7 @@ Object.assign(zh, {
   cookieReference: 'Cookie 到期参考',
   sessionExpiry: '含会话 Cookie；有效期由平台决定',
   autoHint:
-    '后台自动检查；返回此页时刷新。Cookie 到期日仅供参考，平台可提前撤销登录。',
+    '后台约每 15 分钟检查；返回时刷新超过 5 分钟的状态，异常时延后重试。Cookie 到期日仅供参考。',
   checking: '正在自动检查…',
   ready: '已登录 · 已核验',
   'awaiting-confirmation': '已登录，待确认店铺',
@@ -372,7 +373,7 @@ Object.assign(en, {
   cookieReference: 'Cookie expiry reference',
   sessionExpiry: 'Includes session cookies; validity is platform-controlled',
   autoHint:
-    'Checked in the background and when returning here. Cookie expiry is a reference; the platform may revoke login earlier.',
+    'Background checks about every 15 minutes. Returning refreshes checks older than 5 minutes; failures retry less often. Cookie expiry is a reference.',
   checking: 'Checking automatically…',
   ready: 'Signed in · verified',
   'awaiting-confirmation': 'Signed in; confirm shop',
@@ -850,6 +851,14 @@ function render() {
     status.append(node('span', statusText, 'badge ' + row.state))
     if (row.checking) status.title = text('checking')
     tr.append(status)
+
+    const checked = node('td', undefined, 'last-check')
+    const timestamp = lastCheckTime(row.checkedAt)
+    const time = node('time', timestamp?.label || text('never'))
+    if (timestamp) time.dateTime = timestamp.datetime
+    checked.append(time)
+    if (row.checking) checked.append(node('div', text('checking'), 'checking-note'))
+    tr.append(checked)
 
     const actions = node('td')
     const group = node('div', undefined, 'row-actions')

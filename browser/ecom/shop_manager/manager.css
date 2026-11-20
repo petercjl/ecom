@@ -298,6 +298,15 @@ tbody tr:last-child td {
 tbody tr:hover {
   background: var(--input);
 }
+.last-check {
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.checking-note {
+  font-size: 11px;
+  margin-top: 3px;
+}
 .shop-cell {
   display: flex;
   gap: 11px;

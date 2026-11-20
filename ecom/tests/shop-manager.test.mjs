@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterShops, shopRequest, appearanceRequest, deletionRequest, displayPlatform, platformNames, shopServices, homePresets, normalizeHomeUrl, homeLabel, taobaoAccountType} from '../../browser/ecom/shop_manager/model.js';
+import {filterShops, shopRequest, appearanceRequest, deletionRequest, displayPlatform, platformNames, shopServices, homePresets, normalizeHomeUrl, homeLabel, taobaoAccountType, lastCheckTime} from '../../browser/ecom/shop_manager/model.js';
+
+test('last check time uses the native timestamp and handles never checked or invalid dates',()=>{
+  const result=lastCheckTime('1795188585','zh-CN');
+  assert.equal(result.datetime,new Date(1795188585*1000).toISOString());
+  assert.ok(result.label.includes('2026'));
+  for(const value of [undefined,null,'',0,-1,'invalid',Infinity,1e20])
+    assert.equal(lastCheckTime(value),null);
+});
 
 test('storefront presets choose buyer checks and merchant homes retain merchant checks',()=>{
   for(const home of ['https://www.taobao.com/','https://www.tmall.com/'])

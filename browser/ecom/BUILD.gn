@@ -3,6 +3,11 @@
 # License, v. 2.0. https://mozilla.org/MPL/2.0/
 import("//testing/test.gni")
 
+test("shop_check_schedule_tests") {
+  sources = [ "shop_check_schedule.cc", "shop_check_schedule_unittest.cc" ]
+  deps = [ "//base", "//base/test:run_all_unittests", "//testing/gtest" ]
+}
+
 test("url_routing_rules_tests") {
   sources = [ "url_routing_rules.cc", "url_routing_rules_unittest.cc" ]
   deps = [ "//base", "//base/test:run_all_unittests", "//net", "//url", "//testing/gtest" ]

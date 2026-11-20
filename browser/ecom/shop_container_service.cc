@@ -15,6 +15,7 @@
 #include "base/base64.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
+#include "base/hash/hash.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
 #include "base/memory/raw_ptr.h"
@@ -31,6 +32,7 @@
 #include "brave/browser/ecom/business_read_service.h"
 #include "brave/browser/ecom/container_password_store.h"
 #include "brave/browser/ecom/shop_identity_parser.h"
+#include "brave/browser/ecom/shop_check_schedule.h"
 #include "brave/browser/ecom/shop_manager_ui.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "brave/components/containers/core/browser/containers_settings_handler.h"
@@ -294,8 +296,9 @@ class ShopService final : public base::SupportsUserData::Data,
     MigrateLegacyPlatformPresets();
     profile_->AddObserver(this);
     timer_.Start(
-        FROM_HERE, base::Seconds(60),
-        base::BindRepeating(&ShopService::ScheduleChecks, weak_.GetWeakPtr()));
+        FROM_HERE, base::Seconds(15),
+        base::BindRepeating(&ShopService::ScheduleChecks, weak_.GetWeakPtr(),
+                            false, false));
   }
   ~ShopService() override {
     if (profile_) {
@@ -304,6 +307,7 @@ class ShopService final : public base::SupportsUserData::Data,
   }
   void OnProfileWillBeDestroyed(Profile*) override {
     timer_.Stop();
+    pump_timer_.Stop();
     weak_.InvalidateWeakPtrs();
     loaders_.clear();
     profile_->RemoveObserver(this);
@@ -349,10 +353,7 @@ class ShopService final : public base::SupportsUserData::Data,
       return;
     }
     if (method == "shops.refresh") {
-      if (request.FindBool("force").value_or(false)) {
-        attempts_.clear();
-      }
-      ScheduleChecks();
+      ScheduleChecks(true, request.FindBool("force").value_or(false));
       Send(std::move(callback), List());
       return;
     }
@@ -1065,12 +1066,13 @@ class ShopService final : public base::SupportsUserData::Data,
       item.Set("color",
                base::StringPrintf("#%06x", c->background_color & 0xFFFFFF));
       item.Set("openTabs", OpenTabCount(profile_, c->id));
-      item.Set("checking", loaders_.contains(c->id));
+      item.Set("checking", loaders_.contains(c->id) ||
+          std::find(queue_.begin(), queue_.end(), c->id) != queue_.end());
       shops.Append(std::move(item));
     }
     return base::DictValue().Set("ok", true).Set("shops", std::move(shops));
   }
-  void ScheduleChecks() {
+  void ScheduleChecks(bool manager_refresh, bool force) {
     if (!profile_ || !profile_->GetPrefs()->GetBoolean(
                          containers::prefs::kContainersEnabled)) {
       return;
@@ -1078,8 +1080,17 @@ class ShopService final : public base::SupportsUserData::Data,
     for (const auto& container :
          containers::GetContainersFromPrefs(*profile_->GetPrefs())) {
       const auto* metadata = Metadata().FindDict(container->id);
+      int64_t checked_at = 0;
+      if (metadata) {
+        base::StringToInt64(Field(*metadata, "checkedAt"), &checked_at);
+      }
+      const auto checked = checked_at > 0
+          ? base::Time::FromSecondsSinceUnixEpoch(checked_at) : base::Time();
+      const auto stagger = base::Seconds(base::PersistentHash(container->id) % 60);
       if (metadata && SupportsVerification(*metadata) &&
-          (!attempts_.contains(container->id) ||
+          IsShopCheckDue(Field(*metadata, "state"), checked, base::Time::Now(),
+                         manager_refresh, force, stagger) &&
+          (force || !attempts_.contains(container->id) ||
            base::Time::Now() - attempts_[container->id] >= base::Seconds(30)) &&
           !loaders_.contains(container->id) &&
           std::find(queue_.begin(), queue_.end(), container->id) ==
@@ -1090,15 +1101,24 @@ class ShopService final : public base::SupportsUserData::Data,
     PumpChecks();
   }
   void PumpChecks() {
+    if (pump_timer_.IsRunning()) {
+      return;
+    }
     while (profile_ && loaders_.size() < 2 && !queue_.empty()) {
       auto id = queue_.front();
       queue_.pop_front();
       if (!Metadata().FindDict(id) ||
           !SupportsVerification(*Metadata().FindDict(id)) ||
-          loaders_.contains(id)) {
+          loaders_.contains(id) ||
+          (attempts_.contains(id) &&
+           base::Time::Now() - attempts_[id] < base::Seconds(30))) {
         continue;
       }
       Verify(id, base::BindOnce(&ShopService::AutoChecked, weak_.GetWeakPtr()));
+      pump_timer_.Start(
+          FROM_HERE, base::Seconds(3),
+          base::BindOnce(&ShopService::PumpChecks, weak_.GetWeakPtr()));
+      return;
     }
   }
   void AutoChecked(std::string) { PumpChecks(); }
@@ -1707,6 +1727,7 @@ class ShopService final : public base::SupportsUserData::Data,
   std::deque<std::string> queue_;
   std::map<std::string, base::Time> attempts_;
   base::RepeatingTimer timer_;
+  base::OneShotTimer pump_timer_;
   base::WeakPtrFactory<ShopService> weak_{this};
 };
 class StoredUsernameLookup final : public password_manager::PasswordStoreConsumer {
