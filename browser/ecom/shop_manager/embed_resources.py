@@ -17,7 +17,7 @@ def main():
                            ('memory.html', 'MemoryHtml'), ('memory.js', 'MemoryJs'),
                            ('memory.css', 'MemoryCss'),
                            ('routing.html', 'RoutingHtml'), ('routing.js', 'RoutingJs'),
-                           ('routing.css', 'RoutingCss')]:
+                           ('routing.css', 'RoutingCss'), ('routing-model.js', 'RoutingModel')]:
         text = (args.source / filename).read_text()
         assert ')ECOMRESOURCE"' not in text
         parts.append(f'inline constexpr char kShopManager{name}[] = R"ECOMRESOURCE({text})ECOMRESOURCE";\n')

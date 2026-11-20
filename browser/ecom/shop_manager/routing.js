@@ -2,6 +2,7 @@
 import './strings.m.js'
 import {sendWithPromise} from 'chrome://resources/js/cr.js'
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js'
+import {mergePastedRoutingUrls} from './routing-model.js'
 const zh=loadTimeData.getString('locale').startsWith('zh')
 const t=(a,b)=>zh?a:b, $=id=>document.getElementById(id)
 const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n}
@@ -61,7 +62,7 @@ function addCondition(c={type:'pattern',scheme:'https',host:'',path:'/*',include
 function edit(rule){editingId=rule?.id||'';$('edit-title').textContent=rule?t('编辑规则','Edit rule'):t('添加规则','Add rule');$('edit-error').textContent='';$('bulk').value='';$('rule-name').value=rule?.name||'';$('rule-enabled').checked=!!rule?.enabled;$('target').replaceChildren();const empty=node('option',t('请选择容器','Choose a container'));empty.value='';$('target').append(empty);for(const c of state.containers){const o=node('option',c.name);o.value=c.id;$('target').append(o)}$('target').value=rule?.containerId||'';$('conditions').replaceChildren();for(const c of rule?.conditions||[undefined])addCondition(c);$('editor').showModal()}
 $('add').onclick=()=>edit()
 $('condition-add').onclick=()=>addCondition()
-$('bulk-add').onclick=()=>{const urls=$('bulk').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);if(urls.length+$('conditions').children.length>50){$('edit-error').textContent=t('每条规则最多50个条件。','Up to 50 conditions per rule.');return}for(const url of urls)addCondition({type:'exact',url});$('bulk').value=''}
+$('bulk-add').onclick=()=>{try{const conditions=mergePastedRoutingUrls([...$('conditions').children].map(c=>c.read()),$('bulk').value);$('conditions').replaceChildren();for(const c of conditions)addCondition(c);$('bulk').value='';$('edit-error').textContent=''}catch(e){$('edit-error').textContent=e.message==='ROUTING_CONDITION_LIMIT'?t('每条规则最多50个条件。','Up to 50 conditions per rule.'):errorText(e.message)}}
 $('cancel').onclick=()=>$('editor').close()
 $('edit-form').onsubmit=async e=>{e.preventDefault();$('save').disabled=true;try{const rule={id:editingId,name:$('rule-name').value,containerId:$('target').value,enabled:$('rule-enabled').checked,conditions:[...$('conditions').children].map(c=>c.read())};await mutate('routing.save',{rule});$('editor').close();$('message').textContent=t('已保存。','Saved.')}catch(err){$('edit-error').textContent=err.message}finally{$('save').disabled=false}}
 $('global').onchange=async()=>{try{await mutate('routing.set-enabled',{enabled:$('global').checked})}catch(e){$('message').textContent=e.message;$('global').checked=state.configuration.enabled}}

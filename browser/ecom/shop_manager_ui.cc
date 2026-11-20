@@ -94,7 +94,7 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
         return path.empty() || path == "index.html" || path == "manager.css" ||
                path == "manager.js" || path == "model.js" ||
                path == "memory.html" || path == "memory.js" || path == "memory.css" ||
-               path == "routing.html" || path == "routing.js" || path == "routing.css" ||
+               path == "routing.html" || path == "routing.js" || path == "routing.css" || path == "routing-model.js" ||
                path.starts_with("icons/");
       }),
       base::BindRepeating([](const std::string& request_path,
@@ -109,6 +109,8 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
           data = kShopManagerModel;
         } else if (path == "routing.html") {
           data = kShopManagerRoutingHtml;
+        } else if (path == "routing-model.js") {
+          data = kShopManagerRoutingModel;
         } else if (path == "routing.js") {
           data = kShopManagerRoutingJs;
         } else if (path == "routing.css") {
