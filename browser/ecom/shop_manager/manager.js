@@ -1,5 +1,6 @@
 // Copyright 2026 Ecom Authors. MPL-2.0.
 import './strings.m.js'
+import { refreshRoutingView } from './routing.js'
 import { sendWithPromise } from 'chrome://resources/js/cr.js'
 import { loadTimeData } from 'chrome://resources/js/load_time_data.js'
 import {
@@ -398,6 +399,27 @@ let rows = [],
   busy = false,
   confirmationId
 const homeDirty = { create: false, edit: false }
+$('routing-nav-label').textContent = copy === zh ? '网址打开规则' : 'URL opening rules'
+function showWorkspaceView() {
+  const routing = location.hash === '#routing' ||
+    (!location.hash && location.pathname.endsWith('/routing.html'))
+  $('accounts-view').hidden = routing
+  $('routing-view').hidden = !routing
+  $('routing-nav').classList.toggle('selected', routing)
+  if (routing) $('routing-nav').setAttribute('aria-current', 'page')
+  else $('routing-nav').removeAttribute('aria-current')
+  $('scopes').querySelectorAll('[data-scope]').forEach(item => {
+    const selected = !routing && item.dataset.scope === scope
+    item.classList.toggle('selected', selected)
+    if (selected) item.setAttribute('aria-current', 'page')
+    else item.removeAttribute('aria-current')
+  })
+  document.title = `Ecom · ${routing ? $('routing-nav-label').textContent : text('title')}`
+  if (routing) void refreshRoutingView()
+}
+window.addEventListener('hashchange', showWorkspaceView)
+showWorkspaceView()
+
 let lastRenderedSignature = ''
 let editId, deletionPlan
 let platforms = []
@@ -980,6 +1002,7 @@ $('scopes').addEventListener('click', (event) => {
   const target = event.target.closest('[data-scope]')
   if (!target || busy) return
   scope = target.dataset.scope
+  if ($('accounts-view').hidden) location.hash = 'accounts'
   $('scopes')
     .querySelectorAll('button')
     .forEach((item) => {
@@ -1131,6 +1154,7 @@ document.addEventListener('visibilitychange', async () => {
 })
 try {
   await loadPlatforms()
+  showWorkspaceView()
   await command({ method: 'shops.refresh' })
   await refresh()
 } catch (error) {

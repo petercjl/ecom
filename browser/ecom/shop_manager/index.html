@@ -11,6 +11,7 @@
       rel="stylesheet"
       href="manager.css"
     />
+    <link rel="stylesheet" href="routing.css" />
     <script
       type="module"
       src="manager.js"
@@ -41,14 +42,19 @@
           ><b id="all-count">0</b>
         </button>
       </nav>
+      <nav class="workspace-settings" aria-label="工作区设置">
+        <a class="nav-item" id="routing-nav" href="#routing">
+          <span class="nav-icon" aria-hidden="true">⇄</span>
+          <span id="routing-nav-label">网址打开规则</span>
+        </a>
+      </nav>
       <div class="sidebar-bottom">
-        <a href="routing.html">网址打开规则 · URL rules</a>
         <a href="memory.html" id="memory-open">内存与标签页 · Memory</a>
         <button id="plugin-guide-open" type="button">Agent 插件 · 安装说明</button>
         <span class="connection-dot"></span><span data-text="local"></span>
       </div>
     </aside>
-    <main>
+    <main id="accounts-view">
       <header class="page-header">
         <div>
           <div class="eyebrow">ECOM WORKSPACE</div>
@@ -141,6 +147,7 @@
         ></a>
       </div>
     </main>
+    <!-- ECOM_ROUTING_VIEW -->
     <dialog id="plugin-guide" aria-labelledby="plugin-guide-title">
       <div class="dialog-heading">
         <h2 id="plugin-guide-title">Ecom Agent 插件</h2>

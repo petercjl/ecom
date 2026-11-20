@@ -1,1 +1,41 @@
-:root{font:14px/1.6 system-ui,sans-serif;color:#182334;background:#f4f6fa;color-scheme:light}*{box-sizing:border-box}body{margin:0}main{max-width:1040px;margin:30px auto;padding:0 26px}a{color:#315fcb}header,.toolbar,.inline,.rule-head,footer{display:flex;align-items:center;gap:14px;justify-content:space-between}header{margin:20px 0}h1{font-size:28px;margin:2px 0}h2{font-size:19px;margin:0 0 14px}h3{font-size:15px}.eyebrow{color:#63728a;font-size:11px;letter-spacing:2px}p{color:#63728a;margin:8px 0}.card,.toolbar{background:white;border:1px solid #e0e6ee;border-radius:12px;padding:20px;margin:14px 0}.toolbar{padding:12px 18px}.rule-head h2{margin:0}.badge{display:inline-block;font-size:12px;border-radius:6px;padding:2px 8px;background:#eef2f7;color:#526176}.badge.on{background:#e6f4ed;color:#23764b}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}button,input,select,textarea{font:inherit}button{border:1px solid #d4dce8;border-radius:7px;padding:7px 13px;background:white;color:#254b91;cursor:pointer}button:hover{background:#f0f5ff}button:disabled{opacity:.5;cursor:default}#add,#save,#test-submit{background:#315fcb;color:white;border-color:#315fcb}label{display:block;margin:8px 0 4px}input:not([type=checkbox]),select,textarea{width:100%;padding:8px 10px;border:1px solid #ccd6e4;border-radius:7px;background:#fff;color:inherit}input[type=checkbox]{margin-right:8px}.inline input{flex:1;min-width:0}.inline button{flex-shrink:0}dialog{width:min(820px,94vw);max-height:90vh;border:1px solid #dbe3ef;border-radius:14px;padding:25px;box-shadow:0 15px 70px #18233435}dialog::backdrop{background:#18233455}.condition{padding:16px;border:1px solid #dce4ef;border-radius:9px;margin:12px 0;background:#f8faff}.columns{display:grid;grid-template-columns:1fr 1fr;gap:12px}.query{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin:8px 0}details{margin:20px 0}summary{cursor:pointer}footer{justify-content:flex-end;margin-top:20px}#message,#edit-error{color:#a43e2c;min-height:1.4em}.pattern-text{font:12px/1.7 ui-monospace,monospace;color:#59677b;overflow-wrap:anywhere}@media(max-width:650px){header{align-items:flex-start}.columns,.query{grid-template-columns:1fr}.rule-head{align-items:flex-start;flex-wrap:wrap}}
+/* Copyright 2026 Ecom Authors. MPL-2.0. */
+/* Account workspace tokens and controls are shared via manager.css. */
+[hidden] { display: none !important; }
+.workspace-settings { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.routing-view { line-height: 1.6; }
+.routing-view h2 { font-size: 18px; margin: 0 0 14px; }
+.routing-view h3 { font-size: 15px; }
+.routing-view p { color: var(--muted); margin: 8px 0; }
+.routing-view .page-header p { margin: 0; }
+.routing-view .toolbar, .routing-view .inline, .routing-view .rule-head,
+.routing-view footer { display: flex; align-items: center; gap: 14px; justify-content: space-between; }
+.routing-view .card, .routing-view .toolbar { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px; margin: 16px 0; }
+.routing-view .toolbar { padding: 12px 20px; }
+.routing-view .toolbar label { margin: 0; }
+.routing-view .rule-head h2 { margin: 0; }
+.routing-view .badge { background: var(--input); color: var(--muted); }
+.routing-view .badge.on { background: var(--wash); color: var(--accent); }
+.routing-view .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.routing-view label { display: block; margin: 12px 0 6px; font-size: inherit; }
+.routing-view input:not([type=checkbox]), .routing-view select, .routing-view textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--input); color: var(--ink); font: inherit; }
+.routing-view input[type=checkbox] { width: auto; margin: 0 8px 0 0; accent-color: var(--accent); }
+.routing-view .inline input { flex: 1; min-width: 0; }
+.routing-view .inline button { flex-shrink: 0; }
+.routing-view dialog { width: min(820px, 94vw); max-height: 90vh; }
+.routing-view dialog label { margin: 12px 0 6px; }
+.routing-view dialog label > input:not([type=checkbox]), .routing-view dialog label > select { display: block; margin-top: 6px; }
+.routing-view .condition { padding: 18px; border: 1px solid var(--line); border-radius: 10px; margin: 14px 0; background: var(--bg); }
+.routing-view .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.routing-view .query { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; margin: 8px 0; }
+.routing-view details { margin: 20px 0; }
+.routing-view summary { cursor: pointer; color: var(--accent); }
+.routing-view footer { justify-content: flex-end; margin-top: 20px; }
+#routing-message, #routing-edit-error { color: var(--danger); }
+#routing-message:empty { display: none; }
+.routing-view .pattern-text { font: 12px/1.8 ui-monospace, monospace; color: var(--muted); overflow-wrap: anywhere; }
+@media (max-width: 680px) {
+  .workspace-settings .nav-item { width: auto; font-size: 13px; }
+  .routing-view .columns, .routing-view .query { grid-template-columns: 1fr; }
+  .routing-view .rule-head { align-items: flex-start; flex-wrap: wrap; }
+  .routing-view .card { padding: 18px; }
+}
