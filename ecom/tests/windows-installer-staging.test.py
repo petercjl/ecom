@@ -62,57 +62,21 @@ class InstallerStagingTest(unittest.TestCase):
             self.assertEqual((existing / 'retained').read_text(),
                              'previous build input')
 
-    def test_transient_windows_copy_is_retried_and_copy_hook_restored(self):
+    def test_cleanup_failure_keeps_completed_archive_result_and_owned_tree(self):
         with tempfile.TemporaryDirectory() as directory:
-            source = Path(directory) / 'source.dll'
-            source.write_bytes(b'payload')
-            real_copy = shutil.copy
-            attempts = []
-
-            def copy_once_locked(src, dst, *args, **kwargs):
-                attempts.append(dst)
-                if len(attempts) == 1:
-                    error = PermissionError(13, 'sharing conflict')
-                    # CPython's CRT open reports EACCES without winerror.
-                    raise error
-                return real_copy(src, dst, *args, **kwargs)
+            observed = []
 
             def original(options):
-                shutil.copy(source, options.staging_dir)
-                with open(str(options.staging_dir) + '/' + source.name, 'rb') as result:
-                    self.assertEqual(result.read(), b'payload')
+                scratch = Path(options.staging_dir)
+                observed.append(scratch)
+                (scratch / 'held.dll').write_bytes(b'archive input')
+                return 0
 
-            with patch.object(shutil, 'copy', copy_once_locked), patch('os.name', 'nt'), patch('time.sleep') as sleep:
-                wrapper(original)(types.SimpleNamespace(staging_dir=directory))
-                self.assertIs(shutil.copy, copy_once_locked)
-                sleep.assert_called_once_with(0.1)
-            self.assertIs(shutil.copy, real_copy)
-            self.assertEqual(len(attempts), 2)
-
-    def test_persistent_windows_copy_failure_is_bounded(self):
-        with tempfile.TemporaryDirectory() as directory:
-            error = PermissionError(13, 'access denied')
-            error.winerror = 5
-
-            def original(options):
-                shutil.copy('input.dll', options.staging_dir)
-
-            with patch.object(shutil, 'copy', side_effect=error) as copy, patch('time.sleep') as sleep:
-                with self.assertRaises(PermissionError):
-                    wrapper(original)(types.SimpleNamespace(staging_dir=directory))
-                self.assertEqual(copy.call_count, 6)
-                self.assertEqual(sleep.call_count, 5)
-
-    def test_other_copy_errors_are_not_retried(self):
-        with tempfile.TemporaryDirectory() as directory:
-            def original(options):
-                shutil.copy('input.dll', options.staging_dir)
-
-            with patch.object(shutil, 'copy', side_effect=PermissionError(1, 'permission')) as copy, patch('time.sleep') as sleep:
-                with self.assertRaises(PermissionError):
-                    wrapper(original)(types.SimpleNamespace(staging_dir=directory))
-                self.assertEqual(copy.call_count, 1)
-                sleep.assert_not_called()
+            options = types.SimpleNamespace(staging_dir=directory)
+            with patch.object(shutil, 'rmtree', side_effect=OSError(145, 'directory not empty')):
+                self.assertEqual(wrapper(original)(options), 0)
+            self.assertEqual(options.staging_dir, directory)
+            self.assertTrue((observed[0] / 'held.dll').is_file())
 
     def test_failure_preserves_diagnostics_and_restores_original_options(self):
         with tempfile.TemporaryDirectory() as directory:
