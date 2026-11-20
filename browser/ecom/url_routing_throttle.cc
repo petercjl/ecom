@@ -50,7 +50,9 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
   });
   if (!window) return;
   const bool foreground = source->GetVisibility() == content::Visibility::VISIBLE;
-  const bool blank = !source->GetController().GetLastCommittedEntry();
+  // Chromium creates an initial NavigationEntry even before a new tab loads.
+  // Use its initial-blank predicate, which also excludes restored/cloned tabs.
+  const bool blank = source->GetController().IsInitialBlankNavigation();
   if (!error) {
     const auto current = ResolveUrlRouting(profile, original_url);
     const auto* current_rule = current.FindString("ruleId");
@@ -79,7 +81,9 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
     params.navigated_or_inserted_contents->SetUserData(kChain, std::move(chain));
   }
   // Only discard an empty navigation shell, never an existing merchant page.
-  if (blank && source && params.navigated_or_inserted_contents) {
+  if (!error && blank && source && params.navigated_or_inserted_contents &&
+      params.navigated_or_inserted_contents != source.get() &&
+      source->GetController().IsInitialBlankNavigation()) {
     const int index = window->GetTabStripModel()->GetIndexOfWebContents(source.get());
     if (index != TabStripModel::kNoTab)
       window->GetTabStripModel()->CloseWebContentsAt(index, TabCloseTypes::CLOSE_NONE);
