@@ -31,16 +31,17 @@ TEST(UrlRoutingRules, HostPathAndQueryBoundaries) {
 TEST(UrlRoutingRules, ExactFragmentsSubdomainsAndPriority) {
   auto config = DefaultUrlRoutingConfig();
   auto& rule = config.FindList("rules")->front().GetDict();
-  rule.Set("enabled", true).Set("containerId", "buyer");
-  auto copy = rule.Clone(); copy.Set("id", "second").Set("containerId", "other");
+  rule.Set("enabled", true);
+  rule.Set("containerId", "buyer");
+  auto copy = rule.Clone(); copy.Set("id", "second"); copy.Set("containerId", "other");
   config.FindList("rules")->Append(std::move(copy));
   EXPECT_EQ(*FindUrlRoutingRule(config, GURL("https://item.taobao.com/item.htm?id=1"))->FindString("containerId"), "buyer");
   base::DictValue exact;
-  exact.Set("type", "exact").Set("url", "https://example.org/a?q=1#old");
+  exact.Set("type", "exact"); exact.Set("url", "https://example.org/a?q=1#old");
   EXPECT_TRUE(UrlRoutingConditionMatches(exact, GURL("https://example.org/a?q=1#new")));
   EXPECT_FALSE(UrlRoutingConditionMatches(exact, GURL("https://example.org/a?q=2")));
   auto& c = rule.FindList("conditions")->front().GetDict();
-  c.Set("includeSubdomains", true).Set("path", "/item.*");
+  c.Set("includeSubdomains", true); c.Set("path", "/item.*");
   EXPECT_TRUE(UrlRoutingConditionMatches(c, GURL("https://sub.item.taobao.com/item.htm?id=1")));
 }
 TEST(UrlRoutingRules, RejectAmbiguousInputsAndRequireAllPredicates) {

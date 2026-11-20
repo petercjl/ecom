@@ -84,15 +84,17 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
   source->AddString("locale", g_browser_process->GetApplicationLocale());
   source->UseStringsJs();
   source->SetRequestFilter(
-      base::BindRepeating([](const std::string& path) {
+      base::BindRepeating([](const std::string& request_path) {
+        const auto path = request_path.substr(0, request_path.find_first_of("?#"));
         return path.empty() || path == "index.html" || path == "manager.css" ||
                path == "manager.js" || path == "model.js" ||
                path == "memory.html" || path == "memory.js" || path == "memory.css" ||
                path == "routing.html" || path == "routing.js" || path == "routing.css" ||
                path.starts_with("icons/");
       }),
-      base::BindRepeating([](const std::string& path,
+      base::BindRepeating([](const std::string& request_path,
                              content::WebUIDataSource::GotDataCallback done) {
+        const auto path = request_path.substr(0, request_path.find_first_of("?#"));
         const char* data = kShopManagerHtml;
         if (path == "manager.css") {
           data = kShopManagerCss;
