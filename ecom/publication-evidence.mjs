@@ -10,14 +10,18 @@ export function validateDevValidation(record) {
 }
 const publicationFiles = new Set([
   'AGENTS.md', 'ecom/publication-evidence.mjs', 'ecom/verify-release-payload.mjs',
+  'ecom/check-local-payload.mjs', 'ecom/stage-local-publication.mjs',
+  'ecom/test-macos-scope-migration.mjs',
   'ecom/verify-windows-payload.mjs', 'ecom/registry-payload-status.mjs',
   'ecom/windows-release-transfer.mjs', 'ecom/test-macos-update-recovery.mjs',
   'ecom/tests/release-contract.test.mjs', 'ecom/tests/windows-release-contract.test.mjs',
   'ecom/tests/windows-updater-local-roundtrip.cs', 'ecom/tests/windows-updater-ui.cs',
   '.github/workflows/ecom-macos-publish.yml', '.github/workflows/ecom-windows-publish.yml',
+  '.github/workflows/ecom-check.yml', '.github/workflows/ecom-cli-publish.yml',
 ]);
 export function publicationOnly(file, platform) {
   return publicationFiles.has(file) || file.startsWith('docs/') ||
+    file.startsWith('.github/archived-workflows/') ||
     file.startsWith('packages/ecom-cli/') || file.startsWith('ecom/releases/') ||
     // This translation unit is included only by the Windows build.
     (platform === 'darwin' && file === 'browser/ecom/windows_update_service.cc');

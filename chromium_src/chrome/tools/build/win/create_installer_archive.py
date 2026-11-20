@@ -7,7 +7,10 @@
 import os
 import re
 import shutil
+import stat
 import subprocess
+import sys
+import tempfile
 
 from os.path import join
 
@@ -15,6 +18,30 @@ import override_utils
 
 from brave_chromium_utils import get_src_dir
 from sign_binaries import sign_binaries
+
+
+@override_utils.override_function(globals())
+def main(original_function, options):
+    # Each attempt owns a fresh tree. Existing staging paths may still be held
+    # by Windows build input readers while the archive action is running.
+    previous = options.staging_dir
+    os.makedirs(previous, exist_ok=True)
+    scratch = tempfile.mkdtemp(prefix='ecom-installer-', dir=previous)
+    options.staging_dir = scratch
+    try:
+        result = original_function(options)
+    except Exception:
+        print('Ecom installer diagnostic staging: ' + os.path.abspath(scratch),
+              file=sys.stderr)
+        raise
+    else:
+        def remove_readonly(function, filename, _error):
+            os.chmod(filename, stat.S_IREAD | stat.S_IWRITE)
+            function(filename)
+        shutil.rmtree(scratch, onerror=remove_readonly)
+        return result
+    finally:
+        options.staging_dir = previous
 
 
 @override_utils.override_function(globals())
