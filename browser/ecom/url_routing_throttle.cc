@@ -38,7 +38,7 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
   if (!source) return;
   auto* profile = Profile::FromBrowserContext(source->GetBrowserContext());
   BrowserWindowInterface* window = nullptr;
-  ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](auto* candidate) {
+  ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](BrowserWindowInterface* candidate) {
     if (candidate->GetProfile() == profile &&
         candidate->GetTabStripModel()->GetIndexOfWebContents(source.get()) != TabStripModel::kNoTab) {
       window = candidate;
@@ -82,7 +82,7 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
 UrlRoutingThrottle::UrlRoutingThrottle(content::NavigationThrottleRegistry& registry)
     : NavigationThrottle(registry) {}
 void UrlRoutingThrottle::MaybeCreateAndAdd(content::NavigationThrottleRegistry& registry) {
-  const auto& handle = registry.GetNavigationHandle();
+  auto& handle = registry.GetNavigationHandle();
   if (handle.IsInPrimaryMainFrame() && !handle.IsSameDocument() &&
       Profile::FromBrowserContext(handle.GetWebContents()->GetBrowserContext())->IsRegularProfile())
     registry.AddThrottle(std::make_unique<UrlRoutingThrottle>(registry));
