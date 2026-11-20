@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
-import {validateWindowsRelease,windowsPackage,windowsPartPackage,validateWindowsParts,windowsPackBudget,sha256} from './windows-release-contract.mjs';
+import {validateWindowsRelease,windowsPackage,windowsPartPackage,validateWindowsParts,windowsTarballName,windowsPackBudget,sha256} from './windows-release-contract.mjs';
 import {git} from './workspace.mjs';
 import {validateDevValidation,verifyDevValidation,publicationOnly} from './publication-evidence.mjs';
 
@@ -45,7 +45,7 @@ export async function verifyWindowsPayload(root,version,tgz,tag='latest') {
   for(const k of ['sourceRevision','archiveSha256','archiveBytes','exeSha256','frameworkSha256','updaterSha256','payloadFormat','parts'])if(JSON.stringify(artifact[k])!==JSON.stringify(record[k]))throw new Error('Artifact identity differs: '+k);
   const installerHash=crypto.createHash('sha256');
   for(const part of artifact.parts){
-    const file=path.join(path.dirname(tgz),'parts','petercjl-ecom-windows-x64-'+part.version+'.tgz');
+    const file=path.join(path.dirname(tgz),'parts',windowsTarballName(config,part.version));
     const read=await checkArchive(file,part,['package/EcomSetup.part','package/part.json','package/package.json','package/LICENSE']);
     if(JSON.stringify(JSON.parse(read('package.json')))!==JSON.stringify(windowsPartPackage(config,part.index)))throw new Error('Part descriptor mismatch');
     const info=JSON.parse(read('part.json')),bytes=read('EcomSetup.part',true);
@@ -55,15 +55,16 @@ export async function verifyWindowsPayload(root,version,tgz,tag='latest') {
   if(installerHash.digest('hex')!==record.archiveSha256)throw new Error('Reassembled installer differs');
   return {ok:true,record};
 }
-export async function windowsRegistryStatus(version,tag,fetchMetadata=fetch) {
-  const r=await fetchMetadata('https://registry.npmjs.org/@petercjl%2fecom-windows-x64/'+encodeURIComponent(version),{redirect:'error',signal:AbortSignal.timeout(30000)});
+export async function windowsRegistryStatus(version,tag,fetchMetadata=fetch,packageName='@lumyne/ecom-windows-x64') {
+  if(!['@petercjl/ecom-windows-x64','@lumyne/ecom-windows-x64'].includes(packageName))throw new Error('Unsupported registry package');
+  const r=await fetchMetadata('https://registry.npmjs.org/'+encodeURIComponent(packageName)+'/'+encodeURIComponent(version),{redirect:'error',signal:AbortSignal.timeout(30000)});
   if(r.status===404){await r.arrayBuffer();return null;}
   if(!r.ok)throw new Error('Cannot query Windows registry version');const data=await r.json();
-  if(data.name!=='@petercjl/ecom-windows-x64'||data.version!==version||!data.dist?.integrity)throw new Error('Unexpected registry identity');return data;
+  if(data.name!==packageName||data.version!==version||!data.dist?.integrity)throw new Error('Unexpected registry identity');return data;
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const {positionals,values}=parseArgs({allowPositionals:true,options:{tag:{type:'string',default:'latest'},registry:{type:'boolean'}}});
   const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-  const main=async()=>{const result=await verifyWindowsPayload(root,positionals[0],positionals[1],values.tag);if(values.registry){const data=await windowsRegistryStatus(positionals[0],values.tag);if(data&&data.dist.integrity!==result.record.integrity)throw new Error('Published payload differs from verified candidate');console.log('exists='+Boolean(data));}else console.log(JSON.stringify(result));};
+  const main=async()=>{const result=await verifyWindowsPayload(root,positionals[0],positionals[1],values.tag);if(values.registry){const data=await windowsRegistryStatus(positionals[0],values.tag,fetch,result.record.packageName);if(data&&data.dist.integrity!==result.record.integrity)throw new Error('Published payload differs from verified candidate');console.log('exists='+Boolean(data));}else console.log(JSON.stringify(result));};
   main().catch(e=>{console.error(e.message);process.exitCode=1;});
 }

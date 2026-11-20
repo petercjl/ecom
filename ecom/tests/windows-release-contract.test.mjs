@@ -5,6 +5,10 @@ import {validateWindowsRelease,windowsPackage,validateWindowsParts,windowsPackBu
 import {validateWindowsPublication,windowsRegistryStatus} from '../verify-windows-payload.mjs';
 const config=JSON.parse(fs.readFileSync(new URL('../windows-release-config.json',import.meta.url)));
 const record={...config,sourceRevision:'a'.repeat(40),tarballSha256:'b'.repeat(64),evidencePath:'docs/ecom/release-evidence/windows-test.md',nativeSmokeTest:false,localUpdateRecoveryVerified:false,updaterSelfTest:true,payloadVerified:true,corruptedPartRejected:true,devValidation:{verified:true,sourceRevision:'a'.repeat(40),evidencePath:'docs/ecom/release-evidence/dev.md'},updateRoundTripVerified:false,rollbackRoundTripVerified:false};
+test('Windows migration accepts only the legacy and Lumyne release identities',()=>{
+  for(const packageName of ['@petercjl/ecom-windows-x64','@lumyne/ecom-windows-x64'])assert.equal(validateWindowsRelease({...config,packageName}).packageName,packageName);
+  assert.throws(()=>validateWindowsRelease({...config,packageName:'@other/ecom-windows-x64'}));
+});
 test('Windows payload cannot be confused with a Mac or another architecture',()=>{
   assert.equal(validateWindowsRelease(config),config);
   for(const patch of [{platform:'darwin'},{arch:'arm64'},{packageName:'@petercjl/ecom-macos-arm64'},{version:'1.0.0/../../x'},{updateProtocol:2}])assert.throws(()=>validateWindowsRelease({...config,...patch}));

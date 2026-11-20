@@ -18,6 +18,10 @@ test('Dev proof permits only release-number metadata changes, not runtime or tar
   assert.equal(releaseVersionOnly({version:'0.1.3'}, {version:'0.1.4',scripts:{install:'run'}}), false);
   assert.equal(releaseVersionOnly({version:'0.1.3'}, {version:'HEAD'}), false);
 });
+test('macOS migration accepts only the legacy and Lumyne release identities',()=>{
+  for(const packageName of ['@petercjl/ecom-macos-arm64','@lumyne/ecom-macos-arm64'])assert.equal(validateRelease({...config,packageName}).packageName,packageName);
+  for(const packageName of ['@other/ecom-macos-arm64','@lumyne/ecom-windows-x64'])assert.throws(()=>validateRelease({...config,packageName}));
+});
 test('release artifact pins native source, payload hash and supported target', () => {
   const result = artifactManifest(config, 'a'.repeat(40), 'b'.repeat(64), 1234);
   assert.equal(result.sourceRevision, 'a'.repeat(40));

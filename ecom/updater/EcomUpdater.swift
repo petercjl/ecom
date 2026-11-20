@@ -108,13 +108,17 @@ func run(_ executable: String, _ arguments: [String], output: URL? = nil) throws
 func verifyArm64(_ executable: URL) throws {
     try run("/usr/bin/lipo", [executable.path, "-verify_arch", "arm64"])
 }
+func knownInstalledPackage(_ name: String) -> Bool {
+    ["@petercjl/ecom-macos-arm64", "@lumyne/ecom-macos-arm64"].contains(name)
+}
+
 struct Artifact: Decodable {
     let schemaVersion: Int, updateProtocol: Int
     let packageName: String, version: String, channel: String, platform: String, arch: String
     let bundleId: String, appName: String, signing: String, notarized: Bool
     let sourceRevision: String, archive: String, archiveSha256: String, archiveBytes: Int
     func validate(version expected: String) throws {
-        try require(schemaVersion == 1 && updateProtocol == 1 && packageName == "@petercjl/ecom-macos-arm64" && version == expected && channel == "latest" && platform == "darwin" && arch == "arm64" && bundleId == "app.ecom.browser" && appName == "Ecom.app" && archive == "Ecom.tar.xz" && signing == "ad-hoc" && !notarized && sourceRevision.range(of: "^[a-f0-9]{40}$", options: .regularExpression) != nil && archiveSha256.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil && archiveBytes > 0, "artifact contract")
+        try require(schemaVersion == 1 && updateProtocol == 1 && packageName == "@lumyne/ecom-macos-arm64" && version == expected && channel == "latest" && platform == "darwin" && arch == "arm64" && bundleId == "app.ecom.browser" && appName == "Ecom.app" && archive == "Ecom.tar.xz" && signing == "ad-hoc" && !notarized && sourceRevision.range(of: "^[a-f0-9]{40}$", options: .regularExpression) != nil && archiveSha256.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil && archiveBytes > 0, "artifact contract")
     }
 }
 final class RegistrySession: NSObject, URLSessionTaskDelegate {
@@ -206,7 +210,7 @@ final class Updater: NSObject {
         guard let bundle = Bundle(url: app), let process = NSRunningApplication(processIdentifier: pid),
               let version = bundle.object(forInfoDictionaryKey: "EcomReleaseVersion") as? String,
               let source = bundle.object(forInfoDictionaryKey: "EcomSourceRevision") as? String else { throw UpdateFailure.invalid("application") }
-        try require(app.lastPathComponent == "Ecom.app" && bundle.bundleIdentifier == "app.ecom.browser" && process.bundleIdentifier == "app.ecom.browser" && process.bundleURL?.resolvingSymlinksInPath() == app && bundle.object(forInfoDictionaryKey: "EcomUpdatePackage") as? String == "@petercjl/ecom-macos-arm64", "application identity")
+        try require(app.lastPathComponent == "Ecom.app" && bundle.bundleIdentifier == "app.ecom.browser" && process.bundleIdentifier == "app.ecom.browser" && process.bundleURL?.resolvingSymlinksInPath() == app && knownInstalledPackage(bundle.object(forInfoDictionaryKey: "EcomUpdatePackage") as? String ?? ""), "application identity")
         let selectedChannel = bundle.object(forInfoDictionaryKey: "EcomUpdateChannel") as? String ?? "latest"
         try require(selectedChannel == "latest" || (selectedChannel == "next" && bundle.object(forInfoDictionaryKey: "EcomUpdateTestSeed") as? Bool == true), "update channel")
         try require(profilePath.hasPrefix("/") && !profilePath.contains("\0"), "profile path")
@@ -232,14 +236,14 @@ final class Updater: NSObject {
         downloadRequested = false
         manualCheckRequested = requestedAction != nil
         requestedAction = nil
-        let url = URL(string: "https://registry.npmjs.org/@petercjl%2fecom-macos-arm64/" + channel)!
+        let url = URL(string: "https://registry.npmjs.org/@lumyne%2fecom-macos-arm64/" + channel)!
         let (data, response) = try await session.data(from: url)
         // An unpublished first version is an ordinary no-update result.
         if (response as? HTTPURLResponse)?.statusCode == 404 { publishPhase("none"); return false }
         try checkResponse(response, maxBytes: 1_000_000)
         try require(data.count <= 1_000_000, "metadata size")
         guard let metadata = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              metadata["name"] as? String == "@petercjl/ecom-macos-arm64",
+              metadata["name"] as? String == "@lumyne/ecom-macos-arm64",
               let version = metadata["version"] as? String,
               let dist = metadata["dist"] as? [String: Any],
               let tarball = dist["tarball"] as? String, let downloadURL = URL(string: tarball),
@@ -350,6 +354,7 @@ struct Main {
                 try require(relaunchArguments(profile: "/tmp/Ecom 账号") == ["--user-data-dir=/tmp/Ecom 账号", "--restore-last-session"], "profile restoration")
                 try require(relaunchArguments(profile: "/tmp/profile", origin: "https://sycm.taobao.com/").last == "--ecom-native-cli-origin=https://sycm.taobao.com/", "CLI origin restoration")
                 try require(allowedOrigin("https://user:password@example.com/") == nil && allowedOrigin("http://example.com/") == nil && allowedOrigin("https://example.com/path") == nil, "CLI origin restriction")
+                try require(knownInstalledPackage("@petercjl/ecom-macos-arm64") && knownInstalledPackage("@lumyne/ecom-macos-arm64") && !knownInstalledPackage("@other/ecom-macos-arm64"), "migration package boundary")
                 try transactionSelfTest()
                 try verifyArm64(URL(fileURLWithPath: CommandLine.arguments[0]))
                 print("Ecom updater contract self-test passed")

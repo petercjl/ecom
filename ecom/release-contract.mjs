@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 export function validateRelease(config) {
   if (config.schemaVersion !== 1 || config.updateProtocol !== 1 ||
       !/^\d+\.\d+\.\d+$/.test(config.version) ||
-      config.packageName !== '@petercjl/ecom-macos-arm64' ||
+      !['@petercjl/ecom-macos-arm64', '@lumyne/ecom-macos-arm64'].includes(config.packageName) ||
       config.channel !== 'latest' || config.platform !== 'darwin' ||
       config.arch !== 'arm64' || config.bundleId !== 'app.ecom.browser' ||
       config.appName !== 'Ecom.app' || config.signing !== 'ad-hoc' || config.notarized !== false) {

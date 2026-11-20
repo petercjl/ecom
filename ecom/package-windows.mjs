@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { validateWindowsRelease, windowsPackage, windowsPartPackage, windowsPartBytes, windowsPackBudget, validateWindowsParts, sha256 } from './windows-release-contract.mjs';
+import { validateWindowsRelease, windowsTarballName, windowsPackage, windowsPartPackage, windowsPartBytes, windowsPackBudget, validateWindowsParts, sha256 } from './windows-release-contract.mjs';
 import { git } from './workspace.mjs';
 
 export async function packageWindows({sourceRoot, buildOutput, output, sourceRevision}) {
@@ -50,13 +50,13 @@ export async function packageWindows({sourceRoot, buildOutput, output, sourceRev
   const integrity='sha512-'+crypto.createHash('sha512').update(fs.readFileSync(tgz)).digest('base64');
   const run=(args)=>{const r=spawnSync(path.join(buildOutput,'EcomUpdater.exe'),args,{windowsHide:true,timeout:120000,encoding:'utf8'});if(r.error||r.status!==0)throw r.error||new Error('Windows updater verification failed');};
   run(['--self-test','--report',path.join(output,'updater-self-test.json')]);
-  run(['--verify-payload',tgz,'--parts-dir',partsDirectory,'--version',config.version,'--integrity',integrity,'--report',path.join(output,'verified-artifact.json')]);
+  run(['--verify-payload',tgz,'--payload-package',config.packageName,'--parts-dir',partsDirectory,'--version',config.version,'--integrity',integrity,'--report',path.join(output,'verified-artifact.json')]);
   const corrupt=path.join(output,'corrupt-parts');fs.mkdirSync(corrupt);
-  const first='petercjl-ecom-windows-x64-'+manifest.parts[0].version+'.tgz';fs.copyFileSync(path.join(partsDirectory,first),path.join(corrupt,first),fs.constants.COPYFILE_EXCL);fs.appendFileSync(path.join(corrupt,first),'corrupt');
-  const rejected=spawnSync(path.join(buildOutput,'EcomUpdater.exe'),['--verify-payload',tgz,'--parts-dir',corrupt,'--version',config.version,'--integrity',integrity,'--report',path.join(output,'unexpected-corrupt-report.json')],{windowsHide:true,timeout:120000,encoding:'utf8'});
+  const first=windowsTarballName(config,manifest.parts[0].version);fs.copyFileSync(path.join(partsDirectory,first),path.join(corrupt,first),fs.constants.COPYFILE_EXCL);fs.appendFileSync(path.join(corrupt,first),'corrupt');
+  const rejected=spawnSync(path.join(buildOutput,'EcomUpdater.exe'),['--verify-payload',tgz,'--payload-package',config.packageName,'--parts-dir',corrupt,'--version',config.version,'--integrity',integrity,'--report',path.join(output,'unexpected-corrupt-report.json')],{windowsHide:true,timeout:120000,encoding:'utf8'});
   if(rejected.error||rejected.status!==1||fs.existsSync(path.join(output,'unexpected-corrupt-report.json')))throw new Error('Corrupt payload part was not rejected');
   const transfer=path.join(output,'windows-transfer.tar');
-  const transferFiles=[pack.filename,...manifest.parts.map(p=>'parts/petercjl-ecom-windows-x64-'+p.version+'.tgz')];
+  const transferFiles=[pack.filename,...manifest.parts.map(p=>'parts/'+windowsTarballName(config,p.version))];
   const bundled=spawnSync('tar',['-cf',transfer,'-C',output,...transferFiles],{encoding:'utf8'});if(bundled.error||bundled.status!==0)throw bundled.error||new Error(bundled.stderr);
   const receipt={...manifest,installer:path.basename(installer),tarball:pack.filename,tarballSha256:await sha256(tgz),integrity,tarballBytes:fs.statSync(tgz).size,transfer:path.basename(transfer),transferSha256:await sha256(transfer),transferBytes:fs.statSync(transfer).size,
     buildEnvironment:{node:process.version,platform:process.platform,arch:process.arch,argsSha256:await sha256(path.join(buildOutput,'args_generated.gni'))},

@@ -3,7 +3,7 @@ import { sha256 } from './release-contract.mjs';
 export { sha256 };
 export function validateWindowsRelease(value) {
   if (value.schemaVersion !== 1 || value.updateProtocol !== 1 ||
-      !/^\d+\.\d+\.\d+$/.test(value.version) || value.packageName !== '@petercjl/ecom-windows-x64' ||
+      !/^\d+\.\d+\.\d+$/.test(value.version) || !['@petercjl/ecom-windows-x64', '@lumyne/ecom-windows-x64'].includes(value.packageName) ||
       value.channel !== 'latest' || value.platform !== 'win32' || value.arch !== 'x64' ||
       value.appName !== 'Ecom.exe' || value.signing !== 'unsigned') throw new Error('Unsupported Windows release identity');
   return value;
@@ -31,4 +31,9 @@ export function validateWindowsParts(artifact) {
   });
   if(total!==artifact.archiveBytes||total>390_000_000)throw new Error('Windows part lengths do not match installer');
   return artifact;
+}
+
+export function windowsTarballName(config, version = config.version) {
+  validateWindowsRelease(config);
+  return config.packageName.slice(1).replace('/', '-') + '-' + version + '.tgz';
 }

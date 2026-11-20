@@ -163,7 +163,7 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   fs.symlinkSync('/Applications', path.join(stage, 'Applications'));
   const dmg = path.join(output, `Ecom-${config.version}-macos-arm64.dmg`);
   run('/usr/bin/hdiutil', ['create', '-volname', 'Ecom', '-srcfolder', stage, '-format', 'UDZO', dmg]);
-  const tarball = path.join(output, `petercjl-ecom-macos-arm64-${config.version}.tgz`);
+  const tarball = path.join(output, config.packageName.slice(1).replace('/', '-') + '-' + config.version + '.tgz');
   if (fs.existsSync(tarball)) throw new Error('Native npm payload already exists');
   packNativePayload(payload, output);
   if (!fs.statSync(tarball).isFile()) throw new Error('npm pack did not produce the expected payload');

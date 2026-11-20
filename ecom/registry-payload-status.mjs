@@ -7,7 +7,7 @@ import { validateRelease } from './release-contract.mjs';
 export async function registryPayloadStatus(version, tarball, tag, fetchMetadata = fetch) {
   const config = validateRelease(JSON.parse(fs.readFileSync(new URL('./release-config.json', import.meta.url))));
   if (version !== config.version || !['next', 'latest'].includes(tag) || !tarball) throw new Error('Invalid release target');
-  const response = await fetchMetadata('https://registry.npmjs.org/@petercjl%2fecom-macos-arm64/' + version, { redirect: 'error', signal: AbortSignal.timeout(30000) });
+  const response = await fetchMetadata('https://registry.npmjs.org/' + encodeURIComponent(config.packageName) + '/' + version, { redirect: 'error', signal: AbortSignal.timeout(30000) });
   if (response.status === 404) {
     return { exists: false };
   } else {

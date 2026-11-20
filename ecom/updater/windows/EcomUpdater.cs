@@ -80,7 +80,12 @@ namespace EcomUpdate {
     internal void Finish(){finished=true;Close();}
   }
   static class Program {
-    internal const string Package = "@petercjl/ecom-windows-x64";
+    internal const string Package = "@lumyne/ecom-windows-x64";
+    internal const string LegacyPackage = "@petercjl/ecom-windows-x64";
+    static string PayloadPackage = Package;
+    static bool KnownPackage(string value) { return value==Package || value==LegacyPackage; }
+    static string RegistryPackage(string value) { Require(KnownPackage(value),"Unsupported package");return "https://registry.npmjs.org/"+Uri.EscapeDataString(value)+"/"; }
+    static string PartFile(string version) { return PayloadPackage.TrimStart('@').Replace('/','-')+"-"+version+".tgz"; }
     internal static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = 2000000 };
     internal static readonly string State = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ecom", "UpdateState");
     static readonly Dictionary<string,string> Args = new Dictionary<string,string>();
@@ -103,6 +108,7 @@ namespace EcomUpdate {
         PrivateDirectory(State);
         ReleaseInstallationDirectory();
         if(Args.ContainsKey("verify-payload")) {
+          if(Args.ContainsKey("payload-package")) { PayloadPackage=Get("payload-package");Require(KnownPackage(PayloadPackage),"Unsupported verification package"); }
           string work=Path.Combine(State,"verification",Guid.NewGuid().ToString("N"));PrivateDirectory(work);
           try {Require(!File.Exists(Get("report")),"Verification report already exists");VerifyIntegrity(Get("verify-payload"),Get("integrity"));Extract(Get("verify-payload"),work);FetchParts(work,Get("parts-dir"),null);var manifest=ValidatePayload(work,new Dictionary<string,object>{{"version",Get("version")}});AtomicJson(Get("report"),manifest);}
           finally {Directory.Delete(work,true);}return 0;
@@ -173,7 +179,7 @@ namespace EcomUpdate {
       else File.Move(temp,file);
     }
     static void ValidateIdentity(Dictionary<string,object> value) {
-      Require(N(value,"schemaVersion")==1 && N(value,"updateProtocol")==1 && S(value,"packageName")==Package && S(value,"platform")=="win32" && S(value,"arch")=="x64" && S(value,"appName")=="Ecom.exe" && S(value,"signing")=="unsigned","Unsupported Windows release identity");
+      Require(N(value,"schemaVersion")==1 && N(value,"updateProtocol")==1 && KnownPackage(S(value,"packageName")) && S(value,"platform")=="win32" && S(value,"arch")=="x64" && S(value,"appName")=="Ecom.exe" && S(value,"signing")=="unsigned","Unsupported Windows release identity");
       ParseVersion(S(value,"version"));
       Require(Regex.IsMatch(S(value,"sourceRevision"),"^[a-f0-9]{40}$"),"Invalid native revision");
     }
@@ -189,7 +195,7 @@ namespace EcomUpdate {
     }
     static Dictionary<string,object> Metadata(string channel) {
       Require(channel=="next" || channel=="latest","Invalid channel");
-      using(var r=Open(new Uri("https://registry.npmjs.org/@petercjl%2fecom-windows-x64/"+channel)))
+      using(var r=Open(new Uri(RegistryPackage(Package)+channel)))
       using(var input=r.GetResponseStream()) using(var output=new MemoryStream()) {
         CopyBounded(input,output,1500000,null);return Json.Deserialize<Dictionary<string,object>>(Encoding.UTF8.GetString(output.ToArray()));
       }
@@ -230,7 +236,7 @@ namespace EcomUpdate {
     }
     static void FetchParts(string work,string localDirectory,Action<long> progress) {
       var manifest=ReadObject(Path.Combine(work,"artifact.json"));ValidateIdentity(manifest);
-      Require(S(manifest,"payloadFormat")=="npm-parts-v1","Unsupported Windows payload layout");
+      Require(S(manifest,"packageName")==PayloadPackage && S(manifest,"payloadFormat")=="npm-parts-v1","Unsupported Windows payload layout");
       var parts=((System.Collections.IEnumerable)manifest["parts"]).Cast<Dictionary<string,object>>().ToArray();
       Require(parts.Length>0&&parts.Length<=8,"Invalid payload part count");
       long total=0,transferred=0;int index=0;
@@ -239,18 +245,18 @@ namespace EcomUpdate {
         long bytes=N(part,"bytes");
         Require(N(part,"index")==index&&S(part,"version")==version&&bytes>0&&bytes<=50000000&&Regex.IsMatch(S(part,"sha256"),"^[a-f0-9]{64}$"),"Invalid immutable payload part");
         string directory=Path.Combine(work,"part-"+index);Directory.CreateDirectory(directory);string tgz=Path.Combine(directory,"payload.tgz");
-        if(localDirectory!=null)File.Copy(Path.Combine(localDirectory,"petercjl-ecom-windows-x64-"+version+".tgz"),tgz,false);
+        if(localDirectory!=null)File.Copy(Path.Combine(localDirectory,PartFile(version)),tgz,false);
         else {
           Dictionary<string,object> metadata;
-          using(var response=Open(new Uri("https://registry.npmjs.org/@petercjl%2fecom-windows-x64/"+version)))using(var input=response.GetResponseStream())using(var output=new MemoryStream()) {CopyBounded(input,output,1500000,null);metadata=Json.Deserialize<Dictionary<string,object>>(Encoding.UTF8.GetString(output.ToArray()));}
-          Require(S(metadata,"name")==Package&&S(metadata,"version")==version,"Unexpected payload part registry identity");
+          using(var response=Open(new Uri(RegistryPackage(PayloadPackage)+version)))using(var input=response.GetResponseStream())using(var output=new MemoryStream()) {CopyBounded(input,output,1500000,null);metadata=Json.Deserialize<Dictionary<string,object>>(Encoding.UTF8.GetString(output.ToArray()));}
+          Require(S(metadata,"name")==PayloadPackage&&S(metadata,"version")==version,"Unexpected payload part registry identity");
           var dist=(Dictionary<string,object>)metadata["dist"];Require(S(dist,"integrity")==S(part,"integrity"),"Payload part registry integrity differs from manifest");
           using(var response=Open(new Uri(S(dist,"tarball"))))using(var input=response.GetResponseStream())using(var output=new FileStream(tgz,FileMode.CreateNew))CopyBounded(input,output,70000000,n=>{if(progress!=null)progress(transferred+n);});
         }
         Require(new FileInfo(tgz).Length==N(part,"tarballBytes")&&Hash(tgz)==S(part,"tarballSha256"),"Payload part package differs from manifest");
         VerifyIntegrity(tgz,S(part,"integrity"));Extract(tgz,directory,true);
         var pkg=ReadObject(Path.Combine(directory,"package.json"));var info=ReadObject(Path.Combine(directory,"part.json"));
-        Require(S(pkg,"name")==Package&&S(pkg,"version")==version&&!pkg.ContainsKey("scripts")&&!pkg.ContainsKey("dependencies"),"Unexpected payload part package");
+        Require(S(pkg,"name")==PayloadPackage&&S(pkg,"version")==version&&!pkg.ContainsKey("scripts")&&!pkg.ContainsKey("dependencies"),"Unexpected payload part package");
         string binary=Path.Combine(directory,"EcomSetup.part");
         Require(N(info,"schemaVersion")==1&&S(info,"version")==S(manifest,"version")&&N(info,"index")==index&&N(info,"bytes")==bytes&&S(info,"sha256")==S(part,"sha256")&&new FileInfo(binary).Length==bytes&&Hash(binary)==S(part,"sha256"),"Payload part content mismatch");
         using(var input=File.OpenRead(binary))CopyBounded(input,installer,50000000,null);
@@ -260,7 +266,7 @@ namespace EcomUpdate {
     }
     static Dictionary<string,object> ValidatePayload(string work,Dictionary<string,object> metadata) {
       var pkg=ReadObject(Path.Combine(work,"package.json"));var artifact=ReadObject(Path.Combine(work,"artifact.json"));ValidateIdentity(artifact);
-      Require(S(pkg,"name")==Package && S(pkg,"version")==S(metadata,"version") && S(artifact,"version")==S(metadata,"version") && !pkg.ContainsKey("scripts") && !pkg.ContainsKey("dependencies"),"Unexpected payload identity");
+      Require(S(artifact,"packageName")==PayloadPackage && S(pkg,"name")==PayloadPackage && S(pkg,"version")==S(metadata,"version") && S(artifact,"version")==S(metadata,"version") && !pkg.ContainsKey("scripts") && !pkg.ContainsKey("dependencies"),"Unexpected payload identity");
       Require(S(artifact,"archive")=="EcomSetup.exe","Invalid installer name");
       string installer=Path.Combine(work,"EcomSetup.exe");
       Require(new FileInfo(installer).Length==N(artifact,"archiveBytes") && Hash(installer)==S(artifact,"archiveSha256"),"Installer integrity mismatch");
@@ -564,7 +570,7 @@ namespace EcomUpdate {
     static string VersionDirectory(string app) { return Path.Combine(app,FileVersionInfo.GetVersionInfo(Path.Combine(app,"Ecom.exe")).FileVersion); }
     static void ValidateInstalled(string app,Dictionary<string,object> artifact) {
       string version=VersionDirectory(app);var identity=ReadObject(Path.Combine(version,"ecom-update.json"));ValidateIdentity(identity);
-      Require(S(identity,"version")==S(artifact,"version") && S(identity,"sourceRevision")==S(artifact,"sourceRevision"),"Installed release identity mismatch");
+      Require(S(identity,"packageName")==S(artifact,"packageName") && S(identity,"version")==S(artifact,"version") && S(identity,"sourceRevision")==S(artifact,"sourceRevision"),"Installed release identity mismatch");
       Require(Hash(Path.Combine(app,"Ecom.exe"))==S(artifact,"exeSha256") && Hash(Path.Combine(version,"chrome.dll"))==S(artifact,"frameworkSha256") && Hash(Path.Combine(version,"EcomUpdater.exe"))==S(artifact,"updaterSha256"),"Installed program differs from verified payload");
     }
     const string UninstallKey=@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Ecom";
@@ -696,6 +702,8 @@ namespace EcomUpdate {
       bool missingPidRejected=false;try{N(new Dictionary<string,object>{{"pid",null}},"pid");}catch{missingPidRejected=true;}Require(missingPidRejected,"Null browser PID accepted");
       foreach(int invalidPid in new[]{0,-1}){bool rejected=false;try{CreateBoundJob("app","profile",invalidPid,"event",new Dictionary<string,object>(),false);}catch{rejected=true;}Require(rejected,"Invalid browser PID accepted");}
       Require(ParseVersion("0.1.1")>ParseVersion("0.1.0"),"Version comparison");
+      Require(KnownPackage(Package)&&KnownPackage(LegacyPackage)&&!KnownPackage("@other/ecom-windows-x64"),"Migration package boundary");
+      Require(RegistryPackage(Package).Contains("lumyne")&&PartFile("0.1.10-payload.0")=="lumyne-ecom-windows-x64-0.1.10-payload.0.tgz","Lumyne registry and part identity");
       Require(RelaunchArguments(@"C:\Users\Test User\Ecom") == "--user-data-dir=\"C:\\Users\\Test User\\Ecom\" --restore-last-session","Profile and tab restoration arguments");
       foreach(string bad in new[]{"0.1.0-next.1","../1.2.3","1.2","-1.2.3"}) {bool failed=false;try{ParseVersion(bad);}catch{failed=true;}Require(failed,"Invalid version accepted");}
       Require(Allowed(new Uri("https://registry.npmjs.org/x")),"Registry host");
