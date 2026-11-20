@@ -11,6 +11,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 
 from os.path import join
 
@@ -28,6 +29,33 @@ def main(original_function, options):
     os.makedirs(previous, exist_ok=True)
     scratch = tempfile.mkdtemp(prefix='ecom-installer-', dir=previous)
     options.staging_dir = scratch
+    previous_copy = shutil.copy
+
+    def copy_owned_staging(source, destination, *args, **kwargs):
+        target = (os.path.join(destination, os.path.basename(source))
+                  if os.path.isdir(destination) else destination)
+        try:
+            owned = os.path.commonpath([os.path.abspath(target),
+                                       os.path.abspath(scratch)]) == os.path.abspath(scratch)
+        except ValueError:
+            owned = False
+        for attempt in range(6):
+            try:
+                return previous_copy(source, destination, *args, **kwargs)
+            except PermissionError as error:
+                # Windows can briefly hold a new DLL while inspecting it. Retry
+                # only copies into this attempt's private tree, never inputs.
+                print('Ecom installer copy failed: source={!r} target={!r} '
+                      'errno={} winerror={} exists={} attempt={}'.format(
+                          source, target, error.errno,
+                          getattr(error, 'winerror', None),
+                          os.path.exists(target), attempt + 1), file=sys.stderr)
+                if (not owned or getattr(error, 'winerror', None) not in
+                        (5, 32, 33) or attempt == 5):
+                    raise
+                time.sleep(0.1 * (2 ** attempt))
+
+    shutil.copy = copy_owned_staging
     try:
         result = original_function(options)
     except Exception:
@@ -41,6 +69,7 @@ def main(original_function, options):
         shutil.rmtree(scratch, onerror=remove_readonly)
         return result
     finally:
+        shutil.copy = previous_copy
         options.staging_dir = previous
 
 
