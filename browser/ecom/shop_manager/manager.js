@@ -783,7 +783,9 @@ function setBusy(value) {
   busy = value
   document
     .querySelectorAll('button,input,select')
-    .forEach((control) => (control.disabled = value))
+    .forEach((control) => {
+      if (!control.closest('#routing-view')) control.disabled = value
+    })
   $('message').classList.toggle('busy', value)
   $('message').textContent = value ? text('busy') : ''
   $('delete-confirm').disabled =
