@@ -1,8 +1,9 @@
 import {fail} from './common.mjs';
 import {discover,callMailbox} from './browser.mjs';
 
-const actions=['set-container','enable','disable','list','inspect','save','delete','reorder','test','set-enabled'];
-const patchActions=['set-container','enable','disable'];
+const actions=['set-transform','set-container','enable','disable','list','inspect','save','delete','reorder','test','set-enabled'];
+const patchActions=['set-container','enable','disable','set-transform'];
+const transforms=['none','taobao-tmall-product'];
 const mutation=[...patchActions,'save','delete','reorder','set-enabled'];
 function json(text){try{if(typeof text!=='string'||Buffer.byteLength(text)>20000)throw Error();return JSON.parse(text)}catch{throw fail('INVALID_ARGUMENT','Specify bounded valid JSON');}}
 export function routingPayload(action,options={}) {
@@ -20,11 +21,13 @@ export function routingPayload(action,options={}) {
     payload.ruleId=options['rule-id'];
   }
   if(action==='set-container'&&(typeof options.container!=='string'||!options.container.trim()||options.container.length>200))throw fail('INVALID_ARGUMENT','Specify an existing persistent --container ID or unique exact name');
+  if(action==='set-transform'&&!transforms.includes(options.transform))throw fail('INVALID_ARGUMENT','Specify --transform none|taobao-tmall-product');
   if(action==='save'){
     const rule=json(options['rule-json']);
     if(!rule||Array.isArray(rule)||typeof rule!=='object'||typeof rule.name!=='string'||!rule.name.trim()||
       typeof rule.enabled!=='boolean'||typeof rule.containerId!=='string'||!Array.isArray(rule.conditions)||
-      !rule.conditions.length||rule.conditions.length>50||(rule.enabled&&!rule.containerId))
+      !rule.conditions.length||rule.conditions.length>50||(rule.enabled&&!rule.containerId)||
+      ('urlTransform' in rule&&!transforms.includes(rule.urlTransform)))
       throw fail('INVALID_ARGUMENT','Provide a rule with name, enabled, containerId and 1..50 conditions; choose a container before enabling');
     payload.rule=rule;
   }
@@ -68,25 +71,35 @@ export async function routingInConnection(connection,action,options={}) {
   const payload=routingPayload(action,options);
   if(connection.endpoint.urlRoutingProtocol!==1)throw fail('BROWSER_UPGRADE_REQUIRED','URL routing requires a compatible Ecom build');
   let effectivePayload=payload;
-  if(patchActions.includes(action)){
+  const requiresTransform=action==='set-transform'||payload.rule?.urlTransform!==undefined;
+  if(patchActions.includes(action)||requiresTransform){
     const current=validateRoutingState(await callMailbox(connection,{method:'routing.list'},15000));
     if(current.configuration.revision!==payload.expectedRevision)throw fail('ROUTING_REVISION_CONFLICT','Rules changed; reread routing list before editing',{executed:false});
-    const rule=current.configuration.rules.find(r=>r.id===payload.ruleId);
-    if(!rule)throw fail('ROUTING_RULE_NOT_FOUND','No rule matches the requested ID');
-    const next={...rule};delete next.targetState;
-    if(action==='set-container'){
-      const exact=current.containers.find(c=>c.id===options.container);
-      const matches=exact?[exact]:current.containers.filter(c=>c.name===options.container);
-      if(!matches.length)throw fail('CONTAINER_NOT_FOUND','No persistent container matches the requested target');
-      if(matches.length!==1)throw fail('CONTAINER_AMBIGUOUS','Use a stable container ID to select one target');
-      next.containerId=matches[0].id;
-    }else next.enabled=action==='enable';
-    if(next.enabled&&!next.containerId)throw fail('TARGET_CONTAINER_REQUIRED','Select a container before enabling this rule');
-    effectivePayload={method:'routing.save',expectedRevision:payload.expectedRevision,rule:next};
+    if(requiresTransform&&current.urlTransformProtocol!==1)throw fail('BROWSER_UPGRADE_REQUIRED','URL transformation requires a compatible Ecom build');
+    if(patchActions.includes(action)){
+      const rule=current.configuration.rules.find(r=>r.id===payload.ruleId);
+      if(!rule)throw fail('ROUTING_RULE_NOT_FOUND','No rule matches the requested ID');
+      const next={...rule};delete next.targetState;
+      if(action==='set-container'){
+        const exact=current.containers.find(c=>c.id===options.container);
+        const matches=exact?[exact]:current.containers.filter(c=>c.name===options.container);
+        if(!matches.length)throw fail('CONTAINER_NOT_FOUND','No persistent container matches the requested target');
+        if(matches.length!==1)throw fail('CONTAINER_AMBIGUOUS','Use a stable container ID to select one target');
+        next.containerId=matches[0].id;
+      }else if(action==='set-transform')next.urlTransform=options.transform;
+      else next.enabled=action==='enable';
+      if(next.enabled&&!next.containerId)throw fail('TARGET_CONTAINER_REQUIRED','Select a container before enabling this rule');
+      effectivePayload={method:'routing.save',expectedRevision:payload.expectedRevision,rule:next};
+    }
   }
   const body=validateRoutingState(await callMailbox(connection,effectivePayload,15000));
   if(mutation.includes(action)&&(body.executed!==true||body.configuration.revision!==payload.expectedRevision+1))
     throw fail('PROTOCOL_MISMATCH','Routing revision does not match the requested change',{executed:'unknown',operationId:body.operationId});
+  if(requiresTransform){
+    const id=payload.ruleId||payload.rule?.id||body.ruleId;
+    if(body.configuration.rules.find(x=>x.id===id)?.urlTransform!==effectivePayload.rule.urlTransform)
+      throw fail('PROTOCOL_MISMATCH','Browser did not confirm the requested URL transformation',{executed:'unknown',operationId:body.operationId});
+  }
   if(action==='test'&&(!Array.isArray(body.matches)||typeof body.resolution?.matched!=='boolean'||body.networkRequests!==0))
     throw fail('PROTOCOL_MISMATCH','Invalid local URL routing test',{executed:'unknown'});
   if(action==='inspect'){

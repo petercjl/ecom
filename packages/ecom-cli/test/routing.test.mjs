@@ -54,7 +54,15 @@ test('target and switch commands preserve existing rule fields and reject ambigu
     const assigned=await routingInConnection(connection,'set-container',{...opts(),container:'Buyer'});
     assert.equal(assigned.configuration.rules[0].containerId,'buyer');assert.equal(assigned.configuration.rules[0].enabled,false);
     assert.deepEqual(assigned.configuration.rules[0].conditions,[{type:'exact',url:'https://example.org/item'}]);
+    await assert.rejects(routingInConnection(connection,'set-transform',{...opts(),transform:'taobao-tmall-product'}),e=>e.code==='BROWSER_UPGRADE_REQUIRED');
+    assert.equal(writes,1);
+    state.urlTransformProtocol=1;
+    const normalized=await routingInConnection(connection,'set-transform',{...opts(),transform:'taobao-tmall-product'});
+    assert.deepEqual(normalized.configuration.rules[0],{...assigned.configuration.rules[0],urlTransform:'taobao-tmall-product'});
+    assert.equal(parse(['routing','set-transform','--rule-id','x','--transform','none','--expected-revision','0']).command,'routing set-transform');
+    assert.throws(()=>routingPayload('set-transform',{...opts(),transform:'arbitrary'}),e=>e.code==='INVALID_ARGUMENT');
     assert.equal((await routingInConnection(connection,'enable',opts())).configuration.rules[0].enabled,true);
+    assert.equal(state.configuration.rules[0].urlTransform,'taobao-tmall-product');
     assert.equal((await routingInConnection(connection,'disable',opts())).configuration.rules[0].enabled,false);
     const before=writes;await assert.rejects(routingInConnection(connection,'enable',{...opts(),'expected-revision':'0'}),e=>e.code==='ROUTING_REVISION_CONFLICT'&&e.executed===false);assert.equal(writes,before);
     assert.equal(parse(['routing','set-container','--rule-id','x','--container','buyer','--expected-revision','0']).command,'routing set-container');

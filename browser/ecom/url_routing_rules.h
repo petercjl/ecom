@@ -9,6 +9,9 @@ inline constexpr char kUrlRoutingPref[] = "ecom.url_routing";
 base::DictValue DefaultUrlRoutingConfig();
 // Normalize URL components and reject malformed or unbounded rule input.
 std::string NormalizeUrlRoutingRule(base::DictValue& rule);
+std::string GetUrlRoutingTransform(const base::DictValue& rule);
+// An invalid result prevents forwarding ambiguous product identities.
+GURL TransformUrlRoutingDestination(const base::DictValue& rule, const GURL& url);
 bool UrlRoutingConditionMatches(const base::DictValue& condition, const GURL& url);
 const base::DictValue* FindUrlRoutingRule(const base::DictValue& config,
                                         const GURL& url);

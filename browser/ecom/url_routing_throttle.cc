@@ -23,6 +23,7 @@
 #include "net/base/net_errors.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
+#include "url/gurl.h"
 
 namespace ecom {
 namespace {
@@ -33,8 +34,9 @@ class Chain final : public base::SupportsUserData::Data {
 };
 
 void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
-                    GURL url, std::string container,
-                    std::set<std::string> visited, bool error) {
+                    GURL original_url, GURL destination, std::string container,
+                    std::string rule_id, std::set<std::string> visited,
+                    bool error) {
   if (!source) return;
   auto* profile = Profile::FromBrowserContext(source->GetBrowserContext());
   BrowserWindowInterface* window = nullptr;
@@ -50,14 +52,20 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
   const bool foreground = source->GetVisibility() == content::Visibility::VISIBLE;
   const bool blank = !source->GetController().GetLastCommittedEntry();
   if (!error) {
-    const auto current = ResolveUrlRouting(profile, url);
-    if (current.empty() || !current.FindBool("available").value_or(false) ||
-        !current.FindString("containerId") || *current.FindString("containerId") != container) {
-      url = GURL("chrome://shops/routing.html?error=ROUTING_CHANGED");
+    const auto current = ResolveUrlRouting(profile, original_url);
+    const auto* current_rule = current.FindString("ruleId");
+    const auto* current_target = current.FindString("containerId");
+    const auto* rewritten = current.FindString("destinationUrl");
+    if (!current_rule || *current_rule != rule_id ||
+        !current_target || *current_target != container ||
+        !current.FindBool("available").value_or(false) ||
+        current.contains("destinationError") ||
+        (rewritten ? GURL(*rewritten) : original_url) != destination) {
+      destination = GURL("chrome://shops/routing.html?error=ROUTING_CHANGED");
       error = true;
     }
   }
-  NavigateParams params(window, url, ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
+  NavigateParams params(window, destination, ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
   params.disposition = foreground ? WindowOpenDisposition::NEW_FOREGROUND_TAB
                                   : WindowOpenDisposition::NEW_BACKGROUND_TAB;
   // A fresh navigation intentionally carries no source/opener, referrer,
@@ -114,14 +122,24 @@ content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::Route() {
   std::string error;
   if (!decision.FindBool("available").value_or(false)) error = "TARGET_CONTAINER_MISSING";
   if (handle->GetRequestMethod() != "GET") error = "CROSS_CONTAINER_FORM_BLOCKED";
+  if (error.empty()) {
+    if (const auto* destination_error = decision.FindString("destinationError")) {
+      error = *destination_error;
+    }
+  }
+  const auto* rewritten = decision.FindString("destinationUrl");
+  const auto* rule_id = decision.FindString("ruleId");
+  const GURL target_url = rewritten ? GURL(*rewritten) : handle->GetURL();
   std::set<std::string> visited;
   if (auto* chain = static_cast<Chain*>(source->GetUserData(kChain))) visited = chain->visited;
-  const auto step = *container + " " + handle->GetURL().GetWithoutRef().spec();
-  if (visited.size() >= 5 || !visited.insert(step).second) error = "ROUTING_LOOP";
-  const GURL destination = error.empty() ? handle->GetURL()
+  const auto step = *container + " " + target_url.GetWithoutRef().spec();
+  if (error.empty() && (visited.size() >= 5 || !visited.insert(step).second))
+    error = "ROUTING_LOOP";
+  const GURL destination = error.empty() ? target_url
       : GURL("chrome://shops/routing.html?error=" + error);
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
-      base::BindOnce(&OpenRoutedPage, source->GetWeakPtr(), destination, *container,
+      base::BindOnce(&OpenRoutedPage, source->GetWeakPtr(), handle->GetURL(),
+                     destination, *container, rule_id ? *rule_id : std::string(),
                      std::move(visited), !error.empty()));
   return CANCEL_AND_IGNORE;
 }

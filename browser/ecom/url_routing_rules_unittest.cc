@@ -57,4 +57,36 @@ TEST(UrlRoutingRules, RejectAmbiguousInputsAndRequireAllPredicates) {
   EXPECT_TRUE(UrlRoutingConditionMatches(c, GURL("https://item.taobao.com/item.htm?kind=a%20b&id=1")));
   EXPECT_FALSE(UrlRoutingConditionMatches(c, GURL("https://item.taobao.com/item.htm?id=1&kind=c")));
 }
+TEST(UrlRoutingRules, ProductDestinationKeepsExactlyOneNumericId) {
+  auto config = DefaultUrlRoutingConfig();
+  auto& rule = config.FindList("rules")->front().GetDict();
+  // A previously configured built-in example can lack the new option.
+  rule.Remove("urlTransform");
+  const GURL source(
+      "https://detail.tmall.com/item.htm?id=615357766740"
+      "&mi_id=fixture&b_s_f=sycm&spm=fixture#details");
+  EXPECT_EQ(TransformUrlRoutingDestination(rule, source),
+            GURL("https://detail.tmall.com/item.htm?id=615357766740"));
+  EXPECT_EQ(TransformUrlRoutingDestination(
+                rule, GURL("http://item.taobao.com/item.htm?%69d=%31&other=2")),
+            GURL("https://item.taobao.com/item.htm?id=1"));
+  for (const char* url : {
+           "https://detail.tmall.com/item.htm?id=1&%69d=2",
+           "https://detail.tmall.com/item.htm?id=1&id=1",
+           "https://detail.tmall.com/item.htm?id=%2B2",
+           "https://detail.tmall.com/item.htm?missing=1",
+           "https://detail.tmall.com:444/item.htm?id=1"}) {
+    EXPECT_FALSE(TransformUrlRoutingDestination(rule, GURL(url)).is_valid())
+        << url;
+  }
+  for (const char* url : {
+           "https://detail.tmall.com.example.org/item.htm?id=1&other=2",
+           "https://detail.tmall.com/login.htm?id=1&other=2"}) {
+    EXPECT_EQ(TransformUrlRoutingDestination(rule, GURL(url)), GURL(url));
+  }
+  rule.Set("urlTransform", "none");
+  EXPECT_EQ(TransformUrlRoutingDestination(rule, source), source);
+  rule.Set("urlTransform", "unknown");
+  EXPECT_EQ(NormalizeUrlRoutingRule(rule), "INVALID_ROUTING_TRANSFORM");
+}
 }  // namespace ecom

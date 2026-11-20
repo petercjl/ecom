@@ -1601,7 +1601,7 @@
       "authorization": "Authenticated native settings operation; list, inspect and test write only local request/response files. Test makes no website request."
     },
     "routing test": {
-      "description": "Match a URL locally, including disabled examples, with zero network requests.",
+      "description": "Match a URL locally and preview the cross-container destination, with zero network requests.",
       "options": {
         "--profile": {
           "type": "string"
@@ -1687,6 +1687,45 @@
       "sideEffects": "local-write",
       "authorization": "Explicit URL routing configuration in the selected Ecom profile; no website request",
       "nativeProtocol": "urlRoutingProtocol=1",
+      "platforms": [
+        "macos"
+      ],
+      "windowsStatus": "native transport not implemented"
+    },
+    "routing set-transform": {
+      "description": "Select how a matching URL is prepared before opening it in another container.",
+      "options": {
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--json": {
+          "type": "boolean"
+        },
+        "--rule-id": {
+          "type": "string",
+          "required": true
+        },
+        "--expected-revision": {
+          "type": "string",
+          "required": true,
+          "format": "nonnegative-integer",
+          "description": "Latest revision from routing list; rejects concurrent edits"
+        },
+        "--transform": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "none",
+            "taobao-tmall-product"
+          ]
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Explicit URL routing configuration in the selected Ecom profile; no website request",
+      "nativeProtocol": "urlRoutingProtocol=1; routing.list urlTransformProtocol=1",
       "platforms": [
         "macos"
       ],

@@ -9,6 +9,14 @@
 
 namespace ecom {
 namespace {
+constexpr char kTaobaoProductExample[] = "example-taobao-product-detail";
+constexpr char kTaobaoProductTransform[] = "taobao-tmall-product";
+std::string QueryKey(const net::QueryIterator& it) {
+  return base::UnescapeURLComponent(it.GetKey(),
+      base::UnescapeRule::SPACES | base::UnescapeRule::PATH_SEPARATORS |
+      base::UnescapeRule::URL_SPECIAL_CHARS_EXCEPT_PATH_SEPARATORS |
+      base::UnescapeRule::REPLACE_PLUS_WITH_SPACE);
+}
 std::string Text(const base::DictValue& d, const char* key) {
   const auto* value = d.FindString(key);
   return value ? *value : std::string();
@@ -28,7 +36,7 @@ base::DictValue DefaultUrlRoutingConfig() {
   return std::move(*base::JSONReader::ReadDict(R"JSON({
     "enabled":true,"revision":0,"rules":[{
       "id":"example-taobao-product-detail","name":"淘宝／天猫商品详情 · 示例",
-      "enabled":false,"containerId":"","conditions":[
+      "enabled":false,"containerId":"","urlTransform":"taobao-tmall-product","conditions":[
         {"type":"pattern","scheme":"http+https","host":"item.taobao.com","path":"/item.htm","includeSubdomains":false,"query":[{"name":"id","operator":"exists"}]},
         {"type":"pattern","scheme":"http+https","host":"detail.tmall.com","path":"/item.htm","includeSubdomains":false,"query":[{"name":"id","operator":"exists"}]}
       ]
@@ -46,6 +54,11 @@ std::string NormalizeUrlRoutingRule(base::DictValue& rule) {
     return "INVALID_ROUTING_RULE";
   if (enabled->GetBool() && Text(rule, "containerId").empty())
     return "TARGET_CONTAINER_REQUIRED";
+  if (rule.contains("urlTransform") &&
+      Text(rule, "urlTransform") != "none" &&
+      Text(rule, "urlTransform") != kTaobaoProductTransform) {
+    return "INVALID_ROUTING_TRANSFORM";
+  }
   rule.Set("name", name);
   for (auto& value : *conditions) {
     if (!value.is_dict()) return "INVALID_ROUTING_CONDITION";
@@ -92,6 +105,46 @@ std::string NormalizeUrlRoutingRule(base::DictValue& rule) {
   return {};
 }
 
+std::string GetUrlRoutingTransform(const base::DictValue& rule) {
+  if (const auto* transform = rule.FindString("urlTransform")) {
+    return *transform;
+  }
+  return Text(rule, "id") == kTaobaoProductExample ? kTaobaoProductTransform
+                                                  : "none";
+}
+
+GURL TransformUrlRoutingDestination(const base::DictValue& rule,
+                                    const GURL& url) {
+  const auto host = Host(url);
+  if (GetUrlRoutingTransform(rule) != kTaobaoProductTransform ||
+      (host != "item.taobao.com" && host != "detail.tmall.com") ||
+      url.path() != "/item.htm") {
+    return url;
+  }
+  if (!SafeUrl(url) || url.has_port()) {
+    return {};
+  }
+  std::string id;
+  for (net::QueryIterator it(url); !it.IsAtEnd(); it.Advance()) {
+    if (QueryKey(it) != "id") {
+      continue;
+    }
+    // The public page accepts a numeric product ID. Reject duplicate IDs.
+    if (!id.empty()) {
+      return {};
+    }
+    id = it.GetUnescapedValue();
+    if (id.empty() || id.size() > 32 ||
+        id.find_first_not_of("0123456789") != std::string::npos) {
+      return {};
+    }
+  }
+  if (id.empty()) {
+    return {};
+  }
+  return GURL("https://" + host + "/item.htm?id=" + id);
+}
+
 bool UrlRoutingConditionMatches(const base::DictValue& c, const GURL& url) {
   if (!SafeUrl(url)) return false;
   if (Text(c, "type") == "exact")
@@ -110,10 +163,7 @@ bool UrlRoutingConditionMatches(const base::DictValue& c, const GURL& url) {
       const auto& q = value.GetDict();
       bool found = false;
       for (net::QueryIterator it(url); !it.IsAtEnd(); it.Advance()) {
-        const auto key = base::UnescapeURLComponent(it.GetKey(),
-            base::UnescapeRule::SPACES | base::UnescapeRule::PATH_SEPARATORS |
-            base::UnescapeRule::URL_SPECIAL_CHARS_EXCEPT_PATH_SEPARATORS |
-            base::UnescapeRule::REPLACE_PLUS_WITH_SPACE);
+        const auto key = QueryKey(it);
         if (key == Text(q, "name") &&
             (Text(q, "operator") == "equals"
                  ? it.GetUnescapedValue() == Text(q, "value")

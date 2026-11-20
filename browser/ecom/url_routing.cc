@@ -40,6 +40,7 @@ base::DictValue State(Profile* profile) {
     if (!value.is_dict()) continue;
     auto& rule = value.GetDict();
     const auto id = Text(rule, "containerId");
+    rule.Set("urlTransform", GetUrlRoutingTransform(rule));
     rule.Set("targetState", id.empty() ? "unassigned" : TargetExists(profile, id) ? "available" : "missing");
   }
   base::ListValue choices;
@@ -47,7 +48,9 @@ base::DictValue State(Profile* profile) {
     choices.Append(base::DictValue().Set("id", c->id).Set("name", c->name)
         .Set("color", static_cast<int>(c->background_color)));
   return base::DictValue().Set("ok", true).Set("schemaVersion", 1)
-      .Set("protocolVersion", 1).Set("configuration", std::move(state))
+      .Set("protocolVersion", 1)
+      .Set("urlTransformProtocol", 1)
+      .Set("configuration", std::move(state))
       .Set("containers", std::move(choices));
 }
 }  // namespace
@@ -69,8 +72,22 @@ base::DictValue ResolveUrlRouting(Profile* profile, const GURL& url) {
   const auto* rule = FindUrlRoutingRule(profile->GetPrefs()->GetDict(kUrlRoutingPref), url);
   if (!rule) return {};
   const auto target = Text(*rule, "containerId");
-  return base::DictValue().Set("ruleId", Text(*rule, "id"))
+  auto result = base::DictValue().Set("ruleId", Text(*rule, "id"))
       .Set("containerId", target).Set("available", TargetExists(profile, target));
+  const auto destination = TransformUrlRoutingDestination(*rule, url);
+  if (!destination.is_valid()) {
+    result.Set("destinationError", "INVALID_ROUTING_PRODUCT_ID");
+  } else if (destination != url) {
+    const auto* destination_rule =
+        FindUrlRoutingRule(profile->GetPrefs()->GetDict(kUrlRoutingPref),
+                           destination);
+    if (destination_rule && Text(*destination_rule, "containerId") != target) {
+      result.Set("destinationError", "ROUTING_TRANSFORM_CONFLICT");
+    } else {
+      result.Set("destinationUrl", destination.spec());
+    }
+  }
+  return result;
 }
 
 base::ListValue UrlRoutingReferences(Profile* profile, const std::string& id) {

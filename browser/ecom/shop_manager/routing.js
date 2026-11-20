@@ -8,7 +8,10 @@ const t=(a,b)=>zh?a:b, $=id=>document.getElementById('routing-'+id)
 const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n}
 const labels={title:t('网址打开规则','URL opening rules'),intro:t('将指定网址交给指定账号容器打开，保留原页面与各自登录状态。','Open matching URLs in a chosen container while preserving the source page and separate sessions.'),add:t('添加规则','Add rule'),'global-label':t('启用网址打开规则','Enable URL opening rules'),refresh:t('刷新','Refresh'),'test-title':t('测试网址','Test a URL'),'test-label':t('输入网址','URL'),'test-submit':t('检查匹配','Check match'),'test-help':t('只检查已保存规则，不访问网站。关闭的规则也会展示匹配结果。','Checks saved rules locally without visiting the website. Disabled matching rules are also shown.'),'name-label':t('规则名称','Rule name'),'target-label':t('使用容器','Target container'),'target-help':t('示例尚未选择容器。保存容器后，仍需由你手动开启规则。','The example has no selected container. Choosing a container does not automatically enable the rule.'),'enabled-label':t('开启这条规则','Enable this rule'),'conditions-title':t('匹配条件','Match conditions'),'conditions-help':t('任意一条条件命中即可；同一条中的域名、路径和参数需同时满足。路径可用 * 匹配多个字符。','Any condition may match; within one condition, host, path and query predicates must all match. Paths support * wildcards.'),'condition-add':t('添加匹配条件','Add condition'),'bulk-label':t('批量粘贴具体网址','Paste a list of exact URLs'),'bulk-add':t('加入网址列表','Add URLs'),cancel:t('取消','Cancel'),save:t('保存','Save')}
 for(const [id,text]of Object.entries(labels))$(id).textContent=text
-const errors={ROUTING_CHANGED:t('规则刚刚发生变化，请重新打开网址。','Rules changed during navigation. Open the URL again.'),ROUTING_REQUEST_TOO_LARGE:t('规则内容过长，请减少网址或条件数量。','This rule is too large. Use fewer URLs or conditions.'),ROUTING_CONFIGURATION_TOO_LARGE:t('规则总量过大，请精简后再保存。','The rule collection is too large. Reduce it before saving.'),TARGET_CONTAINER_REQUIRED:t('请先选择目标容器，再手动开启规则。','Select a container before enabling this rule.'),TARGET_CONTAINER_MISSING:t('目标容器已不存在，请重新选择。','The target container is missing. Choose another container.'),ROUTING_REVISION_CONFLICT:t('规则已在其他位置更新，请刷新后重新编辑。','Rules changed elsewhere. Refresh before editing again.'),CROSS_CONTAINER_FORM_BLOCKED:t('表单提交已停止跨容器跳转，请在目标容器打开页面后重新操作。','Cross-container form submission was stopped. Open the page in the target container and retry.'),ROUTING_LOOP:t('规则出现循环，请检查规则顺序和目标容器。','A routing loop was stopped. Review rule order and target containers.')}
+$('transform-label').textContent=t('跨容器打开时的网址处理','URL handling across containers')
+const transformOptions=[['none',t('保留原网址','Keep original URL')],['taobao-tmall-product',t('淘宝／天猫商品详情：只保留商品 ID','Taobao/Tmall product details: keep only item ID')]]
+for(const [value,label]of transformOptions){const option=node('option',label);option.value=value;$('transform').append(option)}
+const errors={ROUTING_TRANSFORM_CONFLICT:t('整理后的网址命中了另一个容器，请检查规则优先顺序。','The prepared URL matches a different container. Review rule order.'),INVALID_ROUTING_PRODUCT_ID:t('商品链接需要一个有效的商品 ID。','The link needs one valid product ID.'),ROUTING_CHANGED:t('规则刚刚发生变化，请重新打开网址。','Rules changed during navigation. Open the URL again.'),ROUTING_REQUEST_TOO_LARGE:t('规则内容过长，请减少网址或条件数量。','This rule is too large. Use fewer URLs or conditions.'),ROUTING_CONFIGURATION_TOO_LARGE:t('规则总量过大，请精简后再保存。','The rule collection is too large. Reduce it before saving.'),TARGET_CONTAINER_REQUIRED:t('请先选择目标容器，再手动开启规则。','Select a container before enabling this rule.'),TARGET_CONTAINER_MISSING:t('目标容器已不存在，请重新选择。','The target container is missing. Choose another container.'),ROUTING_REVISION_CONFLICT:t('规则已在其他位置更新，请刷新后重新编辑。','Rules changed elsewhere. Refresh before editing again.'),CROSS_CONTAINER_FORM_BLOCKED:t('表单提交已停止跨容器跳转，请在目标容器打开页面后重新操作。','Cross-container form submission was stopped. Open the page in the target container and retry.'),ROUTING_LOOP:t('规则出现循环，请检查规则顺序和目标容器。','A routing loop was stopped. Review rule order and target containers.')}
 const errorText=code=>errors[code]||t('请检查规则名称、网址、域名、路径及参数是否有效。','Check the rule name, URL, host, path and query fields.')+` (${code})`
 let state,editingId=''
 async function call(method,payload={}){const r=await sendWithPromise('ecomRoutingCommand',JSON.stringify({method,...payload}));if(!r.ok)throw new Error(errorText(r.error?.code||'UNAVAILABLE'));return r}
@@ -24,6 +27,7 @@ function render(){
     const badge=node('span',rule.enabled?t('已开启','Enabled'):t('已关闭','Disabled'));badge.className='badge'+(rule.enabled?' on':'');head.append(badge);card.append(head)
     card.append(node('p',t('使用容器：','Container: ')+(rule.targetState==='missing'?t('容器已删除','Container missing'):targetName(rule.containerId))))
     if(!rule.containerId)card.append(node('p',t('这是预填示例。选择目标容器并手动开启后生效。','This is a prefilled example. Select a container and enable it when ready.')))
+    if(rule.urlTransform==='taobao-tmall-product')card.append(node('p',transformOptions[1][1]))
     for(const c of rule.conditions){const p=node('div',c.type==='exact'?c.url:`${c.scheme==='http+https'?'http(s)':c.scheme}://${c.includeSubdomains?'*.':''}${c.host}${c.path}`+(c.query?.length?' · '+c.query.map(q=>q.operator==='exists'?q.name+t(' 存在',' exists'):`${q.name}=${q.value}`).join(' & '):''));p.className='pattern-text';card.append(p)}
     const actions=node('div');actions.className='actions'
     actions.append(button(t('编辑','Edit'),()=>edit(rule)),button(t('复制','Duplicate'),()=>edit({...rule,id:'',enabled:false,name:rule.name+t(' · 副本',' · copy')})))
@@ -57,14 +61,36 @@ function addCondition(c={type:'pattern',scheme:'https',host:'',path:'/*',include
   box.read=()=>mode.value==='exact'?{type:'exact',url:url.value}:{type:'pattern',scheme:scheme.value,host:host.value,path:path.value,includeSubdomains:sub.checked,query:[...queries.children].map(q=>q.read())}
   $('conditions').append(box)
 }
-function edit(rule){editingId=rule?.id||'';$('edit-title').textContent=rule?t('编辑规则','Edit rule'):t('添加规则','Add rule');$('edit-error').textContent='';$('bulk').value='';$('rule-name').value=rule?.name||'';$('rule-enabled').checked=!!rule?.enabled;$('target').replaceChildren();const empty=node('option',t('请选择容器','Choose a container'));empty.value='';$('target').append(empty);for(const c of state.containers){const o=node('option',c.name);o.value=c.id;$('target').append(o)}$('target').value=rule?.containerId||'';$('conditions').replaceChildren();for(const c of rule?.conditions||[undefined])addCondition(c);$('editor').showModal()}
+function edit(rule){editingId=rule?.id||'';$('edit-title').textContent=rule?t('编辑规则','Edit rule'):t('添加规则','Add rule');$('edit-error').textContent='';$('bulk').value='';$('rule-name').value=rule?.name||'';$('rule-enabled').checked=!!rule?.enabled;$('transform').value=rule?.urlTransform||'none';$('target').replaceChildren();const empty=node('option',t('请选择容器','Choose a container'));empty.value='';$('target').append(empty);for(const c of state.containers){const o=node('option',c.name);o.value=c.id;$('target').append(o)}$('target').value=rule?.containerId||'';$('conditions').replaceChildren();for(const c of rule?.conditions||[undefined])addCondition(c);$('editor').showModal()}
 $('add').onclick=()=>edit()
 $('condition-add').onclick=()=>addCondition()
 $('bulk-add').onclick=()=>{try{const conditions=mergePastedRoutingUrls([...$('conditions').children].map(c=>c.read()),$('bulk').value);$('conditions').replaceChildren();for(const c of conditions)addCondition(c);$('bulk').value='';$('edit-error').textContent=''}catch(e){$('edit-error').textContent=e.message==='ROUTING_CONDITION_LIMIT'?t('每条规则最多50个条件。','Up to 50 conditions per rule.'):errorText(e.message)}}
 $('cancel').onclick=()=>$('editor').close()
-$('edit-form').onsubmit=async e=>{e.preventDefault();$('save').disabled=true;try{const rule={id:editingId,name:$('rule-name').value,containerId:$('target').value,enabled:$('rule-enabled').checked,conditions:[...$('conditions').children].map(c=>c.read())};await mutate('routing.save',{rule});$('editor').close();$('message').textContent=t('已保存。','Saved.')}catch(err){$('edit-error').textContent=err.message}finally{$('save').disabled=false}}
+$('edit-form').onsubmit=async e=>{e.preventDefault();$('save').disabled=true;try{const rule={id:editingId,name:$('rule-name').value,containerId:$('target').value,enabled:$('rule-enabled').checked,urlTransform:$('transform').value,conditions:[...$('conditions').children].map(c=>c.read())};await mutate('routing.save',{rule});$('editor').close();$('message').textContent=t('已保存。','Saved.')}catch(err){$('edit-error').textContent=err.message}finally{$('save').disabled=false}}
 $('global').onchange=async()=>{try{await mutate('routing.set-enabled',{enabled:$('global').checked})}catch(e){$('message').textContent=e.message;$('global').checked=state.configuration.enabled}}
-$('test-form').onsubmit=async e=>{e.preventDefault();try{const r=await call('routing.test',{url:$('test-url').value});const out=$('test-result');out.replaceChildren();if(r.resolution.matched){out.append(node('p',r.resolution.available?t('最终使用容器：','Selected container: ')+targetName(r.resolution.containerId):errorText('TARGET_CONTAINER_MISSING')))}else out.append(node('p',t('没有启用的匹配规则，将沿用原容器。','No enabled rule matches. The original container will be used.')));for(const m of r.matches)out.append(node('p',m.name+' · '+(m.enabled?t('已开启','Enabled'):t('已关闭','Disabled'))+' · '+targetName(m.containerId)))}catch(err){$('test-result').textContent=err.message}}
+$('test-form').onsubmit=async event=>{
+  event.preventDefault()
+  const out=$('test-result')
+  try{
+    const {resolution,matches}=await call('routing.test',{url:$('test-url').value})
+    out.replaceChildren()
+    if(!resolution.matched){
+      out.append(node('p',t('没有启用的匹配规则，将沿用原容器。','No enabled rule matches. The original container will be used.')))
+    }else if(!resolution.available||resolution.destinationError){
+      out.append(node('p',errorText(resolution.available?resolution.destinationError:'TARGET_CONTAINER_MISSING')))
+    }else{
+      out.append(node('p',t('最终使用容器：','Selected container: ')+targetName(resolution.containerId)))
+      if(resolution.destinationUrl){
+        const preview=node('p',t('跨容器将打开：','Cross-container destination: ')+resolution.destinationUrl)
+        preview.className='pattern-text'
+        out.append(preview)
+      }
+    }
+    for(const match of matches)out.append(node('p',match.name+' · '+(match.enabled?t('已开启','Enabled'):t('已关闭','Disabled'))+' · '+targetName(match.containerId)))
+  }catch(error){
+    out.textContent=error.message
+  }
+}
 export async function refreshRoutingView(){try{state=await call('routing.list');render()}catch(e){$('message').textContent=e.message}}
 $('refresh').onclick=refreshRoutingView
 const initialError=new URLSearchParams(location.search).get('error');if(initialError&&errors[initialError])$('message').textContent=errors[initialError]
