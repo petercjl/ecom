@@ -4,7 +4,7 @@
 
 Mac Dev 负责首先验证共用功能；Windows 原生程序在 peter-new 编译。入口为 `node ecom/build-windows.mjs`，从已提交 main 准备独立构建工作树、构建 Release 并打包到全新的 `.brave-build/windows-release-*/artifacts`。首次迁移的测试基线可显式指定已提交的 `--source-ref`，与候选源代码分别记录。
 
-配置为 `ecom/windows-release-config.json`，公开包为 `@petercjl/ecom-windows-x64`。产品发布版本与 Chromium/原生安装版本分别记录。主包包含 `artifact.json`、`LICENSE` 及 npm `package.json`，清单固定同一 npm 包下多个不可变的 `<version>-payload.<index>` 版本。每块原始载荷上限为 50,000,000 字节，单份 npm tarball 上限为 70,000,000 字节。块版本使用 `payload` 标签，完整主版本使用 `next` 或 `latest`。首次 EXE 与更新时重组出的 EXE 字节一致。打包不包含 Profile、账号或构建机器配置。
+配置为 `ecom/windows-release-config.json`，公开包为 `@lumyne/ecom-windows-x64`。产品发布版本与 Chromium/原生安装版本分别记录。主包包含 `artifact.json`、`LICENSE` 及 npm `package.json`，清单固定同一 npm 包下多个不可变的 `<version>-payload.<index>` 版本。每块原始载荷上限为 50,000,000 字节，单份 npm tarball 上限为 70,000,000 字节。块版本使用 `payload` 标签，完整主版本使用 `next` 或 `latest`。首次 EXE 与更新时重组出的 EXE 字节一致。打包不包含 Profile、账号或构建机器配置。
 
 浏览器在普通有界面模式运行，初始 Profile 完成初始化后启动包内 .NET Framework 更新程序；帮助菜单提供“Ecom 更新…”。Dev 构建不含正式更新身份。Windows 收件箱 .NET Framework 是运行依赖，用户无需 Node.js 或 npm。
 
@@ -31,8 +31,12 @@ Mac Dev 负责首先验证共用功能；Windows 原生程序在 peter-new 编�
 
 ## 发布与验证
 
-发布脚本分开检查源码、原生产物、平台身份、包内容和验收证据。Windows 来源发生变化必须重建；候选先发 `next`，只有真实 npm 更新及回滚均通过后允许提升 `latest`。提升沿用同一版本和校验和。
+发布脚本分别检查源码、原生产物、平台身份、包内容和验收证据。Windows 原生输入发生变化时重新构建；稳定版默认直接发布 `latest`，预发布明确选择 `next`。安装、真实 npm 更新及回滚的实测状态分别保留。
 
-`.github/workflows/ecom-windows-publish.yml` 在 GitHub 托管 runner 通过 OIDC 发布。发布等待每个不可变版本的元数据及实际载荷文件可读后才发布主版本；任务成功后核对公开渠道。首次候选使用单文件、临时 HTTPS 传递归档，工作流先校验固定的传输归档哈希，再核对主包及所有块的哈希和重组安装器。发布先完成分块，最后发布主版本；重试时核对已存在版本的完整性，复用同一份不可变产物；临时 Actions artifact 在任务结束时删除。已发布版本的渠道提升从 npm 读取并复核同一载荷，不重新构建，不上传 GitHub Release 安装附件。
+使用当前 `npm-release-kit` 在本机发布；历史工作流归档在 `.github/archived-workflows/`。首次安装 EXE 保留在 peter-new，按固定哈希传回 Mac 的内容仅为 npm 主包、分块及必要清单。GitHub 保存源码和小型证据。
+
+使用 `node ecom/stage-local-publication.mjs <载荷目录> <全新本机发布目录>` 为主包和每个分块分别建立发布根，校验包身份、分块大小与哈希。各发布根运行 doctor、prepare，检查固定 tarball、SHA-512、文件清单和回执，再使用 `npm-release-kit publish --mode local --root <发布目录> --release <精确版本> --tag <标签> --yes`。先以 `payload` 标签发布分块，实际下载核对各块后，再以 `latest` 发布完整主版本。登录和发布认证使用用户日常 Google Chrome。
+
+重试前核对已存在的精确版本与完整性，复用同一份不可变产物。发布完成后核对公共渠道、主包及所有块的 SHA-512/SHA-256，并重新组合验证安装器。scope 迁移先发布并验证新源 `@lumyne/ecom-windows-x64@0.1.10`，再发布旧源 `@petercjl/ecom-windows-x64@0.1.9` 过渡包，具体见 [Lumyne 更新源迁移](lumyne-update-migration.md)。
 
 真实安装、数据保留、更新、取消、失败恢复、回滚和渠道证据记录在 `docs/ecom/release-evidence/` 与 `ecom/releases/windows-x64/`。源码检查和更新程序自检不替代这些实测。
