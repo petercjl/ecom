@@ -73,15 +73,16 @@ class InstallerStagingTest(unittest.TestCase):
                 attempts.append(dst)
                 if len(attempts) == 1:
                     error = PermissionError(13, 'sharing conflict')
-                    error.winerror = 32
+                    # CPython's CRT open reports EACCES without winerror.
                     raise error
                 return real_copy(src, dst, *args, **kwargs)
 
             def original(options):
                 shutil.copy(source, options.staging_dir)
-                self.assertEqual((Path(options.staging_dir) / source.name).read_bytes(), b'payload')
+                with open(str(options.staging_dir) + '/' + source.name, 'rb') as result:
+                    self.assertEqual(result.read(), b'payload')
 
-            with patch.object(shutil, 'copy', copy_once_locked), patch('time.sleep') as sleep:
+            with patch.object(shutil, 'copy', copy_once_locked), patch('os.name', 'nt'), patch('time.sleep') as sleep:
                 wrapper(original)(types.SimpleNamespace(staging_dir=directory))
                 self.assertIs(shutil.copy, copy_once_locked)
                 sleep.assert_called_once_with(0.1)
@@ -107,7 +108,7 @@ class InstallerStagingTest(unittest.TestCase):
             def original(options):
                 shutil.copy('input.dll', options.staging_dir)
 
-            with patch.object(shutil, 'copy', side_effect=PermissionError(13, 'permission')) as copy, patch('time.sleep') as sleep:
+            with patch.object(shutil, 'copy', side_effect=PermissionError(1, 'permission')) as copy, patch('time.sleep') as sleep:
                 with self.assertRaises(PermissionError):
                     wrapper(original)(types.SimpleNamespace(staging_dir=directory))
                 self.assertEqual(copy.call_count, 1)

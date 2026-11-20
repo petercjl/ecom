@@ -50,8 +50,10 @@ def main(original_function, options):
                           source, target, error.errno,
                           getattr(error, 'winerror', None),
                           os.path.exists(target), attempt + 1), file=sys.stderr)
-                if (not owned or getattr(error, 'winerror', None) not in
-                        (5, 32, 33) or attempt == 5):
+                windows_access_error = (getattr(error, 'winerror', None) in
+                                        (5, 32, 33) or
+                                        (os.name == 'nt' and error.errno == 13))
+                if not owned or not windows_access_error or attempt == 5:
                     raise
                 time.sleep(0.1 * (2 ** attempt))
 
