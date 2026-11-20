@@ -53,7 +53,27 @@ def main(original_function, options):
                 windows_access_error = (getattr(error, 'winerror', None) in
                                         (5, 32, 33) or
                                         (os.name == 'nt' and error.errno == 13))
-                if not owned or not windows_access_error or attempt == 5:
+                if not owned or not windows_access_error:
+                    raise
+                if attempt == 5:
+                    # CopyFileW exposes the OS error that CRT fopen omits and
+                    # uses Windows' native copy/share semantics. Never replace
+                    # an existing destination through this fallback.
+                    if os.name == 'nt' and not os.path.lexists(target):
+                        import ctypes
+                        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+                        copy_file = kernel.CopyFileW
+                        copy_file.argtypes = [ctypes.c_wchar_p,
+                                              ctypes.c_wchar_p, ctypes.c_int]
+                        copy_file.restype = ctypes.c_int
+                        copied = copy_file(os.path.abspath(source),
+                                           os.path.abspath(target), 1)
+                        code = ctypes.get_last_error()
+                        print('Ecom installer native copy: success={} '
+                              'winerror={}'.format(bool(copied), code),
+                              file=sys.stderr)
+                        if copied:
+                            return target
                     raise
                 time.sleep(0.1 * (2 ** attempt))
 
