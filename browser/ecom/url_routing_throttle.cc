@@ -83,7 +83,8 @@ UrlRoutingThrottle::UrlRoutingThrottle(content::NavigationThrottleRegistry& regi
     : NavigationThrottle(registry) {}
 void UrlRoutingThrottle::MaybeCreateAndAdd(content::NavigationThrottleRegistry& registry) {
   auto& handle = registry.GetNavigationHandle();
-  if (handle.IsInPrimaryMainFrame() && !handle.IsSameDocument() &&
+  if ((handle.IsInPrimaryMainFrame() || handle.IsInPrerenderedMainFrame()) &&
+      !handle.IsSameDocument() &&
       Profile::FromBrowserContext(handle.GetWebContents()->GetBrowserContext())->IsRegularProfile())
     registry.AddThrottle(std::make_unique<UrlRoutingThrottle>(registry));
 }
@@ -104,6 +105,9 @@ content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::Route() {
   if (!container) return CANCEL_AND_IGNORE;
   if (*container == containers::GetContainerIdForWebContents(source) &&
       decision.FindBool("available").value_or(false)) return PROCEED;
+  // Do not preload a page in the wrong partition or surface a speculative tab.
+  // A later real navigation will evaluate the rule in the normal main frame.
+  if (handle->IsInPrerenderedMainFrame()) return CANCEL_AND_IGNORE;
   // Page-backed Agent tasks remain pinned to their explicitly chosen identity.
   if (HasNativePageTask(source) || IsUrlRoutingPagePinned(source))
     return ThrottleCheckResult(CANCEL, net::ERR_BLOCKED_BY_CLIENT);
