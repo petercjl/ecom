@@ -18,7 +18,7 @@ bool SafeUrl(const GURL& url) {
          !url.has_username() && !url.has_password();
 }
 std::string Host(const GURL& url) {
-  auto host = url.host();
+  std::string host(url.host());
   if (!host.empty() && host.back() == '.') host.pop_back();
   return host;
 }
