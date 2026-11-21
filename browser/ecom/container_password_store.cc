@@ -5,12 +5,13 @@
 
 #include <map>
 #include <memory>
+#include <optional>
+#include <utility>
+#include <vector>
 
 #include "base/base64.h"
-#include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/supports_user_data.h"
 #include "base/time/time.h"
@@ -21,42 +22,163 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_observer.h"
-#include "components/os_crypt/async/browser/os_crypt_async.h"
 #include "components/os_crypt/async/common/encryptor.h"
 #include "components/password_manager/core/browser/affiliation/affiliated_match_helper.h"
+#include "components/password_manager/core/browser/password_form_digest.h"
 #include "components/password_manager/core/browser/password_store/login_database.h"
 #include "components/password_manager/core/browser/password_store/password_store.h"
 #include "components/password_manager/core/browser/password_store/password_store_built_in_backend.h"
 #include "components/password_manager/core/browser/password_store/stored_credential.h"
 #include "components/prefs/pref_service.h"
-#include "components/prefs/scoped_user_pref_update.h"
 #include "components/sync/model/wipe_model_upon_sync_disabled_behavior.h"
+#include "sql/transaction.h"
 #include "url/origin.h"
 
 namespace ecom {
 namespace {
 const char kContainerPasswordStores[] = "EcomContainerPasswordStores";
 
-void AddPassword(password_manager::PasswordStoreInterface &store,
-                 const std::string &origin, const std::string &username,
-                 const std::string &password,
-                 base::OnceClosure completion = base::DoNothing()) {
+using password_manager::AddCredentialError;
+using password_manager::PasswordForm;
+using password_manager::PasswordStoreChangeList;
+using password_manager::StoredCredential;
+
+std::optional<StoredCredential> MakeConfiguredLogin(
+    const std::string& origin,
+    const std::string& username,
+    const std::string& password) {
   const GURL url(origin);
   if (!url.SchemeIs("https") ||
       url::Origin::Create(url).Serialize() != origin || username.empty() ||
       password.empty()) {
-    return;
+    return std::nullopt;
   }
-  password_manager::StoredCredential login;
+  StoredCredential login;
   login.url = url;
   login.signon_realm = url.spec();
   login.username_value = base::UTF8ToUTF16(username);
   login.password_value =
       password_manager::PasswordString(base::UTF8ToUTF16(password));
+  login.type = PasswordForm::Type::kManuallyAdded;
   login.date_created = base::Time::Now();
   login.skip_zero_click = true;
-  store.AddLogin(std::move(login), std::move(completion));
+  return login;
 }
+
+class ContainerLoginDatabase final : public password_manager::LoginDatabase {
+ public:
+  ContainerLoginDatabase(const base::FilePath& path,
+                         std::string id,
+                         std::string configured_origin,
+                         std::string configured_ciphertext)
+      : LoginDatabase(path, password_manager::kProfileStore,
+                      DeletingUndecryptablePasswordsEnabled(false)),
+        id_(std::move(id)),
+        configured_origin_(std::move(configured_origin)),
+        configured_ciphertext_(std::move(configured_ciphertext)) {}
+
+  bool Init(OnUndecryptablePasswordsRemoved on_removed,
+            scoped_refptr<os_crypt_async::Encryptor> encryptor) override {
+    if (!LoginDatabase::Init(std::move(on_removed), encryptor)) {
+      return false;
+    }
+    auto login = ReadConfiguredLogin(encryptor.get());
+    configured_ciphertext_.clear();
+    if (!login) {
+      return true;
+    }
+
+    // Reconcile before the first autofill query can read the database.
+    auto transaction = CreateTransaction();
+    if (!transaction->Begin()) {
+      return false;
+    }
+    AddCredentialError error = AddCredentialError::kNone;
+    [[maybe_unused]] auto changes = AddLogin(std::move(*login), &error);
+    return error == AddCredentialError::kNone && transaction->Commit();
+  }
+
+  PasswordStoreChangeList AddLogin(StoredCredential login,
+                                 AddCredentialError* error) override {
+    if (login.type != PasswordForm::Type::kManuallyAdded ||
+        login.scheme != PasswordForm::Scheme::kHtml || login.blocked_by_user) {
+      return LoginDatabase::AddLogin(std::move(login), error);
+    }
+
+    // Initialization and the native async helper both call this in a
+    // transaction. Keep passwords for other origins and blocklist entries.
+    AddCredentialError local_error = AddCredentialError::kNone;
+    if (!error) {
+      error = &local_error;
+    }
+    *error = AddCredentialError::kNone;
+    std::vector<StoredCredential> existing;
+    if (!GetLogins({login.scheme, login.signon_realm, login.url}, false,
+                   &existing)) {
+      *error = AddCredentialError::kDbError;
+      return {};
+    }
+
+    PasswordStoreChangeList changes;
+    bool already_current = false;
+    for (const auto& saved : existing) {
+      if (saved.signon_realm != login.signon_realm ||
+          saved.scheme != login.scheme || saved.blocked_by_user) {
+        continue;
+      }
+      if (password_manager::AreStoredCredentialUniqueKeysEqual(saved, login)) {
+        already_current = saved.password_value == login.password_value;
+        continue;
+      }
+      PasswordStoreChangeList removed;
+      if (!RemoveLogin(saved, &removed)) {
+        *error = AddCredentialError::kDbError;
+        return {};
+      }
+      for (auto& change : removed) {
+        changes.push_back(std::move(change));
+      }
+    }
+    if (!already_current) {
+      auto added = LoginDatabase::AddLogin(std::move(login), error);
+      if (*error != AddCredentialError::kNone) {
+        return {};
+      }
+      for (auto& change : added) {
+        changes.push_back(std::move(change));
+      }
+    }
+    return changes;
+  }
+
+ private:
+  std::optional<StoredCredential> ReadConfiguredLogin(
+      const os_crypt_async::Encryptor* encryptor) const {
+    if (!encryptor || configured_ciphertext_.empty()) {
+      return std::nullopt;
+    }
+    std::string ciphertext;
+    std::string plaintext;
+    if (!base::Base64Decode(configured_ciphertext_, &ciphertext) ||
+        !encryptor->DecryptString(ciphertext, &plaintext)) {
+      return std::nullopt;
+    }
+    auto data = base::JSONReader::ReadDict(plaintext, base::JSON_PARSE_RFC);
+    const auto* container_id = data ? data->FindString("containerId") : nullptr;
+    const auto* origin = data ? data->FindString("origin") : nullptr;
+    const auto* username = data ? data->FindString("username") : nullptr;
+    const auto* password = data ? data->FindString("password") : nullptr;
+    if (!container_id || *container_id != id_ || !origin ||
+        *origin != configured_origin_ || !username || !password) {
+      return std::nullopt;
+    }
+    return MakeConfiguredLogin(*origin, *username, *password);
+  }
+
+  const std::string id_;
+  const std::string configured_origin_;
+  std::string configured_ciphertext_;
+};
 
 class Stores final : public base::SupportsUserData::Data,
                      public ProfileObserver {
@@ -70,7 +192,6 @@ public:
     }
   }
   void OnProfileWillBeDestroyed(Profile *profile) override {
-    weak_.InvalidateWeakPtrs();
     profile->RemoveObserver(this);
     for (auto &entry : stores_) {
       entry.second->ShutdownOnUIThread();
@@ -84,11 +205,15 @@ public:
     }
     auto &store = stores_[id];
     if (!store) {
-      auto database = std::make_unique<password_manager::LoginDatabase>(
-          profile_->GetPath().AppendASCII("Login Data Container " + id),
-          password_manager::kProfileStore,
-          password_manager::LoginDatabase::
-              DeletingUndecryptablePasswordsEnabled(false));
+      const auto* item = profile_->GetPrefs()
+                             ->GetDict(containers::prefs::kShopContainers)
+                             .FindDict(id);
+      const auto* origin = item ? item->FindString("credentialOrigin") : nullptr;
+      const auto* encrypted =
+          item ? item->FindString("encryptedCredentials") : nullptr;
+      auto database = std::make_unique<ContainerLoginDatabase>(
+          profile_->GetPath().AppendASCII("Login Data Container " + id), id,
+          origin ? *origin : "", encrypted ? *encrypted : "");
       store = base::MakeRefCounted<password_manager::PasswordStore>(
           std::make_unique<password_manager::PasswordStoreBuiltInBackend>(
               std::move(database),
@@ -96,60 +221,13 @@ public:
               profile_->GetPrefs(), g_browser_process->os_crypt_async(),
               nullptr));
       store->Init();
-      g_browser_process->os_crypt_async()->GetInstance(base::BindOnce(
-          &Stores::ImportConfiguredPassword, weak_.GetWeakPtr(), id));
     }
     return store.get();
   }
 
 private:
-  void
-  ImportConfiguredPassword(std::string id,
-                           scoped_refptr<os_crypt_async::Encryptor> encryptor) {
-    const auto *item = profile_->GetPrefs()
-                           ->GetDict(containers::prefs::kShopContainers)
-                           .FindDict(id);
-    const auto *encrypted =
-        item ? item->FindString("encryptedCredentials") : nullptr;
-    if (!encryptor || !encrypted ||
-        item->FindBool("credentialImported").value_or(false)) {
-      return;
-    }
-    std::string ciphertext;
-    std::string plaintext;
-    if (!base::Base64Decode(*encrypted, &ciphertext) ||
-        !encryptor->DecryptString(ciphertext, &plaintext)) {
-      return;
-    }
-    auto data = base::JSONReader::ReadDict(plaintext, base::JSON_PARSE_RFC);
-    if (!data || !data->FindString("containerId") ||
-        *data->FindString("containerId") != id) {
-      return;
-    }
-    const auto *origin = data->FindString("origin");
-    const auto *username = data->FindString("username");
-    const auto *password = data->FindString("password");
-    if (origin && username && password) {
-      AddPassword(*stores_.at(id), *origin, *username, *password,
-                  base::BindOnce(&Stores::MarkImported, weak_.GetWeakPtr(), id,
-                                 *encrypted));
-    }
-  }
-
-  void MarkImported(std::string id, std::string expected) {
-    ScopedDictPrefUpdate update(profile_->GetPrefs(),
-                                containers::prefs::kShopContainers);
-    auto *item = update->FindDict(id);
-    const auto *encrypted =
-        item ? item->FindString("encryptedCredentials") : nullptr;
-    if (encrypted && *encrypted == expected) {
-      item->Set("credentialImported", true);
-    }
-  }
-
   raw_ptr<Profile> profile_;
   std::map<std::string, scoped_refptr<password_manager::PasswordStore>> stores_;
-  base::WeakPtrFactory<Stores> weak_{this};
 };
 } // namespace
 
@@ -174,8 +252,11 @@ void AddContainerPassword(Profile *profile, const std::string &id,
                           const std::string &origin,
                           const std::string &username,
                           const std::string &password) {
-  if (auto *store = GetContainerPasswordStore(profile, id)) {
-    AddPassword(*store, origin, username, password);
+  auto login = MakeConfiguredLogin(origin, username, password);
+  if (login) {
+    if (auto* store = GetContainerPasswordStore(profile, id)) {
+      store->AddLogin(std::move(*login));
+    }
   }
 }
 } // namespace ecom
