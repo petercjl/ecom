@@ -72,6 +72,49 @@ test('verification checks only the resolved account and projects fresh authentic
     await assert.rejects(verifyInConnection(f.connection,'account-a'),{code:'SHOP_IDENTITY_MISMATCH'});
   }finally{f.close();}
 });
+test('verification uses the native account check for every platform and preserves its login verdict', {
+  skip: process.platform === 'win32',
+}, async () => {
+  const cases = [
+    {id: 'pdd-in', service: 'pinduoduo', state: 'signed-in', authenticationState: 'authenticated'},
+    {id: 'pdd-out', service: 'pinduoduo', state: 'login-required', authenticationState: 'signed-out'},
+    {id: 'xhs-merchant', service: 'xiaohongshu', state: 'signed-in', authenticationState: 'authenticated'},
+    {id: 'xhs-front', service: 'xiaohongshu', state: 'signed-in', authenticationState: 'authenticated'},
+    {id: 'xhs-front-closed', service: 'xiaohongshu', state: 'verification-required', authenticationState: 'unknown'},
+    {id: 'taobao-buyer', service: 'taobao', state: 'signed-in', authenticationState: 'authenticated'},
+  ];
+  const containers = cases.map(({id}) => ({id, name: `Example ${id}`}));
+  const checkedAt = '456';
+  const f = fixture(message => {
+    if (message.method === 'containers.list') return {ok: true, containers};
+    const {service, state, authenticationState} = cases.find(({id}) => id === message.containerId);
+    return {ok: true, shops: [{
+      ...containers.find(({id}) => id === message.containerId),
+      state,
+      checkedAt,
+      verificationSupported: true,
+      authentication: {service, state: authenticationState},
+    }]};
+  });
+  try {
+    for (const {id, service, state, authenticationState} of cases) {
+      const result = await verifyInConnection(f.connection, `Example ${id}`);
+      assert.equal(result.container.id, id);
+      const login = result.container.login;
+      assert.deepEqual(
+        [login.service, login.state, login.authenticationState, login.checkedAt, login.verificationSupported, login.identityConfirmed],
+        [service, state, authenticationState, checkedAt, true, false],
+        id,
+      );
+    }
+    assert.deepEqual(f.calls, cases.flatMap(({id}) => [
+      {method: 'containers.list', containerId: undefined, url: undefined},
+      {method: 'shops.verify', containerId: id, url: undefined},
+    ]));
+  } finally {
+    f.close();
+  }
+});
 test('concurrent session requests pin the original instance and separate account IDs',{skip:process.platform==='win32'},async()=>{
   const f=fixture(message=>message.method==='containers.list'?{ok:true,containers:accounts}:{ok:true,containerId:message.containerId,httpStatus:200,data:{account:message.containerId,value:message.containerId==='account-a'?11:22}});
   try {
