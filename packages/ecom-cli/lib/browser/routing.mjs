@@ -1,5 +1,5 @@
-import {fail} from './common.mjs';
-import {discover,callMailbox} from './browser.mjs';
+import {fail} from '../common.mjs';
+import {discover,callMailbox} from './session.mjs';
 
 const actions=['set-transform','set-container','enable','disable','list','inspect','save','delete','reorder','test','set-enabled'];
 const patchActions=['set-container','enable','disable','set-transform'];

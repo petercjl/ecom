@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
-import {fail} from './common.mjs';
-import {discover,inspectInConnection,callMailbox} from './browser.mjs';
+import {fail} from '../../common.mjs';
+import {discover,inspectInConnection,callMailbox} from '../../browser/session.mjs';
 
 export function validateSearchResult(body, keyword) {
   if(body?.success!==true||body.transport!=='background-page-dom'||body.keyword!==keyword||body.data?.keyword!==keyword||body.data?.state!=='ready'||!Array.isArray(body.data.items)||!body.data.items.length||body.data.items.length>20)

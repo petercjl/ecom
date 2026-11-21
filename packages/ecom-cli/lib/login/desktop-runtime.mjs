@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {exists, fail, root} from './common.mjs';
-import {discover} from './browser.mjs';
+import {exists, fail, root} from '../common.mjs';
+import {discover} from '../browser/session.mjs';
+import {observeSecurePrefill} from './mac-secure-prefill.mjs';
 
 export function desktopFiles(platform = process.platform, arch = process.arch) {
   if (!['darwin', 'win32'].includes(platform) || !['arm64', 'x64'].includes(arch)) return null;
@@ -93,6 +94,11 @@ export function ecomDesktop(run, {instance = null, platform = process.platform, 
   }
   return {
     instance,
+    ...(platform === 'darwin' ? {
+      securePrefill(window, point) {
+        return observeSecurePrefill(window, point, platform);
+      },
+    } : {}),
     ...(platform === 'win32' ? {
       focus(window) {
         return run('focus-window', '--app', app, '--window-id', window.id, '--headed');

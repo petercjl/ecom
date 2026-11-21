@@ -3,10 +3,10 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {fail,exists,privatePath,writeNew} from './common.mjs';
-import {discover,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,callMailbox,resolveContainer} from './browser.mjs';
-import {listOperations,operationRegistry,getService,validateOperationParams} from './sycm-vendor/operation-registry.mjs';
-import {businessCapabilities,mutationCapabilities} from './sycm-vendor/business-capabilities.mjs';
+import {fail,exists,privatePath,writeNew} from '../../common.mjs';
+import {discover,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,callMailbox,resolveContainer} from '../../browser/session.mjs';
+import {listOperations,operationRegistry,getService,validateOperationParams} from '../../sycm-vendor/operation-registry.mjs';
+import {businessCapabilities,mutationCapabilities} from '../../sycm-vendor/business-capabilities.mjs';
 
 const ORIGIN='https://sycm.taobao.com';
 // Additional first-class reads implemented outside the source registry in src/sycm.mjs.

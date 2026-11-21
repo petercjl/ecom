@@ -1,8 +1,8 @@
 import path from 'node:path';
 import {setTimeout as pause} from 'node:timers/promises';
-import {callMailbox, discover, readMailbox, resolveContainer} from './browser.mjs';
-import {cdpCommand} from './cdp.mjs';
-import {exists, fail, writeNew} from './common.mjs';
+import {callMailbox, discover, readMailbox, resolveContainer} from '../../browser/session.mjs';
+import {cdpCommand} from '../../browser/cdp.mjs';
+import {exists, fail, writeNew} from '../../common.mjs';
 
 const detailPath = '/h5/mtop.taobao.detail.getdesc/7.0/';
 const blocked = /FAIL_SYS_USER_VALIDATE|RGV587|SESSION_EXPIRED|ILLEGAL_ACCESS|TOKEN_EXPIRED|TOKEN_EMPTY/;

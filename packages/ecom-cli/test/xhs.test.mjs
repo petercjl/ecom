@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parse} from '../lib/cli.mjs';
-import {searchXhs,validateSearchResult} from '../lib/xhs.mjs';
+import {searchXhs,validateSearchResult} from '../lib/data/xiaohongshu/search.mjs';
 const note={id:'0123456789abcdef01234567',title:'示例收纳',author:'示例作者',likes:'1.2万',url:'https://www.xiaohongshu.com/explore/0123456789abcdef01234567'};
 const body=()=>({success:true,transport:'background-page-dom',keyword:'收纳',pageClosed:true,data:{state:'ready',keyword:'收纳',items:[{...note}]}});
 test('search requires explicit page mode, target and bounded keyword',()=>{

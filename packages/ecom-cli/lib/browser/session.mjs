@@ -4,7 +4,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {setTimeout as pause} from 'node:timers/promises';
-import {fail,privatePath,writeNew,exists} from './common.mjs';
+import {fail,privatePath,writeNew,exists} from '../common.mjs';
 const ps=(args)=>execFileSync('/bin/ps',args,{encoding:'utf8',timeout:3000,maxBuffer:4*1024*1024});
 export function processProfile(executable,command) {
   const explicit=command.match(/(?:^| )--user-data-dir=(.*?)(?= --|$)/)?.[1];
@@ -41,7 +41,7 @@ export function discover({profile,instance}={}, {allowFixedDevCdp=false}={}) {
   if(candidates.length!==1) throw fail(candidates.length?'INSTANCE_AMBIGUOUS':'INSTANCE_NOT_RUNNING',candidates.length?'Multiple Ecom instances; specify --profile or --instance':(profile||instance?'Open the selected Ecom instance in normal desktop mode':'Open the stable Ecom app, or explicitly select Ecom Dev with --profile or --instance'));
   return candidates[0];
 }
-const instanceOf=({endpoint,channel})=>({id:endpoint.instanceId,pid:endpoint.pid,channel});
+export const instanceOf=({endpoint,channel})=>({id:endpoint.instanceId,pid:endpoint.pid,channel});
 const credentialKey=/token|cookie|csrf|password|authorization|secret|sessionid|api[-_]?key|access[-_]?key|credential|^__d?tk$|^session$|^loginpointid$/i;
 function homeUrl(value) {
   try {
@@ -111,26 +111,6 @@ export async function openContainerHome(options) {
     container, service:'home', status:'started', requestedUrl};
 }
 
-export async function qianniuLoginStep(action, options) {
-  const connection=discover(options);
-  const listed=await readMailbox(connection);
-  const container=resolveContainer(listed.containers,options.container);
-  const body=await callMailbox(connection,{method:'shops.'+action,containerId:container.id,
-    ...(action==='open'?{service:'qianniu'}:{})});
-  const statuses={
-    open:['started'],
-    'login-status':['page-unavailable','loading','login-page','backend-page','ambiguous'],
-    'submit-login':['wrong-page','manual-verification-required','password-form-unavailable',
-      'credentials-not-filled','already-submitted','clicked'],
-  };
-  const status=action==='open'?body.navigation:body.status;
-  if(body.containerId!==container.id||!statuses[action].includes(status)||
-      (action==='open'&&(body.service!=='qianniu'||body.requestedUrl!=='https://myseller.taobao.com/'))) {
-    throw fail('PROTOCOL_MISMATCH','Unexpected Qianniu response',{operationId:body.operationId,executed:'unknown'});
-  }
-  return {ok:true,schemaVersion:1,operationId:body.operationId,instance:instanceOf(connection),
-    container,service:'qianniu',status};
-}
 export async function requestSession(options={}) {
   if(!options.container||!options.url)throw fail('INVALID_ARGUMENT','session request requires --container and --url');
   const url=validateReadUrl(options.url,options.method??'GET');

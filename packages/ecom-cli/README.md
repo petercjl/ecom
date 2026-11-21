@@ -52,6 +52,20 @@ Task entry checks stable `latest` at most daily, with a 1.5 second bound. Detect
 
 The browser owns sessions, containers and authorization. This package owns discovery, read-only transport and managed installation. The Skill documents invocation, diagnosis and recovery. URL routing commands include `routing list|inspect|save|set-container|set-transform|enable|disable|delete|reorder|test|set-enabled`. Changes require `--expected-revision` from the latest state. Target-only and rule-switch changes preserve all other fields; the native layer rechecks target validity and concurrent revisions. Additional browser capabilities extend this same command/Skill contract.
 
+### Source layout
+
+| Directory | Responsibility |
+| --- | --- |
+| `lib/login/` | Shared Ecom desktop sign-in flow and desktop runtime, with separate Qianniu and Pinduoduo handlers. |
+| `lib/data/taobao/` | Taobao shop, marketing and product reads, with the existing `sycm` command and its plan contract. |
+| `lib/data/xiaohongshu/` | Xiaohongshu search and response validation. |
+| `lib/data/douyin/` | Douyin public work URL and embedded player mapping for media reads. |
+| `lib/browser/` | Shared browser operations, including container discovery and verification, native messaging, CDP, tabs and memory, page reads, and URL routing. |
+| `lib/actions/xiaohongshu/` | Note preparation, verification and submission. |
+| `lib/sycm-vendor/` | Immutable third-party catalog and license at the path recorded by the native registry. |
+
+Register new platform reads under an explicit platform or service command group. For example, Taobao daily trade is `sycm run --operation shop.trade-daily`; another platform's daily sales read needs its own command group, endpoint and response contract. Resolve operations within the selected group using their exact IDs. A display label such as “daily sales” is for presentation. Preserve existing IDs, declared services and native registry bytes when moving code.
+
 ### 打开店铺并按需登录
 
 > 用 Ecom CLI 打开「店铺名称」容器，看到登录表单时点击一次登录。

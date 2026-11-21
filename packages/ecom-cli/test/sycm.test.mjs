@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import {inventory,buildRead,runRead,businessResponse,paramsObject,planMutation,authorizePlan,showPlan,nativeRegistryHash,resolveModuleResponse} from '../lib/sycm.mjs';
+import {inventory,buildRead,runRead,businessResponse,paramsObject,planMutation,authorizePlan,showPlan,nativeRegistryHash,resolveModuleResponse} from '../lib/data/taobao/sycm.mjs';
 import {parse,main} from '../lib/cli.mjs';
 import {root} from '../lib/common.mjs';
 import {newerStableVersion} from '../lib/maintenance.mjs';

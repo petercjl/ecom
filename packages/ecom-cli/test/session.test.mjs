@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {inspectInConnection,verifyInConnection,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,validateReadUrl,resolveContainer,processProfile} from '../lib/browser.mjs';
+import {inspectInConnection,verifyInConnection,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,validateReadUrl,resolveContainer,processProfile} from '../lib/browser/session.mjs';
 import {parse} from '../lib/cli.mjs';
 const origin='https://example.com';
 const accounts=[{id:'account-a',name:'示例甲'},{id:'account-b',name:'示例乙'}];

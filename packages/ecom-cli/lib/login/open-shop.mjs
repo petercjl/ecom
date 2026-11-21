@@ -1,26 +1,17 @@
 import {randomUUID} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
-import {fail} from './common.mjs';
+import {fail} from '../common.mjs';
 import {createDesktop, ecomDesktop, selectDesktopInstance} from './desktop-runtime.mjs';
+import {isDocument, isVisible, usableButton, canClick, named, descend, uniqueButton, containedPoint} from './accessibility.mjs';
+import {pinduoduoHost, pinduoduoLoginState} from './pinduoduo.mjs';
+import {qianniuDesktopState} from './qianniu.mjs';
 
 const managerLabels = ['账号管理', 'Account manager'];
 const openLabels = ['打开', 'Open'];
-const loginLabels = ['登录', 'Login', 'Log in', 'Sign in'];
-const isDocument = node => ['webarea', 'document'].includes(node.role);
-const isVisible = node => !node.states?.some(state => ['offscreen', 'hidden', 'invisible'].includes(state));
-const usableButton = node => node.role === 'button' && isVisible(node) && !node.states?.includes('disabled');
-const canClick = node => node.ref_id && usableButton(node);
-const named = (node, labels) => [node.name, node.value].some(value => typeof value === 'string' && labels.includes(value));
 const isManager = title => /^(?:Ecom(?: Dev)?\s*[·-]\s*)?(?:账号管理|Account manager)(?:\s*[·-]\s*Ecom(?: Dev)?)?$/i.test(title?.trim() ?? '');
 const crashText = /^(?:喔唷[，,！？! ]*崩溃啦[！？!。 ]*|崩溃啦[！？!。 ]*|Aw, Snap!)(?:\s*[-·]\s*Ecom(?: Dev)?)?$/i;
-const verificationText = /^(?:安全验证|身份验证|请完成安全验证|请完成验证|滑动验证|请拖动滑块(?:完成验证)?|Security verification|Verify your identity)$/i;
-const backendTitle = /^(?:天猫商家中心|天猫(?:国际)?商家工作台|淘宝卖家中心|千牛卖家中心|千牛工作台|Taobao Seller Center|Tmall Merchant Center)(?:\s*[-·|—].*)?$/i;
+const verificationText = /^(?:安全验证|身份验证|短信验证|手机验证|请完成安全验证|请完成验证|滑动验证|请拖动滑块(?:完成验证)?|Security verification|Verify your identity)$/i;
 const addressLabels = ['地址和搜索栏', '地址与搜索栏', '地址栏', 'Address and search bar', 'Address and search', 'Address bar'];
-
-function* descend(node, stop = () => false) {
-  yield node;
-  if (!stop(node)) for (const child of node.children ?? []) yield* descend(child, stop);
-}
 
 function browserToolbars(tree) {
   return [...descend(tree, isDocument)].filter(node => node.role === 'toolbar');
@@ -35,12 +26,6 @@ function addressIn(toolbars) {
     const url = new URL(/^[\w+.-]+:\/\//.test(value) ? value : 'https://' + value);
     return url.username || url.password ? null : url;
   } catch { return null; }
-}
-
-function uniqueButton(buttons, code, message) {
-  const refs = new Map(buttons.filter(button => button.ref_id).map(button => [button.ref_id, button]));
-  if (refs.size > 1) throw fail(code, message);
-  return refs.values().next().value;
 }
 
 function managerRow(tree, container) {
@@ -59,15 +44,6 @@ function managerRow(tree, container) {
   return {button: button && usableButton(button) ? button : null};
 }
 
-function containedPoint(button, window) {
-  const box = button.bounds;
-  const frame = window.bounds;
-  if (!box || !frame || !['x', 'y', 'width', 'height'].every(key => Number.isFinite(box[key]) && Number.isFinite(frame[key])) ||
-      box.width < 2 || box.height < 2 || box.x < frame.x || box.y < frame.y ||
-      box.x + box.width > frame.x + frame.width || box.y + box.height > frame.y + frame.height) return null;
-  return [Math.floor(box.x + box.width / 2), Math.floor(box.y + box.height / 2)];
-}
-
 function loginState(tree, title, container) {
   const toolbars = browserToolbars(tree);
   const inContainer = toolbars.some(toolbar => [...descend(toolbar)].some(node =>
@@ -82,23 +58,14 @@ function loginState(tree, title, container) {
   const address = addressIn(toolbars);
   const insecure = toolbars.some(toolbar => [...descend(toolbar)].some(node =>
     /^(?:不安全|Not secure)(?:$|[\s：:])/.test(node.name ?? '')));
-  const loginRegions = pageNodes.filter(node =>
-    (isDocument(node) || node.role === 'form') && (named(node, loginLabels) ||
-      node.role === 'form' && [...descend(node)].some(field => ['password', 'protected', 'secure'].some(state => field.states?.includes(state)))));
-  const pressable = loginRegions.flatMap(region => [...descend(region)].filter(node =>
-    canClick(node) && named(node, loginLabels)));
   const verification = verificationText.test(title) || pageNodes.some(node =>
     ['heading', 'alert', 'dialog', 'document', 'webarea'].includes(node.role) && verificationText.test(node.name ?? ''));
   if (verification) return {status: 'verification-required'};
-  if (loginRegions.length || address?.hostname === 'loginmyseller.taobao.com') {
-    const button = uniqueButton(pressable, 'LOGIN_BUTTON_AMBIGUOUS', 'The login region has more than one enabled Login button.');
-    return {status: 'login-pending', button: address?.protocol === 'https:' && !insecure ? button : null};
+  if (address?.hostname === pinduoduoHost) {
+    return address.origin === 'https://' + pinduoduoHost && !insecure ?
+      pinduoduoLoginState(documents[0], address) : {status: 'unconfirmed'};
   }
-  if (address?.hostname === 'myseller.taobao.com' && address.protocol === 'https:' && !insecure &&
-      backendTitle.test(documents[0].name ?? '')) {
-    return {status: 'backend-page', host: address.hostname};
-  }
-  return {status: 'unconfirmed'};
+  return qianniuDesktopState(documents, pageNodes, address, insecure);
 }
 
 async function waitFor(check, timeout) {
@@ -135,14 +102,14 @@ export async function openDesktopShop(options, dependencies = {}) {
     if (page.complete && page.tree && page.window?.id === window.id) return page;
     return null;
   };
-  const readPage = ({confirmCrash = true} = {}) => {
+  const readPage = ({confirmCrash = true, bounds = false} = {}) => {
     const current = readWindow();
     if (!current || isManager(current.title)) return null;
-    const page = snapshot(current);
+    const page = snapshot(current, undefined, bounds);
     if (!page || isManager(page.window.title)) return null;
     const state = loginState(page.tree, page.window.title, container);
     if (confirmCrash && state?.status === 'tab-crashed') throw fail('TAB_CRASHED', 'The selected container tab shows Ecom’s crash page.', {executed: true});
-    return state;
+    return state && {...state, window: current};
   };
   try {
     if (!instance && !options['window-id'] && desktop.listWindows().length === 0) {
@@ -223,10 +190,14 @@ export async function openDesktopShop(options, dependencies = {}) {
       }
     } catch (error) { if (error.executed !== 'unknown') throw error; openError = error; }
     let state;
-    const ready = await wait(() => {
+    let ready = await wait(() => {
       state = readPage();
-      return state?.button || ['backend-page', 'verification-required'].includes(state?.status) ? state : null;
+      return state?.button || state?.prepare || ['backend-page', 'verification-required'].includes(state?.status) ? state : null;
     }, desktop.focus ? 25000 : 12000);
+
+    if (ready?.prepare) {
+      ready = await ready.prepare(ready, {desktop, readPage, wait, setPhase: next => {phase = next;}});
+    }
     if (!ready?.button) {
       const observed = ready ?? state;
       if (!observed) throw openError ?? fail('CONTAINER_OPEN_UNCONFIRMED', 'The active tab could not be confirmed in the requested container.', {executed: 'unknown'});

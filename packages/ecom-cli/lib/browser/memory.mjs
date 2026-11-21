@@ -1,5 +1,5 @@
-import {discover,callMailbox} from './browser.mjs';
-import {fail} from './common.mjs';
+import {discover,callMailbox} from './session.mjs';
+import {fail} from '../common.mjs';
 
 // Validate the native boundary before using estimates or stable target IDs.
 export function validateSnapshot(body) {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {parse} from '../lib/cli.mjs';
-import {improvesCoverage, isProductUrl, normalizeItemMedia, readDescription, selectSearchProductLink, shouldSearch} from '../lib/item-media.mjs';
+import {improvesCoverage, isProductUrl, normalizeItemMedia, readDescription, selectSearchProductLink, shouldSearch} from '../lib/data/taobao/item-media.mjs';
 
 const itemId = '100000000001';
 const image = n => 'https://img.alicdn.com/' + n + '.jpg';

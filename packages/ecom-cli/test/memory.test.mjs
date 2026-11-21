@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {parse} from '../lib/cli.mjs';
-import {validateSnapshot,readMemoryInConnection,validateTabTarget,tabMemoryActionInConnection,validateAutoOptions,validateAutomatic,autoMemoryInConnection,validateRestoreOptions,validateRestoreSettings,restoreSettingsInConnection} from '../lib/memory.mjs';
+import {validateSnapshot,readMemoryInConnection,validateTabTarget,tabMemoryActionInConnection,validateAutoOptions,validateAutomatic,autoMemoryInConnection,validateRestoreOptions,validateRestoreSettings,restoreSettingsInConnection} from '../lib/browser/memory.mjs';
 const sample=()=>({ok:true,snapshotVersion:1,snapshotId:'snapshot-fixture',metric:'macos-physical-footprint',sampledAtUnixMs:1,policy:{p0ReadOnly:true},tabs:[1,2].map(tabId=>({tabId,containerId:'shop-'+tabId,pageVersion:'doc-'+tabId,estimatedMemoryBytes:50,discardReasons:[],freezeReasons:[],connectedFreezeReasons:[]})),containers:[],processes:[{pid:123,memoryBytes:100,residentBytes:60,tabIds:[1,2]}],totals:{memoryBytes:100,residentBytes:60,attributedBytes:100,unattributedBytes:0}});
 test('all memory commands are read-only snapshots and reject targeting/mutation options',()=>{
   for(const action of ['status','tabs','processes','containers'])assert.equal(parse(['memory',action,'--json','--instance','selected']).options.instance,'selected');

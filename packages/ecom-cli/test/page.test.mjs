@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {parse} from '../lib/cli.mjs';
-import {mediaPageUrl, pageCommand} from '../lib/page.mjs';
+import {pageCommand} from '../lib/browser/page.mjs';
+import {mediaPageUrl} from '../lib/data/douyin/media-url.mjs';
 
 test('media downloads preserve the Douyin work ID and arbitrary other page URLs', () => {
   const workId = '7674116903064964415';

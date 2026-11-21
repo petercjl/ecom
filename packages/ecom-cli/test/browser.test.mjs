@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {readMailbox} from '../lib/browser.mjs';
+import {readMailbox} from '../lib/browser/session.mjs';
 test('authenticated mailbox read never navigates and filters response fields',{skip:process.platform==='win32'},async()=>{
   const folder=fs.mkdtempSync(path.join(os.tmpdir(),'ecom-mailbox-'));fs.chmodSync(folder,0o700);
   const endpoint={instanceId:'test-instance',pid:process.pid,authToken:'test-only-not-a-secret'};

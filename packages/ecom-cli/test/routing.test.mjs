@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {parse} from '../lib/cli.mjs';
-import {routingPayload,routingInConnection,validateRoutingState} from '../lib/routing.mjs';
+import {routingPayload,routingInConnection,validateRoutingState} from '../lib/browser/routing.mjs';
 const sample=()=>({ok:true,protocolVersion:1,configuration:{enabled:true,revision:0,rules:[{id:'example-taobao-product-detail',name:'淘宝／天猫商品详情 · 示例',enabled:false,containerId:'',conditions:[],targetState:'unassigned'}]},containers:[]});
 test('rule changes require a read revision; disabled drafts can remain unassigned',()=>{
   assert.equal(parse(['routing','list','--json']).command,'routing list');

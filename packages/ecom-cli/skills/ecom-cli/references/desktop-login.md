@@ -7,6 +7,12 @@
 3. Pass the exact account name shown in Account manager. The command uses formal Ecom by default and can start it. On macOS, for an explicitly requested running instance such as Ecom Dev, use the verified profile path or current instance ID with `--profile` or `--instance`. Use `--window-id` to disambiguate windows within that instance. On Windows use the formal Ecom route; a request for explicit Dev selection is unsupported by this desktop command. An explicit instance failure stays with the requested target.
 4. Run the command once. Ecom CLI resolves the account row, opens its saved homepage, verifies the active tab's container and supplies the actual button Ref to the packaged desktop runtime. It checks the resulting page before returning. Use the receipt's `channel`, `pid`, `windowId`, and, when present, `instance` to verify the target.
 
+### Pinduoduo Merchant
+
+On `mms.pinduoduo.com/login/`, the CLI switches from QR sign-in to **Account login** when needed, waits for the existing Ecom credentials to fill, and checks that both fields are nonempty. The macOS password check observes only presence. A positive prefill check permits one headed click of **Login**. If either field is empty, `LOGIN_CREDENTIALS_MISSING` means sign-in cannot proceed until the owner saves both credentials in the original container. `LOGIN_PREFILL_UNVERIFIABLE` means presence could not be established, including on platforms without a supported secure-field check. Keep the form available for the user's manual action. Obtain any SMS or security verification from the user in the same container.
+
+The observed merchant home is `backend-page`. When an operation needs current Pinduoduo service authentication, confirm it using `containers verify` for the original instance and container. An authenticated Pinduoduo session and verified shop identity are separate evidence.
+
 ## Diagnose by environment and evidence
 
 | Observation | Agent action |
@@ -26,7 +32,7 @@ The package owns all desktop actions in this workflow. On macOS, the login Ref c
 
 | Result | Report or next action |
 | --- | --- |
-| `backend-page` | The target container reached the recognized Taobao merchant host and document. `loginClick=not-attempted` means the CLI observed the backend without submitting a click. A merchant page alone does not establish platform account identity for a separate data or write operation. |
+| `backend-page` | The target container reached a recognized Taobao or Pinduoduo merchant page. `loginClick=not-attempted` means the CLI observed the backend without submitting a click. A merchant page alone does not establish platform account identity for a separate data or write operation. |
 | `verification-required` | Leave the verified tab open for the user to complete verification. Resume by observing the state in that same instance and container. |
 | `login-pending` or `unconfirmed` | Report that login remains unconfirmed and state whether the click was delivered. A disappearing form or `ok=true` alone is insufficient to establish backend entry. |
 | `LOGIN_CLICK_FAILED` or `TAB_CRASHED` | End this attempt. If delivery is unknown, observe the tab and its container before considering any new action. If the same form still requires login after an ambiguous or failed click, hand it back to the user. |

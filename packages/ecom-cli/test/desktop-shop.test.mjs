@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {openDesktopShop} from '../lib/desktop-shop.mjs';
-import {desktopFiles, ecomDesktop, selectDesktopInstance} from '../lib/desktop-runtime.mjs';
+import {openDesktopShop} from '../lib/login/open-shop.mjs';
+import {desktopFiles, ecomDesktop, selectDesktopInstance} from '../lib/login/desktop-runtime.mjs';
 import {parse} from '../lib/cli.mjs';
 import {fail} from '../lib/common.mjs';
 
@@ -16,8 +16,19 @@ const manager = title => [title, 'ecom://shops', node('table', '', [row(name)])]
 const backend = ['天猫商家中心', 'myseller.taobao.com/home.htm/?access_token=secret'];
 const login = ['登录', 'loginmyseller.taobao.com/', node('form', '登录', [button('登录', '@form:login')])];
 const challenge = ['身份验证', 'loginmyseller.taobao.com/', node('heading', '安全验证')];
+const pddLogin = 'mms.pinduoduo.com/login/';
+const pddBackend = ['拼多多 商家后台', 'mms.pinduoduo.com/home/'];
+const pddQr = ['拼多多商家后台', pddLogin, node('group', '', [
+  node('group', '', [node('statictext', '扫码登录')]),
+  node('group', '', [node('statictext', '账号登录')], {ref_id: '@pdd:account', available_actions: ['Click']}),
+])];
+const pddForm = (account = 'fixture-account') => ['拼多多商家后台', pddLogin, node('group', '', [
+  node('textfield', '', [], {value: account}),
+  node('textfield', '请输入密码', [], {states: ['secure'], bounds: {x: 30, y: 40, width: 80, height: 20}}),
+  button('登录', '@form:login'),
+])];
 
-function scenario({initial = manager('Ecom · 账号管理'), landing = login, after = backend, clickError, wrongContainer, initiallyClosed = false, duplicateOpenRef = false} = {}) {
+function scenario({initial = manager('Ecom · 账号管理'), landing = login, after = backend, clickError, wrongContainer, initiallyClosed = false, duplicateOpenRef = false, accountForm, prefill} = {}) {
   let page = initial;
   let stage = initiallyClosed ? 'closed' : 'initial';
   const clicks = [];
@@ -40,12 +51,17 @@ function scenario({initial = manager('Ecom · 账号管理'), landing = login, a
         if (duplicateOpenRef) throw fail('FIXTURE', 'Unaddressable repeated UIA button', {executed: false, desktopCode: 'AMBIGUOUS_TARGET'});
         stage = 'opened';page = landing;
       }
+      if (ref === '@pdd:account') page = accountForm;
       if (ref === '@form:login') {
         if (clickError) throw clickError;
         page = after;
         return {disposition: {delivery: 'delivered'}};
       }
     },
+  };
+  if (prefill) desktop.securePrefill = (_window, point) => {
+    assert.deepEqual(point, [70, 50]);
+    return prefill;
   };
   if (duplicateOpenRef) {
     desktop.focus = () => {};
@@ -121,6 +137,41 @@ test('recognizes the Tmall Global merchant workbench after a single login click'
   assert.equal(result.status, 'backend-page');
   assert.equal(result.loginClick, 'delivered');
   assert.equal(flow.clicks.filter(([, headed]) => headed).length, 1);
+});
+
+test('switches the Pinduoduo QR page to account mode and submits only the prefilled form', async () => {
+  const flow = scenario({landing: pddQr, accountForm: pddForm(), prefill: 'filled', after: pddBackend});
+  const result = await flow.run();
+  assert.equal(result.status, 'backend-page');
+  assert.equal(result.host, 'mms.pinduoduo.com');
+  assert.equal(result.loginClick, 'delivered');
+  assert.ok(!JSON.stringify(result).includes('fixture-account'));
+  assert.deepEqual(flow.clicks, [['@table:open', false], ['@pdd:account', true], ['@form:login', true]]);
+});
+
+test('Pinduoduo stops on missing or unverifiable prefill and does not reopen account mode', async () => {
+  for (const [accountForm, prefill, code] of [
+    [pddForm(''), 'filled', 'LOGIN_CREDENTIALS_MISSING'],
+    [pddForm(), 'empty', 'LOGIN_CREDENTIALS_MISSING'],
+    [pddForm(), undefined, 'LOGIN_PREFILL_UNVERIFIABLE'],
+  ]) {
+    const flow = scenario({landing: accountForm, prefill});
+    await assert.rejects(flow.run(), error => error.code === code && error.diagnostics.loginClick === 'not-attempted');
+    assert.deepEqual(flow.clicks, [['@table:open', false]]);
+  }
+});
+
+test('Pinduoduo reports a verification challenge or an existing merchant session without clicking Login', async () => {
+  for (const [landing,status] of [
+    [pddBackend,'backend-page'],
+    [['拼多多商家后台', pddLogin, node('heading', '短信验证')], 'verification-required'],
+    [['拼多多商家后台', 'mms.pinduoduo.com.example.com/login/', ...pddQr.slice(2)], 'unconfirmed'],
+  ]) {
+    const flow = scenario({landing});
+    const result = await flow.run();
+    assert.equal(result.status, status);
+    assert.deepEqual(flow.clicks, [['@table:open', false]]);
+  }
 });
 
 test('an undelivered Windows UIA Open click can use the matching row’s live bounds', async () => {

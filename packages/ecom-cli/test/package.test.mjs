@@ -44,11 +44,11 @@ test('actual npm packed install, update repair, isolation, local-edits and docto
     const installed=invoke(entry,args('install',b,'custom-agent'));assert.equal(installed.current,true);
     assert.equal(invoke(entry,args('install',a)).changed,false); // same-version verified no-op
     // A same-version source may contain different runtime bytes than a development candidate.
-    const sourceBrowser=path.join(bootstrap,'node_modules/@lumyne/ecom-cli/lib/browser.mjs');
+    const sourceBrowser=path.join(bootstrap,'node_modules/@lumyne/ecom-cli/lib/browser/session.mjs');
     fs.appendFileSync(sourceBrowser,'\n// same-version candidate correction\n');
     const stale=invoke(entry,args('status',a));assert.equal(stale.current,false);assert.equal(stale.edited,false);
     const refreshed=invoke(entry,args('update',a));assert.equal(refreshed.changed,true);assert.equal(refreshed.current,true);
-    assert.equal(fs.readFileSync(path.join(a,'.runtime/lib/browser.mjs'),'utf8'),fs.readFileSync(sourceBrowser,'utf8'));
+    assert.equal(fs.readFileSync(path.join(a,'.runtime/lib/browser/session.mjs'),'utf8'),fs.readFileSync(sourceBrowser,'utf8'));
     assert.ok(fs.statSync(refreshed.backup).isDirectory());
     assert.equal(invoke(entry,args('update',b,'custom-agent')).current,true);
     fs.unlinkSync(path.join(a,'SKILL.md'));

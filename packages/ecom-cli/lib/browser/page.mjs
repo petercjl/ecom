@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {callMailbox, discover, readMailbox, resolveContainer} from './browser.mjs';
-import {exists, fail, privatePath} from './common.mjs';
+import {callMailbox, discover, readMailbox, resolveContainer} from './session.mjs';
+import {exists, fail, privatePath} from '../common.mjs';
+import {mediaPageUrl} from '../data/douyin/media-url.mjs';
 
 export function validatePageOptions(command, options) {
   let url;
@@ -12,17 +13,6 @@ export function validatePageOptions(command, options) {
     throw fail('INVALID_ARGUMENT', 'Specify a container and a credential-free HTTPS page URL');
   if (command === 'media download' && !options.output)
     throw fail('INVALID_ARGUMENT', 'Specify a new local file with --output');
-}
-
-// Douyin's own embed uses the same public work ID as the desktop work URL.
-export function mediaPageUrl(url) {
-  const target = new URL(url);
-  const work = target.pathname.match(/^\/video\/(\d{16,22})\/?$/);
-  if (target.origin !== 'https://www.douyin.com' || !work ||
-      target.search || target.hash) return target.href;
-  const player = new URL('https://open.douyin.com/player/video');
-  player.searchParams.set('vid', work[1]);
-  return player.href;
 }
 
 export async function pageCommand(command, options) {

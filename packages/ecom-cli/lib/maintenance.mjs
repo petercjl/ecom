@@ -4,7 +4,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {root,pkg,fail,exists,tree,writeNew} from './common.mjs';
-import {desktopDependency} from './desktop-runtime.mjs';
+import {desktopDependency} from './login/desktop-runtime.mjs';
 const receiptName='.ecom-receipt.json';
 const legacyPackage='@petercjl/ecom-cli';
 const ownsReceipt=(receipt,target,agent)=>receipt?.target===target&&receipt?.agent===agent;

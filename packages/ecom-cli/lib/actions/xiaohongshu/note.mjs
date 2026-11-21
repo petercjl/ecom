@@ -2,8 +2,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {setTimeout as pause} from 'node:timers/promises';
-import {fail, privatePath, writeNew} from './common.mjs';
-import {discover, inspectInConnection, callMailbox} from './browser.mjs';
+import {fail, privatePath, writeNew} from '../../common.mjs';
+import {discover, inspectInConnection, callMailbox} from '../../browser/session.mjs';
 
 const maxImage = 10 * 1024 * 1024;
 const maxTotal = 24 * 1024 * 1024;

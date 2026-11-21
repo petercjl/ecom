@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {nativeRegistry} from '../packages/ecom-cli/lib/sycm.mjs';
+import {nativeRegistry} from '../packages/ecom-cli/lib/data/taobao/sycm.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const file=path.join(root,'browser/ecom/sycm_read_registry.h');
 const operations=nativeRegistry();
