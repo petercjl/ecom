@@ -23,6 +23,21 @@ TEST(ShopIdentityParser, BuyerLoginRequiresSuccessfulPlatformAccountResponse) {
     EXPECT_EQ(ParseTaobaoBuyerLogin(response), "unknown") << response;
   }
 }
+TEST(ShopIdentityParser, PinduoduoLoginRequiresExplicitBoolean) {
+  EXPECT_EQ(ParsePinduoduoMerchantLogin(
+                R"({"success":true,"result":{"login":true}})"),
+            "authenticated");
+  EXPECT_EQ(ParsePinduoduoMerchantLogin(
+                R"({"success":true,"result":{"login":false}})"),
+            "signed-out");
+  for (const auto* response : {
+           R"({"success":false,"result":{"login":false}})",
+           R"({"success":true,"result":{"login":"true"}})",
+           R"({"success":true,"result":{}})",
+           R"({"result":{"login":true}})", "<html>login</html>"}) {
+    EXPECT_EQ(ParsePinduoduoMerchantLogin(response), "unknown") << response;
+  }
+}
 TEST(ShopIdentityParser, PersonalViewProjectsOnlyVerifiedIdentityFields) {
   auto result = ParsePersonalViewShopIdentity(
       R"({"code":0,"data":{"runAsShopId":"12345","loginUserId":67890,"runAsShopTitle":"示例店铺","secret":"fixture-excluded"}})");

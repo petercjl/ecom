@@ -251,6 +251,7 @@ Object.assign(zh, {
   buyerAccount: '淘宝买家账号',
   buyerLoginUnknown: '买家登录状态待核验',
   buyerNeedsLogin: '淘宝账号需登录',
+  pinduoduoNeedsLogin: '拼多多商家后台需登录',
   taobaoHome: '淘宝首页',
   ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER:
     '已配置账号用途保持不变，其他用途请添加新容器。',
@@ -327,6 +328,7 @@ Object.assign(en, {
   buyerAccount: 'Taobao buyer account',
   buyerLoginUnknown: 'Buyer login not verified',
   buyerNeedsLogin: 'Taobao sign-in required',
+  pinduoduoNeedsLogin: 'Pinduoduo merchant sign-in required',
   taobaoHome: 'Taobao home',
   ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER:
     'Keep the configured account purpose. Use a new container for another purpose.',
@@ -846,9 +848,13 @@ function render() {
     tr.append(first)
     tr.append(node('td', displayPlatform(row, copy === zh)))
     const status = node('td')
-    const statusText = row.authentication?.service === 'taobao'
-      && row.state === 'login-required' ? text('buyerNeedsLogin') : text(row.state)
-    status.append(node('span', statusText, 'badge ' + row.state))
+    const loginRequiredLabel = {
+      taobao: 'buyerNeedsLogin',
+      pinduoduo: 'pinduoduoNeedsLogin',
+    }[row.authentication?.service]
+    const statusLabel = row.state === 'login-required' && loginRequiredLabel
+      ? loginRequiredLabel : row.state
+    status.append(node('span', text(statusLabel), 'badge ' + row.state))
     if (row.checking) status.title = text('checking')
     tr.append(status)
 

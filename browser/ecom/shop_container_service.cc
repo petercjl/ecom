@@ -94,6 +94,8 @@ namespace {
 using Reply = base::OnceCallback<void(std::string)>;
 constexpr char kServiceKey[] = "ecom.shop.service";
 constexpr char kHome[] = "https://sycm.taobao.com/portal/home.htm";
+constexpr char kPinduoduoLoginApi[] =
+    "https://mms.pinduoduo.com/janus/api/checkLogin";
 constexpr char kBuyerApi[] =
     "https://h5api.m.taobao.com/h5/mtop.user.getusersimple/1.0/";
 base::DictValue Error(std::string code) {
@@ -176,8 +178,11 @@ std::string HomeUrl(const base::DictValue& metadata) {
   const auto* platform = Platform(id);
   return platform ? platform->entry : std::string();
 }
+bool SupportsVerification(std::string_view platform) {
+  return platform == "taobao" || platform == "pinduoduo";
+}
 bool SupportsVerification(const base::DictValue& metadata) {
-  return Field(metadata, "platform") == "taobao";
+  return SupportsVerification(Field(metadata, "platform"));
 }
 bool UsesBuyerVerification(const base::DictValue& metadata) {
   if (Field(metadata, "platform") != "taobao") {
@@ -346,7 +351,7 @@ class ShopService final : public base::SupportsUserData::Data,
                              .Set("entryUrl", platform.entry)
                              .Set("services", std::move(services))
                              .Set("automaticVerification",
-                                  std::string_view(platform.id) == "taobao"));
+                                  SupportsVerification(platform.id)));
       }
       Send(std::move(callback), base::DictValue()
                                     .Set("ok", true)
@@ -780,8 +785,9 @@ class ShopService final : public base::SupportsUserData::Data,
       Send(std::move(callback), std::move(result));
       return;
     }
-    if ((method == "shops.verify" || method == "shops.confirm") &&
-        !SupportsVerification(*Metadata().FindDict(id))) {
+    const auto* shop = Metadata().FindDict(id);
+    if ((method == "shops.verify" && !SupportsVerification(*shop)) ||
+        (method == "shops.confirm" && Field(*shop, "platform") != "taobao")) {
       Send(std::move(callback), Error("PLATFORM_VERIFICATION_UNAVAILABLE"));
       return;
     }
@@ -1041,8 +1047,9 @@ class ShopService final : public base::SupportsUserData::Data,
     auto item =
         base::DictValue()
             .Set("platform", platform)
-            .Set("state", platform == "taobao" ? "awaiting-login"
-                                               : "verification-unavailable");
+            .Set("state", SupportsVerification(platform)
+                              ? "awaiting-login"
+                              : "verification-unavailable");
     if (platform == "custom") {
       auto name = Field(request, "customPlatformName");
       base::TrimWhitespaceASCII(name, base::TRIM_ALL, &name);
@@ -1225,7 +1232,12 @@ class ShopService final : public base::SupportsUserData::Data,
       return;
     }
     attempts_[id] = base::Time::Now();
-    if (UsesBuyerVerification(*Metadata().FindDict(id))) {
+    const auto& shop = *Metadata().FindDict(id);
+    if (Field(shop, "platform") == "pinduoduo") {
+      CheckPinduoduoLogin(id, std::move(callback));
+      return;
+    }
+    if (UsesBuyerVerification(shop)) {
       loaders_[id] = {nullptr, std::move(callback), 0};
       ReadExpiry(id);
       ReadBuyerCookies(id, false);
@@ -1265,6 +1277,63 @@ class ShopService final : public base::SupportsUserData::Data,
         base::BindOnce(&ShopService::Verified, weak_.GetWeakPtr(), id),
         2 * 1024 * 1024);
   }
+  void CheckPinduoduoLogin(const std::string& id, Reply callback) {
+    auto request = std::make_unique<network::ResourceRequest>();
+    request->url = GURL(kPinduoduoLoginApi);
+    request->method = "POST";
+    request->load_flags = net::LOAD_BYPASS_CACHE | net::LOAD_DISABLE_CACHE;
+    request->credentials_mode = network::mojom::CredentialsMode::kInclude;
+    request->redirect_mode = network::mojom::RedirectMode::kError;
+    request->site_for_cookies = net::SiteForCookies::FromUrl(request->url);
+    request->request_initiator = url::Origin::Create(request->url);
+    request->headers.SetHeader("Accept", "application/json");
+    request->headers.SetHeader("User-Agent", embedder_support::GetUserAgent());
+    constexpr auto annotation = net::DefineNetworkTrafficAnnotation(
+        "ecom_pinduoduo_merchant_login_check", R"(
+      semantics {
+        sender: "Ecom shop containers"
+        description: "Reads the current Pinduoduo merchant login status."
+        trigger: "Periodic check or user refresh."
+        data: "Selected container cookies and an empty JSON request."
+        destination: WEBSITE
+      }
+      policy {
+        cookies_allowed: YES
+        cookies_store: "Selected container"
+        setting: "Managed Pinduoduo merchant containers."
+        policy_exception_justification: "User managed container login checks."
+      })");
+    auto loader =
+        network::SimpleURLLoader::Create(std::move(request), annotation);
+    loader->SetTimeoutDuration(base::Seconds(8));
+    loader->AttachStringForUpload("{}", "application/json");
+    auto* pending = loader.get();
+    loaders_[id] = {std::move(loader), std::move(callback), 0};
+    const auto config = content::StoragePartitionConfig::Create(
+        profile_, containers::kContainersStoragePartitionDomain, id, false);
+    auto factory = profile_->GetStoragePartition(config)
+                       ->GetURLLoaderFactoryForBrowserProcess();
+    pending->DownloadToString(
+        factory.get(),
+        base::BindOnce(&ShopService::PinduoduoLoginChecked,
+                       weak_.GetWeakPtr(), id),
+        64 * 1024);
+  }
+
+  void PinduoduoLoginChecked(const std::string& id,
+                             std::optional<std::string> body) {
+    const auto& loader = *loaders_.at(id).loader;
+    const auto* response = loader.ResponseInfo();
+    const int status = response && response->headers
+                           ? response->headers->response_code()
+                           : 0;
+    const auto state = body && status == 200 && loader.NetError() == net::OK
+                           ? ParsePinduoduoMerchantLogin(*body)
+                           : "unknown";
+    FinishSessionCheck(id, "pinduoduo", "pinduoduo-merchant-check-login",
+                       state, status);
+  }
+
   void ReadBuyerCookies(const std::string& id, bool retried) {
     const auto config = content::StoragePartitionConfig::Create(
         profile_, containers::kContainersStoragePartitionDomain, id, false);
@@ -1340,23 +1409,36 @@ class ShopService final : public base::SupportsUserData::Data,
       ReadBuyerCookies(id, true);
       return;
     }
+    FinishSessionCheck(id, "taobao", "taobao-user-simple-json",
+                       valid ? ParseTaobaoBuyerLogin(*body) : "unknown", status);
+  }
+
+  void FinishSessionCheck(const std::string& id,
+                          std::string_view service,
+                          std::string_view source,
+                          std::string_view state,
+                          int status) {
     auto pending = std::move(loaders_.at(id));
     loaders_.erase(id);
-    if (!Metadata().FindDict(id) ||
+    const auto* metadata = Metadata().FindDict(id);
+    if (!metadata ||
         !containers::GetContainerFromPrefs(*profile_->GetPrefs(), id)) {
       Send(std::move(pending.callback), Error("CONTAINER_NOT_FOUND"));
       return;
     }
-    auto item = Metadata().FindDict(id)->Clone();
-    const auto state = valid ? ParseTaobaoBuyerLogin(*body) : "unknown";
+    auto item = metadata->Clone();
     const auto now = base::NumberToString(base::Time::Now().ToTimeT());
-    auto auth = base::DictValue().Set("service", "taobao")
-        .Set("source", "taobao-user-simple-json").Set("state", state)
-        .Set("checkedAt", now);
+    auto auth = base::DictValue()
+                    .Set("service", service)
+                    .Set("source", source)
+                    .Set("state", state)
+                    .Set("checkedAt", now);
     if (state == "authenticated") {
       auth.Set("lastSuccessfulAt", now);
     }
-    item.Set("accountType", "buyer");
+    if (service == "taobao") {
+      item.Set("accountType", "buyer");
+    }
     item.Set("authentication", std::move(auth));
     item.Set("checkedAt", now);
     item.Set("state", state == "authenticated" ? "signed-in" :
@@ -1367,8 +1449,10 @@ class ShopService final : public base::SupportsUserData::Data,
     if (state == "unknown") {
       item.Set("lastError", "LOGIN_CHECK_UNAVAILABLE");
       item.Set("diagnostics", base::DictValue()
-          .Set("buyerProbeHttpStatus", status)
-          .Set("buyerProbeNetworkError", pending.loader->NetError()));
+          .Set(service == "taobao" ? "buyerProbeHttpStatus" : "loginProbeHttpStatus",
+               status)
+          .Set(service == "taobao" ? "buyerProbeNetworkError" : "loginProbeNetworkError",
+               pending.loader->NetError()));
     }
     Store(id, std::move(item));
     Send(std::move(pending.callback), List());

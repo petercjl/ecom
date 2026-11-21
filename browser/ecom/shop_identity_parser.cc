@@ -205,4 +205,18 @@ std::string ParseTaobaoBuyerLogin(std::string_view json) {
              ? "authenticated"
              : "unknown";
 }
+
+std::string ParsePinduoduoMerchantLogin(std::string_view json) {
+  const auto envelope = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
+  if (!envelope || envelope->FindBool("success") != true) {
+    return "unknown";
+  }
+
+  const auto* result = envelope->FindDict("result");
+  const auto login = result ? result->FindBool("login") : std::nullopt;
+  if (!login) {
+    return "unknown";
+  }
+  return *login ? "authenticated" : "signed-out";
+}
 }  // namespace ecom

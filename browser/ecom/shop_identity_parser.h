@@ -15,6 +15,7 @@ std::optional<base::DictValue> ParseEmbeddedShopIdentity(std::string_view html);
 std::optional<base::DictValue> ParsePersonalViewShopIdentity(std::string_view json);
 // A service response is required; cookies alone never establish buyer login.
 std::string ParseTaobaoBuyerLogin(std::string_view json);
+std::string ParsePinduoduoMerchantLogin(std::string_view json);
 // The returned value is browser-private request material, never CLI output.
 std::optional<std::string> ExtractSycmLegalityToken(std::string_view html);
 std::string RedactIdentityError(std::string_view message,
