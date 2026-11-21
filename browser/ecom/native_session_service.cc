@@ -511,39 +511,6 @@ class NativeSessionService final : public ProfileObserver {
       Fail(id, "ORIGIN_NOT_ALLOWED");
       return;
     }
-    const auto* shop = profile_->GetPrefs()
-                           ->GetDict(containers::prefs::kShopContainers)
-                           .FindDict(*container_id);
-    if (shop) {
-      const auto* state = shop->FindString("state");
-      if (!state || *state != "ready") {
-        Fail(id, "SHOP_NOT_READY");
-        return;
-      }
-      auto verify = base::DictValue()
-                        .Set("method", "shops.verify")
-                        .Set("containerId", *container_id);
-      RunShopCommand(
-          profile_, base::WriteJson(verify).value_or("{}"),
-          base::BindOnce(
-              [](base::WeakPtr<NativeSessionService> self,
-                 std::string operation, std::string container, GURL target,
-                 std::string result) {
-                if (!self) {
-                  return;
-                }
-                auto parsed =
-                    base::JSONReader::Read(result, base::JSON_PARSE_RFC);
-                if (!parsed || !parsed->is_dict() ||
-                    !parsed->GetDict().FindBool("ok").value_or(false)) {
-                  self->Fail(operation, "SHOP_VERIFICATION_FAILED");
-                  return;
-                }
-                self->Fetch(operation, container, target);
-              },
-              weak_.GetWeakPtr(), id, *container_id, url));
-      return;
-    }
     Fetch(id, *container_id, url);
   }
 
@@ -581,13 +548,13 @@ class NativeSessionService final : public ProfileObserver {
       Fail(id, "BUSY");
       return;
     }
-    const auto* shop = profile_->GetPrefs()
-                           ->GetDict(containers::prefs::kShopContainers)
-                           .FindDict(*container);
     if ((*operation == "xhs.search-cookie-probe" ||
          *operation == "xhs.search-v2-cookie-probe" ||
          *operation == "xhs.search-page" ||
          *operation == "xhs.self-cookie-probe") && SupportsSignedBusinessRoutes()) {
+      const auto* shop = profile_->GetPrefs()
+                             ->GetDict(containers::prefs::kShopContainers)
+                             .FindDict(*container);
       const auto* platform = shop ? shop->FindString("platform") : nullptr;
       const auto* keyword = params->FindString("keyword");
       const auto* search_id = params->FindString("search_id");
@@ -607,34 +574,8 @@ class NativeSessionService final : public ProfileObserver {
       StartBusinessRead(id, *container, *operation, params->Clone(), std::nullopt);
       return;
     }
-    if (!shop || !shop->FindDict("identity")) {
-      Fail(id, "SHOP_NOT_READY");
-      return;
-    }
-    auto verify = base::DictValue()
-                      .Set("method", "shops.verify")
-                      .Set("containerId", *container);
-    business_reads_[id] = nullptr;
-    RunShopCommand(profile_, base::WriteJson(verify).value_or("{}"),
-                   base::BindOnce(&NativeSessionService::BusinessVerified,
-                                  weak_.GetWeakPtr(), id, *container,
-                                  *operation, params->Clone(), std::move(signed_spec)));
-  }
-  void BusinessVerified(std::string id,
-                        std::string container,
-                        std::string operation,
-                        base::DictValue params,
-                        std::optional<base::DictValue> signed_spec,
-                        std::string verification) {
-    auto result = base::JSONReader::Read(verification, base::JSON_PARSE_RFC);
-    if (!result || !result->is_dict() ||
-        !result->GetDict().FindBool("ok").value_or(false)) {
-      business_reads_.erase(id);
-      Fail(id, "SHOP_VERIFICATION_FAILED");
-      return;
-    }
-    StartBusinessRead(id, std::move(container), std::move(operation),
-                      std::move(params), std::move(signed_spec));
+    StartBusinessRead(id, *container, *operation, params->Clone(),
+                      std::move(signed_spec));
   }
   void StartBusinessRead(const std::string& id,
                          std::string container,

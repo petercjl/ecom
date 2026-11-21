@@ -89,11 +89,11 @@ Use this branch for an explicit request to sign in to Qianniu or restore its ses
 
 ## Registered business operations
 
-For a named shop's business data, run the [shop data workflow](references/sycm.md#shop-data-workflow) end to end. The Agent owns opening Ecom if needed, checking the account, recovering an eligible browser-managed login and fetching the data. Report the requested business result. Bring the user in if manual login, verification or account confirmation is required. For mutation planning, follow its separate branch in the [business contract](references/sycm.md#mutation-plan-flow). The business registry is bundled with this runtime. Inspect `sycm schema --operation ID --json` for endpoint requirements and preserve the requested dates.
+For a named shop's business data, run the [shop data workflow](references/sycm.md#shop-data-workflow) end to end. The Agent owns opening Ecom if needed, selecting the requested container, recovering an eligible browser-managed login and fetching the data. Report the requested business result. Bring the user in if the platform requires manual login or verification. For mutation planning, follow its separate branch in the [business contract](references/sycm.md#mutation-plan-flow). The business registry is bundled with this runtime. Inspect `sycm schema --operation ID --json` for endpoint requirements and preserve the requested dates.
 
 `sycm open --operation ID --container VALUE --json` is the authorized page-preparation branch: background/reuse by default, `--foreground` for explicit visible login/verification. Opening is not proof of authentication; resume the same registered read after preparation. Prefer native initialization and preserve the caller’s page-fallback preference.
 
-`sycm run --operation ID --container VALUE --params-json JSON --json` fixes the native instance and container and validates the business envelope. Verify the returned period, platform update time and requested account before reporting metrics. A successful all-zero response is not by itself proof of zero business activity.
+`sycm run --operation ID --container VALUE --params-json JSON --json` fixes the native instance and container and validates the business envelope. Verify the returned period, data completeness and platform update time when available. The user is responsible for the shop signed in to the selected container. A successful all-zero response is not by itself proof of zero business activity.
 
 Mutation plan/apply commands create local records and return reviewed workflow instructions. They perform no website submission. Report `executed=false` and require actual executor and readback evidence before describing a platform change as completed. Existing authorization can cover the reviewed plan; a development request itself grants no real store mutation authority.
 
@@ -116,8 +116,7 @@ Require matching instance/container/tab and post-action status. `discarded` repo
 - AUTH_CONTEXT_REQUIRED: keep the existing login; native service context may need adapter diagnosis even when the page is logged in. Report the gap rather than repeatedly requesting login.
 - SERVICE_ADAPTER_REQUIRED: report the missing native adapter and preserve the selected container. Do not switch to CDP or another browser.
 - AUTH_REQUIRED, PERMISSION_REQUIRED or RISK_VERIFICATION_REQUIRED: complete the required first-party action in this original container, then explicitly resume.
-- SHOP_NOT_READY: inspect this exact account. Complete login and platform-identity verification through its Ecom account management page; a cookie expiry or account name does not satisfy readiness. If the native adapter cannot verify identity, report that gap and stop the data request. Return to step 5 only after readiness is established.
-- SHOP_VERIFICATION_FAILED: stop; the browser’s pre-request identity check failed. Preserve the selected target and report the failure.
+- SHOP_NOT_READY or SHOP_VERIFICATION_FAILED on a read: the running Ecom build still gates reads on shop identity. Use a compatible build that reads from the selected session directly.
 - ORIGIN_NOT_ALLOWED, CREDENTIAL_INPUT_REJECTED, METHOD_UNSUPPORTED or INVALID_URL: correct the intended input within the declared contract; do not broaden browser permissions.
 - REQUEST_FAILED or NON_JSON_RESPONSE: preserve HTTP/operation/execute fields; handle login, permission or challenge through the original container. Do not infer business success.
 - INSTANCE_NOT_RUNNING: run `doctor --json`. Ask the user to open a compatible Ecom version. Do not enable remote debugging or substitute another browser.

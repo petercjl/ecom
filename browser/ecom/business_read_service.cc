@@ -30,7 +30,6 @@
 #include "brave/browser/ecom/shop_identity_parser.h"
 #include "brave/browser/ecom/sycm_read_registry.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
-#include "brave/components/containers/core/browser/pref_names.h"
 #include "brave/components/containers/core/browser/prefs.h"
 #include "brave/components/containers/core/mojom/containers.mojom.h"
 #include "chrome/browser/profiles/profile.h"
@@ -669,19 +668,6 @@ private:
       }
       if (data->FindBool("availableUser") == false) {
         Fail("PERMISSION_REQUIRED");
-        return;
-      }
-      const auto *login = data->FindDict("loginUser");
-      const auto actual =
-          login ? NumericId(login->Find("shopId")) : std::nullopt;
-      const auto *shop = profile_->GetPrefs()
-                             ->GetDict(containers::prefs::kShopContainers)
-                             .FindDict(container_);
-      const auto *identity = shop ? shop->FindDict("identity") : nullptr;
-      const auto expected =
-          identity ? NumericId(identity->Find("shopId")) : std::nullopt;
-      if (actual && (!expected || *actual != *expected)) {
-        Fail("STORE_IDENTITY_MISMATCH");
         return;
       }
       params_.Set("bizCode", "dmp");

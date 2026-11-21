@@ -18,7 +18,7 @@ The Agent needs local Node.js 22+ and terminal/file access. Installation include
 
 > 用 Ecom CLI，通过指定账号请求我提供的只读接口地址。
 
-Provide the account name or stable container ID. For requests, supply an authorized read-only HTTPS endpoint or a trusted registered business operation. The browser permits only its explicitly enabled origin, rejects redirects/HTML and unsupported methods, and retains credentials in its native session. Native account readiness and identity checks remain authoritative. An HTTP 200 JSON response is transport success; the caller evaluates business success.
+Provide the account name or stable container ID. For requests, supply an authorized read-only HTTPS endpoint or a trusted registered business operation. The browser permits only its explicitly enabled origin, rejects redirects/HTML and unsupported methods, and retains credentials in its native session. For read-only requests, the user is responsible for the shop signed in to the selected container. The browser uses that session directly. An HTTP 200 JSON response is transport success; the caller evaluates business success.
 
 Container names may identify accounts. Use a trusted Agent and share results intentionally. Installing the plugin does not authorize website operations, cookie export or account modification.
 
