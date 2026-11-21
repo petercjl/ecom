@@ -383,15 +383,11 @@ RegisterPolymerTemplateModifications({
     menuLink.setAttribute('class', 'brave-about-item brave-about-menu-link-text')
     menuLink.textContent = aboutEl.textContent
 
-    const versionEl = document.createElement('span')
-    versionEl.setAttribute('class', 'brave-about-item brave-about-menu-version')
-    versionEl.textContent = `v ${loadTimeData.getString('braveProductVersion')}`
 
     parent.appendChild(newAboutEl)
     newAboutEl.appendChild(graphicsEl)
     graphicsEl.appendChild(icon)
     newAboutEl.appendChild(metaEl)
     metaEl.appendChild(menuLink)
-    metaEl.appendChild(versionEl)
   }
 })
