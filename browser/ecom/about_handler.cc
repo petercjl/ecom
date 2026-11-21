@@ -40,7 +40,7 @@ base::DictValue ReadReleaseInfo(base::FilePath path) {
     return result;
   auto dictionary = static_cast<CFDictionaryRef>(plist.get());
   const auto copy = [&](CFStringRef key, const char* output) {
-    auto value = CFDictionaryGetValue(dictionary, key);
+    const void* value = CFDictionaryGetValue(dictionary, key);
     if (value && CFGetTypeID(value) == CFStringGetTypeID())
       result.Set(output, base::SysCFStringRefToUTF8(
                              static_cast<CFStringRef>(value)));
