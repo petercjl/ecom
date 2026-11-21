@@ -344,7 +344,7 @@
 <translation id="156703335097561114">网络信息，例如地址、接口配置和连接质量</translation>
 <translation id="1567040042588613346">此政策正在正常运作，但与别处设置的值相同且已覆盖该值。</translation>
 <translation id="1569487616857761740">输入失效日期</translation>
-<translation id="5556692846380075877">Ecom 正在尝试开启 Windows Hello 来填充密码。开启后需手动验证身份，会影响自动化操作。</translation>
+<translation id="1385693425784118652">Brave 正在尝试开启 Windows Hello 来填充密码。</translation>
 <translation id="1569905000953679183">扩展程序安装政策提取</translation>
 <translation id="1572383686781055412">安全地更新 KTN</translation>
 <translation id="1572765991610098222"><ph name="WIDTH"/> x <ph name="HEIGHT"/> 英寸</translation>
@@ -1085,7 +1085,7 @@
 <translation id="1117301625415017890"><ph name="MANAGE_SECURITY_SETTINGS_FOCUSED_FRIENDLY_MATCH_TEXT"/>，依次按 Tab 键和 Enter 键即可在 Brave 设置中管理您的安全浏览设置及其他设置</translation>
 <translation id="2878197950673342043">海报折</translation>
 <translation id="2878424575911748999">A1</translation>
-<translation id="7892231741904763122">在填充密码时使用屏幕锁定。开启后需手动验证身份，会影响自动化操作。</translation>
+<translation id="2879694782644540289">使用屏幕锁定功能填充密码</translation>
 <translation id="2881276955470682203">要保存银行卡吗？</translation>
 <translation id="2882280148032777436">删除已知旅客编号</translation>
 <translation id="2882949212241984732">关门再对折</translation>

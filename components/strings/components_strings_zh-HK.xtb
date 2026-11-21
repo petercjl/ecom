@@ -345,7 +345,7 @@
 <translation id="156703335097561114">網絡資料，例如網絡位址、介面設定，以及連線品質</translation>
 <translation id="1567040042588613346">此政策運作正常，但與其他地方設定的值相同，並已取代該值。</translation>
 <translation id="1569487616857761740">輸入到期日</translation>
-<translation id="5556692846380075877">Ecom 正在嘗試啟用 Windows Hello 以填寫密碼。啟用後須手動驗證身分，會影響自動化操作。</translation>
+<translation id="1385693425784118652">Brave 正在嘗試開啟 Windows Hello，以便在填入密碼時驗證。</translation>
 <translation id="1569905000953679183">擷取擴充程式安裝政策</translation>
 <translation id="1572383686781055412">安全地更新 KTN</translation>
 <translation id="1572765991610098222"><ph name="WIDTH"/> x <ph name="HEIGHT"/> 吋</translation>
@@ -1091,7 +1091,7 @@
 <translation id="1117301625415017890"><ph name="MANAGE_SECURITY_SETTINGS_FOCUSED_FRIENDLY_MATCH_TEXT"/>，㩒一下 Tab 鍵，然後㩒一下 Enter 鍵就可以喺 Brave 設定度管理安全瀏覽之類嘅功能</translation>
 <translation id="2878197950673342043">十字摺</translation>
 <translation id="2878424575911748999">A1</translation>
-<translation id="7892231741904763122">使用螢幕鎖定功能填寫密碼。啟用後須手動驗證身分，會影響自動化操作。</translation>
+<translation id="2879694782644540289">使用螢幕鎖定功能填入密碼</translation>
 <translation id="2881276955470682203">要儲存付款卡嗎？</translation>
 <translation id="2882280148032777436">刪除已知的旅客編號</translation>
 <translation id="2882949212241984732">雙摺頁</translation>
