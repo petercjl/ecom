@@ -294,6 +294,7 @@ class ShopService final : public base::SupportsUserData::Data,
  public:
   explicit ShopService(Profile* profile) : profile_(profile) {
     MigrateLegacyPlatformPresets();
+    InvalidateLegacyBuyerChecks();
     profile_->AddObserver(this);
     timer_.Start(
         FROM_HERE, base::Seconds(15),
@@ -959,6 +960,28 @@ class ShopService final : public base::SupportsUserData::Data,
       if (SupportsVerification(item)) {
         item.Set("state", "awaiting-login");
       }
+      Store(container->id, std::move(item));
+    }
+  }
+
+  void InvalidateLegacyBuyerChecks() {
+    for (const auto& container :
+         containers::GetContainersFromPrefs(*profile_->GetPrefs())) {
+      const auto* existing = Metadata().FindDict(container->id);
+      const auto* authentication =
+          existing ? existing->FindDict("authentication") : nullptr;
+      if (!authentication || Field(*authentication, "service") != "sycm" ||
+          !UsesBuyerVerification(*existing)) {
+        continue;
+      }
+
+      // A merchant result must not delay a storefront check after an upgrade.
+      auto item = existing->Clone();
+      for (const char* field : {"authentication", "candidate", "checkedAt",
+                                "diagnostics", "expiry", "lastError"}) {
+        item.Remove(field);
+      }
+      item.Set("state", "awaiting-login");
       Store(container->id, std::move(item));
     }
   }
