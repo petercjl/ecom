@@ -93,7 +93,7 @@
   "localUpdateRecoveryVerified": false,
   "updateRoundTripVerified": false,
   "rollbackRoundTripVerified": false,
-  "published": false,
+  "published": true,
   "devValidation": {
     "verified": true,
     "sourceRevision": "02c3aa59205ca8e015c57a0f6d06f57659f9be7a",
@@ -109,5 +109,33 @@
     "bridgeSource": "77a26515bc7d0bc91fb0f09578b5a537b4e023f6",
     "lumyneSource": "02c3aa59205ca8e015c57a0f6d06f57659f9be7a",
     "profileDataAccessed": false
+  },
+  "publication": {
+    "mode": "local",
+    "packageName": "@lumyne/ecom-windows-x64",
+    "version": "0.1.10",
+    "tag": "latest",
+    "verifiedAt": "2026-11-21T03:06:50.841Z",
+    "bytes": 7347,
+    "integrity": "sha512-n4Fn53ACFYl+ansrDJe5+y9BSOircwT+fl+ZszUrOhirWlKSJcp9RT0xS+N7L/hLYA79E/G7UzLcvpnotP7plQ==",
+    "tarballSha256": "c752ceac3b85d14f4107f9d246e91e1e5a35c865ac730d5ef1960501e8ccfcfc",
+    "artifactVerified": true,
+    "actualRegistryDownload": true,
+    "validatedPublicationRevision": "54bc649abae05ef00ff03ce9ae79ba5ef4afb2b6",
+    "payloadPartsVerified": 6,
+    "isolatedNpmInstallVerified": true,
+    "nativeRegistryDownloadVerified": true,
+    "nativeRegistryEvidence": {
+      "ok": true,
+      "package": "@lumyne/ecom-windows-x64",
+      "version": "0.1.10",
+      "sourceRevision": "02c3aa59205ca8e015c57a0f6d06f57659f9be7a",
+      "archiveSha256": "4654b4eeb79f16f035168594e32f4dbc54fc2fb09c2e5a210575312cdf75e094",
+      "nativeRegistryDownloadVerified": true,
+      "actualProductionHelper": true,
+      "formalProfileAccessed": false,
+      "installerExecuted": false,
+      "verifiedAt": "2026-11-21T02:55:31.5630880Z"
+    }
   }
 }

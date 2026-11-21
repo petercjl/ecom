@@ -93,11 +93,25 @@
   "localUpdateRecoveryVerified": false,
   "updateRoundTripVerified": false,
   "rollbackRoundTripVerified": false,
-  "published": false,
+  "published": true,
   "devValidation": {
     "verified": true,
     "sourceRevision": "77a26515bc7d0bc91fb0f09578b5a537b4e023f6",
     "evidencePath": "docs/ecom/release-evidence/dev-lumyne-bridge-final-0.1.9.md"
   },
-  "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.9-final.md"
+  "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.9-final.md",
+  "publication": {
+    "mode": "local",
+    "packageName": "@petercjl/ecom-windows-x64",
+    "version": "0.1.9",
+    "tag": "latest",
+    "verifiedAt": "2026-11-21T03:06:50.841Z",
+    "bytes": 7338,
+    "integrity": "sha512-n9fUM9vE/my4yvKgEDldD09zINxaB4ARcSUHEQrGvylFA2vPlt9+TeXcF4ZRly8JjACLLC+Li7RMcwTOXRiQuw==",
+    "tarballSha256": "74638811642fcca169eb9c2efcad76d9c6b2918faa7b9126b093d2e7f04532c4",
+    "artifactVerified": true,
+    "actualRegistryDownload": true,
+    "validatedPublicationRevision": "54bc649abae05ef00ff03ce9ae79ba5ef4afb2b6",
+    "payloadPartsVerified": 6
+  }
 }

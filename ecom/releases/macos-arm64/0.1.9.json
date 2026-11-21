@@ -29,7 +29,7 @@
   "codesignVerified": true,
   "nativeSmokeTest": false,
   "updateRoundTripVerified": false,
-  "published": false,
+  "published": true,
   "devValidation": {
     "verified": true,
     "sourceRevision": "77a26515bc7d0bc91fb0f09578b5a537b4e023f6",
@@ -37,5 +37,18 @@
   },
   "evidencePath": "docs/ecom/release-evidence/macos-arm64-0.1.9.md",
   "tarballBytes": 157838887,
-  "integrity": "sha512-Q7Yg2yvKwPNkfs+Rlklp3xeTyXqId4V7579fCiEbLrxIyeYLlRPyJERNWnAci66EyZFwYFb+GHNCUWFcsHaAGw=="
+  "integrity": "sha512-Q7Yg2yvKwPNkfs+Rlklp3xeTyXqId4V7579fCiEbLrxIyeYLlRPyJERNWnAci66EyZFwYFb+GHNCUWFcsHaAGw==",
+  "publication": {
+    "mode": "local",
+    "packageName": "@petercjl/ecom-macos-arm64",
+    "version": "0.1.9",
+    "tag": "latest",
+    "verifiedAt": "2026-11-21T03:06:50.841Z",
+    "bytes": 157838887,
+    "integrity": "sha512-Q7Yg2yvKwPNkfs+Rlklp3xeTyXqId4V7579fCiEbLrxIyeYLlRPyJERNWnAci66EyZFwYFb+GHNCUWFcsHaAGw==",
+    "tarballSha256": "0bcf18ea8dcf927a949a849b4c31bfe9d7a3a80affa5ad1d191c033b15311b6f",
+    "artifactVerified": true,
+    "actualRegistryDownload": true,
+    "validatedPublicationRevision": "54bc649abae05ef00ff03ce9ae79ba5ef4afb2b6"
+  }
 }
