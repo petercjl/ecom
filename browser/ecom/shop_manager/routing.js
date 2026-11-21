@@ -38,17 +38,25 @@ function render(){
     for(const c of rule.conditions){const p=node('div',c.type==='exact'?c.url:`${c.scheme==='http+https'?'http(s)':c.scheme}://${c.includeSubdomains?'*.':''}${c.host}${c.path}`+(c.query?.length?' · '+c.query.map(q=>q.operator==='exists'?q.name+t(' 存在',' exists'):`${q.name}=${q.value}`).join(' & '):''));p.className='pattern-text';card.append(p)}
     const actions=node('div');actions.className='actions'
     actions.append(button(t('编辑','Edit'),()=>edit(rule)),button(t('复制','Duplicate'),()=>edit({...rule,id:'',enabled:false,name:rule.name+t(' · 副本',' · copy')})))
-    const toggle=button(rule.enabled?t('关闭','Disable'):t('开启','Enable'),()=>mutate('routing.save',{rule:{...rule,enabled:!rule.enabled}}));toggle.disabled=!rule.enabled&&rule.targetState!=='available';actions.append(toggle)
+    const toggle=button(rule.enabled?t('关闭','Disable'):t('开启','Enable'),()=>mutate('routing.save',{rule:{...rule,enabled:!rule.enabled}}))
+    toggle.disabled=!rule.enabled&&rule.targetState!=='available'
+    if(toggle.disabled){
+      const wrapper=node('span')
+      wrapper.className='disabled-toggle'
+      const hint=node('span',t('请先在“编辑”中设置跳转的容器','Choose a target container in Edit first'))
+      hint.id='routing-target-hint-'+index
+      hint.className='target-tooltip'
+      hint.setAttribute('role','tooltip')
+      toggle.setAttribute('aria-describedby',hint.id)
+      wrapper.append(toggle,hint)
+      actions.append(wrapper)
+    }else{
+      actions.append(toggle)
+    }
     const move=delta=>{const ids=state.configuration.rules.map(r=>r.id);[ids[index],ids[index+delta]]=[ids[index+delta],ids[index]];return mutate('routing.reorder',{ruleIds:ids})}
     const up=button(t('上移','Move up'),()=>move(-1)),down=button(t('下移','Move down'),()=>move(1));up.disabled=index===0;down.disabled=index===state.configuration.rules.length-1;actions.append(up,down)
     actions.append(button(t('删除','Delete'),async()=>{if(confirm(t('删除这条规则？容器和账号数据会保留。','Delete this rule? Containers and account data will be preserved.')))await mutate('routing.delete',{ruleId:rule.id})}))
     card.append(actions)
-    if(toggle.disabled){
-      const hint=node('p',t('请先点击「编辑」，在「使用容器」中选择并保存链接跳转的目标容器，再开启规则。','To enable this rule, click Edit, choose a target container for matching links, and save.'))
-      hint.id='routing-target-hint-'+index
-      toggle.setAttribute('aria-describedby',hint.id)
-      card.append(hint)
-    }
     list.append(card)
   }
   if(!state.configuration.rules.length)list.append(node('p',t('暂无规则。点击“添加规则”开始设置。','No rules yet. Add a rule to get started.')))

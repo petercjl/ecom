@@ -16,6 +16,24 @@
 .routing-view .badge { background: var(--input); color: var(--muted); }
 .routing-view .badge.on { background: var(--wash); color: var(--accent); }
 .routing-view .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.routing-view .disabled-toggle { position: relative; display: inline-flex; cursor: not-allowed; }
+.routing-view .disabled-toggle button { pointer-events: none; }
+.routing-view .target-tooltip {
+  position: absolute;
+  z-index: 1;
+  inset-block-end: calc(100% + 6px);
+  inset-inline-start: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  visibility: hidden;
+}
+.routing-view .disabled-toggle:hover .target-tooltip { visibility: visible; }
 .routing-view label { display: block; margin: 12px 0 6px; font-size: inherit; }
 .routing-view input:not([type=checkbox]), .routing-view select, .routing-view textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--input); color: var(--ink); font: inherit; }
 .routing-view input[type=checkbox] { width: auto; margin: 0 8px 0 0; accent-color: var(--accent); }
