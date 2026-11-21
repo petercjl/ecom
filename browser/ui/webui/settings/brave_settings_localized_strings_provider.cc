@@ -110,11 +110,6 @@ namespace {
 
 constexpr char16_t kWebRTCLearnMoreURL[] =
     u"chrome://ecom-help/#privacy";
-constexpr char16_t kBraveBuildInstructionsUrl[] =
-    u"chrome://ecom-help/#updates";
-constexpr char16_t kBraveLicenseUrl[] = u"https://mozilla.org/MPL/2.0/";
-constexpr char16_t kBraveReleaseTagPrefix[] =
-    u"chrome://ecom-help/#updates";
 #if BUILDFLAG(ENABLE_CONTAINERS)
 constexpr char16_t kContainersLearnMoreURL[] =
     u"chrome://ecom-help/#containers";
