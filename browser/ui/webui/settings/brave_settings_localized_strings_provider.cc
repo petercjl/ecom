@@ -1320,11 +1320,23 @@ void BraveAddResources(content::WebUIDataSource* html_source,
 
 void BraveAddAboutStrings(content::WebUIDataSource* html_source,
                           Profile* profile) {
-  std::u16string license = l10n_util::GetStringFUTF16(
-      IDS_BRAVE_VERSION_UI_LICENSE, kBraveLicenseUrl,
-      chrome::kChromeUICreditsURL16, kBraveBuildInstructionsUrl,
-      kBraveReleaseTagPrefix);
-  html_source->AddString("aboutProductLicense", license);
+  const bool chinese = g_browser_process->GetApplicationLocale().starts_with("zh");
+  html_source->AddString("aboutProductLicense", chinese
+      ? "Ecom 根据 <a target=\"_blank\" href=\"https://mozilla.org/MPL/2.0/\">Mozilla Public License 2.0</a>（MPL）提供，并包含采用其他许可证的<a href=\"chrome://credits/\">开源软件</a>。请参阅 <a href=\"chrome://ecom-help/#licenses\">Ecom 开源说明</a>。"
+      : "Ecom is available under the <a target=\"_blank\" href=\"https://mozilla.org/MPL/2.0/\">Mozilla Public License 2.0</a> (MPL) and includes <a href=\"chrome://credits/\">open source software</a> under other licenses. See the <a href=\"chrome://ecom-help/#licenses\">Ecom open source information</a>.");
+  const struct { const char* key; const char* en; const char* zh; } strings[] = {
+    {"ecomAboutDev", "Development build · updated through local builds", "开发版本 · 通过本地构建更新"},
+    {"ecomAboutManaged", "Updates are managed by the Ecom updater", "更新由 Ecom 独立更新器管理"},
+    {"ecomAboutAvailable", "An Ecom update is available", "有可用的 Ecom 更新"},
+    {"ecomAboutDownloading", "Downloading and verifying update…", "正在下载并校验更新…"},
+    {"ecomAboutReady", "Update is ready to restart", "更新已就绪，可重启更新"},
+    {"ecomAboutCheck", "Check for updates…", "检查更新…"},
+    {"ecomAboutRestart", "Restart to update…", "重启并更新…"},
+    {"ecomAboutSource", "Update source", "更新来源"},
+    {"ecomAboutUnavailable", "Unable to read update information. Reopen this page to retry.", "无法读取更新信息，请重新打开此页面重试。"},
+  };
+  for (const auto& item : strings)
+    html_source->AddString(item.key, chinese ? item.zh : item.en);
 }
 
 void BraveAddSyncStrings(content::WebUIDataSource* html_source) {

@@ -5,6 +5,8 @@
 
 #include "brave/browser/ui/webui/brave_settings_ui.h"
 
+#include "brave/browser/ecom/about_handler.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -158,6 +160,7 @@ bool IsLocaleJapan(Profile* profile) {
 BraveSettingsUI::BraveSettingsUI(content::WebUI* web_ui) : SettingsUI(web_ui) {
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
   web_ui->AddMessageHandler(ecom::CreateShopSettingsHandler());
+  web_ui->AddMessageHandler(ecom::CreateAboutHandler());
 #endif
   web_ui->AddMessageHandler(
       std::make_unique<settings::MetricsReportingHandler>());

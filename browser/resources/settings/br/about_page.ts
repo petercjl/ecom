@@ -1,104 +1,116 @@
 /* Copyright (c) 2020 The Brave Authors. All rights reserved.
  * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this file,
- * You can obtain one at https://mozilla.org/MPL/2.0/. */
+ * License, v. 2.0. https://mozilla.org/MPL/2.0/. */
 
+import { sendWithPromise } from '//resources/js/cr.js'
 import { injectStyle } from '//resources/brave/lit_overriding.js'
 import { css } from '//resources/lit/v3_0/lit.rollup.js'
 import type { PropertyValues } from '//resources/lit/v3_0/lit.rollup.js'
-
+import { loadTimeData } from '../i18n_setup.js'
 import { SettingsAboutPageElement } from '../about_page/about_page.js'
 
+// The native npm updater owns update checks, consent and restart. The inherited
+// Chromium updater has no release identity for Ecom.
 injectStyle(SettingsAboutPageElement, css`
-  #release-notes {
-    display: block;
-    margin-inline-start: unset;
-    text-decoration: none;
-  }
+  .icon-container, #updateStatusMessage, #buttonContainer, .separator,
+  #promoteUpdater, #updateStatusMessage ~ .secondary { display: none !important; }
+  #ecom-about-version { font-size: 1.1em; margin-bottom: 8px; }
+  #ecom-about-source { overflow-wrap: anywhere; margin: 8px 0; }
+  #ecom-about-update { margin-top: 12px; }
 `)
 
-const extractVersions = (versionElement: Element) => {
-  const [ _, braveVersion, chromiumVersion, build ] = versionElement
-    .textContent?.match(/(\d+\.\d+(?:\.\d+)*)\D+(\d+\.\d+(?:\.\d+)*)(.*)/) ?? []
-
-  return { braveVersion, build, chromiumVersion }
+type ReleaseInfo = {
+  version?: string
+  packageName?: string
+  channel?: string
+  phase: string
+  canUpdate: boolean
 }
+const timers = new WeakMap<SettingsAboutPageElement, number>()
 
-const buildBraveVersionLink = (braveVersion: string, build: string) => {
-  const wrapper = document.createElement('a')
-  wrapper.setAttribute('id', 'release-notes')
-  wrapper.setAttribute('target', '_blank')
-  wrapper.setAttribute('rel', 'noopener noreferrer')
-  wrapper.setAttribute('href', 'chrome://ecom-help/#updates')
-  wrapper.textContent = `Ecom ${braveVersion} ${build}`
-
-  return wrapper
-}
-
-const buildChromiumVersionElement = (chromiumVersion: string) => {
-  const chromiumElement = document.createElement('div')
-  chromiumElement.classList.add("secondary")
-  chromiumElement.textContent = `Chromium: ${chromiumVersion}`
-
-  return chromiumElement
-}
-
-const modifyAboutPage = (root: ShadowRoot) => {
-  if (!root.querySelector('a#release-notes')) {
-    const version =
-      root.querySelector('#updateStatusMessage ~ .secondary')
-    if (!version) {
-      console.error('[Settings] Could not find version div')
-      return
-    }
-
-    // Remove the class from the version, so we take the link styling.
-    version.removeAttribute('class')
-
-    const wrapper = document.createElement('a')
-    wrapper.setAttribute('id', 'release-notes')
-    wrapper.setAttribute('target', '_blank')
-    wrapper.setAttribute('rel', 'noopener noreferrer')
-    wrapper.setAttribute('href', 'chrome://ecom-help/#updates')
-
-    const parent = version.parentNode
-    parent?.replaceChild(wrapper, version)
-    wrapper.appendChild(version)
-
-    const { braveVersion, build, chromiumVersion } = extractVersions(version)
-    const braveVersionLink = buildBraveVersionLink(braveVersion, build)
-    version.parentNode?.replaceChild(braveVersionLink, version)
-
-    const chromiumVersionElement = buildChromiumVersionElement(chromiumVersion)
-    braveVersionLink.after(chromiumVersionElement)
+function attachAboutInfo(page: SettingsAboutPageElement) {
+  const root = page.shadowRoot
+  const host = root?.querySelector('#updateStatusMessage')?.parentElement
+  if (!host || root?.querySelector('#ecom-about-info')) return
+  const info = document.createElement('div')
+  info.id = 'ecom-about-info'
+  const version = document.createElement('div')
+  version.id = 'ecom-about-version'
+  const chromium = document.createElement('div')
+  chromium.className = 'secondary'
+  const numbers = loadTimeData.getString('aboutBrowserVersion')
+    .match(/\d+\.\d+(?:\.\d+)*/g)
+  chromium.textContent = `Chromium: ${numbers?.[1] ?? numbers?.[0] ?? ''}`
+  const status = document.createElement('div')
+  status.id = 'ecom-about-status'
+  status.setAttribute('role', 'status')
+  const source = document.createElement('div')
+  source.id = 'ecom-about-source'
+  source.className = 'secondary'
+  const button = document.createElement('cr-button')
+  button.id = 'ecom-about-update'
+  button.textContent = loadTimeData.getString('ecomAboutCheck')
+  button.addEventListener('click', () => chrome.send('ecomAboutUpdate'))
+  info.append(version, chromium, source, status, button)
+  host.appendChild(info)
+  let pending = false
+  const refresh = async () => {
+    if (pending || !page.isConnected || document.hidden) return
+    pending = true
+    try {
+      const value = await sendWithPromise<ReleaseInfo>('ecomAboutInfo')
+      if (!page.isConnected) return
+      const packaged = !!value.version
+      version.textContent = packaged ? `Ecom ${value.version}` : 'Ecom Dev'
+      source.textContent = packaged
+        ? `${loadTimeData.getString('ecomAboutSource')}: ${value.packageName ?? ''} · ${value.channel ?? ''}`
+        : ''
+      const messages: Record<string, string> = {
+        managed: loadTimeData.getString('ecomAboutManaged'),
+        available: loadTimeData.getString('ecomAboutAvailable'),
+        downloading: loadTimeData.getString('ecomAboutDownloading'),
+        ready: loadTimeData.getString('ecomAboutReady'),
+      }
+      status.textContent = packaged
+        ? messages[value.phase] ?? messages.managed
+        : loadTimeData.getString('ecomAboutDev')
+      button.hidden = !value.canUpdate
+      button.toggleAttribute('disabled', value.phase === 'downloading')
+      button.textContent = loadTimeData.getString(
+        value.phase === 'ready' ? 'ecomAboutRestart' : 'ecomAboutCheck')
+    } catch {
+      status.textContent = loadTimeData.getString('ecomAboutUnavailable')
+      button.hidden = true
+    } finally { pending = false }
   }
-
-  // Help link shown if update fails
-  const updateStatusMessageLink =
-    root.querySelector<HTMLAnchorElement>('#updateStatusMessage a')
-  if (updateStatusMessageLink) {
-    // <if expr="is_win">
-    updateStatusMessageLink.href =
-      'chrome://ecom-help/#updates'
-    // </if>
-
-    // <if expr="not is_win">
-      updateStatusMessageLink.href =
-        'chrome://ecom-help/#updates'
-    // </if>
-  }
+  void refresh()
+  // Presentation-only IPC; no registry request or disk access after the first
+  // metadata read. Stop when the About element leaves the document.
+  timers.set(page, window.setInterval(() => { void refresh() }, 2000))
 }
 
-// `firstUpdated` is `protected` on ReactiveElement, so reach it through an
-// untyped view of the prototype to patch it from outside the class hierarchy.
 const proto = SettingsAboutPageElement.prototype as unknown as {
-  firstUpdated?: (changedProperties: PropertyValues) => void
+  firstUpdated?: (changed: PropertyValues) => void
+  connectedCallback: () => void
+  disconnectedCallback: () => void
 }
-const originalFirstUpdated = proto.firstUpdated
-proto.firstUpdated = function(
-    this: SettingsAboutPageElement, changedProperties: PropertyValues) {
-  originalFirstUpdated?.call(this, changedProperties)
-  if (this.shadowRoot) {
-    modifyAboutPage(this.shadowRoot)
+const firstUpdated = proto.firstUpdated
+proto.firstUpdated = function(this: SettingsAboutPageElement, changed: PropertyValues) {
+  firstUpdated?.call(this, changed)
+  attachAboutInfo(this)
+}
+const connected = proto.connectedCallback
+proto.connectedCallback = function(this: SettingsAboutPageElement) {
+  connected.call(this)
+  // Settings can reuse the same element after navigating away and back.
+  if (this.shadowRoot?.querySelector('#ecom-about-info')) {
+    this.shadowRoot.querySelector('#ecom-about-info')?.remove()
+    attachAboutInfo(this)
   }
+}
+const disconnected = proto.disconnectedCallback
+proto.disconnectedCallback = function(this: SettingsAboutPageElement) {
+  window.clearInterval(timers.get(this))
+  timers.delete(this)
+  disconnected.call(this)
 }
