@@ -143,13 +143,15 @@ test('macOS architecture gate invokes real lipo on Mach-O input', { skip: proces
 test('native npm payload packs in its own package context', { skip: process.platform !== 'darwin' }, () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecom-native-pack-'));
   try {
-    const payload = path.join(dir, 'payload'); fs.mkdirSync(payload);
-    fs.writeFileSync(path.join(payload, 'package.json'), JSON.stringify(payloadPackage(config)), { flag: 'wx' });
+    for (const scope of ['petercjl', 'lumyne']) {
+    const payload = path.join(dir, scope); fs.mkdirSync(payload);
+    fs.writeFileSync(path.join(payload, 'package.json'), JSON.stringify(payloadPackage({...config, packageName: '@' + scope + '/ecom-macos-arm64'})), { flag: 'wx' });
     for (const name of ['Ecom.tar.xz', 'artifact.json', 'LICENSE']) fs.writeFileSync(path.join(payload, name), 'fixture', { flag: 'wx' });
     packNativePayload(payload, dir);
-    const tarball = path.join(dir, 'petercjl-ecom-macos-arm64-' + config.version + '.tgz');
+    const tarball = path.join(dir, scope + '-ecom-macos-arm64-' + config.version + '.tgz');
     const result = spawnSync('/usr/bin/tar', ['-tzf', tarball], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(result.stdout.trim().split('\n').sort(), ['package/Ecom.tar.xz', 'package/LICENSE', 'package/artifact.json', 'package/package.json'].sort());
+    }
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
