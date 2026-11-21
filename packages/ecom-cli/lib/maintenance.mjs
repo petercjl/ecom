@@ -4,17 +4,24 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {root,pkg,fail,exists,tree,writeNew} from './common.mjs';
+import {desktopDependency} from './desktop-runtime.mjs';
 const receiptName='.ecom-receipt.json';
 const legacyPackage='@petercjl/ecom-cli';
 const ownsReceipt=(receipt,target,agent)=>receipt?.target===target&&receipt?.agent===agent;
 const isPredecessor=receipt=>pkg.name==='@lumyne/ecom-cli'&&receipt?.package===legacyPackage;
 const runtimeNames=['package.json','capabilities.json','bin','lib','scripts','skills','README.md','INSTALL.md','UPDATE.md','LICENSE'];
-function runtimeFiles(base) {
+const desktopModule='node_modules/agent-desktop';
+function runtimeFiles(base, dependency) {
   const files={};
   for(const name of runtimeNames) {
     const item=path.join(base,name);
-    if(fs.lstatSync(item).isDirectory())Object.assign(files,tree(item,name+'/'));
-    else files[name]=crypto.createHash('sha256').update(fs.readFileSync(item)).digest('hex');
+    const info=fs.lstatSync(item);
+    if(info.isDirectory())Object.assign(files,tree(item,name+'/'));
+    else if(info.isFile()&&info.nlink===1)files[name]=crypto.createHash('sha256').update(fs.readFileSync(item)).digest('hex');
+    else throw fail('UNSAFE_PATH','Shared links and special files are not supported');
+  }
+  if(dependency) for(const file of dependency.files) {
+    files[desktopModule+'/'+file]=crypto.createHash('sha256').update(fs.readFileSync(path.join(dependency.directory,file))).digest('hex');
   }
   return files;
 }
@@ -54,12 +61,15 @@ export function status(options,base=root) {
   const files=installed?tree(target):{}, old=recognized?receipt.files:{}, edited=recognized && JSON.stringify(files)!==JSON.stringify(old);
   const identity=source(base), canonical=tree(identity.path);
   const canonicalCurrent=managed && Object.entries(canonical).every(([name,hash])=>files[name]===hash) && Object.keys(files).filter(n=>!n.startsWith('.runtime/')).length===Object.keys(canonical).length;
-  const canonicalRuntime=runtimeFiles(base);
-  const runtimeCurrent=managed&&Object.entries(canonicalRuntime).every(([name,hash])=>files['.runtime/'+name]===hash)&&Object.keys(files).filter(n=>n.startsWith('.runtime/')).length===Object.keys(canonicalRuntime).length;
+  let dependency,dependencyError;
+  try { dependency=desktopDependency(base); }
+  catch(e) { if(e.code!=='DESKTOP_DEPENDENCY_UNAVAILABLE')throw e;dependencyError=e.code; }
+  const canonicalRuntime=runtimeFiles(base,dependency);
+  const runtimeCurrent=managed&&!dependencyError&&Object.entries(canonicalRuntime).every(([name,hash])=>files['.runtime/'+name]===hash)&&Object.keys(files).filter(n=>n.startsWith('.runtime/')).length===Object.keys(canonicalRuntime).length;
   let runtimeVersion;try{runtimeVersion=JSON.parse(fs.readFileSync(path.join(target,'.runtime/package.json'),'utf8')).version;}catch{}
   const current=!!(managed&&!edited&&canonicalCurrent&&runtimeCurrent&&runtimeVersion===identity.version&&receipt.version===identity.version);
   const layoutRecovery=managed&&legacyBackup(target,receipt.backup);
-  return {...identity,target,installed,managed,current,edited:!!edited,adapter:'generic',agent:options.agent,entry:path.join(target,'.runtime/bin/ecom-cli.mjs'),verification:{verified:current,algorithm:'sha256'},recovery:{required:installed&&(!current||layoutRecovery),action:edited?'Preserve local edits; reconcile them before update':predecessor?'Run skill migrate --from-package '+legacyPackage+' for this exact target':layoutRecovery?'Run skill update using this new entry to relocate legacy backups outside host discovery':'Run skill update for this exact target'},hostDiscovery:{authority:'host',verified:false},migration:{available:!!predecessor,fromPackage:predecessor?legacyPackage:null,toPackage:pkg.name,explicitCommand:'skill migrate --from-package '+legacyPackage},...(recognized?{installedVersion:receipt.version,installedPackage:receipt.package,backup:receipt.backup??null,migratedBackups:receipt.migratedBackups??[]}:{})};
+  return {...identity,target,installed,managed,current,edited:!!edited,adapter:'generic',agent:options.agent,entry:path.join(target,'.runtime/bin/ecom-cli.mjs'),verification:{verified:current,algorithm:'sha256',...(dependencyError?{dependencyError}:{})},recovery:{required:installed&&(!current||layoutRecovery),action:edited?'Preserve local edits; reconcile them before update':predecessor?'Run skill migrate --from-package '+legacyPackage+' for this exact target':dependencyError?'Restore the desktop dependency in the source npm installation before updating this target':layoutRecovery?'Run skill update using this new entry to relocate legacy backups outside host discovery':'Run skill update for this exact target'},hostDiscovery:{authority:'host',verified:false},migration:{available:!!predecessor,fromPackage:predecessor?legacyPackage:null,toPackage:pkg.name,explicitCommand:'skill migrate --from-package '+legacyPackage},...(recognized?{installedVersion:receipt.version,installedPackage:receipt.package,backup:receipt.backup??null,migratedBackups:receipt.migratedBackups??[]}:{})};
 }
 export function installSkill(options,base=root) {
   const before=status(options,base), target=before.target;
@@ -69,6 +79,7 @@ export function installSkill(options,base=root) {
   if(before.current&&!before.recovery.required) return {...before,changed:false};
   if(before.installed&&!before.managed&&!(migrating&&before.migration.available)) throw fail('UNMANAGED_TARGET','Existing Skill is user-owned; choose a fresh destination');
   if(before.edited) throw fail('LOCAL_EDITS','Managed Skill has local edits; preserve and reconcile them before update');
+  const dependency=desktopDependency(base);
   const parent=path.dirname(target);fs.mkdirSync(parent,{recursive:true});
   const recovery=recoveryDirectory(target);
   const lock=target+'.ecom-lock';let fd;
@@ -78,11 +89,15 @@ export function installSkill(options,base=root) {
   const migratedBackups=[];
   let activated=false;
   try {
-    tree(base);
     fs.cpSync(source(base).path,staging,{recursive:true,errorOnExist:true,force:false});
     const runtime=path.join(staging,'.runtime');fs.mkdirSync(runtime);
     for(const name of runtimeNames) {
       fs.cpSync(path.join(base,name),path.join(runtime,name),{recursive:true,errorOnExist:true,force:false});
+    }
+    if(dependency) for(const file of dependency.files) {
+      const destination=path.join(runtime,desktopModule,file);
+      fs.mkdirSync(path.dirname(destination),{recursive:true});
+      fs.copyFileSync(path.join(dependency.directory,file),destination,fs.constants.COPYFILE_EXCL);
     }
     const manifest=source(base);
     // Recheck edits after staging, before replacement.

@@ -77,6 +77,18 @@ export async function inspectContainer(options={}) {
 }
 export async function inspectInConnection(connection,selector) {
   const body=await callMailbox(connection,{method:'shops.list'});
+  return accountDetails(connection,body,selector);
+}
+export async function verifyContainer(options={}) {
+  return verifyInConnection(discover(options),options.container);
+}
+export async function verifyInConnection(connection,selector) {
+  const listed=await readMailbox(connection);
+  const target=resolveContainer(listed.containers,selector);
+  const body=await callMailbox(connection,{method:'shops.verify',containerId:target.id},60000);
+  return accountDetails(connection,body,target.id);
+}
+function accountDetails(connection,body,selector) {
   if(!Array.isArray(body.shops)||body.shops.some(c=>typeof c.id!=='string'||typeof c.name!=='string'))throw fail('PROTOCOL_MISMATCH','Invalid account metadata',{operationId:body.operationId,executed:'unknown'});
   const row=resolveContainer(body.shops,selector);
   const string=x=>typeof x==='string'?x:null;

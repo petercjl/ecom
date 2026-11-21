@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {inspectInConnection,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,validateReadUrl,resolveContainer,processProfile} from '../lib/browser.mjs';
+import {inspectInConnection,verifyInConnection,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,validateReadUrl,resolveContainer,processProfile} from '../lib/browser.mjs';
 import {parse} from '../lib/cli.mjs';
 const origin='https://example.com';
 const accounts=[{id:'account-a',name:'示例甲'},{id:'account-b',name:'示例乙'}];
@@ -49,6 +49,27 @@ test('inspect exposes selected metadata and separates stored binding from curren
     assert.equal(result.container.login.authenticationState,'signed-out');
     const text=JSON.stringify(result);assert.ok(!text.includes('private'));assert.ok(!text.includes('excluded'));
     assert.equal(f.calls.length,1);assert.equal(f.calls[0].method,'shops.list');
+  }finally{f.close();}
+});
+test('verification checks only the resolved account and projects fresh authentication and identity state',{skip:process.platform==='win32'},async()=>{
+  let mismatch=false;
+  const f=fixture(message=>{
+    if(message.method==='containers.list')return {ok:true,containers:accounts};
+    assert.equal(message.method,'shops.verify');
+    assert.equal(message.containerId,'account-a');
+    return mismatch ? {ok:false,error:{code:'SHOP_IDENTITY_MISMATCH'}} :
+      {ok:true,shops:[{...accounts[0],state:'ready',checkedAt:'456',identity:{shopId:'private-id'},authentication:{state:'authenticated'}}]};
+  });
+  try {
+    assert.equal(parse(['containers','verify','--container','示例甲']).options.container,'示例甲');
+    assert.throws(()=>parse(['containers','verify']),{code:'INVALID_ARGUMENT'});
+    const result=await verifyInConnection(f.connection,'示例甲');
+    assert.equal(result.container.login.authenticationState,'authenticated');
+    assert.equal(result.container.login.identityConfirmed,true);
+    assert.equal(result.container.login.checkedAt,'456');
+    assert.ok(!JSON.stringify(result).includes('private-id'));
+    mismatch=true;
+    await assert.rejects(verifyInConnection(f.connection,'account-a'),{code:'SHOP_IDENTITY_MISMATCH'});
   }finally{f.close();}
 });
 test('concurrent session requests pin the original instance and separate account IDs',{skip:process.platform==='win32'},async()=>{

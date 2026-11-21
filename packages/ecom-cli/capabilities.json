@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@lumyne/ecom-cli",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "skills": [
     "ecom-cli"
   ],
@@ -124,6 +124,74 @@
       },
       "sideEffects": "navigation",
       "authorization": "Open the saved homepage or explicit Qianniu entry in a foreground tab in the selected container"
+    },
+    "shops open-login": {
+      "description": "Open an exact account from Account manager in the selected Ecom instance. The default can start formal Ecom. On macOS, explicit selectors pin a running instance. If the verified container's HTTPS page shows an actionable login form, click its Login button once.",
+      "options": {
+        "--container": {
+          "type": "string",
+          "required": true
+        },
+        "--window-id": {
+          "type": "string",
+          "description": "Pin a window inside the selected Ecom instance."
+        },
+        "--profile": {
+          "type": "string",
+          "description": "Select a running macOS Ecom instance by its profile directory."
+        },
+        "--instance": {
+          "type": "string",
+          "description": "Select a running macOS Ecom instance by its instance ID."
+        },
+        "--json": {
+          "type": "boolean"
+        }
+      },
+      "sideEffects": "local-write",
+      "externalSideEffects": "may-submit-login",
+      "authorization": "Explicitly authorize one login-button click for this exact account. Use an interactive desktop with accessibility permissions.",
+      "requires": {
+        "defaultChannel": "stable",
+        "explicitInstancePlatforms": [
+          "darwin"
+        ],
+        "transport": "desktop",
+        "platforms": [
+          "darwin",
+          "win32"
+        ],
+        "architectures": [
+          "arm64",
+          "x64"
+        ],
+        "dependency": "agent-desktop@1.3.1"
+      },
+      "output": {
+        "status": [
+          "backend-page",
+          "verification-required",
+          "login-pending",
+          "unconfirmed"
+        ],
+        "loginClick": [
+          "not-attempted",
+          "not-delivered",
+          "delivered",
+          "unknown"
+        ],
+        "backendEvidence": "Known Taobao merchant host and merchant document title in the verified container. Other destinations can be opened but return unconfirmed without positive backend evidence.",
+        "errors": [
+          "CONTAINER_NOT_FOUND",
+          "CONTAINER_AMBIGUOUS",
+          "CONTAINER_OPEN_UNAVAILABLE",
+          "CONTAINER_OPEN_AMBIGUOUS",
+          "CONTAINER_OPEN_UNCONFIRMED",
+          "LOGIN_BUTTON_AMBIGUOUS",
+          "LOGIN_CLICK_FAILED",
+          "TAB_CRASHED"
+        ]
+      }
     },
     "shops login-status": {
       "options": {
@@ -353,6 +421,31 @@
         "CONTAINER_AMBIGUOUS",
         "PROTOCOL_MISMATCH"
       ]
+    },
+    "containers verify": {
+      "description": "Run a fresh native login and platform identity check for one existing account and return its current sanitized metadata.",
+      "options": {
+        "--json": {
+          "type": "boolean"
+        },
+        "--profile": {
+          "type": "string"
+        },
+        "--instance": {
+          "type": "string"
+        },
+        "--container": {
+          "type": "string",
+          "required": true,
+          "description": "Stable container ID or unique exact name"
+        }
+      },
+      "sideEffects": "local-write",
+      "authorization": "Check the exact account using its existing browser session; Ecom records the observation and applies its existing identity binding rules.",
+      "output": {
+        "container": "id, name, platform, platformName, homeUrl, icon, color, login",
+        "login": "state, service, authenticationState, verificationSupported, checking, checkedAt, identityBound, identityConfirmed, expiry"
+      }
     },
     "session request": {
       "options": {
@@ -1975,7 +2068,7 @@
     "enabledByDefault": true,
     "intervalHours": 24,
     "timeoutMs": 1500,
-    "trigger": "containers list, containers inspect and session request task entry, sycm run, sycm mutation plan/apply, sycm open",
+    "trigger": "containers list, containers inspect, shops open-login, session request, sycm run, sycm mutation plan/apply, sycm open",
     "configuration": "Stable latest channel; detection only. Explicit update activates only the selected target runtime and Skill together.",
     "disable": "ECOM_CLI_UPDATE_CHECK=0",
     "recovery": "Offline checks retain installed runtime; local edit/ownership conflicts stop replacement; prior target kept as backup. Use recorded candidate and inspect target status before retrying.",
@@ -1983,8 +2076,8 @@
   },
   "compatibility": {
     "agents": "Any Agent with terminal, Node.js and Skill discovery capabilities; generic adapter",
-    "macos": "Native container list, account inspection and authorized session GET verified on macOS arm64 Ecom Dev; host discovery is checked separately",
-    "windows": "Package mechanics only; browser transport unsupported",
+    "macos": "Native container list, account inspection and authorized session GET verified on macOS arm64 Ecom Dev. Formal Ecom desktop navigation with an existing merchant session verified on macOS arm64. Host discovery is checked separately.",
+    "windows": "Formal Ecom desktop navigation implemented; live container and login verification pending. Native mailbox transport unsupported.",
     "historicalUpdater": "Actual published 0.1.1, 0.1.2, 0.1.3 and 0.2.0 updater entries verified with real npm, preserved prior versions, isolated targets and failure recovery"
   },
   "errors": [

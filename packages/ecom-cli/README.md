@@ -52,6 +52,14 @@ Task entry checks stable `latest` at most daily, with a 1.5 second bound. Detect
 
 The browser owns sessions, containers and authorization. This package owns discovery, read-only transport and managed installation. The Skill documents invocation, diagnosis and recovery. URL routing commands include `routing list|inspect|save|set-container|set-transform|enable|disable|delete|reorder|test|set-enabled`. Changes require `--expected-revision` from the latest state. Target-only and rule-switch changes preserve all other fields; the native layer rechecks target validity and concurrent revisions. Additional browser capabilities extend this same command/Skill contract.
 
+### 打开店铺并按需登录
+
+> 用 Ecom CLI 打开「店铺名称」容器，看到登录表单时点击一次登录。
+
+The command is `shops open-login --container NAME --json`. It defaults to formal Ecom and starts it when needed. On macOS, pass `--profile` or `--instance` to select a running Ecom instance such as Ecom Dev. The command matches the exact name in the selected instance's current Account manager table. It requires an interactive desktop session on macOS or Windows. The npm dependency supplies the desktop executable and the managed Skill keeps its own platform copy.
+
+`backend-page` confirms the observed Taobao merchant page. `verification-required` means the user needs to finish verification in the open tab. `login-pending` and `unconfirmed` describe outcomes awaiting positive evidence. A failed click and a tab crash return distinct JSON errors. Inspect the current tab before retrying an uncertain click.
+
 ## 业务能力迁移（开发中）
 
 内置 sycmcli 0.4.0 的取数目录和 7 类填数计划。135 个取数入口统一使用固定原生目录，覆盖生意参谋、万相台、达摩盘与消费券。原生层在指定持久容器中准备服务认证并发送已登记的 GET／POST 读取，要求浏览器与 CLI 目录哈希一致。目录接入与逐项真实验收分别记录；旧浏览器兼容 88 个生意参谋 GET 入口，其余提示升级。填数支持计划、审查与确认，实际提交和回读由独立执行能力承担。

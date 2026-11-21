@@ -80,6 +80,15 @@ test('actual npm packed install, update repair, isolation, local-edits and docto
     assert.equal(invoke(survivor,['sycm','schema','--operation','shop.trade-summary','--json']).operation.path,'/bda/tradinganaly/overview/get_summary.json');
     assert.equal(invoke(survivor,args('status',b,'custom-agent')).current,true);
     const doctor=invoke(survivor,['doctor','--json']);assert.ok(doctor.node);assert.equal(doctor.debuggingRequired,false);
+    if(['darwin','win32'].includes(process.platform)&&['arm64','x64'].includes(process.arch)) {
+      assert.deepEqual(doctor.desktop,{available:true,version:pkg.dependencies['agent-desktop']});
+      const binary='agent-desktop-'+process.platform+'-'+process.arch+(process.platform==='win32'?'.exe':'');
+      const version=spawnSync(path.join(b,'.runtime/node_modules/agent-desktop/bin',binary),['version'],{
+        encoding:'utf8',timeout:5000,windowsHide:true,
+      });
+      assert.equal(version.status,0,version.stderr);
+      assert.match(version.stdout,new RegExp(pkg.dependencies['agent-desktop'].replaceAll('.','\\.')));
+    }
     // Ensure no symlink or shared hardlink survived bootstrap removal.
     const visit=dir=>{for(const name of fs.readdirSync(dir)){const f=path.join(dir,name),st=fs.lstatSync(f);assert.equal(st.isSymbolicLink(),false);if(st.isDirectory())visit(f);else assert.equal(st.nlink,1);}};visit(b);
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
@@ -115,7 +124,7 @@ test('npm prepack rejects mismatched published capability and Skill versions',{t
     }
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
-test('real npm candidate update activates both runtime and Skill and preserves recovery',{timeout:120000},async()=>{
+test('published Lumyne updater activates the candidate runtime and Skill and preserves recovery',{timeout:120000},async()=>{
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'ecom-update-test-'));
   const [major,minor,patch]=pkg.version.split('.').map(Number);
   const candidateVersion=`${major}.${minor}.${patch+1}`;
@@ -131,21 +140,27 @@ test('real npm candidate update activates both runtime and Skill and preserves r
     server=http.createServer((req,res)=>{
       if(req.url==='/candidate.tgz'){res.end(tar);return;}
       const port=server.address().port;
-      res.setHeader('content-type','application/json');res.end(JSON.stringify({name:pkg.name,'dist-tags':{latest:candidateVersion},versions:{[candidateVersion]:{name:pkg.name,version:candidateVersion,dist:{tarball:'http://127.0.0.1:'+port+'/candidate.tgz'}}}}));
+      res.setHeader('content-type','application/json');res.end(JSON.stringify({name:pkg.name,'dist-tags':{latest:candidateVersion},versions:{[candidateVersion]:{name:pkg.name,version:candidateVersion,dependencies:pkg.dependencies,dist:{tarball:'http://127.0.0.1:'+port+'/candidate.tgz'}}}}));
     });
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     const registry='http://127.0.0.1:'+server.address().port;
     const npmrc=path.join(tmp,'test.npmrc');
     fs.writeFileSync(npmrc,'@lumyne:registry='+registry+'\n',{flag:'wx'});
-    const target=path.join(tmp,'skills/ecom-cli'), entry=path.join(root,'bin/ecom-cli.mjs'),args=['--agent','fixture-host','--target',target,'--json'];
+    const archivedVersion='0.4.0', bootstrap=path.join(tmp,'published');
+    const acquired=spawnSync(npm,['install','--prefix',bootstrap,'--ignore-scripts','--no-audit','--no-fund',pkg.name+'@'+archivedVersion],{
+      cwd:tmp,encoding:'utf8',timeout:60000,shell:process.platform==='win32',
+    });
+    assert.equal(acquired.status,0,acquired.stderr);
+    const target=path.join(tmp,'skills/ecom-cli'), entry=path.join(bootstrap,'node_modules',...pkg.name.split('/'),'bin/ecom-cli.mjs'),args=['--agent','fixture-host','--target',target,'--json'];
+    assert.equal(invoke(entry,['version','--json']).version,archivedVersion);
     assert.equal(invoke(entry,['skill','install',...args]).current,true);
     const call=(env={})=>new Promise(resolve=>{
-      const child=spawn(process.execPath,[path.join(target,'.runtime/bin/ecom-cli.mjs'),'update','install',...args,'--yes','--version',candidateVersion],{env:{...process.env,ECOM_CLI_STATE_DIR:path.join(tmp,'state'),npm_config_registry:registry,npm_config_userconfig:npmrc,...env}});
+      const child=spawn(process.execPath,[path.join(target,'.runtime/bin/ecom-cli.mjs'),'update','install',...args,'--yes','--version',candidateVersion],{env:{...process.env,ECOM_CLI_STATE_DIR:path.join(tmp,'state'),npm_config_userconfig:npmrc,...env}});
       let output='';child.stdout.on('data',s=>output+=s);child.stderr.resume();child.on('close',code=>resolve({code,...JSON.parse(output)}));
     });
     const result=await call();assert.equal(result.ok,true,JSON.stringify(result));assert.equal(result.version,candidateVersion);assert.ok(result.backup);assert.ok(result.journal);
     assert.equal(invoke(result.entry,['version','--json']).version,candidateVersion);
     assert.equal(invoke(result.entry,['skill','status',...args]).current,true);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(result.backup,'.runtime/package.json'))).version,pkg.version);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(result.backup,'.runtime/package.json'))).version,archivedVersion);
   }finally{if(server)await new Promise(resolve=>server.close(resolve));fs.rmSync(tmp,{recursive:true,force:true});}
 });

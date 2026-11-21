@@ -9,10 +9,12 @@ import {checkUpdate} from '../lib/maintenance.mjs';
 
 test('update detection uses the canonical scope and rejects another package identity',async()=>{
   const original=global.fetch;
+  const [major,minor,patch]=pkg.version.split('-')[0].split('.').map(Number);
+  const newerVersion=`${major}.${minor}.${patch+1}`;
   try {
     global.fetch=async url=>{
       assert.equal(url,'https://registry.npmjs.org/@lumyne%2fecom-cli/latest');
-      return {ok:true,json:async()=>({name:pkg.name,version:'0.4.1'})};
+      return {ok:true,json:async()=>({name:pkg.name,version:newerVersion})};
     };
     assert.equal((await checkUpdate()).available,true);
     global.fetch=async()=>({ok:true,json:async()=>({name:'@petercjl/ecom-cli',version:'9.0.0'})});

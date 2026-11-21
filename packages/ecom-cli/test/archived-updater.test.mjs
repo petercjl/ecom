@@ -39,7 +39,11 @@ for(const archive of archives.versions)test(`published ${archive.version} update
     assert.ok(difference>=0,'Archive is newer than the candidate source');
     const version=difference===0?`${major}.${minor}.${patch+1}`:pkg.version;
     for(const name of ['package.json','capabilities.json','skills/ecom-cli/package.json']) {
-      const file=path.join(candidate,name),data=JSON.parse(fs.readFileSync(file));data.version=version;if(name==='capabilities.json')data.package=archives.package;else data.name=archives.package;fs.writeFileSync(file,JSON.stringify(data));
+      const file=path.join(candidate,name),data=JSON.parse(fs.readFileSync(file));data.version=version;if(name==='capabilities.json')data.package=archives.package;else data.name=archives.package;
+      // This synthetic predecessor-scope update exercises historical maintenance only.
+      // The actual Lumyne update fixture tests the newly introduced native dependency.
+      if(name==='package.json') delete data.dependencies;
+      fs.writeFileSync(file,JSON.stringify(data));
     }
     const packed=JSON.parse(npmRun(['pack','--json','--pack-destination',tmp],candidate))[0];
     const tarball=fs.readFileSync(path.join(tmp,packed.filename));
