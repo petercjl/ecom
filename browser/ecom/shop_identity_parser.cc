@@ -219,4 +219,30 @@ std::string ParsePinduoduoMerchantLogin(std::string_view json) {
   }
   return *login ? "authenticated" : "signed-out";
 }
+
+std::string ParseXiaohongshuMerchantLogin(int http_status,
+                                        std::string_view json) {
+  const auto envelope = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
+  if (!envelope) {
+    return "unknown";
+  }
+  const auto success = envelope->FindBool("success");
+  const auto code = envelope->FindInt("code");
+  if ((http_status == 200 || http_status == 401) && success == false &&
+      code == -13000) {
+    return "signed-out";
+  }
+  const auto* data = envelope->FindDict("data");
+  const auto* seller_id = data ? data->FindString("seller_id") : nullptr;
+  const bool hex_seller_id =
+      seller_id && seller_id->size() == 24 &&
+      seller_id->find_first_not_of('0') != std::string::npos &&
+      std::all_of(seller_id->begin(), seller_id->end(),
+                  base::IsHexDigit<char>);
+  if (http_status == 200 && success == true && code == 0 && data &&
+      (hex_seller_id || !IdentityId(*data, "seller_id").empty())) {
+    return "authenticated";
+  }
+  return "unknown";
+}
 }  // namespace ecom

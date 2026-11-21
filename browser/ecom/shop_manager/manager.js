@@ -252,6 +252,9 @@ Object.assign(zh, {
   buyerLoginUnknown: '买家登录状态待核验',
   buyerNeedsLogin: '淘宝账号需登录',
   pinduoduoNeedsLogin: '拼多多商家后台需登录',
+  xiaohongshuNeedsLogin: '小红书千帆后台需登录',
+  xiaohongshuFrontNeedsLogin: '小红书前台需登录',
+  xiaohongshuFrontNeedsPage: '打开小红书前台后核验',
   taobaoHome: '淘宝首页',
   ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER:
     '已配置账号用途保持不变，其他用途请添加新容器。',
@@ -329,6 +332,9 @@ Object.assign(en, {
   buyerLoginUnknown: 'Buyer login not verified',
   buyerNeedsLogin: 'Taobao sign-in required',
   pinduoduoNeedsLogin: 'Pinduoduo merchant sign-in required',
+  xiaohongshuNeedsLogin: 'Xiaohongshu merchant sign-in required',
+  xiaohongshuFrontNeedsLogin: 'Xiaohongshu storefront sign-in required',
+  xiaohongshuFrontNeedsPage: 'Open the Xiaohongshu storefront to check sign-in',
   taobaoHome: 'Taobao home',
   ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER:
     'Keep the configured account purpose. Use a new container for another purpose.',
@@ -851,9 +857,15 @@ function render() {
     const loginRequiredLabel = {
       taobao: 'buyerNeedsLogin',
       pinduoduo: 'pinduoduoNeedsLogin',
+      xiaohongshu: row.authentication?.source === 'xiaohongshu-front-page'
+        ? 'xiaohongshuFrontNeedsLogin' : 'xiaohongshuNeedsLogin',
     }[row.authentication?.service]
-    const statusLabel = row.state === 'login-required' && loginRequiredLabel
-      ? loginRequiredLabel : row.state
+    let statusLabel = row.state
+    if (row.lastError === 'XHS_FRONT_PAGE_REQUIRED') {
+      statusLabel = 'xiaohongshuFrontNeedsPage'
+    } else if (row.state === 'login-required' && loginRequiredLabel) {
+      statusLabel = loginRequiredLabel
+    }
     status.append(node('span', text(statusLabel), 'badge ' + row.state))
     if (row.checking) status.title = text('checking')
     tr.append(status)

@@ -38,6 +38,28 @@ TEST(ShopIdentityParser, PinduoduoLoginRequiresExplicitBoolean) {
     EXPECT_EQ(ParsePinduoduoMerchantLogin(response), "unknown") << response;
   }
 }
+TEST(ShopIdentityParser, XiaohongshuMerchantLoginRequiresPlatformEvidence) {
+  EXPECT_EQ(ParseXiaohongshuMerchantLogin(
+                200, R"({"success":true,"code":0,"data":{"seller_id":12345}})"),
+            "authenticated");
+  EXPECT_EQ(ParseXiaohongshuMerchantLogin(
+      200, R"({"success":true,"code":0,"data":{"seller_id":"0123456789abcdef01234567"}})"),
+      "authenticated");
+  EXPECT_EQ(ParseXiaohongshuMerchantLogin(
+                401, R"({"success":false,"code":-13000})"),
+            "signed-out");
+  EXPECT_EQ(ParseXiaohongshuMerchantLogin(
+                403, R"({"success":false,"code":-13000})"),
+            "unknown");
+  for (const auto* response : {
+           R"({"success":true,"code":0,"data":{}})",
+           R"({"success":true,"code":0,"data":{"seller_id":"0"}})",
+           R"({"success":false,"code":-1,"data":{"seller_id":12345}})",
+           "<html>login</html>"}) {
+    EXPECT_EQ(ParseXiaohongshuMerchantLogin(200, response), "unknown")
+        << response;
+  }
+}
 TEST(ShopIdentityParser, PersonalViewProjectsOnlyVerifiedIdentityFields) {
   auto result = ParsePersonalViewShopIdentity(
       R"({"code":0,"data":{"runAsShopId":"12345","loginUserId":67890,"runAsShopTitle":"示例店铺","secret":"fixture-excluded"}})");

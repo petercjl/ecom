@@ -25,6 +25,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/supports_user_data.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "base/uuid.h"
@@ -66,6 +67,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_message_handler.h"
+#include "content/public/browser/weak_document_ptr.h"
 #include "net/base/load_flags.h"
 #include "net/base/net_errors.h"
 #include "net/cookies/canonical_cookie.h"
@@ -96,6 +98,12 @@ constexpr char kServiceKey[] = "ecom.shop.service";
 constexpr char kHome[] = "https://sycm.taobao.com/portal/home.htm";
 constexpr char kPinduoduoLoginApi[] =
     "https://mms.pinduoduo.com/janus/api/checkLogin";
+constexpr char kXiaohongshuMerchantOrigin[] = "https://ark.xiaohongshu.com/";
+constexpr char kXiaohongshuFrontOrigin[] = "https://www.xiaohongshu.com/";
+constexpr char kXiaohongshuMerchantLoginApi[] =
+    "https://ark.xiaohongshu.com/api/edith/seller/info/v2";
+constexpr char kXiaohongshuFrontSource[] = "xiaohongshu-front-page";
+constexpr char kXiaohongshuPageRequired[] = "XHS_FRONT_PAGE_REQUIRED";
 constexpr char kBuyerApi[] =
     "https://h5api.m.taobao.com/h5/mtop.user.getusersimple/1.0/";
 base::DictValue Error(std::string code) {
@@ -178,11 +186,26 @@ std::string HomeUrl(const base::DictValue& metadata) {
   const auto* platform = Platform(id);
   return platform ? platform->entry : std::string();
 }
-bool SupportsVerification(std::string_view platform) {
-  return platform == "taobao" || platform == "pinduoduo";
+enum class XiaohongshuSurface { kNone, kMerchant, kFront };
+
+XiaohongshuSurface GetXiaohongshuSurface(const base::DictValue& metadata) {
+  if (Field(metadata, "platform") != "xiaohongshu") {
+    return XiaohongshuSurface::kNone;
+  }
+  const auto origin = url::Origin::Create(GURL(HomeUrl(metadata)));
+  if (origin == url::Origin::Create(GURL(kXiaohongshuMerchantOrigin))) {
+    return XiaohongshuSurface::kMerchant;
+  }
+  if (origin == url::Origin::Create(GURL(kXiaohongshuFrontOrigin))) {
+    return XiaohongshuSurface::kFront;
+  }
+  return XiaohongshuSurface::kNone;
 }
+
 bool SupportsVerification(const base::DictValue& metadata) {
-  return SupportsVerification(Field(metadata, "platform"));
+  const auto platform = Field(metadata, "platform");
+  return platform == "taobao" || platform == "pinduoduo" ||
+         GetXiaohongshuSurface(metadata) != XiaohongshuSurface::kNone;
 }
 bool UsesBuyerVerification(const base::DictValue& metadata) {
   if (Field(metadata, "platform") != "taobao") {
@@ -351,7 +374,8 @@ class ShopService final : public base::SupportsUserData::Data,
                              .Set("entryUrl", platform.entry)
                              .Set("services", std::move(services))
                              .Set("automaticVerification",
-                                  SupportsVerification(platform.id)));
+                                  SupportsVerification(base::DictValue()
+                                                           .Set("platform", platform.id))));
       }
       Send(std::move(callback), base::DictValue()
                                     .Set("ok", true)
@@ -1020,7 +1044,8 @@ class ShopService final : public base::SupportsUserData::Data,
     if (!ValidPlatform(updated)) {
       return "INVALID_PLATFORM_INPUT";
     }
-    if (!old || UsesBuyerVerification(*old) != UsesBuyerVerification(updated)) {
+    if (!old || UsesBuyerVerification(*old) != UsesBuyerVerification(updated) ||
+        GetXiaohongshuSurface(*old) != GetXiaohongshuSurface(updated)) {
       updated.Remove("candidate");
       for (const char* key : {"authentication", "diagnostics", "lastError",
                               "checkedAt", "expiry"}) {
@@ -1044,12 +1069,7 @@ class ShopService final : public base::SupportsUserData::Data,
   }
   void Configure(const std::string& id, const base::DictValue& request) {
     const auto platform = Field(request, "platform");
-    auto item =
-        base::DictValue()
-            .Set("platform", platform)
-            .Set("state", SupportsVerification(platform)
-                              ? "awaiting-login"
-                              : "verification-unavailable");
+    auto item = base::DictValue().Set("platform", platform);
     if (platform == "custom") {
       auto name = Field(request, "customPlatformName");
       base::TrimWhitespaceASCII(name, base::TRIM_ALL, &name);
@@ -1064,6 +1084,8 @@ class ShopService final : public base::SupportsUserData::Data,
                    .spec());
     }
     item.Set("homeUrl", HomeUrl(request));
+    item.Set("state", SupportsVerification(item) ? "awaiting-login"
+                                                 : "verification-unavailable");
     if (const auto* type = request.FindString("accountType")) {
       item.Set("accountType", *type);
     }
@@ -1117,9 +1139,13 @@ class ShopService final : public base::SupportsUserData::Data,
       const auto checked = checked_at > 0
           ? base::Time::FromSecondsSinceUnixEpoch(checked_at) : base::Time();
       const auto stagger = base::Seconds(base::PersistentHash(container->id) % 60);
+      const bool front_page_ready =
+          metadata && Field(*metadata, "lastError") == kXiaohongshuPageRequired &&
+          FindXiaohongshuFrontFrame(container->id);
       if (metadata && SupportsVerification(*metadata) &&
-          IsShopCheckDue(Field(*metadata, "state"), checked, base::Time::Now(),
-                         manager_refresh, force, stagger) &&
+          (front_page_ready ||
+           IsShopCheckDue(Field(*metadata, "state"), checked, base::Time::Now(),
+                          manager_refresh, force, stagger)) &&
           (force || !attempts_.contains(container->id) ||
            base::Time::Now() - attempts_[container->id] >= base::Seconds(30)) &&
           !loaders_.contains(container->id) &&
@@ -1234,8 +1260,18 @@ class ShopService final : public base::SupportsUserData::Data,
     attempts_[id] = base::Time::Now();
     const auto& shop = *Metadata().FindDict(id);
     if (Field(shop, "platform") == "pinduoduo") {
-      CheckPinduoduoLogin(id, std::move(callback));
+      CheckMerchantLogin(id, std::move(callback), false);
       return;
+    }
+    switch (GetXiaohongshuSurface(shop)) {
+      case XiaohongshuSurface::kMerchant:
+        CheckMerchantLogin(id, std::move(callback), true);
+        return;
+      case XiaohongshuSurface::kFront:
+        CheckXiaohongshuFrontLogin(id, std::move(callback));
+        return;
+      case XiaohongshuSurface::kNone:
+        break;
     }
     if (UsesBuyerVerification(shop)) {
       loaders_[id] = {nullptr, std::move(callback), 0};
@@ -1277,10 +1313,13 @@ class ShopService final : public base::SupportsUserData::Data,
         base::BindOnce(&ShopService::Verified, weak_.GetWeakPtr(), id),
         2 * 1024 * 1024);
   }
-  void CheckPinduoduoLogin(const std::string& id, Reply callback) {
+  void CheckMerchantLogin(const std::string& id,
+                          Reply callback,
+                          bool xiaohongshu) {
     auto request = std::make_unique<network::ResourceRequest>();
-    request->url = GURL(kPinduoduoLoginApi);
-    request->method = "POST";
+    request->url =
+        GURL(xiaohongshu ? kXiaohongshuMerchantLoginApi : kPinduoduoLoginApi);
+    request->method = xiaohongshu ? "GET" : "POST";
     request->load_flags = net::LOAD_BYPASS_CACHE | net::LOAD_DISABLE_CACHE;
     request->credentials_mode = network::mojom::CredentialsMode::kInclude;
     request->redirect_mode = network::mojom::RedirectMode::kError;
@@ -1289,24 +1328,28 @@ class ShopService final : public base::SupportsUserData::Data,
     request->headers.SetHeader("Accept", "application/json");
     request->headers.SetHeader("User-Agent", embedder_support::GetUserAgent());
     constexpr auto annotation = net::DefineNetworkTrafficAnnotation(
-        "ecom_pinduoduo_merchant_login_check", R"(
+        "ecom_platform_merchant_login_check", R"(
       semantics {
         sender: "Ecom shop containers"
-        description: "Reads the current Pinduoduo merchant login status."
+        description: "Reads the current Pinduoduo or Xiaohongshu merchant login status."
         trigger: "Periodic check or user refresh."
-        data: "Selected container cookies and an empty JSON request."
+        data: "Selected container cookies. Pinduoduo also receives an empty JSON request."
         destination: WEBSITE
       }
       policy {
         cookies_allowed: YES
         cookies_store: "Selected container"
-        setting: "Managed Pinduoduo merchant containers."
+        setting: "Managed Pinduoduo or Xiaohongshu merchant containers."
         policy_exception_justification: "User managed container login checks."
       })");
     auto loader =
         network::SimpleURLLoader::Create(std::move(request), annotation);
     loader->SetTimeoutDuration(base::Seconds(8));
-    loader->AttachStringForUpload("{}", "application/json");
+    if (xiaohongshu) {
+      loader->SetAllowHttpErrorResults(true);
+    } else {
+      loader->AttachStringForUpload("{}", "application/json");
+    }
     auto* pending = loader.get();
     loaders_[id] = {std::move(loader), std::move(callback), 0};
     const auto config = content::StoragePartitionConfig::Create(
@@ -1315,23 +1358,125 @@ class ShopService final : public base::SupportsUserData::Data,
                        ->GetURLLoaderFactoryForBrowserProcess();
     pending->DownloadToString(
         factory.get(),
-        base::BindOnce(&ShopService::PinduoduoLoginChecked,
-                       weak_.GetWeakPtr(), id),
+        base::BindOnce(&ShopService::MerchantLoginChecked,
+                       weak_.GetWeakPtr(), id, xiaohongshu),
         64 * 1024);
   }
 
-  void PinduoduoLoginChecked(const std::string& id,
-                             std::optional<std::string> body) {
+  void MerchantLoginChecked(const std::string& id,
+                            bool xiaohongshu,
+                            std::optional<std::string> body) {
     const auto& loader = *loaders_.at(id).loader;
     const auto* response = loader.ResponseInfo();
     const int status = response && response->headers
                            ? response->headers->response_code()
                            : 0;
-    const auto state = body && status == 200 && loader.NetError() == net::OK
-                           ? ParsePinduoduoMerchantLogin(*body)
-                           : "unknown";
+    if (xiaohongshu) {
+      FinishSessionCheck(id, "xiaohongshu", "xiaohongshu-ark-seller-info",
+                         body && loader.NetError() == net::OK
+                             ? ParseXiaohongshuMerchantLogin(status, *body)
+                             : "unknown",
+                         status);
+      return;
+    }
     FinishSessionCheck(id, "pinduoduo", "pinduoduo-merchant-check-login",
-                       state, status);
+                       body && status == 200 && loader.NetError() == net::OK
+                           ? ParsePinduoduoMerchantLogin(*body)
+                           : "unknown",
+                       status);
+  }
+
+  content::RenderFrameHost* FindXiaohongshuFrontFrame(const std::string& id) {
+    const auto origin = url::Origin::Create(GURL(kXiaohongshuFrontOrigin));
+    content::RenderFrameHost* target = nullptr;
+    ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+        [&](BrowserWindowInterface* browser) {
+          if (browser->GetProfile() != profile_) {
+            return true;
+          }
+          auto* tabs = browser->GetTabStripModel();
+          for (int i = tabs ? tabs->count() - 1 : -1; i >= 0; --i) {
+            auto* contents = tabs->GetWebContentsAt(i);
+            auto* frame = contents->GetPrimaryMainFrame();
+            if (frame && frame->IsRenderFrameLive() && !contents->IsLoading() &&
+                frame->GetLastCommittedOrigin() == origin &&
+                containers::GetContainerIdForWebContents(contents) == id) {
+              target = frame;
+              return false;
+            }
+          }
+          return true;
+        });
+    return target;
+  }
+
+  void CheckXiaohongshuFrontLogin(const std::string& id, Reply callback) {
+    auto* frame = FindXiaohongshuFrontFrame(id);
+    loaders_[id] = {nullptr, std::move(callback), 0};
+    if (!frame) {
+      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE,
+          base::BindOnce(&ShopService::FinishSessionCheck, weak_.GetWeakPtr(),
+                         id, std::string_view("xiaohongshu"),
+                         std::string_view(kXiaohongshuFrontSource),
+                         std::string_view("unknown"), 0,
+                         std::string_view(kXiaohongshuPageRequired)));
+      return;
+    }
+
+    auto& pending = loaders_.at(id);
+    pending.page_check_token = base::Uuid::GenerateRandomV4().AsLowercaseString();
+    pending.page_timeout = std::make_unique<base::OneShotTimer>();
+    pending.page_timeout->Start(
+        FROM_HERE, base::Seconds(5),
+        base::BindOnce(&ShopService::XiaohongshuFrontLoginChecked,
+                       weak_.GetWeakPtr(), id, pending.page_check_token,
+                       content::WeakDocumentPtr(), base::Value()));
+    frame->ExecuteJavaScriptInIsolatedWorld(
+        uR"JS((() => {
+          if (location.origin !== 'https://www.xiaohongshu.com') return 'unknown';
+          const visible = e => e.getClientRects().length > 0 &&
+              getComputedStyle(e).visibility === 'visible';
+          if ([...document.querySelectorAll('iframe[src*=captcha], [role="dialog"]')]
+                .some(e => visible(e) &&
+                    (e.matches('iframe') || /安全验证|请完成验证|滑动验证/.test(e.innerText)))) {
+            return 'unknown';
+          }
+          const login = [...document.querySelectorAll('button, a, [role="button"]')]
+            .some(e => visible(e) && /^(登录|立即登录|登录小红书)$/.test(e.innerText?.trim())
+                && e.closest('nav, aside, header, [role="dialog"], [class*="login"], [class*="side-bar"]'));
+          const profile = [...document.querySelectorAll('a[href^="/user/profile/"]')]
+            .some(e => visible(e) && /^(我|我的)$/.test(e.innerText?.trim())
+                && e.closest('nav, aside, header, [class*="side-bar"], [class*="sidebar"]'));
+          if (login && profile) return 'unknown';
+          if (login || /^\/login(?:\/|$)/.test(location.pathname)) return 'signed-out';
+          return profile ? 'authenticated' : 'unknown';
+        })())JS",
+        base::BindOnce(&ShopService::XiaohongshuFrontLoginChecked,
+                       weak_.GetWeakPtr(), id, pending.page_check_token,
+                       frame->GetWeakDocumentPtr()),
+        ISOLATED_WORLD_ID_BRAVE_INTERNAL);
+  }
+
+  void XiaohongshuFrontLoginChecked(const std::string& id,
+                                   const std::string& token,
+                                   content::WeakDocumentPtr document,
+                                   base::Value result) {
+    auto pending = loaders_.find(id);
+    if (pending == loaders_.end() || pending->second.page_check_token != token) {
+      return;
+    }
+    auto* frame = document.AsRenderFrameHostIfValid();
+    const bool valid = frame && frame->IsInPrimaryMainFrame() &&
+                       result.is_string();
+    std::string_view state =
+        valid ? std::string_view(result.GetString()) : "unknown";
+    if (state != "authenticated" && state != "signed-out") {
+      state = "unknown";
+    }
+    FinishSessionCheck(id, "xiaohongshu", kXiaohongshuFrontSource, state, 0,
+                       valid ? "LOGIN_CHECK_UNAVAILABLE"
+                             : kXiaohongshuPageRequired);
   }
 
   void ReadBuyerCookies(const std::string& id, bool retried) {
@@ -1417,13 +1562,22 @@ class ShopService final : public base::SupportsUserData::Data,
                           std::string_view service,
                           std::string_view source,
                           std::string_view state,
-                          int status) {
+                          int status,
+                          std::string_view unknown_error =
+                              "LOGIN_CHECK_UNAVAILABLE") {
     auto pending = std::move(loaders_.at(id));
     loaders_.erase(id);
     const auto* metadata = Metadata().FindDict(id);
     if (!metadata ||
         !containers::GetContainerFromPrefs(*profile_->GetPrefs(), id)) {
       Send(std::move(pending.callback), Error("CONTAINER_NOT_FOUND"));
+      return;
+    }
+    if (service == "xiaohongshu" &&
+        GetXiaohongshuSurface(*metadata) !=
+            (source == kXiaohongshuFrontSource ? XiaohongshuSurface::kFront
+                                               : XiaohongshuSurface::kMerchant)) {
+      Send(std::move(pending.callback), Error("LOGIN_CHECK_TARGET_CHANGED"));
       return;
     }
     auto item = metadata->Clone();
@@ -1447,12 +1601,14 @@ class ShopService final : public base::SupportsUserData::Data,
     item.Remove("diagnostics");
     item.Remove("lastError");
     if (state == "unknown") {
-      item.Set("lastError", "LOGIN_CHECK_UNAVAILABLE");
-      item.Set("diagnostics", base::DictValue()
-          .Set(service == "taobao" ? "buyerProbeHttpStatus" : "loginProbeHttpStatus",
-               status)
-          .Set(service == "taobao" ? "buyerProbeNetworkError" : "loginProbeNetworkError",
-               pending.loader->NetError()));
+      item.Set("lastError", unknown_error);
+      if (pending.loader) {
+        item.Set("diagnostics", base::DictValue()
+            .Set(service == "taobao" ? "buyerProbeHttpStatus" : "loginProbeHttpStatus",
+                 status)
+            .Set(service == "taobao" ? "buyerProbeNetworkError" : "loginProbeNetworkError",
+                 pending.loader->NetError()));
+      }
     }
     Store(id, std::move(item));
     Send(std::move(pending.callback), List());
@@ -1823,6 +1979,8 @@ class ShopService final : public base::SupportsUserData::Data,
     std::unique_ptr<network::SimpleURLLoader> loader;
     Reply callback;
     int redirects = 0;
+    std::string page_check_token = {};
+    std::unique_ptr<base::OneShotTimer> page_timeout = nullptr;
   };
   struct DeletePlan {
     std::string token;
