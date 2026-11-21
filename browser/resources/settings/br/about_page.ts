@@ -72,7 +72,7 @@ function attachAboutInfo(page: SettingsAboutPageElement) {
         ready: loadTimeData.getString('ecomAboutReady'),
       }
       status.textContent = packaged
-        ? messages[value.phase] ?? messages.managed
+        ? messages[value.phase] ?? messages['managed']
         : loadTimeData.getString('ecomAboutDev')
       button.hidden = !value.canUpdate
       button.toggleAttribute('disabled', value.phase === 'downloading')
