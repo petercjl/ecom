@@ -6,7 +6,7 @@ import {mergePastedRoutingUrls} from './routing-model.js'
 const zh=loadTimeData.getString('locale').startsWith('zh')
 const t=(a,b)=>zh?a:b, $=id=>document.getElementById('routing-'+id)
 const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n}
-const labels={title:t('网址打开规则','URL opening rules'),intro:t('将指定网址交给指定账号容器打开，保留原页面与各自登录状态。','Open matching URLs in a chosen container while preserving the source page and separate sessions.'),add:t('添加规则','Add rule'),'global-label':t('启用网址打开规则','Enable URL opening rules'),refresh:t('刷新','Refresh'),'test-title':t('测试网址','Test a URL'),'test-label':t('输入网址','URL'),'test-submit':t('检查匹配','Check match'),'test-help':t('只检查已保存规则，不访问网站。关闭的规则也会展示匹配结果。','Checks saved rules locally without visiting the website. Disabled matching rules are also shown.'),'name-label':t('规则名称','Rule name'),'target-label':t('使用容器','Target container'),'target-help':t('示例尚未选择容器。保存容器后，仍需由你手动开启规则。','The example has no selected container. Choosing a container does not automatically enable the rule.'),'enabled-label':t('开启这条规则','Enable this rule'),'conditions-title':t('匹配条件','Match conditions'),'conditions-help':t('任意一条条件命中即可；同一条中的域名、路径和参数需同时满足。路径可用 * 匹配多个字符。','Any condition may match; within one condition, host, path and query predicates must all match. Paths support * wildcards.'),'condition-add':t('添加匹配条件','Add condition'),'bulk-label':t('批量粘贴具体网址','Paste a list of exact URLs'),'bulk-add':t('加入网址列表','Add URLs'),cancel:t('取消','Cancel'),save:t('保存','Save')}
+const labels={title:t('网址打开规则','URL opening rules'),intro:t('将指定网址交给指定账号容器打开，保留原页面与各自登录状态。','Open matching URLs in a chosen container while preserving the source page and separate sessions.'),add:t('添加规则','Add rule'),'global-label':t('启用网址打开规则','Enable URL opening rules'),refresh:t('刷新','Refresh'),'test-title':t('测试网址','Test a URL'),'test-label':t('输入网址','URL'),'test-submit':t('检查匹配','Check match'),'test-help':t('只检查已保存规则，不访问网站。关闭的规则也会展示匹配结果。','Checks saved rules locally without visiting the website. Disabled matching rules are also shown.'),'name-label':t('规则名称','Rule name'),'target-label':t('使用容器','Target container'),'target-help':t('在「使用容器」中选择链接跳转的目标容器。','Choose where matching links open under Target container.'),'enabled-label':t('开启这条规则','Enable this rule'),'conditions-title':t('匹配条件','Match conditions'),'conditions-help':t('任意一条条件命中即可；同一条中的域名、路径和参数需同时满足。路径可用 * 匹配多个字符。','Any condition may match; within one condition, host, path and query predicates must all match. Paths support * wildcards.'),'condition-add':t('添加匹配条件','Add condition'),'bulk-label':t('批量粘贴具体网址','Paste a list of exact URLs'),'bulk-add':t('加入网址列表','Add URLs'),cancel:t('取消','Cancel'),save:t('保存','Save')}
 for(const [id,text]of Object.entries(labels))$(id).textContent=text
 $('advanced-label').textContent=t('高级选项','Advanced options')
 $('transform-label').textContent=t('跨容器打开时的网址处理','URL handling across containers')
@@ -34,7 +34,6 @@ function render(){
     const head=node('div');head.className='rule-head';head.append(node('h2',rule.name))
     const badge=node('span',rule.enabled?t('已开启','Enabled'):t('已关闭','Disabled'));badge.className='badge'+(rule.enabled?' on':'');head.append(badge);card.append(head)
     card.append(node('p',t('使用容器：','Container: ')+(rule.targetState==='missing'?t('容器已删除','Container missing'):targetName(rule.containerId))))
-    if(!rule.containerId)card.append(node('p',t('这是预填示例。选择目标容器并手动开启后生效。','This is a prefilled example. Select a container and enable it when ready.')))
     if(rule.urlTransform==='taobao-tmall-product')card.append(node('p',transformOptions[1][1]))
     for(const c of rule.conditions){const p=node('div',c.type==='exact'?c.url:`${c.scheme==='http+https'?'http(s)':c.scheme}://${c.includeSubdomains?'*.':''}${c.host}${c.path}`+(c.query?.length?' · '+c.query.map(q=>q.operator==='exists'?q.name+t(' 存在',' exists'):`${q.name}=${q.value}`).join(' & '):''));p.className='pattern-text';card.append(p)}
     const actions=node('div');actions.className='actions'
@@ -42,7 +41,15 @@ function render(){
     const toggle=button(rule.enabled?t('关闭','Disable'):t('开启','Enable'),()=>mutate('routing.save',{rule:{...rule,enabled:!rule.enabled}}));toggle.disabled=!rule.enabled&&rule.targetState!=='available';actions.append(toggle)
     const move=delta=>{const ids=state.configuration.rules.map(r=>r.id);[ids[index],ids[index+delta]]=[ids[index+delta],ids[index]];return mutate('routing.reorder',{ruleIds:ids})}
     const up=button(t('上移','Move up'),()=>move(-1)),down=button(t('下移','Move down'),()=>move(1));up.disabled=index===0;down.disabled=index===state.configuration.rules.length-1;actions.append(up,down)
-    actions.append(button(t('删除','Delete'),async()=>{if(confirm(t('删除这条规则？容器和账号数据会保留。','Delete this rule? Containers and account data will be preserved.')))await mutate('routing.delete',{ruleId:rule.id})}));card.append(actions);list.append(card)
+    actions.append(button(t('删除','Delete'),async()=>{if(confirm(t('删除这条规则？容器和账号数据会保留。','Delete this rule? Containers and account data will be preserved.')))await mutate('routing.delete',{ruleId:rule.id})}))
+    card.append(actions)
+    if(toggle.disabled){
+      const hint=node('p',t('请先点击「编辑」，在「使用容器」中选择并保存链接跳转的目标容器，再开启规则。','To enable this rule, click Edit, choose a target container for matching links, and save.'))
+      hint.id='routing-target-hint-'+index
+      toggle.setAttribute('aria-describedby',hint.id)
+      card.append(hint)
+    }
+    list.append(card)
   }
   if(!state.configuration.rules.length)list.append(node('p',t('暂无规则。点击“添加规则”开始设置。','No rules yet. Add a rule to get started.')))
 }
@@ -89,11 +96,13 @@ function edit(rule){
     target.append(option)
   }
   target.value=rule?.containerId||''
+  $('target-help').hidden=!!target.value
   $('conditions').replaceChildren()
   for(const condition of rule?.conditions||[undefined]) addCondition(condition)
   $('editor').showModal()
 }
 $('add').onclick=()=>edit()
+$('target').onchange=()=>$('target-help').hidden=!!$('target').value
 $('condition-add').onclick=()=>addCondition()
 $('bulk-add').onclick=()=>{try{const conditions=mergePastedRoutingUrls([...$('conditions').children].map(c=>c.read()),$('bulk').value);$('conditions').replaceChildren();for(const c of conditions)addCondition(c);$('bulk').value='';$('edit-error').textContent=''}catch(e){$('edit-error').textContent=e.message==='ROUTING_CONDITION_LIMIT'?t('每条规则最多50个条件。','Up to 50 conditions per rule.'):errorText(e.message)}}
 $('cancel').onclick=()=>$('editor').close()
