@@ -8,9 +8,12 @@
     <h2 id="routing-edit-title"></h2><label for="routing-rule-name" id="routing-name-label"></label><input id="routing-rule-name" maxlength="100" required>
     <label for="routing-target" id="routing-target-label"></label><select id="routing-target"></select><p id="routing-target-help"></p>
     <label><input type="checkbox" id="routing-rule-enabled"><span id="routing-enabled-label"></span></label>
-    <label for="routing-transform" id="routing-transform-label"></label><select id="routing-transform"></select>
-    <h3 id="routing-conditions-title"></h3><p id="routing-conditions-help"></p><div id="routing-conditions"></div><button id="routing-condition-add" type="button"></button>
-    <details><summary id="routing-bulk-label"></summary><textarea id="routing-bulk" rows="4" placeholder="https://example.com/a&#10;https://example.com/b"></textarea><button id="routing-bulk-add" type="button"></button></details>
+    <details id="routing-advanced">
+      <summary id="routing-advanced-label"></summary>
+      <label for="routing-transform" id="routing-transform-label"></label><select id="routing-transform"></select>
+      <h3 id="routing-conditions-title"></h3><p id="routing-conditions-help"></p><div id="routing-conditions"></div><button id="routing-condition-add" type="button"></button>
+      <details id="routing-bulk-options"><summary id="routing-bulk-label"></summary><textarea id="routing-bulk" rows="4" placeholder="https://example.com/a&#10;https://example.com/b"></textarea><button id="routing-bulk-add" type="button"></button></details>
+    </details>
     <p id="routing-edit-error" role="alert"></p><footer><button id="routing-cancel" type="button"></button><button class="primary" id="routing-save" type="submit"></button></footer>
   </form></dialog>
 </main>

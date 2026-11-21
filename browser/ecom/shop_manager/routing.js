@@ -8,13 +8,21 @@ const t=(a,b)=>zh?a:b, $=id=>document.getElementById('routing-'+id)
 const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n}
 const labels={title:t('网址打开规则','URL opening rules'),intro:t('将指定网址交给指定账号容器打开，保留原页面与各自登录状态。','Open matching URLs in a chosen container while preserving the source page and separate sessions.'),add:t('添加规则','Add rule'),'global-label':t('启用网址打开规则','Enable URL opening rules'),refresh:t('刷新','Refresh'),'test-title':t('测试网址','Test a URL'),'test-label':t('输入网址','URL'),'test-submit':t('检查匹配','Check match'),'test-help':t('只检查已保存规则，不访问网站。关闭的规则也会展示匹配结果。','Checks saved rules locally without visiting the website. Disabled matching rules are also shown.'),'name-label':t('规则名称','Rule name'),'target-label':t('使用容器','Target container'),'target-help':t('示例尚未选择容器。保存容器后，仍需由你手动开启规则。','The example has no selected container. Choosing a container does not automatically enable the rule.'),'enabled-label':t('开启这条规则','Enable this rule'),'conditions-title':t('匹配条件','Match conditions'),'conditions-help':t('任意一条条件命中即可；同一条中的域名、路径和参数需同时满足。路径可用 * 匹配多个字符。','Any condition may match; within one condition, host, path and query predicates must all match. Paths support * wildcards.'),'condition-add':t('添加匹配条件','Add condition'),'bulk-label':t('批量粘贴具体网址','Paste a list of exact URLs'),'bulk-add':t('加入网址列表','Add URLs'),cancel:t('取消','Cancel'),save:t('保存','Save')}
 for(const [id,text]of Object.entries(labels))$(id).textContent=text
+$('advanced-label').textContent=t('高级选项','Advanced options')
 $('transform-label').textContent=t('跨容器打开时的网址处理','URL handling across containers')
 const transformOptions=[['none',t('保留原网址','Keep original URL')],['taobao-tmall-product',t('淘宝／天猫商品详情：只保留商品 ID','Taobao/Tmall product details: keep only item ID')]]
 for(const [value,label]of transformOptions){const option=node('option',label);option.value=value;$('transform').append(option)}
 const errors={ROUTING_TRANSFORM_CONFLICT:t('整理后的网址命中了另一个容器，请检查规则优先顺序。','The prepared URL matches a different container. Review rule order.'),INVALID_ROUTING_PRODUCT_ID:t('商品链接需要一个有效的商品 ID。','The link needs one valid product ID.'),ROUTING_CHANGED:t('规则刚刚发生变化，请重新打开网址。','Rules changed during navigation. Open the URL again.'),ROUTING_REQUEST_TOO_LARGE:t('规则内容过长，请减少网址或条件数量。','This rule is too large. Use fewer URLs or conditions.'),ROUTING_CONFIGURATION_TOO_LARGE:t('规则总量过大，请精简后再保存。','The rule collection is too large. Reduce it before saving.'),TARGET_CONTAINER_REQUIRED:t('请先选择目标容器，再手动开启规则。','Select a container before enabling this rule.'),TARGET_CONTAINER_MISSING:t('目标容器已不存在，请重新选择。','The target container is missing. Choose another container.'),ROUTING_REVISION_CONFLICT:t('规则已在其他位置更新，请刷新后重新编辑。','Rules changed elsewhere. Refresh before editing again.'),CROSS_CONTAINER_FORM_BLOCKED:t('表单提交已停止跨容器跳转，请在目标容器打开页面后重新操作。','Cross-container form submission was stopped. Open the page in the target container and retry.'),ROUTING_LOOP:t('规则出现循环，请检查规则顺序和目标容器。','A routing loop was stopped. Review rule order and target containers.')}
 const errorText=code=>errors[code]||t('请检查规则名称、网址、域名、路径及参数是否有效。','Check the rule name, URL, host, path and query fields.')+` (${code})`
 let state,editingId=''
-async function call(method,payload={}){const r=await sendWithPromise('ecomRoutingCommand',JSON.stringify({method,...payload}));if(!r.ok)throw new Error(errorText(r.error?.code||'UNAVAILABLE'));return r}
+async function call(method,payload={}){
+  const r=await sendWithPromise('ecomRoutingCommand',JSON.stringify({method,...payload}))
+  if(!r.ok){
+    const code=r.error?.code||'UNAVAILABLE'
+    throw Object.assign(new Error(errorText(code)),{code})
+  }
+  return r
+}
 async function mutate(method,payload){const r=await call(method,{expectedRevision:state.configuration.revision,...payload});state=r;render();return r}
 const targetName=id=>state?.containers.find(c=>c.id===id)?.name||t('尚未选择容器','No container selected')
 function button(text,action){const b=node('button',text);b.type='button';b.onclick=async()=>{b.disabled=true;try{await action()}catch(e){$('message').textContent=e.message}finally{b.disabled=false}};return b}
@@ -61,12 +69,52 @@ function addCondition(c={type:'pattern',scheme:'https',host:'',path:'/*',include
   box.read=()=>mode.value==='exact'?{type:'exact',url:url.value}:{type:'pattern',scheme:scheme.value,host:host.value,path:path.value,includeSubdomains:sub.checked,query:[...queries.children].map(q=>q.read())}
   $('conditions').append(box)
 }
-function edit(rule){editingId=rule?.id||'';$('edit-title').textContent=rule?t('编辑规则','Edit rule'):t('添加规则','Add rule');$('edit-error').textContent='';$('bulk').value='';$('rule-name').value=rule?.name||'';$('rule-enabled').checked=!!rule?.enabled;$('transform').value=rule?.urlTransform||'none';$('target').replaceChildren();const empty=node('option',t('请选择容器','Choose a container'));empty.value='';$('target').append(empty);for(const c of state.containers){const o=node('option',c.name);o.value=c.id;$('target').append(o)}$('target').value=rule?.containerId||'';$('conditions').replaceChildren();for(const c of rule?.conditions||[undefined])addCondition(c);$('editor').showModal()}
+function edit(rule){
+  editingId=rule?.id||''
+  $('edit-title').textContent=rule?t('编辑规则','Edit rule'):t('添加规则','Add rule')
+  $('edit-error').textContent=''
+  $('advanced').open=false
+  $('bulk-options').open=false
+  $('bulk').value=''
+  $('rule-name').value=rule?.name||''
+  $('rule-enabled').checked=!!rule?.enabled
+  $('transform').value=rule?.urlTransform||'none'
+  const target=$('target')
+  const empty=node('option',t('请选择容器','Choose a container'))
+  empty.value=''
+  target.replaceChildren(empty)
+  for(const container of state.containers){
+    const option=node('option',container.name)
+    option.value=container.id
+    target.append(option)
+  }
+  target.value=rule?.containerId||''
+  $('conditions').replaceChildren()
+  for(const condition of rule?.conditions||[undefined]) addCondition(condition)
+  $('editor').showModal()
+}
 $('add').onclick=()=>edit()
 $('condition-add').onclick=()=>addCondition()
 $('bulk-add').onclick=()=>{try{const conditions=mergePastedRoutingUrls([...$('conditions').children].map(c=>c.read()),$('bulk').value);$('conditions').replaceChildren();for(const c of conditions)addCondition(c);$('bulk').value='';$('edit-error').textContent=''}catch(e){$('edit-error').textContent=e.message==='ROUTING_CONDITION_LIMIT'?t('每条规则最多50个条件。','Up to 50 conditions per rule.'):errorText(e.message)}}
 $('cancel').onclick=()=>$('editor').close()
-$('edit-form').onsubmit=async e=>{e.preventDefault();$('save').disabled=true;try{const rule={id:editingId,name:$('rule-name').value,containerId:$('target').value,enabled:$('rule-enabled').checked,urlTransform:$('transform').value,conditions:[...$('conditions').children].map(c=>c.read())};await mutate('routing.save',{rule});$('editor').close();$('message').textContent=t('已保存。','Saved.')}catch(err){$('edit-error').textContent=err.message}finally{$('save').disabled=false}}
+$('edit-form').onsubmit=async e=>{
+  e.preventDefault()
+  $('save').disabled=true
+  try{
+    const rule={id:editingId,name:$('rule-name').value,containerId:$('target').value,enabled:$('rule-enabled').checked,urlTransform:$('transform').value,conditions:[...$('conditions').children].map(c=>c.read())}
+    await mutate('routing.save',{rule})
+    $('editor').close()
+    $('message').textContent=t('已保存。','Saved.')
+  }catch(err){
+    $('edit-error').textContent=err.message
+    if(['INVALID_ROUTING_RULE','INVALID_ROUTING_TRANSFORM','INVALID_ROUTING_CONDITION','INVALID_ROUTING_URL','INVALID_ROUTING_PATTERN','INVALID_ROUTING_QUERY'].includes(err.code)){
+      $('advanced').open=true
+      $('edit-error').scrollIntoView({block:'nearest'})
+    }
+  }finally{
+    $('save').disabled=false
+  }
+}
 $('global').onchange=async()=>{try{await mutate('routing.set-enabled',{enabled:$('global').checked})}catch(e){$('message').textContent=e.message;$('global').checked=state.configuration.enabled}}
 $('test-form').onsubmit=async event=>{
   event.preventDefault()
