@@ -29,11 +29,27 @@
   "codesignVerified": true,
   "nativeSmokeTest": false,
   "updateRoundTripVerified": false,
-  "published": false,
+  "published": true,
   "devValidation": {
     "verified": true,
     "sourceRevision": "7f5c6f9cd782a6515c969a62d25480707174119f",
     "evidencePath": "docs/ecom/release-evidence/dev-desktop-0.1.11.md"
   },
-  "evidencePath": "docs/ecom/release-evidence/macos-arm64-0.1.11.md"
+  "evidencePath": "docs/ecom/release-evidence/macos-arm64-0.1.11.md",
+  "tarballBytes": 157835711,
+  "integrity": "sha512-1DOGDW28YZ+izmGtOtvDlrdIBv1/74f91Z3tRxC5U/mMXtfJO2AkA458W9c+cc4NW4v1hw8MoSks7a29GrTOIQ==",
+  "publication": {
+    "packageName": "@lumyne/ecom-macos-arm64",
+    "version": "0.1.11",
+    "tag": "latest",
+    "bytes": 157835711,
+    "integrity": "sha512-1DOGDW28YZ+izmGtOtvDlrdIBv1/74f91Z3tRxC5U/mMXtfJO2AkA458W9c+cc4NW4v1hw8MoSks7a29GrTOIQ==",
+    "tarballSha256": "438725a9d8c6a1b2f6ae7ec69f4c7f7a57ce917e72c9cac68f9e1ee4dfa32d08",
+    "actualRegistryDownload": true,
+    "verifiedAt": "2026-11-21T07:25:36.746Z",
+    "mode": "local",
+    "artifactVerified": true,
+    "isolatedInstallVerified": true,
+    "validatedPublicationRevision": "5cb3698ebcc6c9f4159c67c2bb48d2207af37620"
+  }
 }
