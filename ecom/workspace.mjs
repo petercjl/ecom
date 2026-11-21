@@ -20,6 +20,11 @@ function sameDirectory(left, right) {
 }
 function commonDirectory(cwd) { return fs.realpathSync(git(cwd, ['rev-parse', '--path-format=absolute', '--git-common-dir'])); }
 export function canonicalRepository(cwd) { return path.dirname(commonDirectory(cwd)); }
+export function assertCommittedBuildEntries(repo) {
+  const changed = git(repo, ['diff', '--name-only', 'HEAD', '--', 'ecom/workspace.mjs', 'ecom/build-dev.mjs']);
+  if (changed) throw failure('SOURCE_MODIFIED', 'Commit build entry changes before executing the committed source snapshot');
+}
+
 export function workspaceStatus(repo, workspace) {
   const sourceRevision = git(repo, ['rev-parse', 'HEAD']);
   if (!fs.existsSync(workspace)) return { sourceRevision, workspace, exists: false, managed: false };
@@ -103,7 +108,7 @@ async function main() {
   const workspace = path.join(repo, '.brave-build/src/brave');
   if (command === 'status') return workspaceStatus(repo, workspace);
   if (!['prepare', 'bootstrap', 'build', 'start'].includes(command)) throw failure('UNKNOWN_COMMAND', 'Use prepare, status, bootstrap, build or start');
-  if (git(repo, ['status', '--porcelain'])) throw failure('SOURCE_MODIFIED', 'Commit source changes before preparing a reproducible build worktree');
+  assertCommittedBuildEntries(repo);
   const result = prepareWorkspace(repo, workspace, sourceRef);
   if (command === 'prepare') return result;
   if (command === 'bootstrap') bootstrapDependencies(workspace);

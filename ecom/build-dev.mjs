@@ -4,7 +4,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
-import { canonicalRepository, git } from './workspace.mjs';
+import { canonicalRepository, git, assertCommittedBuildEntries } from './workspace.mjs';
 
 const root = canonicalRepository(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
 const profile = path.join(root, '.brave-build/profiles/Ecom-Dev');
@@ -102,7 +102,7 @@ async function main() {
   const candidates = env.DEVELOPER_DIR ? [env.DEVELOPER_DIR] : [selected, ...fs.readdirSync('/Applications').filter(name => /^Xcode.*\.app$/.test(name)).sort().reverse().map(name => path.join('/Applications', name, 'Contents/Developer'))];
   env.DEVELOPER_DIR = candidates.find(dir => dir && fs.existsSync(path.join(dir, 'usr/bin/xcodebuild')));
   if (!env.DEVELOPER_DIR) throw new Error('需要完成首次启动的完整 Xcode；可通过 DEVELOPER_DIR 指定');
-  if (git(root, ['status', '--porcelain'])) throw new Error('请先按项目工作树规则提交源码改动，再运行构建重启脚本');
+  assertCommittedBuildEntries(root);
   const sourceHead = git(root, ['rev-parse', 'HEAD']);
   const base = git(root, ['rev-parse', '--verify', '--end-of-options', (args[1] || 'HEAD') + '^{commit}']);
   const selection = ['--source-ref', base];
@@ -123,7 +123,8 @@ async function main() {
       const child = spawn(node, [path.join(root, 'ecom/workspace.mjs'), 'build', 'Component', ...selection, '--target_arch', process.arch, '--use_remoteexec', 'false', '--offline', ...concurrency.ninjaArgs], { cwd: root, env, stdio: 'inherit' });
       child.once('error', reject); child.once('exit', code => code === 0 ? resolve() : reject(new Error('编译未成功，未执行 Dev 退出或重启动作')));
     });
-    if (git(root, ['rev-parse', 'HEAD']) !== sourceHead || git(root, ['status', '--porcelain'])) throw new Error('编译期间源码已变化，保留当前 Dev；提交后重新构建');
+    assertCommittedBuildEntries(root);
+    if (git(root, ['rev-parse', 'HEAD']) !== sourceHead) throw new Error('编译期间已提交源码版本已变化，保留当前 Dev；重新构建');
     const previous = runningDev();
     if (port) {
       const occupied = spawnSync('lsof', ['-nP', '-iTCP:' + port, '-sTCP:LISTEN', '-Fp'], { encoding: 'utf8' });

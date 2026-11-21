@@ -67,11 +67,14 @@ test('workspace CLI pins a committed revision without changing canonical main', 
     fs.writeFileSync(path.join(dir,'source.txt'),'later source');
     git(dir,['add','source.txt']);git(dir,['commit','-m','Advance canonical main']);
     const main=git(dir,['rev-parse','HEAD']);
+    fs.writeFileSync(path.join(dir,'source.txt'),'uncommitted source retained');
     const result=JSON.parse(execFileSync(process.execPath,[fs.realpathSync(entry),'prepare','--source-ref',pinned],{encoding:'utf8'}));
     assert.equal(result.revision,pinned);
     assert.equal(fs.readFileSync(path.join(dir,'.brave-build/src/brave/source.txt'),'utf8'),'one');
     assert.equal(git(dir,['rev-parse','HEAD']),main);
-    assert.equal(fs.readFileSync(path.join(dir,'source.txt'),'utf8'),'later source');
+    assert.equal(fs.readFileSync(path.join(dir,'source.txt'),'utf8'),'uncommitted source retained');
+    fs.appendFileSync(entry,'\n// uncommitted executable change\n');
+    assert.throws(()=>execFileSync(process.execPath,[fs.realpathSync(entry),'prepare','--source-ref',pinned],{encoding:'utf8'}));
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });
 
