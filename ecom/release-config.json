@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.9",
-  "packageName": "@petercjl/ecom-macos-arm64",
+  "version": "0.1.10",
+  "packageName": "@lumyne/ecom-macos-arm64",
   "channel": "latest",
   "platform": "darwin",
   "arch": "arm64",
