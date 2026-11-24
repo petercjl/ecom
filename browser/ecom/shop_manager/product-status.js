@@ -12,8 +12,8 @@ const messages = new Map([
     'Taobao did not return the same product ID. You can search in the buyer container.',
   ]],
   ['PRODUCT_LOGIN_REQUIRED', [
-    '请在指定买家容器登录淘宝后重新打开商品。',
-    'Sign in to Taobao in the selected buyer container and try again.',
+    '登录淘宝后，重新打开这个商品。',
+    'After signing in to Taobao, open the product again.',
   ]],
   ['PRODUCT_VERIFICATION_REQUIRED', [
     '请在买家容器完成淘宝安全验证后重新打开商品。',
@@ -27,9 +27,12 @@ const incomplete = [
 if (!error && !(await sendWithPromise('ecomProductNavigationPending'))) {
   error = 'PRODUCT_NAVIGATION_INCOMPLETE'
 }
-const heading = error
-  ? (zh ? '未能打开商品详情' : 'Could not open product details')
-  : (zh ? '商品详情页正在加载中' : 'Loading product details')
+let heading = zh ? '商品详情页正在加载中' : 'Loading product details'
+if (error === 'PRODUCT_LOGIN_REQUIRED') {
+  heading = zh ? '请先登录买家容器' : 'Sign in to the buyer container first'
+} else if (error) {
+  heading = zh ? '未能打开商品详情' : 'Could not open product details'
+}
 document.documentElement.lang = zh ? 'zh-CN' : 'en'
 document.title = heading
 document.getElementById('heading').textContent = heading
