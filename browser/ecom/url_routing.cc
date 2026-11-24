@@ -101,6 +101,13 @@ base::DictValue ResolveUrlRouting(
       result.Set("destinationUrl", destination.spec());
     }
   }
+  if (IsMerchantOnlyUrlRoutingRule(*rule) &&
+      GetUrlRoutingTransform(*rule) == "taobao-tmall-product" &&
+      !GetTaobaoProductId(destination).empty() &&
+      IsTaobaoBuyerContainer(profile, target) &&
+      !result.contains("destinationError")) {
+    result.Set("openMode", "buyer-product-search");
+  }
   return result;
 }
 

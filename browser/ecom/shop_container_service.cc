@@ -2217,6 +2217,17 @@ class ShopSettingsHandler final : public content::WebUIMessageHandler {
 };
 }  // namespace
 
+bool IsTaobaoBuyerContainer(Profile* profile, std::string_view container_id) {
+  if (container_id.empty() ||
+      !profile->GetPrefs()->FindPreference(containers::prefs::kShopContainers)) {
+    return false;
+  }
+  const auto* shop = profile->GetPrefs()
+                         ->GetDict(containers::prefs::kShopContainers)
+                         .FindDict(container_id);
+  return shop && UsesBuyerVerification(*shop);
+}
+
 bool IsMerchantShopContainer(Profile* profile, std::string_view container_id) {
   if (container_id.empty() ||
       !profile->GetPrefs()->FindPreference(containers::prefs::kShopContainers)) {

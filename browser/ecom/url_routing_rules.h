@@ -13,6 +13,9 @@ std::string GetUrlRoutingTransform(const base::DictValue& rule);
 // An invalid result prevents forwarding ambiguous product identities.
 GURL TransformUrlRoutingDestination(const base::DictValue& rule, const GURL& url);
 bool UrlRoutingConditionMatches(const base::DictValue& condition, const GURL& url);
+std::string GetTaobaoProductId(const GURL& url);
+GURL FindTaobaoSearchProductLink(const base::ListValue& links,
+                                const std::string& item_id);
 bool IsMerchantOnlyUrlRoutingRule(const base::DictValue& rule);
 const base::DictValue* FindUrlRoutingRule(const base::DictValue& config,
                                         const GURL& url,

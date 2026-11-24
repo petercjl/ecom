@@ -7,6 +7,7 @@
 #include "base/supports_user_data.h"
 #include "base/task/sequenced_task_runner.h"
 #include "brave/browser/ecom/memory_actions.h"
+#include "brave/browser/ecom/taobao_product_navigation.h"
 #include "brave/browser/ecom/url_routing.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "brave/components/containers/core/common/features.h"
@@ -55,6 +56,7 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
   // Chromium creates an initial NavigationEntry even before a new tab loads.
   // Use its initial-blank predicate, which also excludes restored/cloned tabs.
   const bool blank = source->GetController().IsInitialBlankNavigation();
+  bool open_product_in_background = false;
   if (!error) {
     const auto current = ResolveUrlRouting(
         profile, original_url,
@@ -69,11 +71,14 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
         (rewritten ? GURL(*rewritten) : original_url) != destination) {
       destination = GURL("chrome://shops/routing.html?error=ROUTING_CHANGED");
       error = true;
+    } else if (const auto* mode = current.FindString("openMode")) {
+      open_product_in_background = *mode == "buyer-product-search";
     }
   }
   NavigateParams params(window, destination, ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
-  params.disposition = foreground ? WindowOpenDisposition::NEW_FOREGROUND_TAB
-                                  : WindowOpenDisposition::NEW_BACKGROUND_TAB;
+  params.disposition = foreground && !open_product_in_background
+                           ? WindowOpenDisposition::NEW_FOREGROUND_TAB
+                           : WindowOpenDisposition::NEW_BACKGROUND_TAB;
   // A fresh navigation intentionally carries no source/opener, referrer,
   // authentication headers or POST data from the merchant context.
   if (!error) params.storage_partition_config = content::StoragePartitionConfig::Create(
@@ -91,6 +96,10 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
     const int index = window->GetTabStripModel()->GetIndexOfWebContents(source.get());
     if (index != TabStripModel::kNoTab)
       window->GetTabStripModel()->CloseWebContentsAt(index, TabCloseTypes::CLOSE_NONE);
+  }
+  if (open_product_in_background && params.navigated_or_inserted_contents) {
+    StartTaobaoProductNavigation(params.navigated_or_inserted_contents.get(),
+                                 destination, container, foreground);
   }
 }
 }  // namespace

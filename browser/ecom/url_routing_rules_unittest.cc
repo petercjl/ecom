@@ -107,4 +107,25 @@ TEST(UrlRoutingRules, ProductDestinationKeepsExactlyOneNumericId) {
   rule.Set("urlTransform", "unknown");
   EXPECT_EQ(NormalizeUrlRoutingRule(rule), "INVALID_ROUTING_TRANSFORM");
 }
+
+TEST(UrlRoutingRules, ExactProductMatchUsesOnlyTrustedSearchLinks) {
+  base::ListValue links;
+  links.Append("https://item.taobao.com.example.org/item.htm?id=913102520132");
+  links.Append("https://item.taobao.com/item.htm?id=913102520132&id=2");
+  links.Append("https://detail.tmall.com/item.htm?id=2");
+  links.Append("https://mclick.simba.taobao.com/cc_im?id=2");
+  EXPECT_FALSE(FindTaobaoSearchProductLink(links, "913102520132").is_valid());
+
+  const GURL redirect(
+      "https://mclick.simba.taobao.com/cc_im?id=913102520132&spm=sample");
+  links.Append(redirect.spec());
+  EXPECT_EQ(FindTaobaoSearchProductLink(links, "913102520132"), redirect);
+
+  const GURL direct(
+      "https://detail.tmall.com/item.htm?skuId=3&id=913102520132");
+  links.Append(direct.spec());
+  EXPECT_EQ(FindTaobaoSearchProductLink(links, "913102520132"), direct);
+  EXPECT_EQ(GetTaobaoProductId(direct), "913102520132");
+  EXPECT_TRUE(GetTaobaoProductId(redirect).empty());
+}
 }  // namespace ecom

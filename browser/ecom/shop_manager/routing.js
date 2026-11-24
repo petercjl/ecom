@@ -146,7 +146,10 @@ $('test-form').onsubmit=async event=>{
     }else{
       out.append(node('p',t('最终使用容器：','Selected container: ')+targetName(resolution.containerId)))
       if(resolution.destinationUrl){
-        const preview=node('p',t('跨容器将打开：','Cross-container destination: ')+resolution.destinationUrl)
+        const label=resolution.openMode==='buyer-product-search'
+          ?t('后台先打开商品短链接：','Initial product URL opened in the background: ')
+          :t('跨容器将打开：','Cross-container destination: ')
+        const preview=node('p',label+resolution.destinationUrl)
         preview.className='pattern-text'
         out.append(preview)
       }
@@ -158,4 +161,6 @@ $('test-form').onsubmit=async event=>{
 }
 export async function refreshRoutingView(){try{state=await call('routing.list');render()}catch(e){$('message').textContent=e.message}}
 $('refresh').onclick=refreshRoutingView
+errors.PRODUCT_SEARCH_NO_MATCH=t('淘宝搜索未找到相同商品 ID。可在买家容器打开淘宝手动搜索。','Taobao search did not return the same product ID. Search manually in the buyer container.')
+errors.PRODUCT_NAVIGATION_INCOMPLETE=t('买家容器未能打开该商品详情。请检查登录状态后重新打开。','The buyer container could not open the product. Check its sign-in status and try again.')
 const initialError=new URLSearchParams(location.search).get('error');if(initialError&&errors[initialError])$('message').textContent=errors[initialError]

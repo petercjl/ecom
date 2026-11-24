@@ -30,6 +30,23 @@ std::string Host(const GURL& url) {
   if (!host.empty() && host.back() == '.') host.pop_back();
   return host;
 }
+std::string ProductIdQuery(const GURL& url) {
+  std::string id;
+  for (net::QueryIterator it(url); !it.IsAtEnd(); it.Advance()) {
+    if (QueryKey(it) != "id") {
+      continue;
+    }
+    if (!id.empty()) {
+      return {};
+    }
+    id = it.GetUnescapedValue();
+    if (id.empty() || id.size() > 32 ||
+        id.find_first_not_of("0123456789") != std::string::npos) {
+      return {};
+    }
+  }
+  return id;
+}
 }  // namespace
 
 base::DictValue DefaultUrlRoutingConfig() {
@@ -124,25 +141,43 @@ GURL TransformUrlRoutingDestination(const base::DictValue& rule,
   if (!SafeUrl(url) || url.has_port()) {
     return {};
   }
-  std::string id;
-  for (net::QueryIterator it(url); !it.IsAtEnd(); it.Advance()) {
-    if (QueryKey(it) != "id") {
-      continue;
-    }
-    // The public page accepts a numeric product ID. Reject duplicate IDs.
-    if (!id.empty()) {
-      return {};
-    }
-    id = it.GetUnescapedValue();
-    if (id.empty() || id.size() > 32 ||
-        id.find_first_not_of("0123456789") != std::string::npos) {
-      return {};
-    }
-  }
-  if (id.empty()) {
+  const std::string id = ProductIdQuery(url);
+  return id.empty() ? GURL() : GURL("https://" + host + "/item.htm?id=" + id);
+}
+
+std::string GetTaobaoProductId(const GURL& url) {
+  if (!SafeUrl(url) || !url.SchemeIs("https") || url.has_port() ||
+      (url.host() != "item.taobao.com" && url.host() != "detail.tmall.com") ||
+      url.path() != "/item.htm") {
     return {};
   }
-  return GURL("https://" + host + "/item.htm?id=" + id);
+  return ProductIdQuery(url);
+}
+
+GURL FindTaobaoSearchProductLink(const base::ListValue& links,
+                                const std::string& item_id) {
+  if (item_id.empty()) {
+    return {};
+  }
+  GURL redirect;
+  for (const auto& link : links) {
+    const auto* spec = link.GetIfString();
+    if (!spec || spec->size() > 8192) {
+      continue;
+    }
+    const GURL url(*spec);
+    if (GetTaobaoProductId(url) == item_id) {
+      return url;
+    }
+    if (!redirect.is_valid() && SafeUrl(url) && url.SchemeIs("https") &&
+        !url.has_port() && url.path() == "/cc_im" &&
+        (url.host() == "click.simba.taobao.com" ||
+         url.host() == "mclick.simba.taobao.com") &&
+        ProductIdQuery(url) == item_id) {
+      redirect = url;
+    }
+  }
+  return redirect;
 }
 
 bool UrlRoutingConditionMatches(const base::DictValue& c, const GURL& url) {

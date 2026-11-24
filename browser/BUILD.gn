@@ -96,6 +96,8 @@ source_set("core") {
       "ecom/container_password_store.cc",
       "ecom/container_password_store.h",
       "ecom/memory_snapshot.cc",
+      "ecom/taobao_product_navigation.cc",
+      "ecom/taobao_product_navigation.h",
       "ecom/url_routing.cc",
       "ecom/url_routing.h",
       "ecom/url_routing_rules.cc",
