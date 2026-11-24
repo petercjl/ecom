@@ -4,7 +4,6 @@
 #include <memory>
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
-#include "base/logging.h"
 #include "base/supports_user_data.h"
 #include "base/task/sequenced_task_runner.h"
 #include "brave/browser/ecom/memory_actions.h"
@@ -18,12 +17,9 @@
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "components/tabs/public/tab_interface.h"
-#include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_throttle_registry.h"
-#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/restore_type.h"
 #include "content/public/browser/storage_partition_config.h"
 #include "content/public/browser/web_contents.h"
@@ -40,61 +36,7 @@ class Chain final : public base::SupportsUserData::Data {
   std::set<std::string> visited;
 };
 
-base::WeakPtr<content::WebContents> GetNavigationInitiator(
-    content::NavigationHandle& handle) {
-  const auto& token = handle.GetInitiatorFrameToken();
-  if (token) {
-    if (auto* frame = content::RenderFrameHost::FromFrameToken(
-            content::GlobalRenderFrameHostToken(handle.GetInitiatorProcessId(),
-                                                *token))) {
-      if (auto* contents = content::WebContents::FromRenderFrameHost(frame)) {
-        return contents->GetWeakPtr();
-      }
-    }
-  }
-  return {};
-}
-
-int FindMerchantAnchor(TabStripModel& tabs,
-                       int shell_index,
-                       content::WebContents* initiator) {
-  const auto source_container =
-      containers::GetContainerIdForWebContents(tabs.GetWebContentsAt(shell_index));
-  const auto eligible = [&](int index) {
-    auto* candidate = tabs.GetWebContentsAt(index);
-    return index != shell_index &&
-           !candidate->GetController().IsInitialBlankNavigation() &&
-           containers::GetContainerIdForWebContents(candidate) ==
-               source_container;
-  };
-  if (initiator) {
-    const int index = tabs.GetIndexOfWebContents(initiator);
-    if (index != TabStripModel::kNoTab && eligible(index)) {
-      return index;
-    }
-  }
-  if (auto* opener = tabs.GetOpenerOfTabAt(shell_index)) {
-    const int index = tabs.GetIndexOfTab(opener);
-    if (index != TabStripModel::kNoTab && eligible(index)) {
-      return index;
-    }
-  }
-  // A search redirect can outlive its initiating frame, and noopener links
-  // can lack a tab-strip opener. Prefer a nearby tab in the source container.
-  for (int offset = 1; offset < tabs.count(); ++offset) {
-    if (shell_index - offset >= 0 && eligible(shell_index - offset)) {
-      return shell_index - offset;
-    }
-    if (shell_index + offset < tabs.count() &&
-        eligible(shell_index + offset)) {
-      return shell_index + offset;
-    }
-  }
-  return TabStripModel::kNoTab;
-}
-
 void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
-                    base::WeakPtr<content::WebContents> initiator,
                     GURL original_url, GURL destination, std::string container,
                     std::string rule_id, std::set<std::string> visited,
                     bool error) {
@@ -134,34 +76,7 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
     }
   }
   if (open_product_in_background) {
-    auto* tabs = window->GetTabStripModel();
-    const bool foreground_requested = tabs->GetActiveWebContents() == source.get();
-    auto* anchor = source.get();
-    if (blank && tabs->count() > 1) {
-      // Closing the shell after inserting a work tab can select the work tab.
-      // Restore the opener first, then remove the empty shell.
-      const int index = tabs->GetIndexOfWebContents(source.get());
-      if (foreground_requested) {
-        const int anchor_index = FindMerchantAnchor(*tabs, index, initiator.get());
-        if (anchor_index != TabStripModel::kNoTab) {
-          tabs->ActivateTabAt(anchor_index);
-        }
-      }
-      if (source && source->GetController().IsInitialBlankNavigation()) {
-        const int shell_index = tabs->GetIndexOfWebContents(source.get());
-        if (shell_index != TabStripModel::kNoTab) {
-          tabs->CloseWebContentsAt(shell_index, TabCloseTypes::CLOSE_NONE);
-        }
-      }
-      anchor = tabs->GetActiveWebContents();
-    }
-    if (anchor) {
-      VLOG(0) << "Ecom buyer product route started: foreground="
-              << foreground_requested;
-      StartTaobaoProductNavigation(
-          window, anchor, destination, container, foreground_requested,
-          blank && tabs->count() == 1 && anchor == source.get());
-    }
+    StartTaobaoProductNavigation(window, source.get(), destination, container);
     return;
   }
   NavigateParams params(window, destination, ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
@@ -243,8 +158,7 @@ content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::Route() {
   const GURL destination = error.empty() ? target_url
       : GURL("chrome://shops/routing.html?error=" + error);
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
-      base::BindOnce(&OpenRoutedPage, source->GetWeakPtr(),
-                     GetNavigationInitiator(*handle), handle->GetURL(),
+      base::BindOnce(&OpenRoutedPage, source->GetWeakPtr(), handle->GetURL(),
                      destination, *container, rule_id ? *rule_id : std::string(),
                      std::move(visited), !error.empty()));
   return CANCEL_AND_IGNORE;

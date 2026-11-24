@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>商品详情页正在加载中</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: Canvas;
+    color: CanvasText;
+    font: 15px/1.6 system-ui, sans-serif;
+  }
+  main { max-width: 28rem; padding: 2rem; text-align: center; }
+  h1 { margin: .9rem 0 .4rem; font-size: 1.3rem; font-weight: 600; }
+  p { margin: 0; }
+  .progress {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin: 0 auto;
+    border: 2px solid color-mix(in srgb, CanvasText 20%, transparent);
+    border-top-color: Highlight;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .progress { animation: none; } }
+</style>
+<main role="status">
+  <div id="progress" class="progress" aria-hidden="true"></div>
+  <h1 id="heading">商品详情页正在加载中</h1>
+  <p id="message">正在买家容器中查找商品。</p>
+</main>
+<script type="module" src="product-status.js"></script>

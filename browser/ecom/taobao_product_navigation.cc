@@ -17,12 +17,15 @@
 #include "brave/browser/ecom/url_routing_rules.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_isolated_world_ids.h"
 #include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/site_instance.h"
@@ -40,6 +43,8 @@
 namespace ecom {
 namespace {
 
+constexpr char kProductNavigationTask[] = "ecom.taobao-product-navigation";
+constexpr char kLoadingUrl[] = "chrome://shops/product-status.html";
 constexpr char kSearchUrl[] = "https://s.taobao.com/search";
 
 constexpr char16_t kReadPage[] = uR"JS(JSON.stringify((() => {
@@ -81,23 +86,49 @@ bool IsBuyerLogin(const GURL& url) {
           url.host() == "passport.taobao.com");
 }
 
+void LoadProductStatus(content::WebContents& placeholder,
+                       const char* error = nullptr) {
+  GURL url(kLoadingUrl);
+  if (error) {
+    url = net::AppendQueryParameter(url, "error", error);
+  }
+  content::NavigationController::LoadURLParams params(url);
+  params.should_replace_current_entry = true;
+  placeholder.GetController().LoadURLWithParams(params);
+}
+
+TabStripModel* GetPlaceholderTabStrip(content::WebContents* placeholder) {
+  TabStripModel* result = nullptr;
+  ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+      [&](BrowserWindowInterface* window) {
+        auto* tabs = window->GetTabStripModel();
+        if (tabs->GetIndexOfWebContents(placeholder) == TabStripModel::kNoTab) {
+          return true;
+        }
+        result = tabs;
+        return false;
+      });
+  return result;
+}
+
+bool IsLoadingTab(content::WebContents& placeholder) {
+  const auto* pending = placeholder.GetController().GetPendingEntry();
+  return (pending ? pending->GetURL() : placeholder.GetLastCommittedURL()) ==
+         GURL(kLoadingUrl);
+}
+
 class ProductNavigation final : public base::SupportsUserData::Data,
                                 public content::WebContentsObserver {
  public:
   ProductNavigation(BrowserWindowInterface* window,
-                    content::WebContents* anchor,
+                    content::WebContents* placeholder,
                     std::unique_ptr<tabs::TabModel> tab,
-                    std::string item_id,
-                    bool foreground,
-                    bool close_initial_blank)
+                    std::string item_id)
       : content::WebContentsObserver(tab->GetContents()),
         window_(window->GetWeakPtr()),
-        anchor_(anchor->GetWeakPtr()),
-        anchor_url_(anchor->GetLastCommittedURL()),
+        placeholder_(placeholder->GetWeakPtr()),
         tab_(std::move(tab)),
-        item_id_(std::move(item_id)),
-        foreground_(foreground),
-        close_initial_blank_(close_initial_blank) {}
+        item_id_(std::move(item_id)) {}
 
   ~ProductNavigation() override { Observe(nullptr); }
 
@@ -146,6 +177,14 @@ class ProductNavigation final : public base::SupportsUserData::Data,
 
   void Poll() {
     if (done_ || !web_contents()) {
+      return;
+    }
+    if (!placeholder_ || !IsLoadingTab(*placeholder_)) {
+      Finish();
+      return;
+    }
+    if (!window_) {
+      Finish("PRODUCT_NAVIGATION_INCOMPLETE");
       return;
     }
     auto* frame = web_contents()->GetPrimaryMainFrame();
@@ -253,71 +292,53 @@ class ProductNavigation final : public base::SupportsUserData::Data,
     done_ = true;
     deadline_.Stop();
     poll_.Stop();
-    // Publish outside the navigation/renderer callback. The anchor may close
-    // before then, in which case its user data destroys the hidden contents.
+    // Inserting or closing a tab can destroy its user data synchronously.
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&ProductNavigation::Publish,
                                   weak_.GetWeakPtr(), error));
   }
 
   void Publish(const char* error) {
-    if (!anchor_) {
+    auto placeholder = placeholder_;
+    if (!placeholder) {
       return;
     }
-    auto anchor = anchor_;
-    auto window = window_;
-    const void* key = this;
-    if (window) {
-      auto* tabs = window->GetTabStripModel();
-      const int anchor_index = tabs->GetIndexOfWebContents(anchor.get());
-      if (anchor_index != TabStripModel::kNoTab) {
-        const bool same_anchor =
-            tabs->GetActiveWebContents() == anchor.get() &&
-            anchor->GetLastCommittedURL() == anchor_url_ &&
-            !anchor->GetController().GetPendingEntry();
-        const bool activate = foreground_ && same_anchor;
-        VLOG(0) << "Ecom buyer product route finished: status="
-                << (error ? error : "DETAIL_READY")
-                << ", foreground=" << activate
-                << ", anchor_current=" << same_anchor;
-        const bool close_blank = close_initial_blank_;
+    if (IsLoadingTab(*placeholder)) {
+      if (auto* tabs = GetPlaceholderTabStrip(placeholder.get())) {
         Observe(nullptr);
-        if (error) {
-          // A fresh WebUI tab prevents the last search or incomplete detail
-          // from becoming visible while the status page is committing.
-          tab_.reset();
-          NavigateParams params(
-              window.get(),
-              GURL(std::string("chrome://shops/routing.html?error=") + error),
-              ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
-          params.disposition = activate
-                                   ? WindowOpenDisposition::NEW_FOREGROUND_TAB
-                                   : WindowOpenDisposition::NEW_BACKGROUND_TAB;
-          ::Navigate(&params);
-        } else {
-          tabs->AppendTab(std::move(tab_), activate);
+        if (!window_) {
+          error = "PRODUCT_NAVIGATION_INCOMPLETE";
         }
-        if (anchor && window && close_blank && tabs->count() > 1 &&
-            anchor->GetController().IsInitialBlankNavigation()) {
-          const int index = tabs->GetIndexOfWebContents(anchor.get());
-          if (index != TabStripModel::kNoTab) {
-            tabs->CloseWebContentsAt(index, TabCloseTypes::CLOSE_NONE);
+        if (error) {
+          tab_.reset();
+          LoadProductStatus(*placeholder, error);
+        } else {
+          const int index = tabs->GetIndexOfWebContents(placeholder.get());
+          const bool selected = tabs->GetActiveWebContents() == placeholder.get();
+          tabs->InsertDetachedTabAt(index, std::move(tab_),
+                                    selected ? ADD_ACTIVE : ADD_NONE,
+                                    tabs->GetTabGroupForTab(index));
+          if (placeholder) {
+            if (auto* current = GetPlaceholderTabStrip(placeholder.get())) {
+              const int old_index =
+                  current->GetIndexOfWebContents(placeholder.get());
+              current->CloseWebContentsAt(old_index, TabCloseTypes::CLOSE_NONE);
+            }
           }
         }
+        VLOG(0) << "Ecom buyer product route finished: "
+                << (error ? error : "DETAIL_READY");
       }
     }
-    if (anchor) {
-      anchor->RemoveUserData(key);
+    if (placeholder) {
+      placeholder->RemoveUserData(kProductNavigationTask);
     }
   }
 
   const base::WeakPtr<BrowserWindowInterface> window_;
-  const base::WeakPtr<content::WebContents> anchor_;
-  const GURL anchor_url_;
+  const base::WeakPtr<content::WebContents> placeholder_;
   std::unique_ptr<tabs::TabModel> tab_;
   const std::string item_id_;
-  const bool foreground_;
-  const bool close_initial_blank_;
   Stage stage_ = Stage::kProduct;
   bool done_ = false;
   GURL pending_url_;
@@ -331,16 +352,33 @@ class ProductNavigation final : public base::SupportsUserData::Data,
 }  // namespace
 
 void StartTaobaoProductNavigation(BrowserWindowInterface* window,
-                                  content::WebContents* anchor,
+                                  content::WebContents* source,
                                   const GURL& short_url,
-                                  const std::string& container,
-                                  bool foreground,
-                                  bool close_initial_blank) {
+                                  const std::string& container) {
+  auto* tabs = window->GetTabStripModel();
+  auto* placeholder = source;
+  // Keep the initial shell for links that already opened a new tab.
+  if (source->GetController().IsInitialBlankNavigation()) {
+    LoadProductStatus(*placeholder);
+  } else {
+    NavigateParams params(window, GURL(kLoadingUrl),
+                          ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
+    params.disposition = tabs->GetActiveWebContents() == source
+                             ? WindowOpenDisposition::NEW_FOREGROUND_TAB
+                             : WindowOpenDisposition::NEW_BACKGROUND_TAB;
+    ::Navigate(&params);
+    placeholder = params.navigated_or_inserted_contents.get();
+    if (!placeholder) {
+      return;
+    }
+  }
+
   auto item_id = GetTaobaoProductId(short_url);
   if (item_id.empty()) {
+    LoadProductStatus(*placeholder, "PRODUCT_NAVIGATION_INCOMPLETE");
     return;
   }
-  auto* context = anchor->GetBrowserContext();
+  auto* context = placeholder->GetBrowserContext();
   const auto partition = content::StoragePartitionConfig::Create(
       context, containers::kContainersStoragePartitionDomain, container, false);
   auto site = content::SiteInstance::CreateForFixedStoragePartition(
@@ -349,16 +387,19 @@ void StartTaobaoProductNavigation(BrowserWindowInterface* window,
   params.initially_hidden = true;
   auto contents = content::WebContents::Create(params);
   if (containers::GetContainerIdForWebContents(contents.get()) != container) {
+    LoadProductStatus(*placeholder, "PRODUCT_NAVIGATION_INCOMPLETE");
     return;
   }
-  auto tab = std::make_unique<tabs::TabModel>(
-      std::move(contents), window->GetTabStripModel());
+  auto tab = std::make_unique<tabs::TabModel>(std::move(contents), tabs);
   auto task = std::make_unique<ProductNavigation>(
-      window, anchor, std::move(tab), std::move(item_id), foreground,
-      close_initial_blank);
+      window, placeholder, std::move(tab), std::move(item_id));
   auto* navigation = task.get();
-  anchor->SetUserData(navigation, std::move(task));
+  placeholder->SetUserData(kProductNavigationTask, std::move(task));
   navigation->Start(short_url);
+}
+
+bool IsTaobaoProductNavigationPending(content::WebContents* contents) {
+  return contents && contents->GetUserData(kProductNavigationTask);
 }
 
 }  // namespace ecom

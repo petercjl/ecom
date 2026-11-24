@@ -2,6 +2,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. https://mozilla.org/MPL/2.0/.
 #include "brave/browser/ecom/shop_manager_ui.h"
+#include "brave/browser/ecom/taobao_product_navigation.h"
 #include "brave/browser/ecom/url_routing.h"
 
 #include <string>
@@ -31,6 +32,10 @@ namespace {
 class MemoryHandler final : public content::WebUIMessageHandler {
  public:
   void RegisterMessages() override {
+    web_ui()->RegisterMessageCallback(
+        "ecomProductNavigationPending",
+        base::BindRepeating(&MemoryHandler::ProductNavigationPending,
+                            base::Unretained(this)));
     web_ui()->RegisterMessageCallback("ecomMemorySnapshot",
         base::BindRepeating(&MemoryHandler::Read, base::Unretained(this)));
     web_ui()->RegisterMessageCallback("ecomMemoryCommand",
@@ -39,6 +44,16 @@ class MemoryHandler final : public content::WebUIMessageHandler {
         base::BindRepeating(&MemoryHandler::Routing, base::Unretained(this)));
   }
  private:
+  void ProductNavigationPending(const base::ListValue& args) {
+    if (args.size() != 1 || !args[0].is_string()) {
+      return;
+    }
+    AllowJavascript();
+    ResolveJavascriptCallback(
+        args[0], base::Value(IsTaobaoProductNavigationPending(
+                     web_ui()->GetWebContents())));
+  }
+
   void Routing(const base::ListValue& args) {
     if (args.size() != 2 || !args[0].is_string() || !args[1].is_string()) return;
     if (args[1].GetString().size() > 24000) {
@@ -95,6 +110,7 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
                path == "manager.js" || path == "model.js" ||
                path == "memory.html" || path == "memory.js" || path == "memory.css" ||
                path == "routing.html" || path == "routing.js" || path == "routing.css" || path == "routing-model.js" ||
+               path == "product-status.html" || path == "product-status.js" ||
                path.starts_with("icons/");
       }),
       base::BindRepeating([](const std::string& request_path,
@@ -115,6 +131,10 @@ ShopManagerUI::ShopManagerUI(content::WebUI* web_ui)
           data = kShopManagerRoutingJs;
         } else if (path == "routing.css") {
           data = kShopManagerRoutingCss;
+        } else if (path == "product-status.html") {
+          data = kShopManagerProductStatusHtml;
+        } else if (path == "product-status.js") {
+          data = kShopManagerProductStatusJs;
         } else if (path == "memory.html") {
           data = kShopManagerMemoryHtml;
         } else if (path == "memory.js") {

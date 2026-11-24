@@ -12,13 +12,12 @@ class WebContents;
 
 namespace ecom {
 
-// Loads the product outside the tab strip and inserts the finished page only.
+// Shows a loading tab and replaces it once the hidden buyer page is ready.
 void StartTaobaoProductNavigation(BrowserWindowInterface* window,
-                                  content::WebContents* anchor,
+                                  content::WebContents* source,
                                   const GURL& short_url,
-                                  const std::string& container,
-                                  bool foreground,
-                                  bool close_initial_blank);
+                                  const std::string& container);
+bool IsTaobaoProductNavigationPending(content::WebContents* contents);
 
 }  // namespace ecom
 #endif  // BRAVE_BROWSER_ECOM_TAOBAO_PRODUCT_NAVIGATION_H_

@@ -21,7 +21,9 @@ def main():
                            ('memory.html', 'MemoryHtml'), ('memory.js', 'MemoryJs'),
                            ('memory.css', 'MemoryCss'),
                            ('routing.html', 'RoutingHtml'), ('routing.js', 'RoutingJs'),
-                           ('routing.css', 'RoutingCss'), ('routing-model.js', 'RoutingModel')]:
+                           ('routing.css', 'RoutingCss'), ('routing-model.js', 'RoutingModel'),
+                           ('product-status.html', 'ProductStatusHtml'),
+                           ('product-status.js', 'ProductStatusJs')]:
         # Legacy routing URLs resolve to the same workspace and active view.
         text = workspace if filename in ('index.html', 'routing.html') else (args.source / filename).read_text()
         assert ')ECOMRESOURCE"' not in text
