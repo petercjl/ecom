@@ -75,10 +75,39 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
       open_product_in_background = *mode == "buyer-product-search";
     }
   }
+  if (open_product_in_background) {
+    auto* tabs = window->GetTabStripModel();
+    auto* anchor = source.get();
+    if (blank && tabs->count() > 1) {
+      // Closing the shell after inserting a work tab can select the work tab.
+      // Restore the opener first, then remove the empty shell.
+      const int index = tabs->GetIndexOfWebContents(source.get());
+      if (foreground) {
+        if (auto* opener = tabs->GetOpenerOfTabAt(index)) {
+          const int opener_index = tabs->GetIndexOfTab(opener);
+          if (opener_index != TabStripModel::kNoTab && opener_index != index) {
+            tabs->ActivateTabAt(opener_index);
+          }
+        }
+      }
+      if (source && source->GetController().IsInitialBlankNavigation()) {
+        const int shell_index = tabs->GetIndexOfWebContents(source.get());
+        if (shell_index != TabStripModel::kNoTab) {
+          tabs->CloseWebContentsAt(shell_index, TabCloseTypes::CLOSE_NONE);
+        }
+      }
+      anchor = tabs->GetActiveWebContents();
+    }
+    if (anchor) {
+      StartTaobaoProductNavigation(
+          window, anchor, destination, container, foreground,
+          blank && tabs->count() == 1 && anchor == source.get());
+    }
+    return;
+  }
   NavigateParams params(window, destination, ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
-  params.disposition = foreground && !open_product_in_background
-                           ? WindowOpenDisposition::NEW_FOREGROUND_TAB
-                           : WindowOpenDisposition::NEW_BACKGROUND_TAB;
+  params.disposition = foreground ? WindowOpenDisposition::NEW_FOREGROUND_TAB
+                                  : WindowOpenDisposition::NEW_BACKGROUND_TAB;
   // A fresh navigation intentionally carries no source/opener, referrer,
   // authentication headers or POST data from the merchant context.
   if (!error) params.storage_partition_config = content::StoragePartitionConfig::Create(
@@ -96,10 +125,6 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
     const int index = window->GetTabStripModel()->GetIndexOfWebContents(source.get());
     if (index != TabStripModel::kNoTab)
       window->GetTabStripModel()->CloseWebContentsAt(index, TabCloseTypes::CLOSE_NONE);
-  }
-  if (open_product_in_background && params.navigated_or_inserted_contents) {
-    StartTaobaoProductNavigation(params.navigated_or_inserted_contents.get(),
-                                 destination, container, foreground);
   }
 }
 }  // namespace

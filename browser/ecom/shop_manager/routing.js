@@ -163,4 +163,6 @@ export async function refreshRoutingView(){try{state=await call('routing.list');
 $('refresh').onclick=refreshRoutingView
 errors.PRODUCT_SEARCH_NO_MATCH=t('淘宝搜索未找到相同商品 ID。可在买家容器打开淘宝手动搜索。','Taobao search did not return the same product ID. Search manually in the buyer container.')
 errors.PRODUCT_NAVIGATION_INCOMPLETE=t('买家容器未能打开该商品详情。请检查登录状态后重新打开。','The buyer container could not open the product. Check its sign-in status and try again.')
+errors.PRODUCT_LOGIN_REQUIRED=t('请在指定买家容器登录淘宝后重新打开商品。','Sign in to Taobao in the selected buyer container and try again.')
+errors.PRODUCT_VERIFICATION_REQUIRED=t('淘宝要求安全验证。请在买家容器完成验证后重新打开商品。','Taobao requires verification. Complete it in the buyer container and try again.')
 const initialError=new URLSearchParams(location.search).get('error');if(initialError&&errors[initialError])$('message').textContent=errors[initialError]

@@ -4,6 +4,7 @@
 
 #include <string>
 
+class BrowserWindowInterface;
 class GURL;
 namespace content {
 class WebContents;
@@ -11,11 +12,13 @@ class WebContents;
 
 namespace ecom {
 
-// Continues a routed product navigation in its already selected buyer tab.
-void StartTaobaoProductNavigation(content::WebContents* contents,
+// Loads the product outside the tab strip and inserts the finished page only.
+void StartTaobaoProductNavigation(BrowserWindowInterface* window,
+                                  content::WebContents* anchor,
                                   const GURL& short_url,
                                   const std::string& container,
-                                  bool foreground);
+                                  bool foreground,
+                                  bool close_initial_blank);
 
 }  // namespace ecom
 #endif  // BRAVE_BROWSER_ECOM_TAOBAO_PRODUCT_NAVIGATION_H_
