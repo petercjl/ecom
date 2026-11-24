@@ -39,3 +39,22 @@ document.getElementById('heading').textContent = heading
 document.getElementById('message').textContent =
   (error ? messages.get(error) ?? incomplete : loading)[zh ? 0 : 1]
 document.getElementById('progress').hidden = Boolean(error)
+
+if (error === 'PRODUCT_LOGIN_REQUIRED') {
+  const login = document.getElementById('buyer-login')
+  login.hidden = false
+  login.textContent = zh ? '打开淘宝登录页' : 'Open Taobao sign-in'
+  login.addEventListener('click', async () => {
+    login.disabled = true
+    try {
+      if (await sendWithPromise('ecomOpenProductBuyerLogin')) return
+    } catch {
+      // Report a native navigation failure in the original status tab.
+    } finally {
+      login.disabled = false
+    }
+    document.getElementById('message').textContent = zh
+      ? '无法打开指定买家容器。请到账号管理检查买家容器配置。'
+      : 'Could not open the selected buyer container. Check it in Account Manager.'
+  })
+}

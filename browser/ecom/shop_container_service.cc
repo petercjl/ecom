@@ -677,6 +677,12 @@ class ShopService final : public base::SupportsUserData::Data,
           return;
         }
         url = "about:blank";
+      } else if (service == "buyer-login") {
+        if (!UsesBuyerVerification(*metadata)) {
+          Send(std::move(callback), Error("SERVICE_UNSUPPORTED"));
+          return;
+        }
+        url = "https://login.taobao.com/member/login.jhtml";
       } else if (const auto* operation = request.FindString("businessOperation")) {
         if (const auto* route = request.Find("route");
             route && (!route->is_dict() ||

@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -87,10 +88,15 @@ bool IsBuyerLogin(const GURL& url) {
 }
 
 void LoadProductStatus(content::WebContents& placeholder,
-                       const char* error = nullptr) {
+                       const char* error = nullptr,
+                       const std::string& buyer_container = {}) {
   GURL url(kLoadingUrl);
   if (error) {
     url = net::AppendQueryParameter(url, "error", error);
+    if (std::string_view(error) == "PRODUCT_LOGIN_REQUIRED" &&
+        !buyer_container.empty()) {
+      url = net::AppendQueryParameter(url, "containerId", buyer_container);
+    }
   }
   content::NavigationController::LoadURLParams params(url);
   params.should_replace_current_entry = true;
@@ -331,7 +337,7 @@ class ProductNavigation final : public base::SupportsUserData::Data,
         }
         if (error) {
           tab_.reset();
-          LoadProductStatus(*placeholder, error);
+          LoadProductStatus(*placeholder, error, container_);
         } else {
           const int index = tabs->GetIndexOfWebContents(placeholder.get());
           const bool selected = tabs->GetActiveWebContents() == placeholder.get();
