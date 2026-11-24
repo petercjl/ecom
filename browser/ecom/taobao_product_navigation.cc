@@ -117,22 +117,44 @@ bool IsLoadingTab(content::WebContents& placeholder) {
          GURL(kLoadingUrl);
 }
 
+std::unique_ptr<tabs::TabModel> CreateHiddenBuyerTab(
+    TabStripModel* tabs,
+    content::BrowserContext* context,
+    const GURL& url,
+    const std::string& container) {
+  const auto partition = content::StoragePartitionConfig::Create(
+      context, containers::kContainersStoragePartitionDomain, container, false);
+  auto site = content::SiteInstance::CreateForFixedStoragePartition(
+      context, url, partition);
+  content::WebContents::CreateParams params(context, std::move(site));
+  params.initially_hidden = true;
+  auto contents = content::WebContents::Create(params);
+  if (containers::GetContainerIdForWebContents(contents.get()) != container) {
+    return nullptr;
+  }
+  return std::make_unique<tabs::TabModel>(std::move(contents), tabs);
+}
+
 class ProductNavigation final : public base::SupportsUserData::Data,
                                 public content::WebContentsObserver {
  public:
   ProductNavigation(BrowserWindowInterface* window,
                     content::WebContents* placeholder,
                     std::unique_ptr<tabs::TabModel> tab,
+                    GURL short_url,
+                    std::string container,
                     std::string item_id)
       : content::WebContentsObserver(tab->GetContents()),
         window_(window->GetWeakPtr()),
         placeholder_(placeholder->GetWeakPtr()),
         tab_(std::move(tab)),
+        short_url_(std::move(short_url)),
+        container_(std::move(container)),
         item_id_(std::move(item_id)) {}
 
   ~ProductNavigation() override { Observe(nullptr); }
 
-  void Start(const GURL& url) { Navigate(url, GURL(), base::Seconds(14)); }
+  void Start() { Navigate(short_url_, GURL(), base::Seconds(14)); }
 
  private:
   enum class Stage { kProduct, kSearch, kResult };
@@ -281,24 +303,19 @@ class ProductNavigation final : public base::SupportsUserData::Data,
     SchedulePoll();
   }
 
-  void TimedOut() {
-    const auto& committed = web_contents()->GetLastCommittedURL();
-    Finish(stage_ == Stage::kSearch && IsSearchPage(committed)
-               ? "PRODUCT_SEARCH_NO_MATCH"
-               : "PRODUCT_NAVIGATION_INCOMPLETE");
-  }
+  void TimedOut() { Finish(nullptr, /*open_short_url=*/true); }
 
-  void Finish(const char* error = nullptr) {
+  void Finish(const char* error = nullptr, bool open_short_url = false) {
     done_ = true;
     deadline_.Stop();
     poll_.Stop();
     // Inserting or closing a tab can destroy its user data synchronously.
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&ProductNavigation::Publish,
-                                  weak_.GetWeakPtr(), error));
+                                  weak_.GetWeakPtr(), error, open_short_url));
   }
 
-  void Publish(const char* error) {
+  void Publish(const char* error, bool open_short_url) {
     auto placeholder = placeholder_;
     if (!placeholder) {
       return;
@@ -307,6 +324,9 @@ class ProductNavigation final : public base::SupportsUserData::Data,
       if (auto* tabs = GetPlaceholderTabStrip(placeholder.get())) {
         Observe(nullptr);
         if (!window_) {
+          error = "PRODUCT_NAVIGATION_INCOMPLETE";
+        }
+        if (!error && open_short_url && !PrepareShortUrl(tabs)) {
           error = "PRODUCT_NAVIGATION_INCOMPLETE";
         }
         if (error) {
@@ -327,7 +347,8 @@ class ProductNavigation final : public base::SupportsUserData::Data,
           }
         }
         VLOG(0) << "Ecom buyer product route finished: "
-                << (error ? error : "DETAIL_READY");
+                << (error ? error
+                          : open_short_url ? "SHORT_URL_FALLBACK" : "DETAIL_READY");
       }
     }
     if (placeholder) {
@@ -335,9 +356,30 @@ class ProductNavigation final : public base::SupportsUserData::Data,
     }
   }
 
+  bool PrepareShortUrl(TabStripModel* tabs) {
+    auto* contents = tab_->GetContents();
+    if (contents->GetLastCommittedURL() == short_url_ &&
+        !contents->GetController().GetPendingEntry()) {
+      return true;
+    }
+    // Start from a buyer-bound blank page so the search UI never flashes.
+    auto fallback = CreateHiddenBuyerTab(tabs, contents->GetBrowserContext(),
+                                         short_url_, container_);
+    if (!fallback) {
+      return false;
+    }
+    content::NavigationController::LoadURLParams params(short_url_);
+    params.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
+    fallback->GetContents()->GetController().LoadURLWithParams(params);
+    tab_ = std::move(fallback);
+    return true;
+  }
+
   const base::WeakPtr<BrowserWindowInterface> window_;
   const base::WeakPtr<content::WebContents> placeholder_;
   std::unique_ptr<tabs::TabModel> tab_;
+  const GURL short_url_;
+  const std::string container_;
   const std::string item_id_;
   Stage stage_ = Stage::kProduct;
   bool done_ = false;
@@ -378,24 +420,18 @@ void StartTaobaoProductNavigation(BrowserWindowInterface* window,
     LoadProductStatus(*placeholder, "PRODUCT_NAVIGATION_INCOMPLETE");
     return;
   }
-  auto* context = placeholder->GetBrowserContext();
-  const auto partition = content::StoragePartitionConfig::Create(
-      context, containers::kContainersStoragePartitionDomain, container, false);
-  auto site = content::SiteInstance::CreateForFixedStoragePartition(
-      context, short_url, partition);
-  content::WebContents::CreateParams params(context, std::move(site));
-  params.initially_hidden = true;
-  auto contents = content::WebContents::Create(params);
-  if (containers::GetContainerIdForWebContents(contents.get()) != container) {
+  auto tab = CreateHiddenBuyerTab(tabs, placeholder->GetBrowserContext(),
+                                  short_url, container);
+  if (!tab) {
     LoadProductStatus(*placeholder, "PRODUCT_NAVIGATION_INCOMPLETE");
     return;
   }
-  auto tab = std::make_unique<tabs::TabModel>(std::move(contents), tabs);
   auto task = std::make_unique<ProductNavigation>(
-      window, placeholder, std::move(tab), std::move(item_id));
+      window, placeholder, std::move(tab), short_url, container,
+      std::move(item_id));
   auto* navigation = task.get();
   placeholder->SetUserData(kProductNavigationTask, std::move(task));
-  navigation->Start(short_url);
+  navigation->Start();
 }
 
 bool IsTaobaoProductNavigationPending(content::WebContents* contents) {
