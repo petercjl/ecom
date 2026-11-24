@@ -13,7 +13,9 @@ std::string GetUrlRoutingTransform(const base::DictValue& rule);
 // An invalid result prevents forwarding ambiguous product identities.
 GURL TransformUrlRoutingDestination(const base::DictValue& rule, const GURL& url);
 bool UrlRoutingConditionMatches(const base::DictValue& condition, const GURL& url);
+bool IsMerchantOnlyUrlRoutingRule(const base::DictValue& rule);
 const base::DictValue* FindUrlRoutingRule(const base::DictValue& config,
-                                        const GURL& url);
+                                        const GURL& url,
+                                        bool allow_merchant_only_rules);
 }  // namespace ecom
 #endif

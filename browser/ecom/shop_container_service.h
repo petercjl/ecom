@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include "base/functional/callback_forward.h"
 
@@ -12,6 +13,7 @@ namespace content {
 class WebUIMessageHandler;
 }
 namespace ecom {
+bool IsMerchantShopContainer(Profile* profile, std::string_view container_id);
 GURL GetShopHomepage(Profile* profile, const std::string& container_id);
 // Both trusted settings UI and authenticated native CLI use this contract.
 void RunShopCommand(Profile* profile,

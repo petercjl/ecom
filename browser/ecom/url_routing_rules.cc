@@ -178,15 +178,23 @@ bool UrlRoutingConditionMatches(const base::DictValue& c, const GURL& url) {
   return true;
 }
 
+bool IsMerchantOnlyUrlRoutingRule(const base::DictValue& rule) {
+  return Text(rule, "id") == kTaobaoProductExample;
+}
+
 const base::DictValue* FindUrlRoutingRule(const base::DictValue& config,
-                                        const GURL& url) {
+                                        const GURL& url,
+                                        bool allow_merchant_only_rules) {
   if (!config.FindBool("enabled").value_or(false)) return nullptr;
   const auto* rules = config.FindList("rules");
   if (!rules) return nullptr;
   for (const auto& value : *rules) {
     if (!value.is_dict()) continue;
     const auto& rule = value.GetDict();
-    if (!rule.FindBool("enabled").value_or(false)) continue;
+    if (!rule.FindBool("enabled").value_or(false) ||
+        (!allow_merchant_only_rules && IsMerchantOnlyUrlRoutingRule(rule))) {
+      continue;
+    }
     if (const auto* conditions = rule.FindList("conditions")) {
       for (const auto& condition : *conditions)
         if (condition.is_dict() && UrlRoutingConditionMatches(condition.GetDict(), url))

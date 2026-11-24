@@ -761,7 +761,7 @@ class ShopService final : public base::SupportsUserData::Data,
           return;
         }
       }
-      const auto route = ResolveUrlRouting(profile_, GURL(url));
+      const auto route = ResolveUrlRouting(profile_, GURL(url), id);
       if (!route.empty() && (!route.FindBool("available").value_or(false) ||
           *route.FindString("containerId") != id)) {
         Send(std::move(callback), Error("URL_CONTAINER_CONFLICT"));
@@ -2216,6 +2216,20 @@ class ShopSettingsHandler final : public content::WebUIMessageHandler {
   base::WeakPtrFactory<ShopSettingsHandler> weak_{this};
 };
 }  // namespace
+
+bool IsMerchantShopContainer(Profile* profile, std::string_view container_id) {
+  if (container_id.empty() ||
+      !profile->GetPrefs()->FindPreference(containers::prefs::kShopContainers)) {
+    return false;
+  }
+  const auto* shop = profile->GetPrefs()
+                         ->GetDict(containers::prefs::kShopContainers)
+                         .FindDict(container_id);
+  return shop && Platform(Field(*shop, "platform")) &&
+         !UsesBuyerVerification(*shop) &&
+         GetXiaohongshuSurface(*shop) != XiaohongshuSurface::kFront;
+}
+
 GURL GetShopHomepage(Profile* profile, const std::string& container_id) {
   if (!profile->IsRegularProfile() || container_id.empty() ||
       !profile->GetPrefs()->FindPreference(containers::prefs::kShopContainers)) {

@@ -384,7 +384,7 @@ class NativeSessionService final : public ProfileObserver {
       const auto* url = request.FindString("url");
       const auto* target = request.FindString("containerId");
       if (url && target) {
-        auto resolution = ResolveUrlRouting(profile_, GURL(*url));
+        auto resolution = ResolveUrlRouting(profile_, GURL(*url), *target);
         if (!resolution.empty() &&
             (!resolution.FindBool("available").value_or(false) ||
              *resolution.FindString("containerId") != *target)) {

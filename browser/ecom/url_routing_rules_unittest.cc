@@ -10,16 +10,34 @@ TEST(UrlRoutingRules, ExampleIsDisabledUnassignedAndEditable) {
   EXPECT_FALSE(rule.FindBool("enabled").value());
   EXPECT_TRUE(rule.FindString("containerId")->empty());
   EXPECT_EQ(rule.FindList("conditions")->size(), 2u);
-  EXPECT_EQ(FindUrlRoutingRule(config, GURL("https://item.taobao.com/item.htm?id=1")), nullptr);
+  EXPECT_EQ(FindUrlRoutingRule(config, GURL("https://item.taobao.com/item.htm?id=1"), true), nullptr);
   EXPECT_TRUE(NormalizeUrlRoutingRule(rule).empty());
   rule.Set("enabled", true);
   EXPECT_EQ(NormalizeUrlRoutingRule(rule), "TARGET_CONTAINER_REQUIRED");
   rule.Set("containerId", "user-selected-id");
   EXPECT_TRUE(NormalizeUrlRoutingRule(rule).empty());
-  EXPECT_NE(FindUrlRoutingRule(config, GURL("https://item.taobao.com/item.htm?x=2&id=1#image")), nullptr);
+  EXPECT_NE(FindUrlRoutingRule(config, GURL("https://item.taobao.com/item.htm?x=2&id=1#image"), true), nullptr);
   config.Set("enabled", false);
-  EXPECT_EQ(FindUrlRoutingRule(config, GURL("https://item.taobao.com/item.htm?id=1")), nullptr);
+  EXPECT_EQ(FindUrlRoutingRule(config, GURL("https://item.taobao.com/item.htm?id=1"), true), nullptr);
 }
+TEST(UrlRoutingRules, BuiltInProductRuleRequiresMerchantSource) {
+  auto config = DefaultUrlRoutingConfig();
+  auto& rule = config.FindList("rules")->front().GetDict();
+  rule.Set("enabled", true);
+  rule.Set("containerId", "buyer");
+  const GURL product("https://detail.tmall.com/item.htm?id=1&skuId=2");
+
+  EXPECT_EQ(FindUrlRoutingRule(config, product, false), nullptr);
+  EXPECT_EQ(FindUrlRoutingRule(config, product, true), &rule);
+
+  auto custom = rule.Clone();
+  custom.Set("id", "custom");
+  config.FindList("rules")->Append(std::move(custom));
+  const auto* result = FindUrlRoutingRule(config, product, false);
+  ASSERT_TRUE(result);
+  EXPECT_EQ(*result->FindString("id"), "custom");
+}
+
 TEST(UrlRoutingRules, HostPathAndQueryBoundaries) {
   auto config = DefaultUrlRoutingConfig();
   const auto& c = config.FindList("rules")->front().GetDict().FindList("conditions")->front().GetDict();
@@ -35,7 +53,7 @@ TEST(UrlRoutingRules, ExactFragmentsSubdomainsAndPriority) {
   rule.Set("containerId", "buyer");
   auto copy = rule.Clone(); copy.Set("id", "second"); copy.Set("containerId", "other");
   config.FindList("rules")->Append(std::move(copy));
-  EXPECT_EQ(*FindUrlRoutingRule(config, GURL("https://item.taobao.com/item.htm?id=1"))->FindString("containerId"), "buyer");
+  EXPECT_EQ(*FindUrlRoutingRule(config, GURL("https://item.taobao.com/item.htm?id=1"), true)->FindString("containerId"), "buyer");
   base::DictValue exact;
   exact.Set("type", "exact"); exact.Set("url", "https://example.org/a?q=1#old");
   EXPECT_TRUE(UrlRoutingConditionMatches(exact, GURL("https://example.org/a?q=1#new")));

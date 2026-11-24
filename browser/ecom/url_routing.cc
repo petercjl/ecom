@@ -8,6 +8,7 @@
 #include "base/json/json_writer.h"
 #include "base/uuid.h"
 #include "base/supports_user_data.h"
+#include "brave/browser/ecom/shop_container_service.h"
 #include "brave/browser/ecom/url_routing_rules.h"
 #include "brave/components/containers/core/browser/prefs.h"
 #include "brave/components/containers/core/common/features.h"
@@ -66,21 +67,34 @@ bool IsUrlRoutingPagePinned(content::WebContents* contents) {
   return contents && contents->GetUserData(kPinned);
 }
 
-base::DictValue ResolveUrlRouting(Profile* profile, const GURL& url) {
+base::DictValue ResolveUrlRouting(
+    Profile* profile,
+    const GURL& url,
+    std::optional<std::string_view> source_container_id) {
   if (!profile || !profile->IsRegularProfile() ||
-      !base::FeatureList::IsEnabled(containers::features::kContainers)) return {};
-  const auto* rule = FindUrlRoutingRule(profile->GetPrefs()->GetDict(kUrlRoutingPref), url);
+      !base::FeatureList::IsEnabled(containers::features::kContainers)) {
+    return {};
+  }
+  const auto& config = profile->GetPrefs()->GetDict(kUrlRoutingPref);
+  const bool allow_merchant_only_rules =
+      !source_container_id ||
+      IsMerchantShopContainer(profile, *source_container_id);
+  const auto* rule =
+      FindUrlRoutingRule(config, url, allow_merchant_only_rules);
   if (!rule) return {};
   const auto target = Text(*rule, "containerId");
   auto result = base::DictValue().Set("ruleId", Text(*rule, "id"))
       .Set("containerId", target).Set("available", TargetExists(profile, target));
+  if (IsMerchantOnlyUrlRoutingRule(*rule)) {
+    result.Set("sourceScope", "merchant");
+  }
   const auto destination = TransformUrlRoutingDestination(*rule, url);
   if (!destination.is_valid()) {
     result.Set("destinationError", "INVALID_ROUTING_PRODUCT_ID");
   } else if (destination != url) {
     const auto* destination_rule =
-        FindUrlRoutingRule(profile->GetPrefs()->GetDict(kUrlRoutingPref),
-                           destination);
+        FindUrlRoutingRule(config, destination,
+                           IsMerchantShopContainer(profile, target));
     if (destination_rule && Text(*destination_rule, "containerId") != target) {
       result.Set("destinationError", "ROUTING_TRANSFORM_CONFLICT");
     } else {
@@ -133,7 +147,7 @@ base::DictValue RunUrlRoutingCommand(Profile* profile, const base::DictValue& re
       }
     }
     result.Set("matches", std::move(matches));
-    auto resolution = ResolveUrlRouting(profile, url);
+    auto resolution = ResolveUrlRouting(profile, url, std::nullopt);
     resolution.Set("matched", !resolution.empty());
     result.Set("resolution", std::move(resolution));
     result.Set("networkRequests", 0);

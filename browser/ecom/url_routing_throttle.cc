@@ -2,12 +2,14 @@
 #include "brave/browser/ecom/url_routing_throttle.h"
 #include <set>
 #include <memory>
+#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/supports_user_data.h"
 #include "base/task/sequenced_task_runner.h"
 #include "brave/browser/ecom/memory_actions.h"
 #include "brave/browser/ecom/url_routing.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
+#include "brave/components/containers/core/common/features.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
@@ -54,7 +56,9 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
   // Use its initial-blank predicate, which also excludes restored/cloned tabs.
   const bool blank = source->GetController().IsInitialBlankNavigation();
   if (!error) {
-    const auto current = ResolveUrlRouting(profile, original_url);
+    const auto current = ResolveUrlRouting(
+        profile, original_url,
+        containers::GetContainerIdForWebContents(source.get()));
     const auto* current_rule = current.FindString("ruleId");
     const auto* current_target = current.FindString("containerId");
     const auto* rewritten = current.FindString("destinationUrl");
@@ -95,7 +99,8 @@ UrlRoutingThrottle::UrlRoutingThrottle(content::NavigationThrottleRegistry& regi
     : NavigationThrottle(registry) {}
 void UrlRoutingThrottle::MaybeCreateAndAdd(content::NavigationThrottleRegistry& registry) {
   auto& handle = registry.GetNavigationHandle();
-  if ((handle.IsInPrimaryMainFrame() || handle.IsInPrerenderedMainFrame()) &&
+  if (base::FeatureList::IsEnabled(containers::features::kContainers) &&
+      (handle.IsInPrimaryMainFrame() || handle.IsInPrerenderedMainFrame()) &&
       !handle.IsSameDocument() &&
       Profile::FromBrowserContext(handle.GetWebContents()->GetBrowserContext())->IsRegularProfile())
     registry.AddThrottle(std::make_unique<UrlRoutingThrottle>(registry));
@@ -111,11 +116,14 @@ content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::Route() {
   auto* handle = navigation_handle();
   if (handle->GetRestoreType() != content::RestoreType::kNotRestored) return PROCEED;
   auto* source = handle->GetWebContents();
-  const auto decision = ResolveUrlRouting(Profile::FromBrowserContext(source->GetBrowserContext()), handle->GetURL());
+  const auto source_container = containers::GetContainerIdForWebContents(source);
+  const auto decision = ResolveUrlRouting(
+      Profile::FromBrowserContext(source->GetBrowserContext()), handle->GetURL(),
+      source_container);
   if (decision.empty()) return PROCEED;
   const auto* container = decision.FindString("containerId");
   if (!container) return CANCEL_AND_IGNORE;
-  if (*container == containers::GetContainerIdForWebContents(source) &&
+  if (*container == source_container &&
       decision.FindBool("available").value_or(false)) return PROCEED;
   // Do not preload a page in the wrong partition or surface a speculative tab.
   // A later real navigation will evaluate the rule in the normal main frame.
