@@ -7,6 +7,7 @@
 
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
+#include "base/logging.h"
 #include "base/memory/weak_ptr.h"
 #include "base/supports_user_data.h"
 #include "base/task/sequenced_task_runner.h"
@@ -92,7 +93,7 @@ class ProductNavigation final : public base::SupportsUserData::Data,
       : content::WebContentsObserver(tab->GetContents()),
         window_(window->GetWeakPtr()),
         anchor_(anchor->GetWeakPtr()),
-        anchor_url_(anchor->GetVisibleURL()),
+        anchor_url_(anchor->GetLastCommittedURL()),
         tab_(std::move(tab)),
         item_id_(std::move(item_id)),
         foreground_(foreground),
@@ -270,9 +271,15 @@ class ProductNavigation final : public base::SupportsUserData::Data,
       auto* tabs = window->GetTabStripModel();
       const int anchor_index = tabs->GetIndexOfWebContents(anchor.get());
       if (anchor_index != TabStripModel::kNoTab) {
-        const bool activate =
-            foreground_ && tabs->GetActiveWebContents() == anchor.get() &&
-            anchor->GetVisibleURL() == anchor_url_;
+        const bool same_anchor =
+            tabs->GetActiveWebContents() == anchor.get() &&
+            anchor->GetLastCommittedURL() == anchor_url_ &&
+            !anchor->GetController().GetPendingEntry();
+        const bool activate = foreground_ && same_anchor;
+        VLOG(0) << "Ecom buyer product route finished: status="
+                << (error ? error : "DETAIL_READY")
+                << ", foreground=" << activate
+                << ", anchor_current=" << same_anchor;
         const bool close_blank = close_initial_blank_;
         Observe(nullptr);
         if (error) {
