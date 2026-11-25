@@ -58,7 +58,9 @@ const zh = {
   local: '会话保存在本机 Ecom',
   add: '添加店铺',
   search: '搜索店铺名称、账号或店铺 ID',
-  refresh: '刷新',
+  refresh: '检查登录状态',
+  refreshingLogin: '正在检查登录…',
+  refreshLoginTitle: '重新核验所有支持登录检查的账号',
   allStates: '全部',
   ready: '身份已核验',
   pending: '待处理',
@@ -164,7 +166,9 @@ const en = {
   local: 'Sessions stored in this Ecom',
   add: 'Add shop',
   search: 'Search shop, account or shop ID',
-  refresh: 'Refresh',
+  refresh: 'Check sign-in',
+  refreshingLogin: 'Checking sign-in…',
+  refreshLoginTitle: 'Check sign-in again for all supported accounts',
   allStates: 'All',
   ready: 'Identity verified',
   pending: 'Needs attention',
@@ -409,10 +413,12 @@ document
   .querySelectorAll('[data-placeholder]')
   .forEach((node) => (node.placeholder = text(node.dataset.placeholder)))
 $('search').ariaLabel = text('search')
+$('refresh').title = text('refreshLoginTitle')
 let rows = [],
   scope = 'all',
   state = 'all',
   busy = false,
+  manualRefresh = false,
   confirmationId
 const homeDirty = { create: false, edit: false }
 $('routing-nav-label').textContent = copy === zh ? '网址打开规则' : 'URL opening rules'
@@ -816,6 +822,10 @@ function button(label, action, row, className) {
   return result
 }
 function render() {
+  if (manualRefresh && !busy && !rows.some(row => row.checking))
+    manualRefresh = false
+  $('refresh').disabled = busy || manualRefresh
+  $('refresh').textContent = text(manualRefresh ? 'refreshingLogin' : 'refresh')
   const signature = JSON.stringify([
     rows,
     scope,
@@ -1067,13 +1077,15 @@ $('states').addEventListener('click', (event) => {
 })
 $('search').addEventListener('input', render)
 $('refresh').addEventListener('click', async () => {
-  if (busy) return
+  if (busy || manualRefresh) return
+  manualRefresh = true
   setBusy(true)
+  render()
   try {
     await command({ method: 'shops.refresh', force: true })
-    await refresh()
     setBusy(false)
   } catch (error) {
+    manualRefresh = false
     setBusy(false)
     showError(error)
   }
@@ -1300,7 +1312,7 @@ setInterval(async () => {
     document.hidden
     || busy
     || document.querySelector('dialog[open]')
-    || document.activeElement?.closest('tbody')
+    || (!manualRefresh && document.activeElement?.closest('tbody'))
   )
     return
   try {

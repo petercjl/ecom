@@ -913,7 +913,7 @@ class ShopService final : public base::SupportsUserData::Data,
       return;
     }
     if (method == "shops.verify") {
-      Verify(id, std::move(callback));
+      Verify(id, std::move(callback), true);
       return;
     }
     Send(std::move(callback), Error("UNSUPPORTED_COMMAND"));
@@ -1192,7 +1192,7 @@ class ShopService final : public base::SupportsUserData::Data,
                base::StringPrintf("#%06x", c->background_color & 0xFFFFFF));
       item.Set("openTabs", OpenTabCount(profile_, c->id));
       item.Set("checking", loaders_.contains(c->id) ||
-          std::find(queue_.begin(), queue_.end(), c->id) != queue_.end());
+          std::ranges::find(queue_, c->id, &QueuedCheck::id) != queue_.end());
       shops.Append(std::move(item));
     }
     return base::DictValue().Set("ok", true).Set("shops", std::move(shops));
@@ -1213,26 +1213,37 @@ class ShopService final : public base::SupportsUserData::Data,
           ? base::Time::FromSecondsSinceUnixEpoch(checked_at) : base::Time();
       const auto stagger = base::Seconds(base::PersistentHash(container->id) % 60);
       const auto now = base::Time::Now();
-      const auto* front_check = metadata ? GetFrontLoginCheck(*metadata) : nullptr;
+      if (!metadata || !SupportsVerification(*metadata) ||
+          loaders_.contains(container->id)) {
+        continue;
+      }
+      auto queued = std::ranges::find(queue_, container->id, &QueuedCheck::id);
+      if (queued != queue_.end()) {
+        queued->manual |= force;
+        continue;
+      }
+      const auto* front_check = GetFrontLoginCheck(*metadata);
       const bool front_page_ready =
           front_check && Field(*metadata, "lastError") == front_check->page_required &&
           FindLoadedFrame(container->id, front_check->origin);
       const bool pinduoduo_login_retry =
-          manager_refresh && metadata &&
+          manager_refresh &&
           Field(*metadata, "platform") == "pinduoduo" &&
           Field(*metadata, "state") == "login-required" &&
           now - checked >= base::Seconds(30) &&
           FindLoadedFrame(container->id, kPinduoduoMerchantOrigin);
-      if (metadata && SupportsVerification(*metadata) &&
-          (front_page_ready || pinduoduo_login_retry ||
+      if ((front_page_ready || pinduoduo_login_retry ||
            IsShopCheckDue(Field(*metadata, "state"), checked, now,
                           manager_refresh, force, stagger)) &&
           (force || !attempts_.contains(container->id) ||
-           now - attempts_[container->id] >= base::Seconds(30)) &&
-          !loaders_.contains(container->id) &&
-          std::find(queue_.begin(), queue_.end(), container->id) ==
-              queue_.end()) {
-        queue_.push_back(container->id);
+           now - attempts_[container->id] >= base::Seconds(30))) {
+        // A closed or unloaded Douyin tab does not invalidate a verified session.
+        if (!force && front_check == &kDouyinFrontCheck &&
+            Field(*metadata, "state") == "signed-in" &&
+            !FindLoadedFrame(container->id, front_check->origin)) {
+          continue;
+        }
+        queue_.push_back({container->id, force});
       }
     }
     PumpChecks();
@@ -1242,16 +1253,17 @@ class ShopService final : public base::SupportsUserData::Data,
       return;
     }
     while (profile_ && loaders_.size() < 2 && !queue_.empty()) {
-      auto id = queue_.front();
+      auto [id, manual] = std::move(queue_.front());
       queue_.pop_front();
       if (!Metadata().FindDict(id) ||
           !SupportsVerification(*Metadata().FindDict(id)) ||
           loaders_.contains(id) ||
-          (attempts_.contains(id) &&
+          (!manual && attempts_.contains(id) &&
            base::Time::Now() - attempts_[id] < base::Seconds(30))) {
         continue;
       }
-      Verify(id, base::BindOnce(&ShopService::AutoChecked, weak_.GetWeakPtr()));
+      Verify(id, base::BindOnce(&ShopService::AutoChecked, weak_.GetWeakPtr()),
+             manual);
       pump_timer_.Start(
           FROM_HERE, base::Seconds(3),
           base::BindOnce(&ShopService::PumpChecks, weak_.GetWeakPtr()));
@@ -1333,7 +1345,7 @@ class ShopService final : public base::SupportsUserData::Data,
     }
     Send(std::move(pending.callback), Error("LOGIN_REDIRECT"));
   }
-  void Verify(const std::string& id, Reply callback) {
+  void Verify(const std::string& id, Reply callback, bool manual) {
     if (loaders_.contains(id)) {
       Send(std::move(callback), Error("BUSY"));
       return;
@@ -1345,7 +1357,7 @@ class ShopService final : public base::SupportsUserData::Data,
       return;
     }
     if (const auto* front_check = GetFrontLoginCheck(shop)) {
-      CheckFrontLogin(id, std::move(callback), *front_check);
+      CheckFrontLogin(id, std::move(callback), *front_check, manual);
       return;
     }
     if (GetXiaohongshuSurface(shop) == XiaohongshuSurface::kMerchant) {
@@ -1492,10 +1504,15 @@ class ShopService final : public base::SupportsUserData::Data,
 
   void CheckFrontLogin(const std::string& id,
                        Reply callback,
-                       FrontLoginCheck check) {
+                       FrontLoginCheck check,
+                       bool manual) {
     auto* frame = FindLoadedFrame(id, check.origin);
     loaders_[id] = {nullptr, std::move(callback), 0};
     if (!frame) {
+      if (manual && std::string_view(check.service) == kDouyinFrontCheck.service) {
+        StartBackgroundDouyinCheck(id);
+        return;
+      }
       base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE,
           base::BindOnce(&ShopService::FinishSessionCheck, weak_.GetWeakPtr(),
@@ -1520,6 +1537,88 @@ class ShopService final : public base::SupportsUserData::Data,
                        weak_.GetWeakPtr(), id, check, pending.page_check_token,
                        frame->GetWeakDocumentPtr()),
         ISOLATED_WORLD_ID_BRAVE_INTERNAL);
+  }
+
+  void StartBackgroundDouyinCheck(const std::string& id) {
+    const GURL url(kDouyinFrontCheck.origin);
+    const auto config = content::StoragePartitionConfig::Create(
+        profile_, containers::kContainersStoragePartitionDomain, id, false);
+    content::WebContents::CreateParams params(
+        profile_, content::SiteInstance::CreateForFixedStoragePartition(
+                      profile_, url, config));
+    params.initially_hidden = true;
+    params.is_never_composited = true;
+    auto& pending = loaders_.at(id);
+    pending.page = content::WebContents::Create(params);
+    pending.page->SetAudioMuted(true);
+    pending.page_check_token = base::Uuid::GenerateRandomV4().AsLowercaseString();
+    pending.page_timeout = std::make_unique<base::OneShotTimer>();
+    pending.page_timeout->Start(
+        FROM_HERE, base::Seconds(15),
+        base::BindOnce(&ShopService::FinishSessionCheck, weak_.GetWeakPtr(), id,
+                       std::string_view(kDouyinFrontCheck.service),
+                       std::string_view(kDouyinFrontCheck.source),
+                       std::string_view("unknown"), 0,
+                       std::string_view("LOGIN_CHECK_UNAVAILABLE")));
+    pending.page->GetController().LoadURLWithParams(
+        content::NavigationController::LoadURLParams(url));
+    PollBackgroundDouyin(id, pending.page_check_token);
+  }
+
+  void PollBackgroundDouyin(const std::string& id, const std::string& token) {
+    auto pending = loaders_.find(id);
+    if (pending == loaders_.end() || pending->second.page_check_token != token) {
+      return;
+    }
+    auto* page = pending->second.page.get();
+    auto* frame = page->GetPrimaryMainFrame();
+    if (!frame->IsRenderFrameLive() || page->IsLoading() ||
+        frame->GetLastCommittedOrigin() !=
+            url::Origin::Create(GURL(kDouyinFrontCheck.origin))) {
+      BackgroundDouyinChecked(id, token, {}, {});
+      return;
+    }
+    frame->ExecuteJavaScriptInIsolatedWorld(
+        kDouyinFrontCheck.script,
+        base::BindOnce(&ShopService::BackgroundDouyinChecked,
+                       weak_.GetWeakPtr(), id, token, frame->GetWeakDocumentPtr()),
+        ISOLATED_WORLD_ID_BRAVE_INTERNAL);
+  }
+
+  void BackgroundDouyinChecked(const std::string& id,
+                               const std::string& token,
+                               content::WeakDocumentPtr document,
+                               base::Value result) {
+    auto pending = loaders_.find(id);
+    if (pending == loaders_.end() || pending->second.page_check_token != token) {
+      return;
+    }
+    auto* frame = document.AsRenderFrameHostIfValid();
+    const auto state = frame && frame->IsInPrimaryMainFrame() &&
+                               result.is_string()
+                           ? std::string_view(result.GetString())
+                           : std::string_view();
+    const auto now = base::TimeTicks::Now();
+    auto& signed_out_since = pending->second.page_signed_out_since;
+    if (state == "signed-out") {
+      if (signed_out_since.is_null()) {
+        signed_out_since = now;
+      }
+    } else {
+      signed_out_since = {};
+    }
+    // The website can render a sign-in button before its session finishes loading.
+    if (state == "authenticated" ||
+        (!signed_out_since.is_null() &&
+         now - signed_out_since >= base::Seconds(3))) {
+      FinishSessionCheck(id, kDouyinFrontCheck.service, kDouyinFrontCheck.source,
+                         state, 0);
+      return;
+    }
+    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE, base::BindOnce(&ShopService::PollBackgroundDouyin,
+                                 weak_.GetWeakPtr(), id, token),
+        base::Milliseconds(400));
   }
 
   void FrontLoginChecked(const std::string& id,
@@ -2051,6 +2150,12 @@ class ShopService final : public base::SupportsUserData::Data,
     int redirects = 0;
     std::string page_check_token = {};
     std::unique_ptr<base::OneShotTimer> page_timeout = nullptr;
+    std::unique_ptr<content::WebContents> page = nullptr;
+    base::TimeTicks page_signed_out_since = {};
+  };
+  struct QueuedCheck {
+    std::string id;
+    bool manual;
   };
   struct DeletePlan {
     std::string token;
@@ -2059,7 +2164,7 @@ class ShopService final : public base::SupportsUserData::Data,
   };
   std::map<std::string, PendingCheck> loaders_;
   std::map<std::string, DeletePlan> delete_plans_;
-  std::deque<std::string> queue_;
+  std::deque<QueuedCheck> queue_;
   std::map<std::string, base::Time> attempts_;
   base::RepeatingTimer timer_;
   base::OneShotTimer pump_timer_;
