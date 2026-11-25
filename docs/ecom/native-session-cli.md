@@ -27,9 +27,11 @@ node ecom/cli.mjs capabilities
 
 公开能力包提供 `ecom-cli containers verify --container <ID或唯一名称> --json`、`ecom-cli containers inspect --container <ID或唯一名称> --json` 及 `ecom-cli session request --container <ID或唯一名称> --url <已授权只读HTTPS地址> --method GET --json`。这些命令使用下述原生信箱，通过 `--instance` 或 `--profile` 可指定目标实例。
 
-`containers verify` 和桌面账号管理的核验按钮均调用原生 `shops.verify`，由当前浏览器版本按容器选择平台检测方法。`containers inspect` 读取最近一次核验结果。小红书千帆后台使用该容器的原生会话请求核验。小红书前台与抖音网页版在各自的账号容器中检查已打开网页的登录状态。缺少可检查的页面时返回 `authenticationState: unknown`，打开页面后可再次核验。抖音网页版适用于登录首页为 `https://www.douyin.com/` 同源页面的账号，原生结果来源为 `douyin-front-page`。抖店后台保持待接入。登录状态与店铺身份核验分别返回。
+`containers verify` 和桌面账号管理的单账号核验均调用原生 `shops.verify`，由当前浏览器版本按容器选择平台检测方法。`containers inspect` 读取最近一次核验结果。小红书千帆后台使用该容器的原生会话请求核验。小红书前台使用同一容器中已打开的网页，缺少可检查的页面时返回 `authenticationState: unknown`。抖音网页版适用于登录首页为 `https://www.douyin.com/` 同源页面的账号，原生结果来源为 `douyin-front-page`。显式核验可在原容器临时加载官网，无需已有标签。管理页“检查登录状态”调用 `shops.refresh` 并传入 `force: true`，在原生队列安排所有可核验容器，界面通过 `shops.list` 读取各账号结果。抖店后台保持待接入。登录状态与店铺身份核验分别返回。
 
 2026-11-25 macOS Dev 验收，源码 `4f38afe1f`。普通有界面模式下，目标容器无可检查页面时，原生结果为 `DOUYIN_FRONT_PAGE_REQUIRED`，已安装 CLI 0.6.0 返回 `unknown`。在同一容器打开抖音网页后，CLI 返回 `authenticated`，账号管理页显示“已登录 · 登录已核验”。用独立访客上下文打开同一官网，开发诊断中的同一页面检查返回 `signed-out`。验收结束时 Dev 使用普通模式，调试端口已关闭。
+
+同日复验源码 `5ef57f69a`。普通有界面模式下，抖音个人容器在零可见标签时通过手动检查返回 `authenticated`，账号管理页同步显示核验成功。通过按钮对应的原生全量检查入口提交一轮，14 个可核验容器均更新最近检查时间。独立无会话 Profile 的两次抖音检查均无法确认登录，保留待确认。其中第二次显式刷新在常规重查间隔内成功重新调度。独立 Profile 已清理。
 
 详情输出投影平台、首页、外观、服务登录检查时间及 Cookie 期限参考，并区分已保存身份 `identityBound` 与当前已核实身份 `identityConfirmed`。请求禁止凭证参数、请求体及自选请求头，来源必须与实例启用的 HTTPS 来源完全一致；选定实例和容器后，端点变更在提交前拒绝。客户端为原生请求保留最长 60 秒等待，超时结果未知时保留操作 ID。
 
