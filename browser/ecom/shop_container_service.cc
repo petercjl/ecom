@@ -96,6 +96,7 @@ namespace {
 using Reply = base::OnceCallback<void(std::string)>;
 constexpr char kServiceKey[] = "ecom.shop.service";
 constexpr char kHome[] = "https://sycm.taobao.com/portal/home.htm";
+constexpr char kPinduoduoMerchantOrigin[] = "https://mms.pinduoduo.com/";
 constexpr char kPinduoduoLoginApi[] =
     "https://mms.pinduoduo.com/janus/api/checkLogin";
 constexpr char kXiaohongshuMerchantOrigin[] = "https://ark.xiaohongshu.com/";
@@ -181,7 +182,7 @@ struct PlatformDefinition {
 constexpr std::array<PlatformDefinition, 6> kPlatforms = {{
     {"taobao", "淘宝 / 天猫", "https://sycm.taobao.com/portal/home.htm"},
     {"douyin", "抖音", "https://fxg.jinritemai.com/"},
-    {"pinduoduo", "拼多多", "https://mms.pinduoduo.com/"},
+    {"pinduoduo", "拼多多", kPinduoduoMerchantOrigin},
     {"jd", "京东", "https://shop.jd.com/jdm/home"},
     {"xiaohongshu", "小红书", "https://ark.xiaohongshu.com/"},
     {"custom", "自定义", ""},
@@ -1211,16 +1212,23 @@ class ShopService final : public base::SupportsUserData::Data,
       const auto checked = checked_at > 0
           ? base::Time::FromSecondsSinceUnixEpoch(checked_at) : base::Time();
       const auto stagger = base::Seconds(base::PersistentHash(container->id) % 60);
+      const auto now = base::Time::Now();
       const auto* front_check = metadata ? GetFrontLoginCheck(*metadata) : nullptr;
       const bool front_page_ready =
           front_check && Field(*metadata, "lastError") == front_check->page_required &&
-          FindFrontFrame(container->id, front_check->origin);
+          FindLoadedFrame(container->id, front_check->origin);
+      const bool pinduoduo_login_retry =
+          manager_refresh && metadata &&
+          Field(*metadata, "platform") == "pinduoduo" &&
+          Field(*metadata, "state") == "login-required" &&
+          now - checked >= base::Seconds(30) &&
+          FindLoadedFrame(container->id, kPinduoduoMerchantOrigin);
       if (metadata && SupportsVerification(*metadata) &&
-          (front_page_ready ||
-           IsShopCheckDue(Field(*metadata, "state"), checked, base::Time::Now(),
+          (front_page_ready || pinduoduo_login_retry ||
+           IsShopCheckDue(Field(*metadata, "state"), checked, now,
                           manager_refresh, force, stagger)) &&
           (force || !attempts_.contains(container->id) ||
-           base::Time::Now() - attempts_[container->id] >= base::Seconds(30)) &&
+           now - attempts_[container->id] >= base::Seconds(30)) &&
           !loaders_.contains(container->id) &&
           std::find(queue_.begin(), queue_.end(), container->id) ==
               queue_.end()) {
@@ -1457,8 +1465,8 @@ class ShopService final : public base::SupportsUserData::Data,
                        status);
   }
 
-  content::RenderFrameHost* FindFrontFrame(const std::string& id,
-                                         const char* page_origin) {
+  content::RenderFrameHost* FindLoadedFrame(const std::string& id,
+                                           const char* page_origin) {
     const auto origin = url::Origin::Create(GURL(page_origin));
     content::RenderFrameHost* target = nullptr;
     ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
@@ -1485,7 +1493,7 @@ class ShopService final : public base::SupportsUserData::Data,
   void CheckFrontLogin(const std::string& id,
                        Reply callback,
                        FrontLoginCheck check) {
-    auto* frame = FindFrontFrame(id, check.origin);
+    auto* frame = FindLoadedFrame(id, check.origin);
     loaders_[id] = {nullptr, std::move(callback), 0};
     if (!frame) {
       base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
