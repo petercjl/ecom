@@ -1220,6 +1220,8 @@ void OpenUrlWithoutContainer(BrowserWindowInterface* bwi,
   params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
   params.initiator_origin = std::move(initiator_origin);
   params.started_from_context_menu = started_from_context_menu;
+  params.storage_partition_config =
+      content::StoragePartitionConfig::CreateDefault(bwi->GetProfile());
   Navigate(&params);
 }
 

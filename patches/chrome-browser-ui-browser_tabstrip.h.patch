@@ -1,0 +1,14 @@
+diff --git a/chrome/browser/ui/browser_tabstrip.h b/chrome/browser/ui/browser_tabstrip.h
+index 9e0ade9b42d38c111b54564762be15a59b71f3c0..c2213893414653d6e031c694121d173e77e2c27b 100644
+--- a/chrome/browser/ui/browser_tabstrip.h
++++ b/chrome/browser/ui/browser_tabstrip.h
+@@ -39,7 +39,8 @@ content::WebContents* AddAndReturnTabAt(
+     bool foreground,
+     std::optional<tab_groups::TabGroupId> group = std::nullopt,
+     bool pinned = false,
+-    std::optional<NavigateParams::WindowAction> window_action = std::nullopt);
++    std::optional<NavigateParams::WindowAction> window_action = std::nullopt,
++    bool use_default_storage_partition = false);
+
+ // Same as above, but eats the return value to make Bind*() easier.
+ void AddTabAt(

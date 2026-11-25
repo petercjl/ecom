@@ -16,6 +16,7 @@
 #include "base/test/run_until.h"
 #include "base/test/test_future.h"
 #include "base/threading/thread_restrictions.h"
+#include "build/build_config.h"
 #include "brave/browser/containers/containers_service_factory.h"
 #include "brave/browser/containers/used_container_storage_partitions.h"
 #include "brave/browser/ui/browser_commands.h"
@@ -26,6 +27,7 @@
 #include "brave/components/containers/core/browser/container_specifier.h"
 #include "brave/components/containers/core/browser/containers_service.h"
 #include "brave/components/containers/core/browser/containers_test_utils.h"
+#include "brave/components/containers/core/browser/pref_names.h"
 #include "brave/components/containers/core/browser/prefs.h"
 #include "brave/components/containers/core/browser/temporary_container.h"
 #include "brave/components/containers/core/common/features.h"
@@ -63,6 +65,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "components/prefs/scoped_user_pref_update.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/permissions/permission_request_manager.h"
 #include "components/permissions/request_type.h"
@@ -2631,6 +2634,43 @@ IN_PROC_BROWSER_TEST_F(ContainersBrowserTest,
             storage_partition->GetConfig().partition_domain());
 }
 
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+IN_PROC_BROWSER_TEST_F(ContainersBrowserTest,
+                       NewTabButtonOpensWithoutActiveShopContainer) {
+  const GURL shop_url = https_server_.GetURL("a.test", "/simple.html");
+  auto* profile_prefs = browser()->GetProfile()->GetPrefs();
+  profile_prefs->SetBoolean(::prefs::kHomePageIsNewTabPage, true);
+  {
+    ScopedDictPrefUpdate shops(profile_prefs, prefs::kShopContainers);
+    shops->Set(kTestContainerId,
+               base::DictValue().Set("homeUrl", shop_url.spec()));
+  }
+
+  auto* shop_tab = OpenUrlInContainerTab(shop_url, kTestContainerId);
+  auto* model = browser()->tab_strip_model();
+  ASSERT_EQ(shop_tab, model->GetActiveWebContents());
+  ASSERT_EQ(kTestContainerId, GetContainerIdForWebContents(shop_tab));
+
+  auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+  ASSERT_TRUE(browser_view);
+  auto* region = views::AsViewClass<HorizontalTabStripRegionView>(
+      browser_view->tab_strip_view());
+  ASSERT_TRUE(region);
+  const int previous_count = model->count();
+  const gfx::Point location = region->new_tab_button()->bounds().CenterPoint();
+  const ui::MouseEvent click(ui::EventType::kMouseReleased, location, location,
+                            ui::EventTimeForNow(), ui::EF_LEFT_MOUSE_BUTTON,
+                            ui::EF_LEFT_MOUSE_BUTTON);
+  views::test::ButtonTestApi(region->new_tab_button()).NotifyClick(click);
+
+  ASSERT_EQ(previous_count + 1, model->count());
+  auto* ordinary_tab = model->GetActiveWebContents();
+  ASSERT_TRUE(content::WaitForLoadStop(ordinary_tab));
+  EXPECT_TRUE(GetContainerIdForWebContents(ordinary_tab).empty());
+  EXPECT_NE(shop_url, ordinary_tab->GetLastCommittedURL());
+}
+#endif
+
 IN_PROC_BROWSER_TEST_F(ContainersBrowserTest,
                        BraveNewTabButtonShowContextMenuForContainers) {
   std::vector<mojom::ContainerPtr> synced;
@@ -2773,7 +2813,7 @@ IN_PROC_BROWSER_TEST_F(ContainersBrowserTest,
   Profile* profile = browser()->GetProfile();
   SessionStartupPref pref(SessionStartupPref::DEFAULT);
   SessionStartupPref::SetStartupPref(profile, pref);
-  profile->GetPrefs()->SetInteger(prefs::kRestoreOnStartup,
+  profile->GetPrefs()->SetInteger(::prefs::kRestoreOnStartup,
                                   SessionStartupPref::kPrefValueNewTab);
   ExitTypeService::GetInstanceForProfile(profile)
       ->SetLastSessionExitTypeForTest(ExitType::kClean);
@@ -2906,7 +2946,7 @@ IN_PROC_BROWSER_TEST_F(ContainersCommandLineContainerBrowserTest,
 
   SessionStartupPref pref(SessionStartupPref::DEFAULT);
   SessionStartupPref::SetStartupPref(profile, pref);
-  profile->GetPrefs()->SetInteger(prefs::kRestoreOnStartup,
+  profile->GetPrefs()->SetInteger(::prefs::kRestoreOnStartup,
                                   SessionStartupPref::kPrefValueNewTab);
 }
 
@@ -2995,7 +3035,7 @@ IN_PROC_BROWSER_TEST_F(
 
   SessionStartupPref pref(SessionStartupPref::DEFAULT);
   SessionStartupPref::SetStartupPref(profile, pref);
-  profile->GetPrefs()->SetInteger(prefs::kRestoreOnStartup,
+  profile->GetPrefs()->SetInteger(::prefs::kRestoreOnStartup,
                                   SessionStartupPref::kPrefValueNewTab);
 }
 
