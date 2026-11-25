@@ -93,11 +93,25 @@
   "localUpdateRecoveryVerified": false,
   "updateRoundTripVerified": false,
   "rollbackRoundTripVerified": false,
-  "published": false,
+  "published": true,
   "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.12.md",
   "devValidation": {
     "verified": true,
     "sourceRevision": "15bc91786551180299c625ece2bb079688c33931",
     "evidencePath": "docs/ecom/release-evidence/dev-desktop-0.1.12.md"
+  },
+  "publication": {
+    "packageName": "@lumyne/ecom-windows-x64",
+    "version": "0.1.12",
+    "tag": "latest",
+    "bytes": 7327,
+    "integrity": "sha512-ws4VAJsNiX8S5zEk/mVHX2V6vBQB9KGUg0VNDWzu83oZj87YEx3OzwooWWADPmITgy3i4Y/O1ek16efVIMzmjw==",
+    "tarballSha256": "e9667d76094630fa081e7b3a760665485b73a681c4e8e4681d13922ccab5a967",
+    "actualRegistryDownload": true,
+    "verifiedAt": "2026-11-25T03:15:56.600Z",
+    "mode": "local",
+    "artifactVerified": true,
+    "isolatedInstallVerified": true,
+    "validatedPublicationRevision": "5dde99c0f5d400ad3243d40229ddef3d737a7d96"
   }
 }
