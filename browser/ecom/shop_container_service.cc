@@ -104,6 +104,58 @@ constexpr char kXiaohongshuMerchantLoginApi[] =
     "https://ark.xiaohongshu.com/api/edith/seller/info/v2";
 constexpr char kXiaohongshuFrontSource[] = "xiaohongshu-front-page";
 constexpr char kXiaohongshuPageRequired[] = "XHS_FRONT_PAGE_REQUIRED";
+constexpr char16_t kDouyinFrontLoginScript[] = uR"JS((() => {
+  if (location.origin !== 'https://www.douyin.com') return 'unknown';
+  const header = document.querySelector('#douyin-header');
+  if (!header) return 'unknown';
+  const visible = e => e.getClientRects().length > 0 &&
+      e.getBoundingClientRect().width > 0 && e.getBoundingClientRect().height > 0 &&
+      getComputedStyle(e).visibility === 'visible';
+  if ([...document.querySelectorAll('iframe[src*=captcha], [role="dialog"]')]
+        .some(e => visible(e) && (e.matches('iframe') ||
+            /安全验证|请完成验证|滑动验证/.test(e.innerText)))) return 'unknown';
+  const login = [...header.querySelectorAll('button, [role="button"]')]
+      .some(e => visible(e) && /^(登录|立即登录)$/.test(e.innerText.trim()));
+  const profile = [...header.querySelectorAll('a')]
+      .some(a => a.origin === location.origin && a.pathname === '/user/self' &&
+          visible(a) && [...a.querySelectorAll('[data-e2e="live-avatar"] img')]
+              .some(visible));
+  if (login && profile) return 'unknown';
+  if (login) return 'signed-out';
+  return profile ? 'authenticated' : 'unknown';
+})())JS";
+constexpr char16_t kXiaohongshuFrontLoginScript[] = uR"JS((() => {
+  if (location.origin !== 'https://www.xiaohongshu.com') return 'unknown';
+  const visible = e => e.getClientRects().length > 0 &&
+      getComputedStyle(e).visibility === 'visible';
+  if ([...document.querySelectorAll('iframe[src*=captcha], [role="dialog"]')]
+        .some(e => visible(e) &&
+            (e.matches('iframe') || /安全验证|请完成验证|滑动验证/.test(e.innerText)))) {
+    return 'unknown';
+  }
+  const login = [...document.querySelectorAll('button, a, [role="button"]')]
+    .some(e => visible(e) && /^(登录|立即登录|登录小红书)$/.test(e.innerText?.trim())
+        && e.closest('nav, aside, header, [role="dialog"], [class*="login"], [class*="side-bar"]'));
+  const profile = [...document.querySelectorAll('a[href^="/user/profile/"]')]
+    .some(e => visible(e) && /^(我|我的)$/.test(e.innerText?.trim())
+        && e.closest('nav, aside, header, [class*="side-bar"], [class*="sidebar"]'));
+  if (login && profile) return 'unknown';
+  if (login || /^\/login(?:\/|$)/.test(location.pathname)) return 'signed-out';
+  return profile ? 'authenticated' : 'unknown';
+})())JS";
+struct FrontLoginCheck {
+  const char* origin;
+  const char* service;
+  const char* source;
+  const char* page_required;
+  const char16_t* script;
+};
+constexpr FrontLoginCheck kXiaohongshuFrontCheck{
+    kXiaohongshuFrontOrigin, "xiaohongshu", kXiaohongshuFrontSource,
+    kXiaohongshuPageRequired, kXiaohongshuFrontLoginScript};
+constexpr FrontLoginCheck kDouyinFrontCheck{
+    "https://www.douyin.com/", "douyin", "douyin-front-page",
+    "DOUYIN_FRONT_PAGE_REQUIRED", kDouyinFrontLoginScript};
 constexpr char kBuyerApi[] =
     "https://h5api.m.taobao.com/h5/mtop.user.getusersimple/1.0/";
 base::DictValue Error(std::string code) {
@@ -202,10 +254,23 @@ XiaohongshuSurface GetXiaohongshuSurface(const base::DictValue& metadata) {
   return XiaohongshuSurface::kNone;
 }
 
+const FrontLoginCheck* GetFrontLoginCheck(const base::DictValue& metadata) {
+  if (GetXiaohongshuSurface(metadata) == XiaohongshuSurface::kFront) {
+    return &kXiaohongshuFrontCheck;
+  }
+  if (Field(metadata, "platform") == kDouyinFrontCheck.service &&
+      url::Origin::Create(GURL(HomeUrl(metadata))) ==
+          url::Origin::Create(GURL(kDouyinFrontCheck.origin))) {
+    return &kDouyinFrontCheck;
+  }
+  return nullptr;
+}
+
 bool SupportsVerification(const base::DictValue& metadata) {
   const auto platform = Field(metadata, "platform");
   return platform == "taobao" || platform == "pinduoduo" ||
-         GetXiaohongshuSurface(metadata) != XiaohongshuSurface::kNone;
+         GetXiaohongshuSurface(metadata) == XiaohongshuSurface::kMerchant ||
+         GetFrontLoginCheck(metadata);
 }
 bool UsesBuyerVerification(const base::DictValue& metadata) {
   if (Field(metadata, "platform") != "taobao") {
@@ -1051,7 +1116,8 @@ class ShopService final : public base::SupportsUserData::Data,
       return "INVALID_PLATFORM_INPUT";
     }
     if (!old || UsesBuyerVerification(*old) != UsesBuyerVerification(updated) ||
-        GetXiaohongshuSurface(*old) != GetXiaohongshuSurface(updated)) {
+        GetXiaohongshuSurface(*old) != GetXiaohongshuSurface(updated) ||
+        GetFrontLoginCheck(*old) != GetFrontLoginCheck(updated)) {
       updated.Remove("candidate");
       for (const char* key : {"authentication", "diagnostics", "lastError",
                               "checkedAt", "expiry"}) {
@@ -1145,9 +1211,10 @@ class ShopService final : public base::SupportsUserData::Data,
       const auto checked = checked_at > 0
           ? base::Time::FromSecondsSinceUnixEpoch(checked_at) : base::Time();
       const auto stagger = base::Seconds(base::PersistentHash(container->id) % 60);
+      const auto* front_check = metadata ? GetFrontLoginCheck(*metadata) : nullptr;
       const bool front_page_ready =
-          metadata && Field(*metadata, "lastError") == kXiaohongshuPageRequired &&
-          FindXiaohongshuFrontFrame(container->id);
+          front_check && Field(*metadata, "lastError") == front_check->page_required &&
+          FindFrontFrame(container->id, front_check->origin);
       if (metadata && SupportsVerification(*metadata) &&
           (front_page_ready ||
            IsShopCheckDue(Field(*metadata, "state"), checked, base::Time::Now(),
@@ -1269,15 +1336,13 @@ class ShopService final : public base::SupportsUserData::Data,
       CheckMerchantLogin(id, std::move(callback), false);
       return;
     }
-    switch (GetXiaohongshuSurface(shop)) {
-      case XiaohongshuSurface::kMerchant:
-        CheckMerchantLogin(id, std::move(callback), true);
-        return;
-      case XiaohongshuSurface::kFront:
-        CheckXiaohongshuFrontLogin(id, std::move(callback));
-        return;
-      case XiaohongshuSurface::kNone:
-        break;
+    if (const auto* front_check = GetFrontLoginCheck(shop)) {
+      CheckFrontLogin(id, std::move(callback), *front_check);
+      return;
+    }
+    if (GetXiaohongshuSurface(shop) == XiaohongshuSurface::kMerchant) {
+      CheckMerchantLogin(id, std::move(callback), true);
+      return;
     }
     if (UsesBuyerVerification(shop)) {
       loaders_[id] = {nullptr, std::move(callback), 0};
@@ -1392,8 +1457,9 @@ class ShopService final : public base::SupportsUserData::Data,
                        status);
   }
 
-  content::RenderFrameHost* FindXiaohongshuFrontFrame(const std::string& id) {
-    const auto origin = url::Origin::Create(GURL(kXiaohongshuFrontOrigin));
+  content::RenderFrameHost* FindFrontFrame(const std::string& id,
+                                         const char* page_origin) {
+    const auto origin = url::Origin::Create(GURL(page_origin));
     content::RenderFrameHost* target = nullptr;
     ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
         [&](BrowserWindowInterface* browser) {
@@ -1416,17 +1482,19 @@ class ShopService final : public base::SupportsUserData::Data,
     return target;
   }
 
-  void CheckXiaohongshuFrontLogin(const std::string& id, Reply callback) {
-    auto* frame = FindXiaohongshuFrontFrame(id);
+  void CheckFrontLogin(const std::string& id,
+                       Reply callback,
+                       FrontLoginCheck check) {
+    auto* frame = FindFrontFrame(id, check.origin);
     loaders_[id] = {nullptr, std::move(callback), 0};
     if (!frame) {
       base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE,
           base::BindOnce(&ShopService::FinishSessionCheck, weak_.GetWeakPtr(),
-                         id, std::string_view("xiaohongshu"),
-                         std::string_view(kXiaohongshuFrontSource),
+                         id, std::string_view(check.service),
+                         std::string_view(check.source),
                          std::string_view("unknown"), 0,
-                         std::string_view(kXiaohongshuPageRequired)));
+                         std::string_view(check.page_required)));
       return;
     }
 
@@ -1435,39 +1503,22 @@ class ShopService final : public base::SupportsUserData::Data,
     pending.page_timeout = std::make_unique<base::OneShotTimer>();
     pending.page_timeout->Start(
         FROM_HERE, base::Seconds(5),
-        base::BindOnce(&ShopService::XiaohongshuFrontLoginChecked,
-                       weak_.GetWeakPtr(), id, pending.page_check_token,
+        base::BindOnce(&ShopService::FrontLoginChecked,
+                       weak_.GetWeakPtr(), id, check, pending.page_check_token,
                        content::WeakDocumentPtr(), base::Value()));
     frame->ExecuteJavaScriptInIsolatedWorld(
-        uR"JS((() => {
-          if (location.origin !== 'https://www.xiaohongshu.com') return 'unknown';
-          const visible = e => e.getClientRects().length > 0 &&
-              getComputedStyle(e).visibility === 'visible';
-          if ([...document.querySelectorAll('iframe[src*=captcha], [role="dialog"]')]
-                .some(e => visible(e) &&
-                    (e.matches('iframe') || /安全验证|请完成验证|滑动验证/.test(e.innerText)))) {
-            return 'unknown';
-          }
-          const login = [...document.querySelectorAll('button, a, [role="button"]')]
-            .some(e => visible(e) && /^(登录|立即登录|登录小红书)$/.test(e.innerText?.trim())
-                && e.closest('nav, aside, header, [role="dialog"], [class*="login"], [class*="side-bar"]'));
-          const profile = [...document.querySelectorAll('a[href^="/user/profile/"]')]
-            .some(e => visible(e) && /^(我|我的)$/.test(e.innerText?.trim())
-                && e.closest('nav, aside, header, [class*="side-bar"], [class*="sidebar"]'));
-          if (login && profile) return 'unknown';
-          if (login || /^\/login(?:\/|$)/.test(location.pathname)) return 'signed-out';
-          return profile ? 'authenticated' : 'unknown';
-        })())JS",
-        base::BindOnce(&ShopService::XiaohongshuFrontLoginChecked,
-                       weak_.GetWeakPtr(), id, pending.page_check_token,
+        check.script,
+        base::BindOnce(&ShopService::FrontLoginChecked,
+                       weak_.GetWeakPtr(), id, check, pending.page_check_token,
                        frame->GetWeakDocumentPtr()),
         ISOLATED_WORLD_ID_BRAVE_INTERNAL);
   }
 
-  void XiaohongshuFrontLoginChecked(const std::string& id,
-                                   const std::string& token,
-                                   content::WeakDocumentPtr document,
-                                   base::Value result) {
+  void FrontLoginChecked(const std::string& id,
+                         FrontLoginCheck check,
+                         const std::string& token,
+                         content::WeakDocumentPtr document,
+                         base::Value result) {
     auto pending = loaders_.find(id);
     if (pending == loaders_.end() || pending->second.page_check_token != token) {
       return;
@@ -1480,9 +1531,9 @@ class ShopService final : public base::SupportsUserData::Data,
     if (state != "authenticated" && state != "signed-out") {
       state = "unknown";
     }
-    FinishSessionCheck(id, "xiaohongshu", kXiaohongshuFrontSource, state, 0,
+    FinishSessionCheck(id, check.service, check.source, state, 0,
                        valid ? "LOGIN_CHECK_UNAVAILABLE"
-                             : kXiaohongshuPageRequired);
+                             : check.page_required);
   }
 
   void ReadBuyerCookies(const std::string& id, bool retried) {
@@ -1583,6 +1634,11 @@ class ShopService final : public base::SupportsUserData::Data,
         GetXiaohongshuSurface(*metadata) !=
             (source == kXiaohongshuFrontSource ? XiaohongshuSurface::kFront
                                                : XiaohongshuSurface::kMerchant)) {
+      Send(std::move(pending.callback), Error("LOGIN_CHECK_TARGET_CHANGED"));
+      return;
+    }
+    if (service == kDouyinFrontCheck.service &&
+        GetFrontLoginCheck(*metadata) != &kDouyinFrontCheck) {
       Send(std::move(pending.callback), Error("LOGIN_CHECK_TARGET_CHANGED"));
       return;
     }

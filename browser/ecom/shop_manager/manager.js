@@ -252,6 +252,8 @@ Object.assign(zh, {
   buyerLoginUnknown: '买家登录状态待核验',
   buyerNeedsLogin: '淘宝账号需登录',
   pinduoduoNeedsLogin: '拼多多商家后台需登录',
+  douyinNeedsLogin: '抖音网页版需登录',
+  douyinNeedsPage: '打开抖音网页版后核验',
   xiaohongshuNeedsLogin: '小红书千帆后台需登录',
   xiaohongshuFrontNeedsLogin: '小红书前台需登录',
   xiaohongshuFrontNeedsPage: '打开小红书前台后核验',
@@ -334,6 +336,8 @@ Object.assign(en, {
   pinduoduoNeedsLogin: 'Pinduoduo merchant sign-in required',
   xiaohongshuNeedsLogin: 'Xiaohongshu merchant sign-in required',
   xiaohongshuFrontNeedsLogin: 'Xiaohongshu storefront sign-in required',
+  douyinNeedsLogin: 'Douyin website sign-in required',
+  douyinNeedsPage: 'Open the Douyin website to check sign-in',
   xiaohongshuFrontNeedsPage: 'Open the Xiaohongshu storefront to check sign-in',
   taobaoHome: 'Taobao home',
   ACCOUNT_TYPE_CHANGE_REQUIRES_NEW_CONTAINER:
@@ -857,11 +861,14 @@ function render() {
     const loginRequiredLabel = {
       taobao: 'buyerNeedsLogin',
       pinduoduo: 'pinduoduoNeedsLogin',
+      douyin: 'douyinNeedsLogin',
       xiaohongshu: row.authentication?.source === 'xiaohongshu-front-page'
         ? 'xiaohongshuFrontNeedsLogin' : 'xiaohongshuNeedsLogin',
     }[row.authentication?.service]
     let statusLabel = row.state
-    if (row.lastError === 'XHS_FRONT_PAGE_REQUIRED') {
+    if (row.lastError === 'DOUYIN_FRONT_PAGE_REQUIRED') {
+      statusLabel = 'douyinNeedsPage'
+    } else if (row.lastError === 'XHS_FRONT_PAGE_REQUIRED') {
       statusLabel = 'xiaohongshuFrontNeedsPage'
     } else if (row.state === 'login-required' && loginRequiredLabel) {
       statusLabel = loginRequiredLabel

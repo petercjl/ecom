@@ -27,7 +27,7 @@ node ecom/cli.mjs capabilities
 
 公开能力包提供 `ecom-cli containers verify --container <ID或唯一名称> --json`、`ecom-cli containers inspect --container <ID或唯一名称> --json` 及 `ecom-cli session request --container <ID或唯一名称> --url <已授权只读HTTPS地址> --method GET --json`。这些命令使用下述原生信箱，通过 `--instance` 或 `--profile` 可指定目标实例。
 
-`containers verify` 和桌面账号管理的核验按钮均调用原生 `shops.verify`，由当前浏览器版本按容器选择平台检测方法。`containers inspect` 读取最近一次核验结果。小红书千帆后台使用该容器的原生会话请求核验。小红书前台读取同一容器中已打开的小红书页面，缺少页面时返回 `authenticationState: unknown`，打开页面后可再次核验。登录状态与店铺身份核验分别返回。
+`containers verify` 和桌面账号管理的核验按钮均调用原生 `shops.verify`，由当前浏览器版本按容器选择平台检测方法。`containers inspect` 读取最近一次核验结果。小红书千帆后台使用该容器的原生会话请求核验。小红书前台与抖音网页版在各自的账号容器中检查已打开网页的登录状态。缺少可检查的页面时返回 `authenticationState: unknown`，打开页面后可再次核验。抖音网页版适用于登录首页为 `https://www.douyin.com/` 同源页面的账号，原生结果来源为 `douyin-front-page`。抖店后台保持待接入。登录状态与店铺身份核验分别返回。
 
 详情输出投影平台、首页、外观、服务登录检查时间及 Cookie 期限参考，并区分已保存身份 `identityBound` 与当前已核实身份 `identityConfirmed`。请求禁止凭证参数、请求体及自选请求头，来源必须与实例启用的 HTTPS 来源完全一致；选定实例和容器后，端点变更在提交前拒绝。客户端为原生请求保留最长 60 秒等待，超时结果未知时保留操作 ID。
 
