@@ -3,7 +3,8 @@
 
 namespace ecom {
 base::TimeDelta ShopCheckInterval(std::string_view state, bool manager_refresh) {
-  if (state == "login-required" || state == "identity-mismatch") {
+  if (state == "identity-mismatch" ||
+      (state == "login-required" && !manager_refresh)) {
     return base::Hours(2);
   }
   if (state == "verification-required") {
