@@ -4,33 +4,33 @@
 #include "url/gurl.h"
 
 namespace ecom {
-TEST(UrlRoutingRules, MerchantProductVerdictRequiresTrustedExplicitOtherShopPage) {
+TEST(UrlRoutingRules, MerchantProductVerdictRequiresTrustedDenialLayout) {
   const std::string item = "123";
   const GURL product("https://detail.tmall.com/item.htm?id=123");
   const GURL verdict("https://bixi.alicdn.com/punish/punish:resource:template:CDCBusinessDataSecuritySpace:example.html");
   base::DictValue page;
-  page.Set("otherShop", true);
-  page.Set("accessDeniedPage", true);
-  EXPECT_TRUE(IsOtherShopProductVerdict(product, item, page));
+  page.Set("denialLayout", true);
+  EXPECT_TRUE(IsMerchantProductOwnershipPage(product, item));
+  EXPECT_FALSE(IsOtherShopProductVerdict(product, item, page));
   EXPECT_TRUE(IsOtherShopProductVerdict(verdict, item, page));
-  for (const char* bad : {"https://detail.tmall.com/item.htm?id=456",
+  for (const char* bad : {
+       "https://detail.tmall.com/item.htm?id=456",
        "https://login.taobao.com/member/login.jhtml",
        "https://bixi.alicdn.com.evil.test/punish/punish:resource:template:CDCBusinessDataSecuritySpace:x",
+       "https://bixi.alicdn.com/punish/punish:resource:template:AnotherSpace:x",
        "https://bixi.alicdn.com/unrelated.html",
-       "http://bixi.alicdn.com/punish/punish:resource:template:CDCBusinessDataSecuritySpace:x"})
+       "http://bixi.alicdn.com/punish/punish:resource:template:CDCBusinessDataSecuritySpace:x"}) {
     EXPECT_FALSE(IsOtherShopProductVerdict(GURL(bad), item, page));
+  }
   EXPECT_FALSE(IsOtherShopProductVerdict(verdict, "", page));
   page.Set("verification", true);
   EXPECT_FALSE(IsOtherShopProductVerdict(verdict, item, page));
   page.Set("verification", false);
   page.Set("gallery", true);
-  EXPECT_FALSE(IsOtherShopProductVerdict(product, item, page));
-  page.Set("gallery", false);
-  page.Set("otherShop", false);
   EXPECT_FALSE(IsOtherShopProductVerdict(verdict, item, page));
-  page.Set("otherShop", true);
-  page.Set("accessDeniedPage", false);
-  EXPECT_FALSE(IsOtherShopProductVerdict(product, item, page));
+  page.Set("gallery", false);
+  page.Set("denialLayout", false);
+  EXPECT_FALSE(IsOtherShopProductVerdict(verdict, item, page));
 }
 TEST(UrlRoutingRules, ExampleIsDisabledUnassignedAndEditable) {
   auto config = DefaultUrlRoutingConfig();

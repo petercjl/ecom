@@ -92,14 +92,11 @@ class ProductRouteInfoBar final : public ConfirmInfoBarDelegate {
 constexpr char16_t kReadMerchantVerdict[] = uR"JS(JSON.stringify((() => {
   const text = document.body?.innerText || '';
   return {
-    otherShop: (text.includes('基于店铺数据安全') &&
-        text.includes('不支持访问其他店铺商品详情')) ||
-        (text.includes('商家账号') &&
-         text.includes('只允许查看本店商品详情') &&
-         text.includes('查看其他店铺商品') &&
-         text.includes('消费者购物')),
-    accessDeniedPage: /访问被拒绝|访问异常提示/.test(document.title),
-    verification: /请完成安全验证|请进行安全验证|拖动滑块|滑块验证/.test(text),
+    // Baxia renders both a full and a compact denial layout.
+    denialLayout: !!document.querySelector(
+        '#baxia-punish.deny .warnning-text, #deny .deny-text'),
+    verification: !!document.querySelector('#baxia-punish #nocaptcha') ||
+        /请完成安全验证|请进行安全验证|拖动滑块|滑块验证/.test(text),
     abnormal: text.includes('访问异常提示') &&
         text.includes('系统检测到当前访问存在异常'),
     gallery: !!document.querySelector('#picGalleryEle img'),

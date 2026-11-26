@@ -180,21 +180,26 @@ GURL FindTaobaoSearchProductLink(const base::ListValue& links,
   return redirect;
 }
 
+namespace {
+bool IsMerchantDenialTemplateUrl(const GURL& url) {
+  return SafeUrl(url) && url.SchemeIs("https") && !url.has_port() &&
+         url.host() == "bixi.alicdn.com" &&
+         base::StartsWith(
+             url.path(),
+             "/punish/punish:resource:template:CDCBusinessDataSecuritySpace:");
+}
+}  // namespace
+
 bool IsMerchantProductOwnershipPage(const GURL& url,
                                     const std::string& item_id) {
-  if (item_id.empty() || !SafeUrl(url) || !url.SchemeIs("https") ||
-      url.has_port()) return false;
-  return GetTaobaoProductId(url) == item_id ||
-         (url.host() == "bixi.alicdn.com" &&
-          base::StartsWith(url.path(),
-              "/punish/punish:resource:template:CDCBusinessDataSecuritySpace:"));
+  return !item_id.empty() &&
+         (GetTaobaoProductId(url) == item_id || IsMerchantDenialTemplateUrl(url));
 }
 
 bool IsOtherShopProductVerdict(const GURL& url, const std::string& item_id,
                               const base::DictValue& page) {
-  return IsMerchantProductOwnershipPage(url, item_id) &&
-         page.FindBool("otherShop").value_or(false) &&
-         page.FindBool("accessDeniedPage").value_or(false) &&
+  return !item_id.empty() && IsMerchantDenialTemplateUrl(url) &&
+         page.FindBool("denialLayout").value_or(false) &&
          !page.FindBool("verification").value_or(false) &&
          !page.FindBool("gallery").value_or(false);
 }
