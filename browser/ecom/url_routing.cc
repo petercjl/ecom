@@ -107,6 +107,11 @@ base::DictValue ResolveUrlRouting(
       IsTaobaoBuyerContainer(profile, target) &&
       !result.contains("destinationError")) {
     result.Set("openMode", "buyer-product-search");
+    if (!source_container_id ||
+        IsTaobaoMerchantContainer(profile, *source_container_id)) {
+      result.Set("ownershipCheck", "merchant-page-verdict");
+      result.Set("onUnknownOwnership", "stay-in-source");
+    }
   }
   return result;
 }

@@ -14,6 +14,7 @@ class WebUIMessageHandler;
 }
 namespace ecom {
 bool IsTaobaoBuyerContainer(Profile* profile, std::string_view container_id);
+bool IsTaobaoMerchantContainer(Profile* profile, std::string_view container_id);
 bool IsMerchantShopContainer(Profile* profile, std::string_view container_id);
 GURL GetShopHomepage(Profile* profile, const std::string& container_id);
 // Both trusted settings UI and authenticated native CLI use this contract.

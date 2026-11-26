@@ -12,6 +12,9 @@ $('advanced-label').textContent=t('高级选项','Advanced options')
 $('transform-label').textContent=t('跨容器打开时的网址处理','URL handling across containers')
 const transformOptions=[['none',t('保留原网址','Keep original URL')],['taobao-tmall-product',t('淘宝／天猫商品详情：只保留商品 ID','Taobao/Tmall product details: keep only item ID')]]
 for(const [value,label]of transformOptions){const option=node('option',label);option.value=value;$('transform').append(option)}
+const ownershipHelp=node('p',t('淘宝商家账号打开商品时，本店商品保留在当前账号；平台确认是其他店铺商品时，才使用指定买家账号。登录或安全验证仍在原账号处理。','For Taobao merchant accounts, own-store products stay in the current account. The selected buyer account is used only when the platform identifies another shop. Sign-in and verification stay in the original account.'))
+ownershipHelp.className='note'
+$('transform').after(ownershipHelp)
 const errors={ROUTING_TRANSFORM_CONFLICT:t('整理后的网址命中了另一个容器，请检查规则优先顺序。','The prepared URL matches a different container. Review rule order.'),INVALID_ROUTING_PRODUCT_ID:t('商品链接需要一个有效的商品 ID。','The link needs one valid product ID.'),ROUTING_CHANGED:t('规则刚刚发生变化，请重新打开网址。','Rules changed during navigation. Open the URL again.'),ROUTING_REQUEST_TOO_LARGE:t('规则内容过长，请减少网址或条件数量。','This rule is too large. Use fewer URLs or conditions.'),ROUTING_CONFIGURATION_TOO_LARGE:t('规则总量过大，请精简后再保存。','The rule collection is too large. Reduce it before saving.'),TARGET_CONTAINER_REQUIRED:t('请先选择目标容器，再手动开启规则。','Select a container before enabling this rule.'),TARGET_CONTAINER_MISSING:t('目标容器已不存在，请重新选择。','The target container is missing. Choose another container.'),ROUTING_REVISION_CONFLICT:t('规则已在其他位置更新，请刷新后重新编辑。','Rules changed elsewhere. Refresh before editing again.'),CROSS_CONTAINER_FORM_BLOCKED:t('表单提交已停止跨容器跳转，请在目标容器打开页面后重新操作。','Cross-container form submission was stopped. Open the page in the target container and retry.'),ROUTING_LOOP:t('规则出现循环，请检查规则顺序和目标容器。','A routing loop was stopped. Review rule order and target containers.')}
 const errorText=code=>errors[code]||t('请检查规则名称、网址、域名、路径及参数是否有效。','Check the rule name, URL, host, path and query fields.')+` (${code})`
 let state,editingId=''
@@ -144,7 +147,10 @@ $('test-form').onsubmit=async event=>{
     }else if(!resolution.available||resolution.destinationError){
       out.append(node('p',errorText(resolution.available?resolution.destinationError:'TARGET_CONTAINER_MISSING')))
     }else{
-      out.append(node('p',t('最终使用容器：','Selected container: ')+targetName(resolution.containerId)))
+      out.append(node('p',(resolution.ownershipCheck
+        ?t('其他店铺商品使用容器：','Container for other-shop products: ')
+        :t('最终使用容器：','Selected container: '))+targetName(resolution.containerId)))
+      if(resolution.ownershipCheck)out.append(node('p',t('商品归属在商家页面加载时判断；本次仅检查规则，尚未判断该商品归属。','Ownership is checked when the merchant page loads. This local rule preview has not determined the product owner.')))
       if(resolution.destinationUrl){
         const label=resolution.openMode==='buyer-product-search'
           ?t('后台先打开商品短链接：','Initial product URL opened in the background: ')

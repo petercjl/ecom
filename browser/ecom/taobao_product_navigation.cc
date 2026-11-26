@@ -47,6 +47,119 @@ namespace {
 constexpr char kProductNavigationTask[] = "ecom.taobao-product-navigation";
 constexpr char kLoadingUrl[] = "chrome://shops/product-status.html";
 constexpr char kSearchUrl[] = "https://s.taobao.com/search";
+constexpr char kMerchantProductCheck[] = "ecom.merchant-product-check";
+
+constexpr char16_t kReadMerchantVerdict[] = uR"JS(JSON.stringify((() => {
+  const text = document.body?.innerText || '';
+  return {
+    otherShop: text.includes('基于店铺数据安全') &&
+        text.includes('不支持访问其他店铺商品详情'),
+    accessDeniedPage: /访问被拒绝|访问异常提示/.test(document.title),
+    verification: /请完成安全验证|请进行安全验证|拖动滑块|滑块验证/.test(text),
+    gallery: !!document.querySelector('#picGalleryEle img'),
+  };
+})()))JS";
+
+class MerchantProductCheck final : public base::SupportsUserData::Data,
+                                   public content::WebContentsObserver {
+ public:
+  MerchantProductCheck(content::WebContents* source, std::string item_id,
+                       int64_t navigation_id,
+                       base::OnceClosure route)
+      : content::WebContentsObserver(source), item_id_(std::move(item_id)),
+        navigation_id_(navigation_id),
+        container_(containers::GetContainerIdForWebContents(source)),
+        route_(std::move(route)), started_(base::TimeTicks::Now()) {}
+  ~MerchantProductCheck() override {
+    weak_.InvalidateWeakPtrs();
+    Observe(nullptr);
+  }
+
+ private:
+  void Stop() {
+    route_.Reset();
+    poll_.Stop();
+    weak_.InvalidateWeakPtrs();
+  }
+  void DidStartNavigation(content::NavigationHandle* handle) override {
+    if (!route_ || !handle->IsInPrimaryMainFrame() || handle->IsSameDocument())
+      return;
+    if (handle->GetNavigationId() == navigation_id_) return;
+    // A renderer's product -> platform verdict hop belongs to this check.
+    // User navigation, reload, login and unrelated sites abandon the old item.
+    if (handle->HasUserGesture() || !handle->IsRendererInitiated() ||
+        !IsMerchantProductOwnershipPage(handle->GetURL(), item_id_)) Stop();
+  }
+  void DidFinishNavigation(content::NavigationHandle* handle) override {
+    if (!route_ || !handle->IsInPrimaryMainFrame() || handle->IsSameDocument() ||
+        !handle->HasCommitted()) return;
+    if (handle->IsErrorPage() ||
+        !IsMerchantProductOwnershipPage(handle->GetURL(), item_id_)) {
+      Stop();
+      return;
+    }
+    Schedule();
+  }
+  void Schedule() {
+    if (!route_) return;
+    if (base::TimeTicks::Now() - started_ > base::Seconds(15)) {
+      Stop();
+      return;
+    }
+    poll_.Start(FROM_HERE, base::Milliseconds(150),
+                base::BindOnce(&MerchantProductCheck::Read, weak_.GetWeakPtr()));
+  }
+  void Read() {
+    if (!route_ || !web_contents()) return;
+    auto* frame = web_contents()->GetPrimaryMainFrame();
+    if (!frame->IsRenderFrameLive() || web_contents()->GetController().GetPendingEntry()) {
+      Schedule();
+      return;
+    }
+    const GURL url = frame->GetLastCommittedURL();
+    if (!IsMerchantProductOwnershipPage(url, item_id_) ||
+        containers::GetContainerIdForWebContents(web_contents()) != container_) {
+      Stop();
+      return;
+    }
+    frame->ExecuteJavaScriptInIsolatedWorld(
+        kReadMerchantVerdict,
+        base::BindOnce(&MerchantProductCheck::OnRead, weak_.GetWeakPtr(),
+                       frame->GetWeakDocumentPtr(), url),
+        ISOLATED_WORLD_ID_CHROME_INTERNAL);
+  }
+  void OnRead(content::WeakDocumentPtr document, const GURL& url,
+              base::Value result) {
+    if (!route_ || !web_contents()) return;
+    if (document.AsRenderFrameHostIfValid() != web_contents()->GetPrimaryMainFrame() ||
+        web_contents()->GetLastCommittedURL() != url ||
+        web_contents()->GetController().GetPendingEntry() || !result.is_string()) {
+      Schedule();
+      return;
+    }
+    auto state = base::JSONReader::ReadDict(result.GetString(), base::JSON_PARSE_RFC);
+    if (!state) { Schedule(); return; }
+    if (IsOtherShopProductVerdict(url, item_id_, *state)) {
+      auto route = std::move(route_);
+      Stop();
+      std::move(route).Run();
+      return;
+    }
+    if (state->FindBool("gallery").value_or(false) ||
+        state->FindBool("verification").value_or(false)) {
+      Stop();
+      return;
+    }
+    Schedule();
+  }
+  const std::string item_id_;
+  const int64_t navigation_id_;
+  const std::string container_;
+  base::OnceClosure route_;
+  const base::TimeTicks started_;
+  base::OneShotTimer poll_;
+  base::WeakPtrFactory<MerchantProductCheck> weak_{this};
+};
 
 constexpr char16_t kReadPage[] = uR"JS(JSON.stringify((() => {
   const body = document.body;
@@ -402,11 +515,12 @@ class ProductNavigation final : public base::SupportsUserData::Data,
 void StartTaobaoProductNavigation(BrowserWindowInterface* window,
                                   content::WebContents* source,
                                   const GURL& short_url,
-                                  const std::string& container) {
+                                  const std::string& container,
+                                  bool replace_source) {
   auto* tabs = window->GetTabStripModel();
   auto* placeholder = source;
   // Keep the initial shell for links that already opened a new tab.
-  if (source->GetController().IsInitialBlankNavigation()) {
+  if (replace_source || source->GetController().IsInitialBlankNavigation()) {
     LoadProductStatus(*placeholder);
   } else {
     NavigateParams params(window, GURL(kLoadingUrl),
@@ -442,6 +556,16 @@ void StartTaobaoProductNavigation(BrowserWindowInterface* window,
 
 bool IsTaobaoProductNavigationPending(content::WebContents* contents) {
   return contents && contents->GetUserData(kProductNavigationTask);
+}
+
+void ObserveMerchantProductNavigation(content::WebContents* source,
+                                     const GURL& product_url,
+                                     int64_t navigation_id,
+                                     base::OnceClosure route_other_shop) {
+  source->SetUserData(kMerchantProductCheck,
+      std::make_unique<MerchantProductCheck>(source,
+          GetTaobaoProductId(product_url), navigation_id,
+          std::move(route_other_shop)));
 }
 
 }  // namespace ecom

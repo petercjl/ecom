@@ -7,6 +7,7 @@
 #include "base/supports_user_data.h"
 #include "base/task/sequenced_task_runner.h"
 #include "brave/browser/ecom/memory_actions.h"
+#include "brave/browser/ecom/shop_container_service.h"
 #include "brave/browser/ecom/taobao_product_navigation.h"
 #include "brave/browser/ecom/url_routing.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
@@ -39,7 +40,7 @@ class Chain final : public base::SupportsUserData::Data {
 void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
                     GURL original_url, GURL destination, std::string container,
                     std::string rule_id, std::set<std::string> visited,
-                    bool error) {
+                    bool error, bool replace_source = false) {
   if (!source) return;
   auto* profile = Profile::FromBrowserContext(source->GetBrowserContext());
   BrowserWindowInterface* window = nullptr;
@@ -69,6 +70,7 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
         !current.FindBool("available").value_or(false) ||
         current.contains("destinationError") ||
         (rewritten ? GURL(*rewritten) : original_url) != destination) {
+      if (replace_source) return;  // The rule changed during merchant loading.
       destination = GURL("chrome://shops/routing.html?error=ROUTING_CHANGED");
       error = true;
     } else if (const auto* mode = current.FindString("openMode")) {
@@ -76,7 +78,8 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
     }
   }
   if (open_product_in_background) {
-    StartTaobaoProductNavigation(window, source.get(), destination, container);
+    StartTaobaoProductNavigation(window, source.get(), destination, container,
+                                 replace_source);
     return;
   }
   NavigateParams params(window, destination, ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
@@ -157,10 +160,22 @@ content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::Route() {
     error = "ROUTING_LOOP";
   const GURL destination = error.empty() ? target_url
       : GURL("chrome://shops/routing.html?error=" + error);
+  if (error.empty() && decision.FindString("openMode") &&
+      *decision.FindString("openMode") == "buyer-product-search" &&
+      IsTaobaoMerchantContainer(
+          Profile::FromBrowserContext(source->GetBrowserContext()),
+          source_container)) {
+    ObserveMerchantProductNavigation(source, target_url, handle->GetNavigationId(),
+        base::BindOnce(&OpenRoutedPage, source->GetWeakPtr(), handle->GetURL(),
+                       destination, *container,
+                       rule_id ? *rule_id : std::string(), std::move(visited),
+                       false, true));
+    return PROCEED;
+  }
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
       base::BindOnce(&OpenRoutedPage, source->GetWeakPtr(), handle->GetURL(),
                      destination, *container, rule_id ? *rule_id : std::string(),
-                     std::move(visited), !error.empty()));
+                     std::move(visited), !error.empty(), false));
   return CANCEL_AND_IGNORE;
 }
 }  // namespace ecom

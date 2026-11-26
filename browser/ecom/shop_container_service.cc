@@ -2416,6 +2416,14 @@ bool IsMerchantShopContainer(Profile* profile, std::string_view container_id) {
          GetXiaohongshuSurface(*shop) != XiaohongshuSurface::kFront;
 }
 
+bool IsTaobaoMerchantContainer(Profile* profile, std::string_view container_id) {
+  if (!IsMerchantShopContainer(profile, container_id)) return false;
+  const auto* shop = profile->GetPrefs()
+                         ->GetDict(containers::prefs::kShopContainers)
+                         .FindDict(container_id);
+  return shop && Field(*shop, "platform") == "taobao";
+}
+
 GURL GetShopHomepage(Profile* profile, const std::string& container_id) {
   if (!profile->IsRegularProfile() || container_id.empty() ||
       !profile->GetPrefs()->FindPreference(containers::prefs::kShopContainers)) {

@@ -4,6 +4,30 @@
 #include "url/gurl.h"
 
 namespace ecom {
+TEST(UrlRoutingRules, MerchantProductVerdictRequiresTrustedExplicitOtherShopPage) {
+  const std::string item = "123";
+  const GURL product("https://detail.tmall.com/item.htm?id=123");
+  const GURL verdict("https://bixi.alicdn.com/punish/punish:resource:template:CDCBusinessDataSecuritySpace:example.html");
+  base::DictValue page;
+  page.Set("otherShop", true).Set("accessDeniedPage", true);
+  EXPECT_TRUE(IsOtherShopProductVerdict(product, item, page));
+  EXPECT_TRUE(IsOtherShopProductVerdict(verdict, item, page));
+  for (const char* bad : {"https://detail.tmall.com/item.htm?id=456",
+       "https://login.taobao.com/member/login.jhtml",
+       "https://bixi.alicdn.com.evil.test/punish/punish:resource:template:CDCBusinessDataSecuritySpace:x",
+       "https://bixi.alicdn.com/unrelated.html",
+       "http://bixi.alicdn.com/punish/punish:resource:template:CDCBusinessDataSecuritySpace:x"})
+    EXPECT_FALSE(IsOtherShopProductVerdict(GURL(bad), item, page));
+  EXPECT_FALSE(IsOtherShopProductVerdict(verdict, "", page));
+  page.Set("verification", true);
+  EXPECT_FALSE(IsOtherShopProductVerdict(verdict, item, page));
+  page.Set("verification", false).Set("gallery", true);
+  EXPECT_FALSE(IsOtherShopProductVerdict(product, item, page));
+  page.Set("gallery", false).Set("otherShop", false);
+  EXPECT_FALSE(IsOtherShopProductVerdict(verdict, item, page));
+  page.Set("otherShop", true).Set("accessDeniedPage", false);
+  EXPECT_FALSE(IsOtherShopProductVerdict(product, item, page));
+}
 TEST(UrlRoutingRules, ExampleIsDisabledUnassignedAndEditable) {
   auto config = DefaultUrlRoutingConfig();
   auto& rule = config.FindList("rules")->front().GetDict();

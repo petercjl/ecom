@@ -14,6 +14,10 @@ std::string GetUrlRoutingTransform(const base::DictValue& rule);
 GURL TransformUrlRoutingDestination(const base::DictValue& rule, const GURL& url);
 bool UrlRoutingConditionMatches(const base::DictValue& condition, const GURL& url);
 std::string GetTaobaoProductId(const GURL& url);
+// Only the requested product or the platform's merchant-access verdict page.
+bool IsMerchantProductOwnershipPage(const GURL& url, const std::string& item_id);
+bool IsOtherShopProductVerdict(const GURL& url, const std::string& item_id,
+                              const base::DictValue& page);
 GURL FindTaobaoSearchProductLink(const base::ListValue& links,
                                 const std::string& item_id);
 bool IsMerchantOnlyUrlRoutingRule(const base::DictValue& rule);

@@ -180,6 +180,25 @@ GURL FindTaobaoSearchProductLink(const base::ListValue& links,
   return redirect;
 }
 
+bool IsMerchantProductOwnershipPage(const GURL& url,
+                                    const std::string& item_id) {
+  if (item_id.empty() || !SafeUrl(url) || !url.SchemeIs("https") ||
+      url.has_port()) return false;
+  return GetTaobaoProductId(url) == item_id ||
+         (url.host() == "bixi.alicdn.com" &&
+          base::StartsWith(url.path(),
+              "/punish/punish:resource:template:CDCBusinessDataSecuritySpace:"));
+}
+
+bool IsOtherShopProductVerdict(const GURL& url, const std::string& item_id,
+                              const base::DictValue& page) {
+  return IsMerchantProductOwnershipPage(url, item_id) &&
+         page.FindBool("otherShop").value_or(false) &&
+         page.FindBool("accessDeniedPage").value_or(false) &&
+         !page.FindBool("verification").value_or(false) &&
+         !page.FindBool("gallery").value_or(false);
+}
+
 bool UrlRoutingConditionMatches(const base::DictValue& c, const GURL& url) {
   if (!SafeUrl(url)) return false;
   if (Text(c, "type") == "exact")
