@@ -9,7 +9,8 @@ TEST(UrlRoutingRules, MerchantProductVerdictRequiresTrustedExplicitOtherShopPage
   const GURL product("https://detail.tmall.com/item.htm?id=123");
   const GURL verdict("https://bixi.alicdn.com/punish/punish:resource:template:CDCBusinessDataSecuritySpace:example.html");
   base::DictValue page;
-  page.Set("otherShop", true).Set("accessDeniedPage", true);
+  page.Set("otherShop", true);
+  page.Set("accessDeniedPage", true);
   EXPECT_TRUE(IsOtherShopProductVerdict(product, item, page));
   EXPECT_TRUE(IsOtherShopProductVerdict(verdict, item, page));
   for (const char* bad : {"https://detail.tmall.com/item.htm?id=456",
@@ -21,11 +22,14 @@ TEST(UrlRoutingRules, MerchantProductVerdictRequiresTrustedExplicitOtherShopPage
   EXPECT_FALSE(IsOtherShopProductVerdict(verdict, "", page));
   page.Set("verification", true);
   EXPECT_FALSE(IsOtherShopProductVerdict(verdict, item, page));
-  page.Set("verification", false).Set("gallery", true);
+  page.Set("verification", false);
+  page.Set("gallery", true);
   EXPECT_FALSE(IsOtherShopProductVerdict(product, item, page));
-  page.Set("gallery", false).Set("otherShop", false);
+  page.Set("gallery", false);
+  page.Set("otherShop", false);
   EXPECT_FALSE(IsOtherShopProductVerdict(verdict, item, page));
-  page.Set("otherShop", true).Set("accessDeniedPage", false);
+  page.Set("otherShop", true);
+  page.Set("accessDeniedPage", false);
   EXPECT_FALSE(IsOtherShopProductVerdict(product, item, page));
 }
 TEST(UrlRoutingRules, ExampleIsDisabledUnassignedAndEditable) {
