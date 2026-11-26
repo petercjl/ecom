@@ -493,11 +493,14 @@ class ProductNavigation final : public base::SupportsUserData::Data,
       return;
     }
     const auto* title = state->FindString("title");
+    const bool settled = state->FindBool("settled").value_or(false);
+    const bool ready_for_search =
+        abnormal || (settled && (require_search_ ||
+                                  base::TimeTicks::Now() - started_ >=
+                                      base::Seconds(3)));
     if (stage_ == Stage::kProduct && title && !title->empty() &&
-        state->FindBool("gallery").value_or(false) &&
-        (abnormal || (state->FindBool("settled").value_or(false) &&
-                      (require_search_ ||
-                       base::TimeTicks::Now() - started_ >= base::Seconds(3))))) {
+        (require_search_ || state->FindBool("gallery").value_or(false)) &&
+        ready_for_search) {
       stage_ = Stage::kSearch;
       search_url_ = net::AppendQueryParameter(GURL(kSearchUrl), "q", *title);
       Navigate(search_url_, GURL(), base::Seconds(15));
@@ -670,7 +673,7 @@ void ObserveTaobaoProductNavigation(content::WebContents* source,
                                     int64_t navigation_id,
                                     bool auto_route_other_shop,
                                     base::OnceCallback<void(bool)> route) {
-  source->SetUserData(kMerchantProductCheck,
+  source->SetUserData(kProductPageCheck,
       std::make_unique<ProductPageCheck>(
           source, GetTaobaoProductId(product_url), navigation_id,
           auto_route_other_shop, std::move(route)));
