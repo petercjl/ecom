@@ -34,3 +34,12 @@ test('thumbnail transforms collapse but underscores in distinct image names do n
   assert.equal(inspect(['https://img/a_1.jpg','https://img/a_2.jpg','https://img/a_3.jpg','https://img/a_4.jpg']).imageCount, 4);
   assert.equal(inspect(['https://img/a_1.jpg_90x90.jpg','https://img/a_1.jpg_600x600.jpg']).imageCount, 1);
 });
+
+test('recognizes the own-store-only denial wording shown by Taobao', () => {
+  const notice = '商家账号（含子账号）只允许查看本店商品详情；若需要查看其他店铺商品，请使用“消费者购物”账号通过“手机/PC淘宝”进行查看';
+  const page = inspect([], notice, '访问被拒绝');
+  assert.equal(page.otherShop, true);
+  assert.equal(page.accessDeniedPage, true);
+  assert.equal(page.gallery, false);
+  assert.equal(inspect([], '商家账号只允许查看本店商品详情').otherShop, false);
+});
