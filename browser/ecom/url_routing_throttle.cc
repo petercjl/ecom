@@ -12,6 +12,7 @@
 #include "brave/browser/ecom/shop_container_service.h"
 #include "brave/browser/ecom/taobao_product_navigation.h"
 #include "brave/browser/ecom/url_routing.h"
+#include "brave/browser/ecom/url_routing_rules.h"
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "brave/components/containers/core/common/features.h"
 #include "chrome/browser/profiles/profile.h"
@@ -167,9 +168,11 @@ content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::Route() {
       decision.empty() ||
       (container && *container == source_container &&
        decision.FindBool("available").value_or(false))) {
-    ObserveProductPage(*handle,
-                       ResolveUrlRouting(profile, handle->GetURL(), std::nullopt),
-                       /*auto_route_other_shop=*/false);
+    if (!GetTaobaoProductId(handle->GetURL()).empty()) {
+      ObserveProductPage(
+          *handle, ResolveUrlRouting(profile, handle->GetURL(), std::nullopt),
+          /*auto_route_other_shop=*/false);
+    }
     return PROCEED;
   }
   if (!container) return CANCEL_AND_IGNORE;
