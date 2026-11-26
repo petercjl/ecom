@@ -33,3 +33,5 @@ macOS Dev 验收包含受控三图页面、原生按钮操作、规则关闭撤�
 页面 DOM 与原生 UI 的集成检查使用 Dev CDP 观测及受控测试文档；按钮、规则校验与实际跳转均由原生实现执行，不依赖 CDP。受控三图结果不代表所有平台改版或网络状态下已验证。
 
 小型恢复点与复现脚本保留在工作区私有 `.brave-build/manual-route-source-4er0s235/`、`.brave-build/manual-route-validation-up2zeego/`；其用途为本次源码恢复与分支回归，不含 Cookie。构建日志为 `.brave-build/dev-restart-5h2m1v/`、`.brave-build/dev-restart-r1Znn4/`。长期增量构建缓存和账号 Profile 保留。
+
+普通模式收尾：通过统一构建入口重启，日志 `.brave-build/dev-restart-md2i5j/`，`launchMode=interactive`、`debugging=false`；9317 无监听。实际 CLI 回读规则开启、目标可用、revision 44，十个既有标签保持。普通模式未重新制造受控三图响应，手动分支的交互证据为上述 Dev CDP 诊断轮次。私有源码恢复点约 40 KB、回归脚本及配置恢复点约 12 KB，保留供本次回归复现；本轮未产生额外安装包或大型测试副本。
