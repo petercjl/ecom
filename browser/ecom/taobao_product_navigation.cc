@@ -25,6 +25,12 @@
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_isolated_world_ids.h"
+#include "chrome/browser/infobars/confirm_infobar_creator.h"
+#include "chrome/browser/profiles/profile.h"
+#include "components/infobars/content/content_infobar_manager.h"
+#include "components/infobars/core/confirm_infobar_delegate.h"
+#include "components/infobars/core/infobar.h"
+#include "components/prefs/pref_change_registrar.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
@@ -49,6 +55,40 @@ constexpr char kLoadingUrl[] = "chrome://shops/product-status.html";
 constexpr char kSearchUrl[] = "https://s.taobao.com/search";
 constexpr char kMerchantProductCheck[] = "ecom.merchant-product-check";
 
+// Native UI owns this action; page scripts never receive a routing capability.
+class ProductRouteInfoBar final : public ConfirmInfoBarDelegate {
+ public:
+  ProductRouteInfoBar(Profile* profile, base::OnceClosure route)
+      : route_(std::move(route)) {
+    prefs_.Init(profile->GetPrefs());
+    prefs_.Add(kUrlRoutingPref, base::BindRepeating(
+        &ProductRouteInfoBar::RulesChanged, base::Unretained(this)));
+  }
+  InfoBarIdentifier GetIdentifier() const override {
+    return ECOM_PRODUCT_ROUTE_INFOBAR_DELEGATE;
+  }
+  std::u16string GetMessageText() const override {
+    return u"商品详情可能不完整";
+  }
+  int GetButtons() const override { return BUTTON_OK; }
+  std::u16string GetButtonLabel(InfoBarButton button) const override {
+    return u"按照规则跳转";
+  }
+  bool Accept() override {
+    // Run after the infobar event returns: routing may replace this tab.
+    if (route_) base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, std::move(route_));
+    return true;
+  }
+ private:
+  void RulesChanged() {
+    route_.Reset();
+    if (infobar()) infobar()->RemoveSelf();
+  }
+  base::OnceClosure route_;
+  PrefChangeRegistrar prefs_;
+};
+
 constexpr char16_t kReadMerchantVerdict[] = uR"JS(JSON.stringify((() => {
   const text = document.body?.innerText || '';
   return {
@@ -57,6 +97,10 @@ constexpr char16_t kReadMerchantVerdict[] = uR"JS(JSON.stringify((() => {
     accessDeniedPage: /访问被拒绝|访问异常提示/.test(document.title),
     verification: /请完成安全验证|请进行安全验证|拖动滑块|滑块验证/.test(text),
     gallery: !!document.querySelector('#picGalleryEle img'),
+    imageCount: new Set([...document.querySelectorAll('#picGalleryEle img')]
+        .map(img => (img.currentSrc || img.src).split('_')[0])
+        .filter(Boolean)).size,
+    settled: document.readyState === 'complete',
   };
 })()))JS";
 
@@ -145,12 +189,44 @@ class MerchantProductCheck final : public base::SupportsUserData::Data,
       std::move(route).Run();
       return;
     }
-    if (state->FindBool("gallery").value_or(false) ||
-        state->FindBool("verification").value_or(false)) {
+    if (state->FindBool("verification").value_or(false)) {
+      Stop();
+      return;
+    }
+    if (state->FindBool("gallery").value_or(false)) {
+      // Take one settled sample. No image fetching or completeness probing.
+      if (!state->FindBool("settled").value_or(false) &&
+          base::TimeTicks::Now() - started_ < base::Seconds(5)) {
+        Schedule();
+        return;
+      }
+      const int count = state->FindInt("imageCount").value_or(0);
+      if (count > 0 && count <= 3) {
+        auto* manager = infobars::ContentInfoBarManager::FromWebContents(web_contents());
+        if (manager) {
+          manager->AddInfoBar(CreateConfirmInfoBar(
+              std::make_unique<ProductRouteInfoBar>(
+                  Profile::FromBrowserContext(web_contents()->GetBrowserContext()),
+                  base::BindOnce(&MerchantProductCheck::RouteManually,
+                                 weak_.GetWeakPtr(), document, url))));
+          poll_.Stop();
+          return;
+        }
+      }
       Stop();
       return;
     }
     Schedule();
+  }
+  void RouteManually(content::WeakDocumentPtr document, const GURL& url) {
+    if (!route_ || !web_contents() ||
+        document.AsRenderFrameHostIfValid() != web_contents()->GetPrimaryMainFrame() ||
+        web_contents()->GetLastCommittedURL() != url ||
+        web_contents()->GetController().GetPendingEntry() ||
+        containers::GetContainerIdForWebContents(web_contents()) != container_) return;
+    auto route = std::move(route_);
+    Stop();
+    std::move(route).Run();
   }
   const std::string item_id_;
   const int64_t navigation_id_;
