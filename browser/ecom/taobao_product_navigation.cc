@@ -98,7 +98,8 @@ constexpr char16_t kReadMerchantVerdict[] = uR"JS(JSON.stringify((() => {
     verification: /请完成安全验证|请进行安全验证|拖动滑块|滑块验证/.test(text),
     gallery: !!document.querySelector('#picGalleryEle img'),
     imageCount: new Set([...document.querySelectorAll('#picGalleryEle img')]
-        .map(img => (img.currentSrc || img.src).split('_')[0])
+        .map(img => (img.currentSrc || img.src)
+            .replace(/(\.(?:jpe?g|png|webp|gif))_.*$/i, '$1'))
         .filter(Boolean)).size,
     settled: document.readyState === 'complete',
   };
@@ -113,7 +114,11 @@ class MerchantProductCheck final : public base::SupportsUserData::Data,
       : content::WebContentsObserver(source), item_id_(std::move(item_id)),
         navigation_id_(navigation_id),
         container_(containers::GetContainerIdForWebContents(source)),
-        route_(std::move(route)), started_(base::TimeTicks::Now()) {}
+        route_(std::move(route)), started_(base::TimeTicks::Now()) {
+    prefs_.Init(Profile::FromBrowserContext(source->GetBrowserContext())->GetPrefs());
+    prefs_.Add(kUrlRoutingPref, base::BindRepeating(
+        &MerchantProductCheck::Stop, base::Unretained(this)));
+  }
   ~MerchantProductCheck() override {
     weak_.InvalidateWeakPtrs();
     Observe(nullptr);
@@ -234,6 +239,7 @@ class MerchantProductCheck final : public base::SupportsUserData::Data,
   base::OnceClosure route_;
   const base::TimeTicks started_;
   base::OneShotTimer poll_;
+  PrefChangeRegistrar prefs_;
   base::WeakPtrFactory<MerchantProductCheck> weak_{this};
 };
 

@@ -41,7 +41,8 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
                     GURL original_url, GURL destination, std::string container,
                     std::string rule_id, std::set<std::string> visited,
                     bool error, bool replace_source = false) {
-  if (!source) return;
+  if (!source || HasNativePageTask(source.get()) ||
+      IsUrlRoutingPagePinned(source.get())) return;
   auto* profile = Profile::FromBrowserContext(source->GetBrowserContext());
   BrowserWindowInterface* window = nullptr;
   ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](BrowserWindowInterface* candidate) {
