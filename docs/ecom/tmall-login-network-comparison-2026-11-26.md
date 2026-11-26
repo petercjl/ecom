@@ -44,4 +44,10 @@ Mac Ecom Dev（Chromium 156，源码 5b0500da75a5f90d1e3478385e66fc3bba230150）
 
 ## 验证进度
 
-新增 `ecom/experiments/cross-site-login-probe.mjs`，使用隔离 Profile、两个原生容器及本机 synthetic HttpOnly/Secure/SameSite=None Cookie 模拟跨站登录。旧构建默认策略下已稳定复现：跨站设置后顶层访问无会话，重启后仍无会话，第二容器无会话。测试完成后已清理该轮合成 Profile，保留小型报告和日志。修复构建及真实平台验收结果待后续补充。
+新增 `ecom/experiments/cross-site-login-probe.mjs`，使用隔离 Profile、两个原生容器及本机 synthetic HttpOnly/Secure/SameSite=None Cookie 模拟跨站登录。测试通过原生设置 handler 创建并确认两个持久容器，再按容器启动；完成后清理本轮合成 Profile，保留小型报告和日志。
+
+- 旧构建的初轮模拟复现了跨站设置后顶层访问无会话、重启后仍无会话。初版探针未预创建原生容器，不能作为多容器隔离证据；该问题已在探针中修正。
+- 修复提交 `c13938c4e32a04d4bb958668cc23abb394ad50ae` 增量编译成功并重启 Dev。默认策略实测：跨站会话用于顶层导航成功、第二原生容器无此会话、重启原容器仍有会话。报告：`.brave-build/cross-site-login-PElN9b/result.json`。
+- 显式用户阻止设置实测：即使默认策略修改，跨站 Cookie 仍不进入持久会话，容器隔离保持。报告：`.brave-build/cross-site-login-gUUeUv/result.json`。
+- 两轮测试均为 macOS 有界面 CDP 实验，合成 Profile 已清理。Windows 和无 CDP 真实平台验收尚未完成，不作已验证声明。
+- 修复后的真实千牛登录监测已准备，记录目录 `.brave-build/tmall-login-watch-goZbUd/`；等待用户完成常规登录后的 Cookie、商品页及重启回归。

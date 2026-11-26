@@ -45,7 +45,7 @@ async function until(fn, label) {
   throw Error('Timed out: ' + label);
 }
 function launch(container, url) {
-  const child = spawn(executable, [`--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--use-mock-keychain', '--remote-debugging-port=0', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone', `--container=${container}`, url], {stdio: ['ignore', fd, fd]});
+  const child = spawn(executable, [`--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--use-mock-keychain', '--remote-debugging-port=0', '--disable-features=DialMediaRouteProvider,MacAppCodeSignClone', ...(container ? [`--container=${container}`] : []), url], {stdio: ['ignore', fd, fd]});
   child.on('error', error => console.error(error.message));
   return child;
 }
@@ -69,9 +69,28 @@ async function quit() {
   if (!client) return;
   await client.call('Browser.close').catch(()=>{});client.socket.close();client=null;
   await until(()=>browser.exitCode!==null||browser.signalCode!==null,'browser exit');
+  const endpoint=path.join(profile,'DevToolsActivePort');
+  if(fs.existsSync(endpoint))fs.renameSync(endpoint,path.join(run,`endpoint-${++phase}.txt`));
 }
 let ok=false;
 try {
+  const settings='chrome://settings/braveContent';
+  browser=launch(null,'about:blank');await connect();
+  const created=await client.call('Target.createTarget',{url:settings});
+  const setup=(await client.call('Target.attachToTarget',{targetId:created.targetId,flatten:true})).sessionId;
+  await until(async()=> (await client.call('Runtime.evaluate',{expression:"!!customElements.get('settings-brave-content-containers')",returnByValue:true},setup)).result.value,'native settings handler');
+  const provision=await client.call('Runtime.evaluate',{expression:`(async()=>{
+    await customElements.whenDefined('settings-brave-content-containers');
+    const handler=document.createElement('settings-brave-content-containers').browserProxy.handler;
+    for(const name of ['Cookie-Probe-A','Cookie-Probe-B']) {
+      const result=await handler.addContainer({id:'',name,icon:0,backgroundColor:{value:0xff007c80}});
+      if(result.error!==null && result.error!==undefined) throw Error('Container creation failed');
+    }
+    return (await handler.getContainers()).containers.filter(c=>['Cookie-Probe-A','Cookie-Probe-B'].includes(c.name)).map(c=>({id:c.id,name:c.name}));
+  })()`,awaitPromise:true,returnByValue:true},setup);
+  check('two persistent native containers provisioned',provision.result.value?.length,2);
+  assert.ok(provision.result.value.every(c=>c.id&&!c.id.startsWith('t-')));
+  await quit();
   const parent=`http://localhost:${port}/parent`;
   browser=launch('Cookie-Probe-A',parent);await connect();
   const a=await target(parent);
@@ -81,13 +100,12 @@ try {
   await client.call('Page.navigate',{url:first},a);
   await until(async()=>/SESSION_/.test(await read(a)),'top-level result');
   check('cross-site session available on top-level navigation',(await read(a))==='SESSION_PRESENT',expected);
+  await quit();
   const second=`http://127.0.0.1:${port}/read?phase=other-container`;
-  launch('Cookie-Probe-B',second);const b=await target(second);
+  browser=launch('Cookie-Probe-B',second);await connect();const b=await target(second);
   await until(async()=>/SESSION_/.test(await read(b)),'other container result');
   check('second native container stays isolated',(await read(b))==='SESSION_PRESENT',false);
   await quit();
-  const endpoint=path.join(profile,'DevToolsActivePort');
-  if(fs.existsSync(endpoint))fs.renameSync(endpoint,path.join(run,`endpoint-${++phase}.txt`));
   const restart=`http://127.0.0.1:${port}/read?phase=restart`;
   browser=launch('Cookie-Probe-A',restart);await connect();const restored=await target(restart);
   await until(async()=>/SESSION_/.test(await read(restored)),'restarted container result');
