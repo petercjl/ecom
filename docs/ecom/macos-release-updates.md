@@ -16,7 +16,7 @@ npm 提供版本元数据、tarball URL 和 SHA-512 integrity；助手仅访问 
 
 在集成后的 `main` 运行 `node ecom/build-macos.mjs`。入口固定当前已提交的 main 版本，在构建锁内准备干净的受管理源码工作树；根目录中其他任务尚未提交的修改保留在原处，编译与打包仅读取已提交快照。若 main 在编译或打包期间推进，入口保留已有输出，重新加载最新已提交的构建配方并增量构建，直至产物与集成版本一致。`--wait` 可在已有原生构建后排队，等待释放共享锁后再选择 main。入口选择固定 Node 24 和本机 Xcode，与 Dev 共享构建锁，使用独立 `Release_arm64` 输出目录；固定依赖和已有缓存保留。正式版禁用 Brave 更新组件，采用优化的独立整包构建，本机配方关闭 PGO 和 ThinLTO，保持单链接并发以控制内存；不申请开发者证书。`--prepare-only` 仅执行构建前品牌准备，不代表 GN、编译或运行验证。
 
-成功编译后在唯一的 `.brave-build/mac-release-*/artifacts/` 中生成 DMG、npm 载荷目录、可直接发布的 `.tgz` 及 `release-receipt.json`。DMG 与 npm 归档 来自同一份应用包。原始构建输出保持完整。打包后执行原生助手自检、架构和嵌套签名校验，记录归档、tarball 与 DMG 校验和、源码提交、Node/Xcode/SDK 版本、GN 参数指纹和验证状态。
+成功编译后在唯一的 `.brave-build/mac-release-*/artifacts/` 中生成 npm 载荷目录、可直接发布的 `.tgz` 及 `release-receipt.json`。明确要求首次安装包时加 `--with-installer`，以同一应用包生成 DMG。原始构建输出保持完整。打包后执行原生助手自检、架构和嵌套签名校验，记录归档、tarball 与 DMG 校验和、源码提交、Node/Xcode/SDK 版本、GN 参数指纹和验证状态。
 
 本地 ad-hoc 签名用于代码封装与完整性检查，不属于 Apple 开发者身份签名或公证。首次安装的系统提示、从下载产物启动及后续更新需要真实验收；用户按系统正常授权流程操作。
 

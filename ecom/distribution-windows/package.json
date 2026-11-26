@@ -1,6 +1,6 @@
 {
   "name": "@lumyne/ecom-windows-x64",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Ecom native Windows x64 application payload",
   "license": "MPL-2.0",
   "os": [

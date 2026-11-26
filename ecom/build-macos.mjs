@@ -18,10 +18,10 @@ export function prepareReleaseSource(repo, workspace) {
 }
 async function main() {
   if (process.argv.includes('--help')) {
-    console.log('node ecom/build-macos.mjs [--prepare-only] [--wait]\nBuild the committed macOS arm64 release, then prepare DMG and npm payload. --wait queues behind the active native build. Does not quit Dev, install or publish.'); return;
+    console.log('node ecom/build-macos.mjs [--prepare-only] [--wait] [--with-installer]\nBuild the committed macOS arm64 release, then prepare the npm payload. --with-installer also creates a DMG. --wait queues behind the active native build. Does not quit Dev, install or publish.'); return;
   }
   const args = process.argv.slice(2);
-  if (new Set(args).size !== args.length || args.some(arg => !['--prepare-only', '--wait'].includes(arg))) throw new Error('Unsupported argument');
+  if (new Set(args).size !== args.length || args.some(arg => !['--prepare-only', '--wait', '--with-installer'].includes(arg))) throw new Error('Unsupported argument');
   const prepareOnly = args.includes('--prepare-only');
   if (process.platform !== 'darwin' || process.arch !== 'arm64') throw new Error('This entry currently targets macOS arm64');
   const node = [process.env.ECOM_NODE, process.execPath, path.join(os.homedir(), '.local/share/ecom-toolchain/node_modules/node/bin/node')].filter(Boolean).find(file => /^v24\.(?:1[6-9]|[2-9]\d)\./.test(spawnSync(file, ['--version'], { encoding: 'utf8' }).stdout || ''));
@@ -101,7 +101,7 @@ async function main() {
     const symbols = path.join(runDir, 'crash-symbols');
     fs.mkdirSync(symbols, { mode: 0o700 });
     fs.cpSync(frameworkDsym, path.join(symbols, path.basename(frameworkDsym)), { recursive: true, errorOnExist: true, force: false });
-    const result = await packageMacos({ sourceApp, output: path.join(runDir, 'artifacts'), sourceRevision: revision, sourceRoot: workspace });
+    const result = await packageMacos({ sourceApp, output: path.join(runDir, 'artifacts'), sourceRevision: revision, sourceRoot: workspace, withInstaller: args.includes('--with-installer') });
     if (git(root, ['rev-parse', 'HEAD']) !== revision) return { retry: true };
     console.log(JSON.stringify({ ok: true, sourceRevision: revision, symbols, ...result }));
   } finally {

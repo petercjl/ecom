@@ -3,10 +3,11 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 import { validateWindowsRelease, windowsTarballName, windowsPackage, windowsPartPackage, windowsPartBytes, windowsPackBudget, validateWindowsParts, sha256 } from './windows-release-contract.mjs';
 import { git } from './workspace.mjs';
 
-export async function packageWindows({sourceRoot, buildOutput, output, sourceRevision}) {
+export async function packageWindows({sourceRoot, buildOutput, output, sourceRevision, withInstaller = false}) {
   if (process.platform !== 'win32' || process.arch !== 'x64') throw new Error('Package Windows x64 on the Windows build machine');
   const config = validateWindowsRelease(JSON.parse(fs.readFileSync(path.join(sourceRoot, 'ecom/windows-release-config.json'))));
   if (git(sourceRoot, ['rev-parse', 'HEAD']) !== sourceRevision || git(sourceRoot, ['status', '--porcelain'])) throw new Error('Native source must match the clean committed build');
@@ -15,9 +16,9 @@ export async function packageWindows({sourceRoot, buildOutput, output, sourceRev
   const native = JSON.parse(fs.readFileSync(path.join(buildOutput, 'ecom-update.json')));
   if (native.sourceRevision !== sourceRevision || native.version !== config.version) throw new Error('Build metadata differs from selected source');
   const source = path.join(buildOutput, 'mini_installer.exe');
-  const installer = path.join(output, `Ecom-${config.version}-windows-x64.exe`);
-  fs.copyFileSync(source, installer, fs.constants.COPYFILE_EXCL);
-  const manifest = {...config, sourceRevision, archive:'EcomSetup.exe', archiveSha256:await sha256(installer), archiveBytes:fs.statSync(installer).size,
+  const installer = withInstaller ? `Ecom-${config.version}-windows-x64.exe` : null;
+  if (installer) fs.copyFileSync(source, path.join(output, installer), fs.constants.COPYFILE_EXCL);
+  const manifest = {...config, sourceRevision, archive:'EcomSetup.exe', archiveSha256:await sha256(source), archiveBytes:fs.statSync(source).size,
     exeSha256:await sha256(path.join(buildOutput,'Ecom.exe')), frameworkSha256:await sha256(path.join(buildOutput,'chrome.dll')), updaterSha256:await sha256(path.join(buildOutput,'EcomUpdater.exe'))};
   const npm = path.join(path.dirname(process.execPath),'node_modules/npm/bin/npm-cli.js');
   const partsDirectory=path.join(output,'parts');fs.mkdirSync(partsDirectory);
@@ -30,7 +31,7 @@ export async function packageWindows({sourceRoot, buildOutput, output, sourceRev
     if(value.files.length!==count||fs.statSync(path.join(destination,value.filename)).size>windowsPackBudget)throw new Error('Windows npm pack exceeds publication budget');return value;
   };
   manifest.payloadFormat='npm-parts-v1';manifest.parts=[];
-  const input=fs.openSync(installer,'r');
+  const input=fs.openSync(source,'r');
   try {
     for(let offset=0,index=0;offset<manifest.archiveBytes;offset+=windowsPartBytes,index++){
       const directory=path.join(output,'part-'+index);fs.mkdirSync(directory);
@@ -58,13 +59,14 @@ export async function packageWindows({sourceRoot, buildOutput, output, sourceRev
   const transfer=path.join(output,'windows-transfer.tar');
   const transferFiles=[pack.filename,...manifest.parts.map(p=>'parts/'+windowsTarballName(config,p.version))];
   const bundled=spawnSync('tar',['-cf',transfer,'-C',output,...transferFiles],{encoding:'utf8'});if(bundled.error||bundled.status!==0)throw bundled.error||new Error(bundled.stderr);
-  const receipt={...manifest,installer:path.basename(installer),tarball:pack.filename,tarballSha256:await sha256(tgz),integrity,tarballBytes:fs.statSync(tgz).size,transfer:path.basename(transfer),transferSha256:await sha256(transfer),transferBytes:fs.statSync(transfer).size,
+  const receipt={...manifest,...(installer ? {installer} : {}),tarball:pack.filename,tarballSha256:await sha256(tgz),integrity,tarballBytes:fs.statSync(tgz).size,transfer:path.basename(transfer),transferSha256:await sha256(transfer),transferBytes:fs.statSync(transfer).size,
     buildEnvironment:{node:process.version,platform:process.platform,arch:process.arch,argsSha256:await sha256(path.join(buildOutput,'args_generated.gni'))},
     updaterSelfTest:true,payloadVerified:true,corruptedPartRejected:true,nativeSmokeTest:false,localUpdateRecoveryVerified:false,updateRoundTripVerified:false,rollbackRoundTripVerified:false,published:false};
   fs.writeFileSync(path.join(output,'release-receipt.json'),JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});
   return receipt;
 }
 if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
-  const [sourceRoot,buildOutput,output]=process.argv.slice(2).map(p=>path.resolve(p));
-  packageWindows({sourceRoot,buildOutput,output,sourceRevision:git(sourceRoot,['rev-parse','HEAD'])}).then(r=>console.log(JSON.stringify(r))).catch(e=>{console.error(e.message);process.exitCode=1;});
+  const {values, positionals}=parseArgs({allowPositionals:true,options:{'with-installer':{type:'boolean'}}});
+  const [sourceRoot,buildOutput,output]=positionals.map(p=>path.resolve(p));
+  packageWindows({sourceRoot,buildOutput,output,sourceRevision:git(sourceRoot,['rev-parse','HEAD']),withInstaller:values['with-installer']}).then(r=>console.log(JSON.stringify(r))).catch(e=>{console.error(e.message);process.exitCode=1;});
 }

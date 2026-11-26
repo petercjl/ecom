@@ -99,7 +99,7 @@ async function shareHelperResources(app, output, version) {
   }
 }
 
-export async function packageMacos({ sourceApp, output, sourceRevision, sourceRoot = root }) {
+export async function packageMacos({ sourceApp, output, sourceRevision, sourceRoot = root, withInstaller = false }) {
   if (process.platform !== 'darwin' || process.arch !== 'arm64') throw new Error('Currently verified target: macOS arm64');
   const config = validateRelease(JSON.parse(fs.readFileSync(path.join(sourceRoot, 'ecom/release-config.json'), 'utf8')));
   if (fs.existsSync(output)) throw new Error('Choose a new output directory; existing artifacts are preserved');
@@ -109,7 +109,7 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   if (git(sourceRoot, ['status', '--porcelain']) || git(sourceRoot, ['rev-parse', 'HEAD']) !== sourceRevision) throw new Error('Source must remain at the clean build revision');
   verifyMacArchitecture(path.join(sourceApp, 'Contents/MacOS/Ecom'));
   fs.mkdirSync(output, { recursive: true, mode: 0o700 });
-  const stage = path.join(output, 'dmg-root'); fs.mkdirSync(stage);
+  const stage = path.join(output, withInstaller ? 'dmg-root' : 'app-stage'); fs.mkdirSync(stage);
   const app = path.join(stage, 'Ecom.app');
   run('/usr/bin/ditto', [sourceApp, app]);
   const removedLocales = path.join(output, 'excluded-locales');
@@ -160,15 +160,19 @@ export async function packageMacos({ sourceApp, output, sourceRevision, sourceRo
   writeNew(path.join(payload, 'artifact.json'), JSON.stringify(manifest, null, 2) + '\n');
   writeNew(path.join(payload, 'package.json'), JSON.stringify(payloadPackage(config), null, 2) + '\n');
   fs.copyFileSync(path.join(sourceRoot, 'LICENSE'), path.join(payload, 'LICENSE'), fs.constants.COPYFILE_EXCL);
-  fs.symlinkSync('/Applications', path.join(stage, 'Applications'));
-  const dmg = path.join(output, `Ecom-${config.version}-macos-arm64.dmg`);
-  run('/usr/bin/hdiutil', ['create', '-volname', 'Ecom', '-srcfolder', stage, '-format', 'UDZO', dmg]);
+  let installer = {};
+  if (withInstaller) {
+    fs.symlinkSync('/Applications', path.join(stage, 'Applications'));
+    const dmg = path.join(output, `Ecom-${config.version}-macos-arm64.dmg`);
+    run('/usr/bin/hdiutil', ['create', '-volname', 'Ecom', '-srcfolder', stage, '-format', 'UDZO', dmg]);
+    installer = { dmg: path.basename(dmg), dmgSha256: await sha256(dmg) };
+  }
   const tarball = path.join(output, config.packageName.slice(1).replace('/', '-') + '-' + config.version + '.tgz');
   if (fs.existsSync(tarball)) throw new Error('Native npm payload already exists');
   packNativePayload(payload, output);
   if (!fs.statSync(tarball).isFile()) throw new Error('npm pack did not produce the expected payload');
   if (fs.statSync(tarball).size > 390_000_000) throw new Error('Payload exceeds npm CLI publication size budget');
-  const receipt = { ...manifest, dmg: path.basename(dmg), dmgSha256: await sha256(dmg), tarball: path.basename(tarball), tarballSha256: await sha256(tarball), buildEnvironment: { node: process.version, xcode: run('/usr/bin/xcodebuild', ['-version']).split('\n')[0], sdk: run('/usr/bin/xcrun', ['--sdk', 'macosx', '--show-sdk-version']), argsSha256: await sha256(path.resolve(sourceRoot, '../out/Release_arm64/args_generated.gni')) }, updaterSelfTest: true, localUpdateRecoveryVerified: true, codesignVerified: true, nativeSmokeTest: false, updateRoundTripVerified: false, published: false };
+  const receipt = { ...manifest, ...installer, tarball: path.basename(tarball), tarballSha256: await sha256(tarball), buildEnvironment: { node: process.version, xcode: run('/usr/bin/xcodebuild', ['-version']).split('\n')[0], sdk: run('/usr/bin/xcrun', ['--sdk', 'macosx', '--show-sdk-version']), argsSha256: await sha256(path.resolve(sourceRoot, '../out/Release_arm64/args_generated.gni')) }, updaterSelfTest: true, localUpdateRecoveryVerified: true, codesignVerified: true, nativeSmokeTest: false, updateRoundTripVerified: false, published: false };
   writeNew(path.join(output, 'release-receipt.json'), JSON.stringify(receipt, null, 2) + '\n');
-  return { output, payload, dmg, tarball, receipt };
+  return { output, payload, app, ...(installer.dmg && { dmg: path.join(output, installer.dmg) }), tarball, receipt };
 }
