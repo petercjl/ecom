@@ -53,7 +53,7 @@ namespace {
 constexpr char kProductNavigationTask[] = "ecom.taobao-product-navigation";
 constexpr char kLoadingUrl[] = "chrome://shops/product-status.html";
 constexpr char kSearchUrl[] = "https://s.taobao.com/search";
-constexpr char kMerchantProductCheck[] = "ecom.merchant-product-check";
+constexpr char kProductPageCheck[] = "ecom.product-page-check";
 
 // Native UI owns this action; page scripts never receive a routing capability.
 class ProductRouteInfoBar final : public ConfirmInfoBarDelegate {
@@ -96,6 +96,8 @@ constexpr char16_t kReadMerchantVerdict[] = uR"JS(JSON.stringify((() => {
         text.includes('不支持访问其他店铺商品详情'),
     accessDeniedPage: /访问被拒绝|访问异常提示/.test(document.title),
     verification: /请完成安全验证|请进行安全验证|拖动滑块|滑块验证/.test(text),
+    abnormal: text.includes('访问异常提示') &&
+        text.includes('系统检测到当前访问存在异常'),
     gallery: !!document.querySelector('#picGalleryEle img'),
     imageCount: new Set([...document.querySelectorAll('#picGalleryEle img')]
         .map(img => (img.currentSrc || img.src)
@@ -105,21 +107,25 @@ constexpr char16_t kReadMerchantVerdict[] = uR"JS(JSON.stringify((() => {
   };
 })()))JS";
 
-class MerchantProductCheck final : public base::SupportsUserData::Data,
+TabStripModel* GetPlaceholderTabStrip(content::WebContents* placeholder);
+
+class ProductPageCheck final : public base::SupportsUserData::Data,
                                    public content::WebContentsObserver {
  public:
-  MerchantProductCheck(content::WebContents* source, std::string item_id,
+  ProductPageCheck(content::WebContents* source, std::string item_id,
                        int64_t navigation_id,
-                       base::OnceClosure route)
+                   bool auto_route_other_shop,
+                   base::OnceCallback<void(bool)> route)
       : content::WebContentsObserver(source), item_id_(std::move(item_id)),
         navigation_id_(navigation_id),
+        auto_route_other_shop_(auto_route_other_shop),
         container_(containers::GetContainerIdForWebContents(source)),
         route_(std::move(route)), started_(base::TimeTicks::Now()) {
     prefs_.Init(Profile::FromBrowserContext(source->GetBrowserContext())->GetPrefs());
     prefs_.Add(kUrlRoutingPref, base::BindRepeating(
-        &MerchantProductCheck::Stop, base::Unretained(this)));
+        &ProductPageCheck::Stop, base::Unretained(this)));
   }
-  ~MerchantProductCheck() override {
+  ~ProductPageCheck() override {
     weak_.InvalidateWeakPtrs();
     Observe(nullptr);
   }
@@ -156,7 +162,7 @@ class MerchantProductCheck final : public base::SupportsUserData::Data,
       return;
     }
     poll_.Start(FROM_HERE, base::Milliseconds(150),
-                base::BindOnce(&MerchantProductCheck::Read, weak_.GetWeakPtr()));
+                base::BindOnce(&ProductPageCheck::Read, weak_.GetWeakPtr()));
   }
   void Read() {
     if (!route_ || !web_contents()) return;
@@ -173,7 +179,7 @@ class MerchantProductCheck final : public base::SupportsUserData::Data,
     }
     frame->ExecuteJavaScriptInIsolatedWorld(
         kReadMerchantVerdict,
-        base::BindOnce(&MerchantProductCheck::OnRead, weak_.GetWeakPtr(),
+        base::BindOnce(&ProductPageCheck::OnRead, weak_.GetWeakPtr(),
                        frame->GetWeakDocumentPtr(), url),
         ISOLATED_WORLD_ID_CHROME_INTERNAL);
   }
@@ -188,31 +194,36 @@ class MerchantProductCheck final : public base::SupportsUserData::Data,
     }
     auto state = base::JSONReader::ReadDict(result.GetString(), base::JSON_PARSE_RFC);
     if (!state) { Schedule(); return; }
-    if (IsOtherShopProductVerdict(url, item_id_, *state)) {
+    if (auto_route_other_shop_ &&
+        IsOtherShopProductVerdict(url, item_id_, *state)) {
       auto route = std::move(route_);
       Stop();
-      std::move(route).Run();
+      std::move(route).Run(/*require_search=*/false);
       return;
     }
     if (state->FindBool("verification").value_or(false)) {
       Stop();
       return;
     }
-    if (state->FindBool("gallery").value_or(false)) {
-      // Take one settled sample. No image fetching or completeness probing.
-      if (!state->FindBool("settled").value_or(false) &&
+    const bool abnormal = state->FindBool("abnormal").value_or(false);
+    if (abnormal || state->FindBool("gallery").value_or(false)) {
+      // Use the settled gallery without loading any additional resources.
+      if (!abnormal && !state->FindBool("settled").value_or(false) &&
           base::TimeTicks::Now() - started_ < base::Seconds(5)) {
         Schedule();
         return;
       }
       const int count = state->FindInt("imageCount").value_or(0);
-      if (count > 0 && count <= 3) {
-        auto* manager = infobars::ContentInfoBarManager::FromWebContents(web_contents());
+      if ((abnormal || (count > 0 && count <= 3)) &&
+          GetTaobaoProductId(url) == item_id_ &&
+          GetPlaceholderTabStrip(web_contents())) {
+        auto* manager =
+            infobars::ContentInfoBarManager::FromWebContents(web_contents());
         if (manager) {
           manager->AddInfoBar(CreateConfirmInfoBar(
               std::make_unique<ProductRouteInfoBar>(
                   Profile::FromBrowserContext(web_contents()->GetBrowserContext()),
-                  base::BindOnce(&MerchantProductCheck::RouteManually,
+                  base::BindOnce(&ProductPageCheck::RouteManually,
                                  weak_.GetWeakPtr(), document, url))));
           poll_.Stop();
           return;
@@ -231,16 +242,17 @@ class MerchantProductCheck final : public base::SupportsUserData::Data,
         containers::GetContainerIdForWebContents(web_contents()) != container_) return;
     auto route = std::move(route_);
     Stop();
-    std::move(route).Run();
+    std::move(route).Run(/*require_search=*/true);
   }
   const std::string item_id_;
   const int64_t navigation_id_;
+  const bool auto_route_other_shop_;
   const std::string container_;
-  base::OnceClosure route_;
+  base::OnceCallback<void(bool)> route_;
   const base::TimeTicks started_;
   base::OneShotTimer poll_;
   PrefChangeRegistrar prefs_;
-  base::WeakPtrFactory<MerchantProductCheck> weak_{this};
+  base::WeakPtrFactory<ProductPageCheck> weak_{this};
 };
 
 constexpr char16_t kReadPage[] = uR"JS(JSON.stringify((() => {
@@ -344,14 +356,16 @@ class ProductNavigation final : public base::SupportsUserData::Data,
                     std::unique_ptr<tabs::TabModel> tab,
                     GURL short_url,
                     std::string container,
-                    std::string item_id)
+                    std::string item_id,
+                    bool require_search)
       : content::WebContentsObserver(tab->GetContents()),
         window_(window->GetWeakPtr()),
         placeholder_(placeholder->GetWeakPtr()),
         tab_(std::move(tab)),
         short_url_(std::move(short_url)),
         container_(std::move(container)),
-        item_id_(std::move(item_id)) {}
+        item_id_(std::move(item_id)),
+        require_search_(require_search) {}
 
   ~ProductNavigation() override { Observe(nullptr); }
 
@@ -469,7 +483,8 @@ class ProductNavigation final : public base::SupportsUserData::Data,
       return;
     }
     const bool abnormal = state->FindBool("abnormal").value_or(false);
-    if (!abnormal && state->FindBool("complete").value_or(false)) {
+    if (!abnormal && state->FindBool("complete").value_or(false) &&
+        (stage_ == Stage::kResult || !require_search_)) {
       Finish();
       return;
     }
@@ -481,7 +496,8 @@ class ProductNavigation final : public base::SupportsUserData::Data,
     if (stage_ == Stage::kProduct && title && !title->empty() &&
         state->FindBool("gallery").value_or(false) &&
         (abnormal || (state->FindBool("settled").value_or(false) &&
-                      base::TimeTicks::Now() - started_ >= base::Seconds(3)))) {
+                      (require_search_ ||
+                       base::TimeTicks::Now() - started_ >= base::Seconds(3))))) {
       stage_ = Stage::kSearch;
       search_url_ = net::AppendQueryParameter(GURL(kSearchUrl), "q", *title);
       Navigate(search_url_, GURL(), base::Seconds(15));
@@ -504,7 +520,14 @@ class ProductNavigation final : public base::SupportsUserData::Data,
     SchedulePoll();
   }
 
-  void TimedOut() { Finish(nullptr, /*open_short_url=*/true); }
+  void TimedOut() {
+    if (require_search_) {
+      Finish(stage_ == Stage::kSearch ? "PRODUCT_SEARCH_NO_MATCH"
+                                      : "PRODUCT_NAVIGATION_INCOMPLETE");
+      return;
+    }
+    Finish(nullptr, /*open_short_url=*/true);
+  }
 
   void Finish(const char* error = nullptr, bool open_short_url = false) {
     done_ = true;
@@ -582,6 +605,7 @@ class ProductNavigation final : public base::SupportsUserData::Data,
   const GURL short_url_;
   const std::string container_;
   const std::string item_id_;
+  const bool require_search_;
   Stage stage_ = Stage::kProduct;
   bool done_ = false;
   GURL pending_url_;
@@ -598,7 +622,8 @@ void StartTaobaoProductNavigation(BrowserWindowInterface* window,
                                   content::WebContents* source,
                                   const GURL& short_url,
                                   const std::string& container,
-                                  bool replace_source) {
+                                  bool replace_source,
+                                  bool require_search) {
   auto* tabs = window->GetTabStripModel();
   auto* placeholder = source;
   // Keep the initial shell for links that already opened a new tab.
@@ -630,7 +655,7 @@ void StartTaobaoProductNavigation(BrowserWindowInterface* window,
   }
   auto task = std::make_unique<ProductNavigation>(
       window, placeholder, std::move(tab), short_url, container,
-      std::move(item_id));
+      std::move(item_id), require_search);
   auto* navigation = task.get();
   placeholder->SetUserData(kProductNavigationTask, std::move(task));
   navigation->Start();
@@ -640,14 +665,15 @@ bool IsTaobaoProductNavigationPending(content::WebContents* contents) {
   return contents && contents->GetUserData(kProductNavigationTask);
 }
 
-void ObserveMerchantProductNavigation(content::WebContents* source,
-                                     const GURL& product_url,
-                                     int64_t navigation_id,
-                                     base::OnceClosure route_other_shop) {
+void ObserveTaobaoProductNavigation(content::WebContents* source,
+                                    const GURL& product_url,
+                                    int64_t navigation_id,
+                                    bool auto_route_other_shop,
+                                    base::OnceCallback<void(bool)> route) {
   source->SetUserData(kMerchantProductCheck,
-      std::make_unique<MerchantProductCheck>(source,
-          GetTaobaoProductId(product_url), navigation_id,
-          std::move(route_other_shop)));
+      std::make_unique<ProductPageCheck>(
+          source, GetTaobaoProductId(product_url), navigation_id,
+          auto_route_other_shop, std::move(route)));
 }
 
 }  // namespace ecom

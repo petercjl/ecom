@@ -19,13 +19,15 @@ void StartTaobaoProductNavigation(BrowserWindowInterface* window,
                                   content::WebContents* source,
                                   const GURL& short_url,
                                   const std::string& container,
-                                  bool replace_source = false);
-// Observes the normal merchant navigation without delaying it or fetching a
-// second copy. Only an explicit platform other-shop verdict invokes the route.
-void ObserveMerchantProductNavigation(content::WebContents* source,
-                                     const GURL& product_url,
-                                     int64_t navigation_id,
-                                     base::OnceClosure route_other_shop);
+                                  bool replace_source = false,
+                                  bool require_search = false);
+// Offers manual recovery on incomplete product pages. Automatic routing is
+// reserved for a merchant navigation with an explicit platform denial.
+void ObserveTaobaoProductNavigation(content::WebContents* source,
+                                    const GURL& product_url,
+                                    int64_t navigation_id,
+                                    bool auto_route_other_shop,
+                                    base::OnceCallback<void(bool)> route);
 bool IsTaobaoProductNavigationPending(content::WebContents* contents);
 
 }  // namespace ecom

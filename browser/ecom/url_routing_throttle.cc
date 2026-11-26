@@ -2,6 +2,8 @@
 #include "brave/browser/ecom/url_routing_throttle.h"
 #include <set>
 #include <memory>
+#include <optional>
+#include <string_view>
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/supports_user_data.h"
@@ -40,7 +42,7 @@ class Chain final : public base::SupportsUserData::Data {
 void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
                     GURL original_url, GURL destination, std::string container,
                     std::string rule_id, std::set<std::string> visited,
-                    bool error, bool replace_source = false) {
+                    bool error, bool replace_source, bool require_search) {
   if (!source || HasNativePageTask(source.get()) ||
       IsUrlRoutingPagePinned(source.get())) return;
   auto* profile = Profile::FromBrowserContext(source->GetBrowserContext());
@@ -60,9 +62,13 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
   const bool blank = source->GetController().IsInitialBlankNavigation();
   bool open_product_in_background = false;
   if (!error) {
+    const auto source_id =
+        containers::GetContainerIdForWebContents(source.get());
+    // Interactive recovery uses the same product rule in every container.
     const auto current = ResolveUrlRouting(
         profile, original_url,
-        containers::GetContainerIdForWebContents(source.get()));
+        require_search ? std::nullopt
+                       : std::optional<std::string_view>(source_id));
     const auto* current_rule = current.FindString("ruleId");
     const auto* current_target = current.FindString("containerId");
     const auto* rewritten = current.FindString("destinationUrl");
@@ -78,9 +84,10 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
       open_product_in_background = *mode == "buyer-product-search";
     }
   }
+  if (require_search && !open_product_in_background) return;
   if (open_product_in_background) {
     StartTaobaoProductNavigation(window, source.get(), destination, container,
-                                 replace_source);
+                                 replace_source, require_search);
     return;
   }
   NavigateParams params(window, destination, ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
@@ -105,6 +112,30 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
       window->GetTabStripModel()->CloseWebContentsAt(index, TabCloseTypes::CLOSE_NONE);
   }
 }
+// The source-agnostic resolution used for previews also selects the rule
+// for an explicit user action, without changing automatic navigation scope.
+void ObserveProductPage(content::NavigationHandle& handle,
+                        const base::DictValue& decision,
+                        bool auto_route_other_shop) {
+  auto* source = handle.GetWebContents();
+  const auto* mode = decision.FindString("openMode");
+  const auto* target = decision.FindString("containerId");
+  const auto* rule = decision.FindString("ruleId");
+  if (!handle.IsInPrimaryMainFrame() || handle.GetRequestMethod() != "GET" ||
+      !mode || *mode != "buyer-product-search" || !target || !rule ||
+      !decision.FindBool("available").value_or(false) ||
+      decision.contains("destinationError") || HasNativePageTask(source) ||
+      IsUrlRoutingPagePinned(source)) {
+    return;
+  }
+  const auto* rewritten = decision.FindString("destinationUrl");
+  const GURL product_url = rewritten ? GURL(*rewritten) : handle.GetURL();
+  ObserveTaobaoProductNavigation(
+      source, product_url, handle.GetNavigationId(), auto_route_other_shop,
+      base::BindOnce(&OpenRoutedPage, source->GetWeakPtr(), handle.GetURL(),
+                     product_url, *target, *rule, std::set<std::string>(),
+                     /*error=*/false, /*replace_source=*/true));
+}
 }  // namespace
 
 UrlRoutingThrottle::UrlRoutingThrottle(content::NavigationThrottleRegistry& registry)
@@ -126,17 +157,22 @@ content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::WillRedirec
 const char* UrlRoutingThrottle::GetNameForLogging() { return "EcomUrlRoutingThrottle"; }
 content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::Route() {
   auto* handle = navigation_handle();
-  if (handle->GetRestoreType() != content::RestoreType::kNotRestored) return PROCEED;
   auto* source = handle->GetWebContents();
   const auto source_container = containers::GetContainerIdForWebContents(source);
-  const auto decision = ResolveUrlRouting(
-      Profile::FromBrowserContext(source->GetBrowserContext()), handle->GetURL(),
-      source_container);
-  if (decision.empty()) return PROCEED;
+  auto* profile = Profile::FromBrowserContext(source->GetBrowserContext());
+  const auto decision = ResolveUrlRouting(profile, handle->GetURL(),
+                                          source_container);
   const auto* container = decision.FindString("containerId");
+  if (handle->GetRestoreType() != content::RestoreType::kNotRestored ||
+      decision.empty() ||
+      (container && *container == source_container &&
+       decision.FindBool("available").value_or(false))) {
+    ObserveProductPage(*handle,
+                       ResolveUrlRouting(profile, handle->GetURL(), std::nullopt),
+                       /*auto_route_other_shop=*/false);
+    return PROCEED;
+  }
   if (!container) return CANCEL_AND_IGNORE;
-  if (*container == source_container &&
-      decision.FindBool("available").value_or(false)) return PROCEED;
   // Do not preload a page in the wrong partition or surface a speculative tab.
   // A later real navigation will evaluate the rule in the normal main frame.
   if (handle->IsInPrerenderedMainFrame()) return CANCEL_AND_IGNORE;
@@ -166,17 +202,13 @@ content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::Route() {
       IsTaobaoMerchantContainer(
           Profile::FromBrowserContext(source->GetBrowserContext()),
           source_container)) {
-    ObserveMerchantProductNavigation(source, target_url, handle->GetNavigationId(),
-        base::BindOnce(&OpenRoutedPage, source->GetWeakPtr(), handle->GetURL(),
-                       destination, *container,
-                       rule_id ? *rule_id : std::string(), std::move(visited),
-                       false, true));
+    ObserveProductPage(*handle, decision, /*auto_route_other_shop=*/true);
     return PROCEED;
   }
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
       base::BindOnce(&OpenRoutedPage, source->GetWeakPtr(), handle->GetURL(),
                      destination, *container, rule_id ? *rule_id : std::string(),
-                     std::move(visited), !error.empty(), false));
+                     std::move(visited), !error.empty(), false, false));
   return CANCEL_AND_IGNORE;
 }
 }  // namespace ecom
