@@ -2,10 +2,12 @@
 #include "brave/browser/ecom/taobao_product_navigation.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
 
+#include "base/containers/lru_cache.h"
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/logging.h"
@@ -25,6 +27,7 @@
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_isolated_world_ids.h"
+#include "content/public/browser/browser_context.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
@@ -45,8 +48,61 @@ namespace ecom {
 namespace {
 
 constexpr char kProductNavigationTask[] = "ecom.taobao-product-navigation";
+constexpr char kProductLandingCache[] = "ecom.taobao-product-landing-cache";
 constexpr char kLoadingUrl[] = "chrome://shops/product-status.html";
 constexpr char kSearchUrl[] = "https://s.taobao.com/search";
+constexpr char kSearchOrigin[] = "https://s.taobao.com/";
+constexpr auto kLandingLifetime = base::Minutes(10);
+constexpr auto kCachedNavigationTimeout = base::Seconds(4);
+
+struct ProductLanding {
+  GURL url;
+  base::TimeTicks expires;
+};
+
+using ProductLandingKey = std::pair<std::string, std::string>;
+
+class ProductLandingCache final : public base::SupportsUserData::Data {
+ public:
+  static ProductLandingCache& For(content::BrowserContext& context) {
+    auto* cache = static_cast<ProductLandingCache*>(
+        context.GetUserData(kProductLandingCache));
+    if (!cache) {
+      auto owned_cache = std::make_unique<ProductLandingCache>();
+      cache = owned_cache.get();
+      context.SetUserData(kProductLandingCache, std::move(owned_cache));
+    }
+    return *cache;
+  }
+
+  std::optional<ProductLanding> Find(const ProductLandingKey& key) {
+    auto entry = entries_.Get(key);
+    if (entry == entries_.end()) {
+      return std::nullopt;
+    }
+    if (entry->second.expires <= base::TimeTicks::Now()) {
+      entries_.Erase(entry);
+      return std::nullopt;
+    }
+    return entry->second;
+  }
+
+  void Remember(const ProductLandingKey& key, const GURL& url) {
+    entries_.Put(key,
+                 ProductLanding{url, base::TimeTicks::Now() + kLandingLifetime});
+  }
+
+  void Forget(const ProductLandingKey& key, const ProductLanding& attempted) {
+    auto entry = entries_.Peek(key);
+    if (entry != entries_.end() && entry->second.url == attempted.url &&
+        entry->second.expires == attempted.expires) {
+      entries_.Erase(entry);
+    }
+  }
+
+ private:
+  base::LRUCache<ProductLandingKey, ProductLanding> entries_{64};
+};
 
 constexpr char16_t kReadPage[] = uR"JS(JSON.stringify((() => {
   const body = document.body;
@@ -160,10 +216,36 @@ class ProductNavigation final : public base::SupportsUserData::Data,
 
   ~ProductNavigation() override { Observe(nullptr); }
 
-  void Start() { Navigate(short_url_, GURL(), base::Seconds(14)); }
+  void Start() {
+    cached_landing_ = LandingCache().Find(LandingKey());
+    if (!cached_landing_) {
+      StartUncached();
+      return;
+    }
+    stage_ = Stage::kCached;
+    Navigate(cached_landing_->url, GURL(kSearchOrigin), kCachedNavigationTimeout);
+  }
 
  private:
-  enum class Stage { kProduct, kSearch, kResult };
+  enum class Stage { kCached, kProduct, kSearch, kResult };
+
+  ProductLandingCache& LandingCache() const {
+    return ProductLandingCache::For(*web_contents()->GetBrowserContext());
+  }
+
+  ProductLandingKey LandingKey() const { return {container_, item_id_}; }
+
+  void StartUncached() {
+    stage_ = Stage::kProduct;
+    Navigate(short_url_, GURL(), base::Seconds(14));
+  }
+
+  void RetryUncached() {
+    LandingCache().Forget(LandingKey(), *cached_landing_);
+    cached_landing_.reset();
+    VLOG(0) << "Ecom buyer product route reused URL unavailable; resolving again";
+    StartUncached();
+  }
 
   void DidStartNavigation(content::NavigationHandle* navigation) override {
     if (done_ || !navigation->IsInPrimaryMainFrame() ||
@@ -230,15 +312,16 @@ class ProductNavigation final : public base::SupportsUserData::Data,
     }
     frame->ExecuteJavaScriptInIsolatedWorld(
         kReadPage,
-        base::BindOnce(&ProductNavigation::OnRead, weak_.GetWeakPtr(),
+        base::BindOnce(&ProductNavigation::OnRead, weak_.GetWeakPtr(), stage_,
                        frame->GetWeakDocumentPtr(), url),
         ISOLATED_WORLD_ID_CHROME_INTERNAL);
   }
 
-  void OnRead(content::WeakDocumentPtr document,
+  void OnRead(Stage stage,
+              content::WeakDocumentPtr document,
               const GURL& url,
               base::Value result) {
-    if (done_ || !web_contents()) {
+    if (done_ || stage != stage_ || !web_contents()) {
       return;
     }
     if (document.AsRenderFrameHostIfValid() !=
@@ -269,12 +352,20 @@ class ProductNavigation final : public base::SupportsUserData::Data,
       SchedulePoll();
       return;
     }
-    if (state->FindBool("denied").value_or(false)) {
+    const bool denied = state->FindBool("denied").value_or(false);
+    const bool abnormal = state->FindBool("abnormal").value_or(false);
+    if (stage_ == Stage::kCached && (denied || abnormal)) {
+      RetryUncached();
+      return;
+    }
+    if (denied) {
       Finish("PRODUCT_NAVIGATION_INCOMPLETE");
       return;
     }
-    const bool abnormal = state->FindBool("abnormal").value_or(false);
     if (!abnormal && state->FindBool("complete").value_or(false)) {
+      if (stage_ == Stage::kResult && url.spec().size() <= 8192) {
+        LandingCache().Remember(LandingKey(), url.GetWithoutRef());
+      }
       Finish();
       return;
     }
@@ -309,7 +400,13 @@ class ProductNavigation final : public base::SupportsUserData::Data,
     SchedulePoll();
   }
 
-  void TimedOut() { Finish(nullptr, /*open_short_url=*/true); }
+  void TimedOut() {
+    if (stage_ == Stage::kCached && placeholder_ && IsLoadingTab(*placeholder_)) {
+      RetryUncached();
+      return;
+    }
+    Finish(nullptr, /*open_short_url=*/true);
+  }
 
   void Finish(const char* error = nullptr, bool open_short_url = false) {
     done_ = true;
@@ -352,9 +449,10 @@ class ProductNavigation final : public base::SupportsUserData::Data,
             }
           }
         }
+        const char* ready = stage_ == Stage::kCached ? "CACHED_DETAIL_READY"
+                                                     : "DETAIL_READY";
         VLOG(0) << "Ecom buyer product route finished: "
-                << (error ? error
-                          : open_short_url ? "SHORT_URL_FALLBACK" : "DETAIL_READY");
+                << (error ? error : open_short_url ? "SHORT_URL_FALLBACK" : ready);
       }
     }
     if (placeholder) {
@@ -391,6 +489,7 @@ class ProductNavigation final : public base::SupportsUserData::Data,
   bool done_ = false;
   GURL pending_url_;
   GURL search_url_;
+  std::optional<ProductLanding> cached_landing_;
   base::TimeTicks started_;
   base::OneShotTimer deadline_;
   base::OneShotTimer poll_;
