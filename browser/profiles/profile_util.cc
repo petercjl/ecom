@@ -29,10 +29,14 @@ void SetDefaultSearchVersion(Profile* profile, bool is_new_profile) {
 }
 
 void SetDefaultThirdPartyCookieBlockValue(Profile* profile) {
+  // Use Chromium's regular-profile default so cross-site sign-in cookies enter
+  // the container's persistent store. Brave's block-third-party default routes
+  // them into top-site-scoped ephemeral storage, breaking subsequent first-party
+  // navigation. Only the default changes; explicit user and policy values win.
   profile->GetPrefs()->SetDefaultPrefValue(
       prefs::kCookieControlsMode,
       base::Value(static_cast<int>(
-          content_settings::CookieControlsMode::kBlockThirdParty)));
+          content_settings::CookieControlsMode::kIncognitoOnly)));
 }
 
 }  // namespace brave
