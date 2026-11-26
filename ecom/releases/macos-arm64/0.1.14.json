@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.14",
+  "packageName": "@lumyne/ecom-macos-arm64",
+  "channel": "latest",
+  "platform": "darwin",
+  "arch": "arm64",
+  "bundleId": "app.ecom.browser",
+  "appName": "Ecom.app",
+  "updateProtocol": 1,
+  "signing": "ad-hoc",
+  "notarized": false,
+  "sourceRevision": "1734a94bee23326f8d40ade452df1bb9c0ec4339",
+  "archive": "Ecom.tar.xz",
+  "archiveSha256": "e8de727e336b1b5d5ed036f54176e95e50f13c13cff3ce96d90ffd27e1da3e2e",
+  "archiveBytes": 157812624,
+  "tarball": "lumyne-ecom-macos-arm64-0.1.14.tgz",
+  "tarballSha256": "539e3b8ce629ce5cdd466c92addc9ad9f7eea81453b0852bc1eab2c7f5b533db",
+  "buildEnvironment": {
+    "node": "v24.22.2",
+    "xcode": "Xcode 26.5",
+    "sdk": "26.5",
+    "argsSha256": "ce4d1d096da68075b214324a728bd98bbcb337fc377fb012a20f196e6d5a2401"
+  },
+  "updaterSelfTest": true,
+  "localUpdateRecoveryVerified": true,
+  "codesignVerified": true,
+  "nativeSmokeTest": true,
+  "updateRoundTripVerified": false,
+  "published": false,
+  "evidencePath": "docs/ecom/release-evidence/macos-arm64-0.1.14.md",
+  "devValidation": {
+    "verified": true,
+    "sourceRevision": "1734a94bee23326f8d40ade452df1bb9c0ec4339",
+    "evidencePath": "docs/ecom/release-evidence/dev-desktop-0.1.14.md"
+  }
+}
