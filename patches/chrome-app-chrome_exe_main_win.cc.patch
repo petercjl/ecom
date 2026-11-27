@@ -3,7 +3,7 @@ diff --git a/chrome/app/chrome_exe_main_win.cc b/chrome/app/chrome_exe_main_win.
 +++ b/chrome/app/chrome_exe_main_win.cc
 @@ -131,3 +131,5 @@
  bool AttemptFastNotify(const base::CommandLine& command_line) {
-+  if (base::FilePath::CompareEqualIgnoreCase(command_line.GetProgram().BaseName().value(), FILE_PATH_LITERAL("Ecom Dev.exe")))
-+    return false;
    if (ContainsNonFastStartFlag(command_line))
      return false;
++  if (::_wcsicmp(command_line.GetProgram().BaseName().value().c_str(), L"Ecom Dev.exe") == 0)
++    return false;
