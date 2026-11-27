@@ -226,7 +226,7 @@ export async function openDesktopShop(options, dependencies = {}) {
           desktop.focus(ready.window);
         } catch (error) {
           const message = error.diagnostics?.desktopKind === 'lease_directory_untrusted'
-            ? error.message : 'Could not bring the selected Ecom window to the foreground.';
+            ? error.message : 'Could not bring the selected Ecom window to the foreground. Bring that Ecom window to the foreground to continue sign-in.';
           throw fail('LOGIN_CLICK_FAILED', message, {
             executed: false, diagnostics: error.diagnostics,
           });

@@ -585,6 +585,8 @@
       ],
       "errorDiagnostics": {
         "phase": "bounded native stage",
+        "authenticationState": "signed-out only when corroborated by a recent native SYCM session check",
+        "authenticationCheckedAt": "Unix seconds for the native session observation",
         "netError": "Chromium network code",
         "bodyKind": "json/html/text/none",
         "matchingTabFound": "boolean",

@@ -4,7 +4,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {fail,exists,privatePath,writeNew} from '../../common.mjs';
-import {discover,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,callMailbox,resolveContainer} from '../../browser/session.mjs';
+import {discover,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,callMailbox,resolveContainer,inspectInConnection} from '../../browser/session.mjs';
 import {listOperations,operationRegistry,getService,validateOperationParams} from '../../sycm-vendor/operation-registry.mjs';
 import {businessCapabilities,mutationCapabilities} from '../../sycm-vendor/business-capabilities.mjs';
 
@@ -186,6 +186,23 @@ export function resolveModuleResponse(response,flows) {
   if(hasTemplate(resolved)&&!flows.length)throw fail('DATA_FLOW_EXPANSION_REQUIRED','Registered module needs native data-flow expansion; retain the operation ID and inspect browser support',{executed:true});
   return sanitized(resolved);
 }
+async function classifySycmReadFailure(error, connection, inspect) {
+  if(error.code!=='REQUEST_FAILED'||error.executed!==false||error.diagnostics?.phase!=='auth-sycm-home'||
+      !error.targetContainerId)return error;
+  let account;
+  try { account=await inspect(connection,error.targetContainerId); } catch { return error; }
+  const {container,instance}=account;
+  const login=container.login;
+  const age=Math.floor(Date.now()/1000)-Number(login.checkedAt);
+  if(login.service!=='sycm'||login.authenticationState!=='signed-out'||login.checking||
+      !Number.isFinite(age)||age<0||age>300)return error;
+  return fail('AUTH_REQUIRED','The selected container recently reported that it was signed out of Shengyicanmou.',{
+    operationId:error.operationId,executed:false,httpStatus:error.httpStatus,
+    diagnostics:{...error.diagnostics,authenticationState:'signed-out',authenticationCheckedAt:login.checkedAt},
+    recovery:{command:'shops open-login',containerId:container.id,options:{'--container':container.name,'--instance':instance.id,'--json':true},
+      action:'For authorized login recovery, run the desktop sign-in once and retry the original read after authentication. Leave platform verification to the user in the same container.'},
+  });
+}
 export async function runRead(options,deps={}) {
   const params=paramsObject(options['params-json']),op=resolveOperation(options.operation);
   const browserOperation=op.browserOperation??op.id;
@@ -212,9 +229,13 @@ export async function runRead(options,deps={}) {
     const effective=supportsRoute?{...op.defaultParams,...params}:params;
     assertPublicParams(effective);
     if(Buffer.byteLength(JSON.stringify(effective))>24576)throw fail('INVALID_ARGUMENT','Read parameters exceed the native 24 KiB limit');
-    result=await (deps.registeredRequest??registeredReadInConnection)(
-      connection,options,browserOperation,effective,supportsRoute?undefined:nativeRegistryHash(),
-      supportsRoute?browserRoute(browserOperation):undefined);
+    try {
+      result=await (deps.registeredRequest??registeredReadInConnection)(
+        connection,options,browserOperation,effective,supportsRoute?undefined:nativeRegistryHash(),
+        supportsRoute?browserRoute(browserOperation):undefined);
+    } catch(error) {
+      throw await classifySycmReadFailure(error,connection,deps.inspect??inspectInConnection);
+    }
   }
   else {
     if(transportFor(op)!=='native-session-get')throw fail('BROWSER_UPGRADE_REQUIRED','Upgrade Ecom to native business read protocol 1 for this registered service; keep the existing container login');

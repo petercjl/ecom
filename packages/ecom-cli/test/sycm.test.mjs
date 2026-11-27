@@ -6,7 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {inventory,buildRead,runRead,businessResponse,paramsObject,planMutation,authorizePlan,showPlan,nativeRegistryHash,resolveModuleResponse} from '../lib/data/taobao/sycm.mjs';
 import {parse,main} from '../lib/cli.mjs';
-import {root} from '../lib/common.mjs';
+import {root,fail} from '../lib/common.mjs';
 import {newerStableVersion} from '../lib/maintenance.mjs';
 
 test('complete source registry is physically bundled with license and checksum provenance',()=>{
@@ -44,6 +44,37 @@ test('business errors and credential fields do not become false successes or lea
   const connection={endpoint:{instanceId:'same'}},deps={discover:()=>connection,request:async(c,o)=>{assert.equal(c,connection);assert.equal(o.container,'account-a');return {operationId:'operation-a',instance:{id:'same'},container:{id:'account-a'},data:{code:5810,message:'登录'}};}};
   await assert.rejects(runRead({operation:'shop.trade-summary',container:'account-a','params-json':'{"dateRange":"2026-11-01|2026-11-01"}'},deps),e=>e.code==='AUTH_REQUIRED'&&e.operationId==='operation-a');
 });
+test('failed SYCM bootstrap uses fresh signed-out evidence to return pinned login recovery',async()=>{
+  const options={operation:'shop.trade-daily',container:'Fixture store','params-json':'{"date":"2026-11-26"}'};
+  const connection={endpoint:{instanceId:'dev-instance',businessReadProtocol:1}};
+  const failure=fail('REQUEST_FAILED','Native request failed',{operationId:'read-op',executed:false,targetContainerId:'shop-id',
+    diagnostics:{phase:'auth-sycm-home',netError:-2,bodyKind:'none'}});
+  const checkedAt=String(Math.floor(Date.now()/1000)-10);
+  const signedOut={service:'sycm',authenticationState:'signed-out',checkedAt};
+  const deps={discover:()=>connection,registeredRequest:async()=>{throw failure;}};
+  const inspect=login=>async (pinned,selector)=>{
+    assert.equal(pinned,connection);
+    assert.equal(selector,'shop-id');
+    return {instance:{id:'dev-instance'},container:{id:'shop-id',name:'Fixture store',login}};
+  };
+  await assert.rejects(runRead(options,{...deps,inspect:inspect(signedOut)}),error=>{
+    assert.equal(error.code,'AUTH_REQUIRED');
+    assert.equal(error.executed,false);
+    assert.equal(error.operationId,'read-op');
+    assert.equal(error.diagnostics.netError,-2);
+    assert.equal(error.recovery.containerId,'shop-id');
+    assert.deepEqual(error.recovery.options,{'--container':'Fixture store','--instance':'dev-instance','--json':true});
+    assert.equal(error.recovery.command,'shops open-login');
+    return true;
+  });
+  for(const login of [
+    {...signedOut,authenticationState:'authenticated'},
+    {...signedOut,checkedAt:'1'},
+    {...signedOut,service:'alimama'},
+  ]) await assert.rejects(runRead(options,{...deps,inspect:inspect(login)}),error=>error===failure);
+  await assert.rejects(runRead(options,{...deps,inspect:async()=>{throw new Error('Inspection failed');}}),error=>error===failure);
+});
+
 test('mutation plans are private, require identity, reject wrong confirmation/account, authorize once and never submit',{skip:process.platform==='win32'},async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ecom-sycm-plan-')),old=process.env.ECOM_CLI_STATE_DIR;process.env.ECOM_CLI_STATE_DIR=dir;
   const target={id:'account-a',name:'Example account',identity:{shopId:'sample-shop',accountId:'sample-user'}};
