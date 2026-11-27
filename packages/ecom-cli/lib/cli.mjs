@@ -15,7 +15,6 @@ import {openDesktopShop} from './login/open-shop.mjs';
 import {desktopDependency} from './login/desktop-runtime.mjs';
 import {inventory,operationSchema,runRead,openOperation,planMutation,showPlan,authorizePlan,nativeRegistryHash} from './data/taobao/sycm.mjs';
 export const capabilities=()=>JSON.parse(fs.readFileSync(path.join(root,'capabilities.json'),'utf8'));
-const qianniuCommands=['shops open','shops login-status','shops submit-login'];
 export function parse(argv) {
   const positions=[],options={}, caps=capabilities();
   for(let i=0;i<argv.length;i++) {
@@ -50,7 +49,7 @@ export function parse(argv) {
     throw fail('INVALID_ARGUMENT','Specify --container and optionally --service home|qianniu');
   }
   if(command==='shops open-login'&&!options.container?.trim())throw fail('INVALID_ARGUMENT','Specify --container with the exact account name shown in Account manager');
-  if(command!=='shops open'&&qianniuCommands.includes(command)&&(!options.container||options.service!=='qianniu')) {
+  if(command==='shops login-status'&&(!options.container||options.service!=='qianniu')) {
     throw fail('INVALID_ARGUMENT','Specify --container and --service qianniu');
   }
   if(command==='session request') {
@@ -66,7 +65,7 @@ export function parse(argv) {
 export async function main(argv) {
   const {command,options,requested}=parse(argv);
   if(command.startsWith('routing ')){const update=await checkUpdate({automatic:true});if(update.available)process.stderr.write('Ecom CLI update available: '+update.latest+'\n');return routingCommand(command.slice(8),options);}
-  if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli routing list|inspect|save|set-container|set-transform|enable|disable|delete|reorder|test|set-enabled | containers list|inspect|verify | shops open|open-login|login-status|submit-login | xhs search --via page | xhs note preflight|open|upload|fill|verify|status|prepare|submit | item media | cdp endpoint|tabs|call | page read | media download | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update|migrate | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
+  if(command==='help')return {ok:true,package:pkg.name,version:pkg.version,usage:'ecom-cli routing list|inspect|save|set-container|set-transform|enable|disable|delete|reorder|test|set-enabled | containers list|inspect|verify | shops open|open-login|login-status | xhs search --via page | xhs note preflight|open|upload|fill|verify|status|prepare|submit | item media | cdp endpoint|tabs|call | page read | media download | session request | sycm operations|schema|run|open|capabilities|mutation plan|show|apply | skill source|status|install|update|migrate | update check|install | doctor; use help --json for required options',...capabilities(),...(capabilities().commandContracts[requested]??{})};
   if(command==='item media')return collectItemMedia(options);
   if(command.startsWith('cdp '))return cdpCommand(command.slice(4),options);
   if(['page read','media download'].includes(command))return pageCommand(command,options);
@@ -97,7 +96,7 @@ export async function main(argv) {
     if(update.available)process.stderr.write('Ecom CLI update available: '+update.latest+'\n');
     return openDesktopShop(options);
   }
-  if(qianniuCommands.includes(command))return qianniuLoginStep(command.slice(6),options);
+  if(command==='shops open'||command==='shops login-status')return qianniuLoginStep(command.slice(6),options);
   if(command==='sycm capabilities')return inventory();
   if(command==='sycm operations'){const result=inventory();return {ok:true,schemaVersion:1,source:result.source,count:result.operations.length,operations:result.operations};}
   if(command==='sycm schema')return {ok:true,schemaVersion:1,operation:operationSchema(options.operation)};

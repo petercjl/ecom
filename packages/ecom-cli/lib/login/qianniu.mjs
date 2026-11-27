@@ -30,8 +30,6 @@ export async function qianniuLoginStep(action, options) {
   const statuses={
     open:['started'],
     'login-status':['page-unavailable','loading','login-page','backend-page','ambiguous'],
-    'submit-login':['wrong-page','manual-verification-required','password-form-unavailable',
-      'credentials-not-filled','already-submitted','clicked'],
   };
   const status=action==='open'?body.navigation:body.status;
   if(body.containerId!==container.id||!statuses[action].includes(status)||

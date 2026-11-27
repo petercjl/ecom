@@ -43,11 +43,13 @@ Input includes natural-language URL-to-container configuration, an Ecom containe
 
 ## Open a container homepage
 
-Use `shops open --container VALUE --json` to open the saved homepage in a foreground tab in that container. Select Dev explicitly with `--profile` or `--instance`. This command also works with fixed-port Ecom Dev CDP enabled. A `started` result confirms that native navigation was started. For the Qianniu login workflow, explicitly pass `--service qianniu`.
+Use `shops open --container VALUE --json` to open the saved homepage in a foreground tab in that container. Select Dev explicitly with `--profile` or `--instance`. This command also works with fixed-port Ecom Dev CDP enabled. A `started` result confirms that native navigation was started. To open the Qianniu entry without signing in, pass `--service qianniu`.
 
 ### Open and sign in through the Ecom desktop
 
 For an exact account and authorized sign-in, read [Desktop login](references/desktop-login.md), then invoke `shops open-login --container EXACT_ACCOUNT_NAME --json` through this Skill's installed entry. For an explicitly selected running browser on macOS or Windows, pass the verified `--profile` or `--instance`. Ecom CLI owns instance and account selection, the permitted actions and the result contract. Its packaged `agent-desktop` reads and operates the selected desktop UI. For an open-only request, use the navigation-only route above. After the desktop call, verify the returned target and interpret the page outcome before resuming the user's task.
+
+For Qianniu sign-in or a sign-in-only acceptance test, use the same desktop command. A delivered click and `backend-page` show that the CLI pressed Login and reached the merchant page in the selected container. If the backend was already open, report that the click was not exercised. For status observation, use `shops login-status --container VALUE --service qianniu --json` with the same instance selector. If manual verification appears or the click outcome is unknown, inspect the same tab and leave it available for the user.
 
 ## Taobao product media
 
@@ -78,14 +80,6 @@ Use this branch for ordinary image notes in a specified Xiaohongshu container. T
 3. For user review, require `xhsNoteReviewProtocol: 1`. Run `xhs note upload` with the pinned instance, container, preparation ID, verified account ID, manifest and preflight digest. `images-ready` confirms the image previews are present. The platform may retain a draft.
 4. Run `xhs note fill` with the same inputs. It fills empty title and body fields independently and preserves different existing content. Run `xhs note verify` for readback. `content-verified` confirms the same ordered previews and matching text. If the publish control is unconfirmed, tell the user to check it in the original tab. Use `xhs note status` for diagnostics and progress.
 5. Leave the original creator tab for the user to inspect and publish. The split workflow has no CLI submission confirmation. The legacy `prepare` and `submit` remain separate and require explicit publication authority, an exact confirmation, and status inspection on an unknown result.
-
-## Qianniu login recovery
-
-Use this branch for an explicit request to sign in to Qianniu or restore its session. Apply main-line target selection and pin the exact container ID and instance ID. Use `--container ID --instance INSTANCE --service qianniu --json` for every step below. The browser owns credentials and form interaction.
-
-1. Run `shops login-status`. If the target tab is unavailable, call `shops open --service qianniu` once and wait for navigation by polling the read-only status for at most 20 seconds. This opens a foreground tab. Stop on ambiguity or an instance change.
-2. On `login-page`, call `shops submit-login` once. If credentials have not filled, the form is unavailable, or manual verification is required, report that exact result and ask the user to finish in the original tab. An unknown outcome or `already-submitted` goes directly to status inspection. Do not resubmit automatically.
-3. After `clicked`, poll status for at most 20 seconds. `backend-page` means the active tab reached the Qianniu backend origin. Report that page evidence separately from authenticated account identity, which this check cannot establish. If the login page remains, report submission attempted and login unconfirmed. Stop for manual verification when required. Resume with status inspection after user handoff. Shengyicanmou verification is a separate operation.
 
 ## Registered business operations
 

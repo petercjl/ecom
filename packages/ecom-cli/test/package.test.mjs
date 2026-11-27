@@ -38,6 +38,11 @@ test('actual npm packed install, update repair, isolation, local-edits and docto
     runNpm(['install','--prefix',bootstrap,'--ignore-scripts','--no-audit','--no-fund',tarball]);
     const entry=path.join(bootstrap,'node_modules/@lumyne/ecom-cli/bin/ecom-cli.mjs');
     assert.equal(invoke(entry,['version','--json']).version,pkg.version);
+    const loginHelp=invoke(entry,['help','--json']);
+    assert.ok(loginHelp.commandContracts['shops open-login']);
+    assert.equal(Object.hasOwn(loginHelp.commandContracts,'shops submit-login'),false);
+    const removedLogin=invoke(entry,['shops','submit-login','--container','fixture','--service','qianniu','--json']);
+    assert.equal(removedLogin.error.code,'INVALID_ARGUMENT');
     const a=path.join(tmp,'host-a','ecom-cli'), b=path.join(tmp,'host-b','ecom-cli');
     const args=(verb,target,agent='generic')=>['skill',verb,'--agent',agent,'--target',target,'--json'];
     assert.equal(invoke(entry,args('install',a)).current,true);
