@@ -180,7 +180,6 @@ GURL FindTaobaoSearchProductLink(const base::ListValue& links,
   return redirect;
 }
 
-namespace {
 bool IsMerchantDenialTemplateUrl(const GURL& url) {
   return SafeUrl(url) && url.SchemeIs("https") && !url.has_port() &&
          url.host() == "bixi.alicdn.com" &&
@@ -188,7 +187,6 @@ bool IsMerchantDenialTemplateUrl(const GURL& url) {
              url.path(),
              "/punish/punish:resource:template:CDCBusinessDataSecuritySpace:");
 }
-}  // namespace
 
 bool IsMerchantProductOwnershipPage(const GURL& url,
                                     const std::string& item_id) {

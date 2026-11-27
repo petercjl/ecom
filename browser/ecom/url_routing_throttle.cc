@@ -31,6 +31,7 @@
 #include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "url/gurl.h"
+#include "url/origin.h"
 
 namespace ecom {
 namespace {
@@ -116,6 +117,7 @@ void OpenRoutedPage(base::WeakPtr<content::WebContents> source,
 // The source-agnostic resolution used for previews also selects the rule
 // for an explicit user action, without changing automatic navigation scope.
 void ObserveProductPage(content::NavigationHandle& handle,
+                        const GURL& original_url,
                         const base::DictValue& decision,
                         bool auto_route_other_shop) {
   auto* source = handle.GetWebContents();
@@ -130,12 +132,29 @@ void ObserveProductPage(content::NavigationHandle& handle,
     return;
   }
   const auto* rewritten = decision.FindString("destinationUrl");
-  const GURL product_url = rewritten ? GURL(*rewritten) : handle.GetURL();
+  const GURL product_url = rewritten ? GURL(*rewritten) : original_url;
   ObserveTaobaoProductNavigation(
       source, product_url, handle.GetNavigationId(), auto_route_other_shop,
-      base::BindOnce(&OpenRoutedPage, source->GetWeakPtr(), handle.GetURL(),
+      base::BindOnce(&OpenRoutedPage, source->GetWeakPtr(), original_url,
                      product_url, *target, *rule, std::set<std::string>(),
                      /*error=*/false, /*replace_source=*/true));
+}
+// The previous committed document or immediate server redirect preserves the
+// product identity even after the gallery observer has finished. Never infer
+// the item from fields supplied by the denial page.
+GURL ProductBeforeDenial(content::NavigationHandle& handle) {
+  const auto& chain = handle.GetRedirectChain();
+  if (chain.size() > 1) {
+    const GURL& previous = chain[chain.size() - 2];
+    return GetTaobaoProductId(previous).empty() ? GURL() : previous;
+  }
+  const GURL& previous = handle.GetWebContents()->GetLastCommittedURL();
+  if (!handle.IsRendererInitiated() || !handle.GetInitiatorOrigin() ||
+      *handle.GetInitiatorOrigin() != url::Origin::Create(previous) ||
+      GetTaobaoProductId(previous).empty()) {
+    return {};
+  }
+  return previous;
 }
 }  // namespace
 
@@ -161,6 +180,18 @@ content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::Route() {
   auto* source = handle->GetWebContents();
   const auto source_container = containers::GetContainerIdForWebContents(source);
   auto* profile = Profile::FromBrowserContext(source->GetBrowserContext());
+  if (handle->IsInPrimaryMainFrame() &&
+      handle->GetRestoreType() == content::RestoreType::kNotRestored &&
+      IsMerchantDenialTemplateUrl(handle->GetURL()) &&
+      IsTaobaoMerchantContainer(profile, source_container)) {
+    const GURL product = ProductBeforeDenial(*handle);
+    if (product.is_valid()) {
+      ObserveProductPage(*handle, product,
+                         ResolveUrlRouting(profile, product, source_container),
+                         /*auto_route_other_shop=*/true);
+    }
+    return PROCEED;
+  }
   const auto decision = ResolveUrlRouting(profile, handle->GetURL(),
                                           source_container);
   const auto* container = decision.FindString("containerId");
@@ -170,7 +201,8 @@ content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::Route() {
        decision.FindBool("available").value_or(false))) {
     if (!GetTaobaoProductId(handle->GetURL()).empty()) {
       ObserveProductPage(
-          *handle, ResolveUrlRouting(profile, handle->GetURL(), std::nullopt),
+          *handle, handle->GetURL(),
+          ResolveUrlRouting(profile, handle->GetURL(), std::nullopt),
           /*auto_route_other_shop=*/false);
     }
     return PROCEED;
@@ -205,7 +237,8 @@ content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::Route() {
       IsTaobaoMerchantContainer(
           Profile::FromBrowserContext(source->GetBrowserContext()),
           source_container)) {
-    ObserveProductPage(*handle, decision, /*auto_route_other_shop=*/true);
+    ObserveProductPage(*handle, handle->GetURL(), decision,
+                       /*auto_route_other_shop=*/true);
     return PROCEED;
   }
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
