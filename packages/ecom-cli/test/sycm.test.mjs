@@ -138,6 +138,32 @@ test('CLI-only daily read selects the approved browser route despite catalog dri
   await assert.rejects(runRead({...options,'params-json':'{"date":"2026-02-30"}'},deps),e=>e.code==='INVALID_ARGUMENT');
 });
 
+test('transaction overview shares one page across daily and summary schemas and preserves all business fields',async()=>{
+  const listed=(await main(['sycm','operations','--json'])).operations;
+  const daily=listed.find(({id})=>id==='shop.trade-daily');
+  const summary=(await main(['sycm','schema','--operation','shop.trade-summary','--json'])).operation;
+  const {pageQuery}=daily;
+  assert.equal(pageQuery.name,'生意参谋-交易-销售分析-交易概况');
+  assert.ok(pageQuery.aliases.includes('店铺交易概况'));
+  assert.ok(pageQuery.searchHints.includes('店铺支付金额'));
+  assert.deepEqual(summary.pageQuery,pageQuery);
+  assert.equal(pageQuery.modes.daily.operation,daily.id);
+  assert.equal(pageQuery.modes.summary.operation,summary.id);
+  assert.equal(listed.find(({id})=>id==='shop.trade-trend').pageQuery,undefined);
+
+  const data={code:0,data:{payAmt:12,uv:3,paySubOrderCount:0,newPlatformMetric:42}};
+  const summaryParams={dateType:'week',dateRange:'2026-11-16|2026-11-22'};
+  const result=await runRead({operation:summary.id,container:'sample','params-json':JSON.stringify(summaryParams)},{
+    discover:()=>({endpoint:{businessReadProtocol:1,businessRouteProtocol:1}}),
+    registeredRequest:async(_connection,_options,id,params)=>{
+      assert.equal(id,summary.id);
+      assert.deepEqual(params,{...summaryParams,device:'0'});
+      return {data};
+    },
+  });
+  assert.deepEqual(result.data,data);
+});
+
 test('signed DMP audience keeps the operation outside the native registry and requires a chart',async()=>{
   const options={operation:'dmp.competitor-audience',container:'sample','params-json':'{"itemId":"123","audienceType":"browse","dimension":"age"}'};
   const deps={

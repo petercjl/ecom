@@ -31,6 +31,23 @@ const dailyTrade={
   requiredParams:['date'],
   defaultParams:{...operationRegistry['shop.trade-summary'].defaultParams,dateType:'recent1'},
 };
+const tradeOverviewPageQuery={
+  name:'生意参谋-交易-销售分析-交易概况',
+  pageSection:'交易总览',
+  pageUrl:'https://sycm.taobao.com/fa/trade/detail?activeKey=overview',
+  aliases:['店铺交易概况','交易概况','交易总览'],
+  searchHints:['店铺交易数据','店铺支付金额','店铺支付买家数','店铺访客数'],
+  input:'统计时间',
+  accountContext:'Ecom 店铺账号',
+  output:'返回平台在所选时间口径下提供的全部业务字段',
+  modes:{
+    daily:{operation:'shop.trade-daily',description:'按日查询；分日查询时，每个日期调用一次'},
+    summary:{operation:'shop.trade-summary',description:'按区间汇总；已验证最近 7 天和自然周'},
+  },
+};
+const pageQueries=new Map(Object.values(tradeOverviewPageQuery.modes).map(
+  ({operation})=>[operation,tradeOverviewPageQuery],
+));
 const audienceEnvelope=JSON.parse(fs.readFileSync(fileURLToPath(new URL('./dmp-audience-dev.json',import.meta.url)),'utf8'));
 const audienceManifest=JSON.parse(audienceEnvelope.payload);
 const competitorAudience={
@@ -89,7 +106,8 @@ export function paramsObject(value) {
 const transportFor=op=>op.method==='GET'&&getService(op.service).origin===ORIGIN?'native-session-get':'adapter-required';
 export function operationSchema(id) {
   const op=resolveOperation(id), service=getService(op.service);
-  return {...op,origin:service.origin,entryUrl:service.entryUrl,tokenStrategy:service.tokenStrategy,transport:'native-business-read',legacyTransport:transportFor(op),runtimeVerified:false,
+  const pageQuery=pageQueries.get(op.id);
+  return {...op,...(pageQuery?{pageQuery}:{}),origin:service.origin,entryUrl:service.entryUrl,tokenStrategy:service.tokenStrategy,transport:'native-business-read',legacyTransport:transportFor(op),runtimeVerified:false,
     minimumBrowserCapability:op.signedDevRoute?'signedBusinessRouteProtocol=1 (Ecom Dev)':'businessReadProtocol=1 with businessRouteProtocol=1 or matching legacy registry hash',limits:'Credentials remain native. Per-endpoint permissions, CSRF, date semantics and service login require real validation.'};
 }
 export function nativeRegistry() {
