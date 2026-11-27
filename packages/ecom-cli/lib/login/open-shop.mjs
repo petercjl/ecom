@@ -218,11 +218,38 @@ export async function openDesktopShop(options, dependencies = {}) {
       return receipt(observed.status, observed.host ? {host: observed.host} : {});
     }
 
+    let point;
+    if (desktop.clickPoint) {
+      phase = 'prepare-login-click';
+      if (!ready.window.is_focused) {
+        try {
+          desktop.focus(ready.window);
+        } catch (error) {
+          throw fail('LOGIN_CLICK_FAILED', 'Could not bring the selected Ecom window to the foreground.', {
+            executed: false, diagnostics: error.diagnostics,
+          });
+        }
+      }
+      const fresh = readPage({bounds: true});
+      if (['backend-page', 'verification-required'].includes(fresh?.status)) {
+        return receipt(fresh.status, fresh.host ? {host: fresh.host} : {});
+      }
+      const current = readWindow();
+      const frame = fresh?.window.bounds;
+      if (fresh?.button && fresh.window.is_focused && current?.is_focused && frame &&
+          ['x', 'y', 'width', 'height'].every(key => frame[key] === current.bounds?.[key])) {
+        point = containedPoint(fresh.button, current);
+      }
+      if (!point) {
+        throw fail('LOGIN_CLICK_FAILED', 'The selected login button could not be confirmed in the foreground Ecom window.', {executed: false});
+      }
+    }
+
     phase = 'submit-login';
     let clickError;
     loginClick = 'unknown';
     try {
-      const result = desktop.click(ready.button.ref_id, true);
+      const result = point ? desktop.clickPoint(...point) : desktop.click(ready.button.ref_id, true);
       if (result?.disposition?.delivery === 'not_delivered') throw fail('LOGIN_CLICK_FAILED', 'The headed click was not delivered.', {executed: false});
       loginClick = result?.disposition?.delivery?.startsWith('delivered') ? 'delivered' : 'unknown';
     } catch (error) {

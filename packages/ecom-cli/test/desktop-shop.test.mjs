@@ -28,15 +28,15 @@ const pddForm = (account = 'fixture-account') => ['拼多多商家后台', pddLo
   button('登录', '@form:login'),
 ])];
 
-function scenario({initial = manager('Ecom · 账号管理'), landing = login, after = backend, clickError, wrongContainer, initiallyClosed = false, duplicateOpenRef = false, accountForm, prefill, focused = true, focusError, nativeNavigation = false} = {}) {
+function scenario({initial = manager('Ecom · 账号管理'), landing = login, after = backend, clickError, wrongContainer, initiallyClosed = false, duplicateOpenRef = false, accountForm, prefill, focused = true, focusError, nativeNavigation = false, windowsPointer = false, boundedPage} = {}) {
   let page = initial;
   let stage = initiallyClosed ? 'closed' : 'initial';
   const clicks = [];
   const desktop = {
     listWindows: () => stage === 'closed' ? [] : [{...window, is_focused: focused, title: page[0], bounds: {x: -200, y: 0, width: 400, height: 300}}],
     launch: () => {stage = 'initial';},
-    snapshot() {
-      const [title, url, ...content] = page;
+    snapshot(_window, _depth, bounds) {
+      const [title, url, ...content] = bounds && boundedPage ? boundedPage : page;
       const toolbar = node('toolbar', '', [
         node('textfield', '地址和搜索栏', [], {value: url}),
         button('账号管理', '@toolbar:manager'),
@@ -63,14 +63,23 @@ function scenario({initial = manager('Ecom · 账号管理'), landing = login, a
     assert.deepEqual(point, [70, 50]);
     return prefill;
   };
-  if (duplicateOpenRef || focusError) {
+  if (duplicateOpenRef || focusError || windowsPointer) {
     desktop.focus = () => {
       if (focusError) throw focusError;
       focused = true;
     };
   }
-  if (duplicateOpenRef) {
-    desktop.clickPoint = (x, y) => {clicks.push([x, y]);stage = 'opened';page = landing;};
+  if (duplicateOpenRef || windowsPointer) {
+    desktop.clickPoint = (x, y) => {
+      clicks.push([x, y]);
+      if (stage === 'opened') {
+        if (clickError) throw clickError;
+        page = after;
+        return {disposition: {delivery: 'delivered_unverified'}};
+      }
+      stage = 'opened';
+      page = landing;
+    };
   }
   const navigate = nativeNavigation ? async target => {
     assert.equal(target, name);
@@ -242,15 +251,33 @@ test('an undelivered Windows UIA Open click can use the matching row’s live bo
   assert.deepEqual(outside.clicks, [['@table:open', false]]);
 });
 
-test('Windows semantic login proceeds without requesting foreground focus', async () => {
+test('Windows only clicks fresh foreground bounds for the form-scoped Login button', async () => {
   const focusError = fail('DESKTOP_OPERATION_FAILED', 'Windows denied foreground focus', {executed: false});
-  const flow = scenario({focused: false, focusError, initial: ['Neutral page', 'example.com/']});
-  assert.equal((await flow.run()).status, 'backend-page');
-  assert.deepEqual(flow.clicks, [['@toolbar:manager', false], ['@table:open', false], ['@form:login', true]]);
+  const boundedPage = [login[0], login[1], node('form', '登录', [
+    node('button', '登录', [], {ref_id: '@fresh:login', bounds: {x: -80, y: 90, width: 40, height: 20}}),
+  ])];
+  const options = {focused: false, windowsPointer: true, nativeNavigation: true, boundedPage};
+  const flow = scenario(options);
+  const result = await flow.run();
+  assert.equal(result.status, 'backend-page');
+  assert.equal(result.loginClick, 'delivered');
+  assert.deepEqual(flow.clicks, [[-60, 100]]);
 
-  const pointer = scenario({focused: false, focusError, duplicateOpenRef: true});
-  await assert.rejects(pointer.run(), {code: 'DESKTOP_OPERATION_FAILED'});
-  assert.deepEqual(pointer.clicks, [['@table:open', false]]);
+  const blocked = scenario({...options, focusError});
+  const noBounds = scenario({...options, boundedPage: login});
+  for (const attempt of [blocked, noBounds]) {
+    await assert.rejects(attempt.run(), {code: 'LOGIN_CLICK_FAILED', executed: false});
+    assert.deepEqual(attempt.clicks, []);
+  }
+
+  const challenged = scenario({...options, boundedPage: challenge});
+  assert.equal((await challenged.run()).status, 'verification-required');
+  assert.deepEqual(challenged.clicks, []);
+
+  const unknown = scenario({...options, clickError: fail('FIXTURE', 'Pointer outcome unknown', {executed: 'unknown'})});
+  await assert.rejects(unknown.run(), error => error.code === 'LOGIN_CLICK_FAILED' &&
+    error.executed === 'unknown' && error.diagnostics.loginClick === 'unknown');
+  assert.deepEqual(unknown.clicks, [[-60, 100]]);
 });
 
 test('account name is exact and duplicate matches stop before opening', async () => {
