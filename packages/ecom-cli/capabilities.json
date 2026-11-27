@@ -126,7 +126,7 @@
       "authorization": "Open the saved homepage or explicit Qianniu entry in a foreground tab in the selected container"
     },
     "shops open-login": {
-      "description": "Open an exact account from Account manager in the selected Ecom instance. The default can start formal Ecom. On macOS, explicit selectors pin a running instance. Eligible HTTPS login forms are submitted once; Pinduoduo account login requires both fields to be prefilled.",
+      "description": "Open an exact account from Account manager in the selected Ecom instance. The default can start formal Ecom. On macOS and Windows, explicit selectors pin a compatible running instance. Eligible HTTPS login forms are submitted once; Pinduoduo account login requires both fields to be prefilled.",
       "options": {
         "--container": {
           "type": "string",
@@ -138,11 +138,11 @@
         },
         "--profile": {
           "type": "string",
-          "description": "Select a running macOS Ecom instance by its profile directory."
+          "description": "Select a compatible running Ecom instance by its profile directory."
         },
         "--instance": {
           "type": "string",
-          "description": "Select a running macOS Ecom instance by its instance ID."
+          "description": "Select a compatible running Ecom instance by its instance ID."
         },
         "--json": {
           "type": "boolean"
@@ -154,7 +154,8 @@
       "requires": {
         "defaultChannel": "stable",
         "explicitInstancePlatforms": [
-          "darwin"
+          "darwin",
+          "win32"
         ],
         "transport": "desktop",
         "platforms": [

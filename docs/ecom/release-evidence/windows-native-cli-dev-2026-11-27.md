@@ -14,3 +14,9 @@
 Windows 崩溃转储定位到 Dev 启动检查调用了依赖 User32/GDI32 的路径比较，导致 Chromium 的沙箱网页进程触发检查失败。修复提交 `2fafa213e` 将子进程的启动过滤放在文件名识别之前，并用适用于早期启动的比较函数。
 
 在 peter-new 增量编译后，旧 Dev 正常退出，修正版用同一 Dev Profile 启动。通过原生账号管理入口打开 `ecom://shops/`，原生标签状态确认该页处于选中状态，Windows UI Automation 确认页面显示“添加账号”。复测期间修正版未生成新崩溃转储，CLI 仍可列出原有容器。
+
+## Windows 正式版和 Dev 的桌面登录路由
+
+在 peter-new 同时运行正式版和 Dev，使用隔离安装的候选 CLI，通过 `agent-desktop` 读取两个实际窗口。默认登录命令选择正式版。Dev 的 Profile 与实例 ID 均解析到同一实际进程。将 Dev 的窗口 ID 传给默认命令、以及将正式版的窗口 ID 传给 Dev 命令，均返回 `DESKTOP_WINDOW_UNAVAILABLE` 和 `loginClick=not-attempted`。
+
+正式版实机覆盖默认桌面入口。显式选择 Windows 正式版需要支持原生通信的浏览器，现有正式实例尚未暴露该入口。真实店铺登录、平台验证及登录后的数据读取分别验收。

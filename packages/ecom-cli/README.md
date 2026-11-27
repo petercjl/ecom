@@ -70,7 +70,7 @@ Register new platform reads under an explicit platform or service command group.
 
 > 用 Ecom CLI 打开「店铺名称」容器，看到登录表单时点击一次登录。
 
-The command is `shops open-login --container NAME --json`. It defaults to formal Ecom and starts it when needed. On macOS, pass `--profile` or `--instance` to select a running Ecom instance such as Ecom Dev. The command matches the exact name in the selected instance's current Account manager table. It requires an interactive desktop session on macOS or Windows. The npm dependency supplies the desktop executable and the managed Skill keeps its own platform copy.
+The command is `shops open-login --container NAME --json`. It defaults to formal Ecom and starts it when needed. On macOS and Windows, pass `--profile` or `--instance` to pin a compatible running instance such as Ecom Dev. A Windows browser selected explicitly must expose the Ecom native mailbox. The command matches the exact name in the selected instance's current Account manager table. It requires an interactive desktop session on macOS or Windows. The npm dependency supplies the desktop executable and the managed Skill keeps its own platform copy.
 
 `backend-page` confirms the observed Taobao merchant page. `verification-required` means the user needs to finish verification in the open tab. `login-pending` and `unconfirmed` describe outcomes awaiting positive evidence. A failed click and a tab crash return distinct JSON errors. Inspect the current tab before retrying an uncertain click.
 

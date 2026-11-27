@@ -47,7 +47,7 @@ Use `shops open --container VALUE --json` to open the saved homepage in a foregr
 
 ### Open and sign in through the Ecom desktop
 
-For an exact account and authorized sign-in, read [Desktop login](references/desktop-login.md), then invoke `shops open-login --container EXACT_ACCOUNT_NAME --json` through this Skill's installed entry. The Agent determines the intended account, instance and permissions. Ecom CLI owns instance and account selection, the permitted actions and the result contract. Its packaged `agent-desktop` reads and operates the selected desktop UI. For an open-only request, use the navigation-only route above. After the desktop call, verify the returned target and interpret the page outcome before resuming the user's task.
+For an exact account and authorized sign-in, read [Desktop login](references/desktop-login.md), then invoke `shops open-login --container EXACT_ACCOUNT_NAME --json` through this Skill's installed entry. For an explicitly selected running browser on macOS or Windows, pass the verified `--profile` or `--instance`. Ecom CLI owns instance and account selection, the permitted actions and the result contract. Its packaged `agent-desktop` reads and operates the selected desktop UI. For an open-only request, use the navigation-only route above. After the desktop call, verify the returned target and interpret the page outcome before resuming the user's task.
 
 ## Taobao product media
 

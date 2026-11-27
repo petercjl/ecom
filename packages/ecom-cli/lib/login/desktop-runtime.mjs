@@ -66,15 +66,19 @@ export function createDesktop(session) {
 
 export function selectDesktopInstance(options, platform = process.platform, resolve = discover) {
   if (options.profile === undefined && options.instance === undefined) return null;
-  if (platform !== 'darwin') {
-    throw fail('PLATFORM_UNSUPPORTED', 'Explicit desktop instance selection is currently supported on macOS.');
+  if (platform !== 'darwin' && platform !== 'win32') {
+    throw fail('PLATFORM_UNSUPPORTED', 'Explicit desktop instance selection requires macOS or Windows.');
   }
-  const {endpoint, channel} = resolve(options, {allowFixedDevCdp: true});
-  return {id: endpoint.instanceId, pid: endpoint.pid, channel};
+  const {endpoint, channel} = resolve(options, {allowFixedDevCdp: platform === 'darwin'});
+  const identity = {id: endpoint.instanceId, pid: endpoint.pid, channel};
+  return platform === 'win32'
+    ? {...identity, application: path.win32.basename(endpoint.executable)}
+    : identity;
 }
 
 export function ecomDesktop(run, {instance = null, platform = process.platform, env = process.env} = {}) {
-  const app = platform === 'win32' ? 'Ecom.exe' :
+  const {application, ...identity} = instance ?? {};
+  const app = platform === 'win32' ? application ?? 'Ecom.exe' :
     instance?.channel === 'dev' ? 'app.ecom.browser.dev' : 'app.ecom.browser';
   const windowsInstallations = platform === 'win32'
     ? [env.LOCALAPPDATA, env.ProgramFiles, env['ProgramFiles(x86)']].filter(Boolean)
@@ -93,7 +97,7 @@ export function ecomDesktop(run, {instance = null, platform = process.platform, 
       installedWindowsExecutables.has(process.Path?.toLowerCase())).map(process => process.Id));
   }
   return {
-    instance,
+    instance: instance ? identity : null,
     ...(platform === 'darwin' ? {
       securePrefill(window, point) {
         return observeSecurePrefill(window, point, platform);

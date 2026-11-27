@@ -91,7 +91,7 @@ test('desktop selectors reuse explicit discovery and pin the app and window PID'
     return {channel: 'dev', endpoint: {pid: 42, instanceId: 'dev-id'}};
   });
   assert.equal(selectDesktopInstance({}, 'win32'), null);
-  assert.throws(() => selectDesktopInstance(selectors, 'win32'), {code: 'PLATFORM_UNSUPPORTED'});
+  assert.throws(() => selectDesktopInstance(selectors, 'linux'), {code: 'PLATFORM_UNSUPPORTED'});
   const windows = [{...window, id: 'different-pid'}, {...window, id: 'selected-dev', pid: 42}];
   const calls = [];
   const desktop = ecomDesktop((...args) => {
@@ -110,6 +110,39 @@ test('desktop selectors reuse explicit discovery and pin the app and window PID'
   await assert.rejects(openDesktopShop({container: name}, {
     desktop, wait: async check => check() ?? null,
   }), {code: 'DESKTOP_WINDOW_UNAVAILABLE'});
+});
+
+test('Windows desktop login targets the verified executable and PID for formal and Dev instances', async () => {
+  const other = {...window, id: 'other-window', pid: 41};
+  const pinned = {...window, id: 'pinned-window', pid: 42};
+  const options = {instance: 'windows-instance'};
+  for (const [channel, application] of [
+    ['stable', 'Ecom.exe'], ['dev', 'Ecom Dev.exe'], ['dev', 'Ecom.exe'],
+  ]) {
+    const instance = selectDesktopInstance(options, 'win32', (selected, flags) => {
+      assert.equal(selected, options);
+      assert.deepEqual(flags, {allowFixedDevCdp: false});
+      return {channel, endpoint: {instanceId: options.instance, pid: 42,
+        executable: 'C:\\Ecom\\' + application}};
+    });
+    const calls = [];
+    const desktop = ecomDesktop((...args) => {
+      calls.push(args);
+      if (args[0] === 'list-windows') return [other, pinned];
+    }, {instance, platform: 'win32'});
+    assert.deepEqual(desktop.instance, {id: options.instance, pid: 42, channel});
+    assert.deepEqual(desktop.listWindows(), [pinned]);
+    desktop.focus(pinned);
+    desktop.snapshot(pinned);
+    assert.deepEqual(calls.map(([method, flag, app]) => [method, flag, app]), [
+      ['list-windows', '--app', application],
+      ['focus-window', '--app', application],
+      ['snapshot', '--app', application],
+    ]);
+    await assert.rejects(openDesktopShop({...options, container: name, 'window-id': other.id}, {
+      desktop, wait: async check => check() ?? null,
+    }), {code: 'DESKTOP_WINDOW_UNAVAILABLE'});
+  }
 });
 
 test('launches when needed, opens the matched row and performs exactly one headed login click', async () => {
