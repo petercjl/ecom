@@ -548,10 +548,14 @@
         },
         "--params-json": {
           "type": "string"
+        },
+        "--recover-login": {
+          "type": "boolean",
+          "description": "Authorize a pre-read session check and at most one desktop sign-in for a Shengyicanmou read in the pinned Taobao container."
         }
       },
       "sideEffects": "local-write",
-      "authorization": "Registered reads only, or local mutation-plan/confirmation records; no automatic platform writes. Credentials stay native.",
+      "authorization": "Registered business read. Explicit --recover-login permits desktop navigation and one login-button click when needed. Credentials stay in Ecom.",
       "output": {
         "operation": "registered ID",
         "service": "sycm, sycm-trade, alimama, dmp or coupon",
@@ -560,7 +564,8 @@
         "httpStatus": 200,
         "businessStatus": "success after business-envelope checks",
         "data": "native-redacted source response",
-        "registryHash": "compiled browser/CLI catalog identity"
+        "registryHash": "compiled browser/CLI catalog identity",
+        "loginRecovery": "Optional desktop operation ID, status and click disposition when recovery ran"
       },
       "limits": {
         "paramsBytes": 24576,
@@ -568,6 +573,7 @@
         "nativeOperationTimeoutMs": 50000,
         "clientTimeoutMs": 75000,
         "automaticRetries": false,
+        "recoverLoginReadRetries": 1,
         "methods": "Fixed catalog GET/POST reads; arbitrary method/path/body forbidden",
         "accountBinding": "Current Ecom persistent container, no separate CLI store configuration"
       },

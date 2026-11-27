@@ -34,6 +34,8 @@ test('real CLI parser exposes strict business commands and missing targets fail 
   assert.equal(parse(['sycm','run','--operation','shop.trade-summary','--container','example','--params-json','{}']).command,'sycm run');
   for(const args of [['sycm','run'],['sycm','run','--operation','shop.trade-summary'],['sycm','mutation','apply','--plan','x','--container','a'],['sycm','schema'],['sycm','open'],['sycm','open','--operation','alimama.access']])assert.throws(()=>parse(args));
   assert.equal(parse(['sycm','open','--operation','alimama.access','--container','example','--foreground']).options.foreground,true);
+  assert.equal(parse(['sycm','run','--operation','shop.trade-daily','--container','example','--recover-login']).options['recover-login'],true);
+  assert.throws(()=>parse(['sycm','open','--operation','shop.trade-daily','--container','example','--recover-login']),{code:'INVALID_ARGUMENT'});
   const result=await main(['sycm','operations','--json']);assert.equal(result.count,137);
 });
 test('business errors and credential fields do not become false successes or leak diagnostics',async()=>{
@@ -73,6 +75,66 @@ test('failed SYCM bootstrap uses fresh signed-out evidence to return pinned logi
     {...signedOut,service:'alimama'},
   ]) await assert.rejects(runRead(options,{...deps,inspect:inspect(login)}),error=>error===failure);
   await assert.rejects(runRead(options,{...deps,inspect:async()=>{throw new Error('Inspection failed');}}),error=>error===failure);
+});
+
+test('authorized SYCM reads check session first and recover once on the pinned account',async()=>{
+  const opts={operation:'shop.trade-daily',container:'Fixture store','recover-login':true,'params-json':'{"date":"2026-11-26"}'};
+  const connection={endpoint:{instanceId:'fixture-instance',businessReadProtocol:1}};
+  const instance={id:'fixture-instance'};
+  const checkedAt=String(Math.floor(Date.now()/1000));
+  const bootstrapError=fail('REQUEST_FAILED','Bootstrap failed',{executed:false,diagnostics:{phase:'auth-sycm-home',netError:-2}});
+  const forbidden=fail('AUTH_OR_RISK_CHALLENGE','Site rejected the request',{executed:false});
+  const fixture=({state,firstError,repeatError,status='backend-page',loginInstance=instance}={})=>{
+    const calls=[];
+    const container={id:'fixture-shop',name:'Fixture store',platform:'taobao',login:{service:'sycm',authenticationState:state,checkedAt}};
+    const deps={
+      discover:()=>connection,
+      inspect:async(current,selector)=>{
+        assert.equal(current,connection);
+        assert.equal(selector,container.name);
+        calls.push('inspect');
+        return {container,instance};
+      },
+      registeredRequest:async(current,options,id,params)=>{
+        assert.equal(current,connection);
+        assert.equal(options.container,container.id);
+        assert.equal(id,'shop.trade-summary');
+        assert.equal(params.dateRange,'2026-11-26|2026-11-26');
+        calls.push('read');
+        if(firstError){const error=firstError;firstError=null;throw error;}
+        if(repeatError)throw repeatError;
+        return {container,instance,data:{code:0,data:{}}};
+      },
+      signIn:async options=>{
+        assert.deepEqual(options,{container:container.name,instance:instance.id});
+        calls.push('login');
+        return {operationId:'desktop-op',instance:loginInstance,container,status,loginClick:'delivered'};
+      },
+    };
+    return {calls,run:()=>runRead(opts,deps)};
+  };
+  const authenticated=fixture({state:'authenticated'});
+  assert.equal((await authenticated.run()).loginRecovery,undefined);
+  assert.deepEqual(authenticated.calls,['inspect','read']);
+  const signedOut=fixture({state:'signed-out'});
+  assert.equal((await signedOut.run()).loginRecovery.operationId,'desktop-op');
+  assert.deepEqual(signedOut.calls,['inspect','login','read']);
+  const unknown=fixture({state:'unknown',firstError:bootstrapError});
+  assert.equal((await unknown.run()).businessStatus,'success');
+  assert.deepEqual(unknown.calls,['inspect','read','login','read']);
+  const risk=fixture({state:'signed-out',status:'verification-required'});
+  await assert.rejects(risk.run(),{code:'RISK_VERIFICATION_REQUIRED',executed:false,operationId:'desktop-op'});
+  assert.deepEqual(risk.calls,['inspect','login']);
+  const retryError=fail('AUTH_CONTEXT_REQUIRED','Service context unresolved',{executed:false});
+  const failed=fixture({state:'unknown',firstError:bootstrapError,repeatError:retryError});
+  await assert.rejects(failed.run(),error=>error===retryError&&error.diagnostics.login.operationId==='desktop-op');
+  assert.deepEqual(failed.calls,['inspect','read','login','read']);
+  const denied=fixture({state:'unknown',firstError:forbidden});
+  await assert.rejects(denied.run(),error=>error===forbidden);
+  assert.deepEqual(denied.calls,['inspect','read']);
+  const mismatch=fixture({state:'signed-out',loginInstance:{id:'other'}});
+  await assert.rejects(mismatch.run(),{code:'PROTOCOL_MISMATCH'});
+  assert.deepEqual(mismatch.calls,['inspect','login']);
 });
 
 test('mutation plans are private, require identity, reject wrong confirmation/account, authorize once and never submit',{skip:process.platform==='win32'},async()=>{

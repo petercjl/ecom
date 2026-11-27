@@ -23,7 +23,7 @@ export function parse(argv) {
     if(word==='--version'&&argv.length===1){positions.push('version');continue;}
     const key=word.slice(2);
     if(Object.hasOwn(options,key)) throw fail('INVALID_ARGUMENT','Duplicate option '+word);
-    if(['json','help','yes','foreground','fixture'].includes(key))options[key]=true;
+    if(['json','help','yes','foreground','fixture','recover-login'].includes(key))options[key]=true;
     else if(['from-package','rule-json','rule-id','rule-ids-json','transform','expected-revision','agent','target','profile','instance','name','version','container','window-id','url','method','operation','params-json','plan','confirm','service','keyword','via','manifest','account-id','preparation','digest','fixture-port','tab','expected-page-version','operation-id','enabled','idle-seconds','keep-awake','lazy-startup','max-background','output','cdp-method','cdp-target','item-id','out'].includes(key)&&argv[i+1]&&!argv[i+1].startsWith('--')) options[key]=argv[++i];
     else throw fail('INVALID_ARGUMENT','Unknown option or missing value: '+word);
   }

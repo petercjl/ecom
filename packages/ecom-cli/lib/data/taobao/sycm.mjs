@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {fail,exists,privatePath,writeNew} from '../../common.mjs';
 import {discover,requestInConnection,registeredReadInConnection,openBusinessPageInConnection,callMailbox,resolveContainer,inspectInConnection} from '../../browser/session.mjs';
+import {openDesktopShop} from '../../login/open-shop.mjs';
 import {listOperations,operationRegistry,getService,validateOperationParams} from '../../sycm-vendor/operation-registry.mjs';
 import {businessCapabilities,mutationCapabilities} from '../../sycm-vendor/business-capabilities.mjs';
 
@@ -186,16 +187,20 @@ export function resolveModuleResponse(response,flows) {
   if(hasTemplate(resolved)&&!flows.length)throw fail('DATA_FLOW_EXPANSION_REQUIRED','Registered module needs native data-flow expansion; retain the operation ID and inspect browser support',{executed:true});
   return sanitized(resolved);
 }
+function failedSycmInitialization(error) {
+  return error.code==='REQUEST_FAILED'&&error.executed===false&&error.diagnostics?.phase==='auth-sycm-home';
+}
+function recentlySignedOut(login) {
+  const age=Math.floor(Date.now()/1000)-Number(login.checkedAt);
+  return login.service==='sycm'&&login.authenticationState==='signed-out'&&!login.checking&&age>=0&&age<=300;
+}
 async function classifySycmReadFailure(error, connection, inspect) {
-  if(error.code!=='REQUEST_FAILED'||error.executed!==false||error.diagnostics?.phase!=='auth-sycm-home'||
-      !error.targetContainerId)return error;
+  if(!failedSycmInitialization(error)||!error.targetContainerId)return error;
   let account;
   try { account=await inspect(connection,error.targetContainerId); } catch { return error; }
   const {container,instance}=account;
   const login=container.login;
-  const age=Math.floor(Date.now()/1000)-Number(login.checkedAt);
-  if(login.service!=='sycm'||login.authenticationState!=='signed-out'||login.checking||
-      !Number.isFinite(age)||age<0||age>300)return error;
+  if(!recentlySignedOut(login))return error;
   return fail('AUTH_REQUIRED','The selected container recently reported that it was signed out of Shengyicanmou.',{
     operationId:error.operationId,executed:false,httpStatus:error.httpStatus,
     diagnostics:{...error.diagnostics,authenticationState:'signed-out',authenticationCheckedAt:login.checkedAt},
@@ -203,6 +208,38 @@ async function classifySycmReadFailure(error, connection, inspect) {
       action:'For authorized login recovery, run the desktop sign-in once and retry the original read after authentication. Leave platform verification to the user in the same container.'},
   });
 }
+async function readWithSycmSignIn(options, connection, read, {inspect=inspectInConnection,signIn=openDesktopShop}) {
+  const {container,instance}=await inspect(connection,options.container);
+  const readOptions={...options,container:container.id};
+  if(container.platform!=='taobao')return read(readOptions);
+  if(!recentlySignedOut(container.login)) {
+    try { return await read(readOptions); }
+    catch(error) {
+      // Chromium can surface a blocked login redirect as ERR_FAILED during bootstrap.
+      const authRequired=error.code==='AUTH_REQUIRED'&&error.executed!=='unknown';
+      if(!authRequired&&!(failedSycmInitialization(error)&&error.diagnostics.netError===-2))throw error;
+    }
+  }
+  const login=await signIn({container:container.name,instance:instance.id});
+  if(login.instance?.id!==instance.id||login.container?.name!==container.name) {
+    throw fail('PROTOCOL_MISMATCH','Desktop login receipt differs from the pinned account.',{operationId:login.operationId,executed:'unknown'});
+  }
+  const loginRecovery={operationId:login.operationId,status:login.status,loginClick:login.loginClick};
+  if(login.status!=='backend-page') {
+    const verification=login.status==='verification-required';
+    throw fail(verification?'RISK_VERIFICATION_REQUIRED':'AUTH_REQUIRED',
+      verification?'Complete platform verification in the selected Ecom container.':'Sign-in is still unconfirmed in the selected Ecom container.',{
+        operationId:login.operationId,executed:false,diagnostics:{login:loginRecovery},
+        recovery:{containerId:container.id,instanceId:instance.id,action:'Inspect the original browser tab, then retry the original read after sign-in.'},
+      });
+  }
+  try { return {...await read(readOptions),loginRecovery}; }
+  catch(error) {
+    error.diagnostics={...error.diagnostics,login:loginRecovery};
+    throw error;
+  }
+}
+
 export async function runRead(options,deps={}) {
   const params=paramsObject(options['params-json']),op=resolveOperation(options.operation);
   const browserOperation=op.browserOperation??op.id;
@@ -219,7 +256,13 @@ export async function runRead(options,deps={}) {
   assertPublicParams(params);validateOperationParams(resolveOperation(browserOperation),params);
   const signedParams=op.signedDevRoute?audienceRequest(params):null;
   if(Buffer.byteLength(JSON.stringify(params))>24576)throw fail('INVALID_ARGUMENT','Read parameters exceed the native 24 KiB limit');
+  if(options['recover-login']&&!['sycm','sycm-trade'].includes(op.service))
+    throw fail('INVALID_ARGUMENT','--recover-login is available for Shengyicanmou reads.');
   const connection=(deps.discover??discover)(options);
+  const read=targetOptions=>readRegisteredOperation(op,browserOperation,params,signedParams,connection,targetOptions,deps);
+  return options['recover-login']?readWithSycmSignIn(options,connection,read,deps):read(options);
+}
+async function readRegisteredOperation(op,browserOperation,params,signedParams,connection,options,deps) {
   let result;
   if(signedParams) {
     result=await (deps.registeredRequest??registeredReadInConnection)(
@@ -234,7 +277,7 @@ export async function runRead(options,deps={}) {
         connection,options,browserOperation,effective,supportsRoute?undefined:nativeRegistryHash(),
         supportsRoute?browserRoute(browserOperation):undefined);
     } catch(error) {
-      throw await classifySycmReadFailure(error,connection,deps.inspect??inspectInConnection);
+      throw options['recover-login']?error:await classifySycmReadFailure(error,connection,deps.inspect??inspectInConnection);
     }
   }
   else {

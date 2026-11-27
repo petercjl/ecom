@@ -109,7 +109,7 @@ Require matching instance/container/tab and post-action status. `discarded` repo
 - BUSINESS_ROUTE_UNSUPPORTED: the browser does not approve the requested route contract. Report the operation ID and upgrade the browser if the route requires new authorization.
 - AUTH_CONTEXT_REQUIRED: keep the existing login; native service context may need adapter diagnosis even when the page is logged in. Report the gap rather than repeatedly requesting login.
 - SERVICE_ADAPTER_REQUIRED: report the missing native adapter and preserve the selected container. Do not switch to CDP or another browser.
-- AUTH_REQUIRED, PERMISSION_REQUIRED or RISK_VERIFICATION_REQUIRED: complete the required first-party action in this original container, then explicitly resume.
+- AUTH_REQUIRED from a Shengyicanmou read: follow the [shop data workflow](references/sycm.md#shop-data-workflow) for the pinned container. PERMISSION_REQUIRED or RISK_VERIFICATION_REQUIRED: leave the first-party action to the user in the original container, then resume the read after confirmation.
 - SHOP_NOT_READY or SHOP_VERIFICATION_FAILED on a read: the running Ecom build still gates reads on shop identity. Use a compatible build that reads from the selected session directly.
 - ORIGIN_NOT_ALLOWED, CREDENTIAL_INPUT_REJECTED, METHOD_UNSUPPORTED or INVALID_URL: correct the intended input within the declared contract; do not broaden browser permissions.
 - REQUEST_FAILED or NON_JSON_RESPONSE: preserve HTTP/operation/execute fields; handle login, permission or challenge through the original container. Do not infer business success.
