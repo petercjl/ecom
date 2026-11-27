@@ -9,10 +9,7 @@
 #include <optional>
 #include <string>
 
-#include "base/base_paths.h"
 #include "base/base_switches.h"
-#include "base/command_line.h"
-#include "base/files/file_path.h"
 #include "base/lazy_instance.h"
 #include "base/path_service.h"
 #include "base/strings/strcat.h"
@@ -137,32 +134,6 @@ void BraveMainDelegate::AppendCommandLineOptions() {
 }
 
 std::optional<int> BraveMainDelegate::BasicStartupComplete() {
-#if BUILDFLAG(IS_WIN)
-  auto* command = base::CommandLine::ForCurrentProcess();
-  base::FilePath exe;
-  if (command->GetSwitchValueASCII(switches::kProcessType).empty() &&
-      base::PathService::Get(base::FILE_EXE, &exe) &&
-      base::FilePath::CompareEqualIgnoreCase(
-          exe.BaseName().value(), FILE_PATH_LITERAL("Ecom Dev.exe"))) {
-    const auto build_run = exe.DirName().DirName();
-    const auto build_root = build_run.DirName();
-    base::FilePath profile;
-    if (build_root.BaseName().value() == FILE_PATH_LITERAL(".brave-build") &&
-        build_run.BaseName().value().starts_with(
-            FILE_PATH_LITERAL("windows-dev-"))) {
-      profile = build_root.AppendASCII("profiles").AppendASCII("Ecom-Dev");
-    } else {
-      if (!base::PathService::Get(base::DIR_LOCAL_APP_DATA, &profile)) {
-        return 1;
-      }
-      profile = profile.AppendASCII("Ecom Dev").AppendASCII("User Data");
-    }
-    // The named Dev executable always owns its isolated profile, even when
-    // invoked directly or with a user-data-dir argument from a shortcut.
-    command->RemoveSwitch(switches::kUserDataDir);
-    command->AppendSwitchPath(switches::kUserDataDir, profile);
-  }
-#endif  // BUILDFLAG(IS_WIN)
   BraveMainDelegate::AppendCommandLineOptions();
   return ChromeMainDelegate::BasicStartupComplete();
 }

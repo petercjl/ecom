@@ -5,11 +5,47 @@
 
 #include "chrome/install_static/user_data_dir.h"
 
+#include <windows.h>
+
+#include <optional>
 #include <string>
 
 #include "chrome/install_static/install_util.h"
 
 namespace install_static {
+
+namespace {
+
+std::optional<std::wstring> EcomDevProfile() {
+  std::wstring executable(32768, L'\0');
+  const DWORD size =
+      ::GetModuleFileNameW(nullptr, executable.data(), executable.size());
+  if (!size || size >= executable.size()) {
+    return std::nullopt;
+  }
+  executable.resize(size);
+  const auto file = executable.rfind(L'\\');
+  if (file == std::wstring::npos ||
+      ::_wcsicmp(executable.c_str() + file + 1, L"Ecom Dev.exe") != 0) {
+    return std::nullopt;
+  }
+
+  const auto app = executable.rfind(L'\\', file - 1);
+  const auto run = app == std::wstring::npos
+                       ? app
+                       : executable.rfind(L'\\', app - 1);
+  if (run != std::wstring::npos &&
+      std::wstring_view(executable).substr(0, run).ends_with(L"\\.brave-build") &&
+      std::wstring_view(executable).substr(run + 1, app - run - 1)
+          .starts_with(L"windows-dev-")) {
+    return executable.substr(0, run) + L"\\profiles\\Ecom-Dev";
+  }
+  const auto local = GetEnvironmentString(L"LOCALAPPDATA");
+  return local.empty() ? std::wstring()
+                       : local + L"\\Ecom Dev\\User Data";
+}
+
+}  // namespace
 
 std::wstring& BraveAppendChromeInstallSubDirectory(const InstallConstants& mode,
                                                    bool include_suffix,
@@ -18,10 +54,18 @@ std::wstring& BraveAppendChromeInstallSubDirectory(const InstallConstants& mode,
 }  // namespace install_static
 
 #define AppendChromeInstallSubDirectory BraveAppendChromeInstallSubDirectory
+#define BRAVE_GET_USER_DATA_DIRECTORY_IMPL                       \
+  if (const auto dev = EcomDevProfile()) {                       \
+    if (dev->empty() || !RecursiveDirectoryCreate(*dev))         \
+      return false;                                             \
+    *result = MakeAbsoluteFilePath(*dev);                        \
+    return !result->empty();                                     \
+  }
 
 #include <chrome/install_static/user_data_dir.cc>
 
 #undef AppendChromeInstallSubDirectory
+#undef BRAVE_GET_USER_DATA_DIRECTORY_IMPL
 
 namespace install_static {
 

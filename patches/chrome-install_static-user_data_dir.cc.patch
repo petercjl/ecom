@@ -1,0 +1,11 @@
+diff --git a/chrome/install_static/user_data_dir.cc b/chrome/install_static/user_data_dir.cc
+--- a/chrome/install_static/user_data_dir.cc
++++ b/chrome/install_static/user_data_dir.cc
+@@ -114,6 +114,7 @@
+                               const InstallConstants& mode,
+                               std::wstring* result,
+                               std::wstring* invalid_supplied_directory) {
++  BRAVE_GET_USER_DATA_DIRECTORY_IMPL
+   std::wstring user_data_dir =
+       GetCommandLineSwitchValue(command_line, kUserDataDirSwitch);
+ 
