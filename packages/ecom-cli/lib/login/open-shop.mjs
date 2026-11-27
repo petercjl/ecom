@@ -225,7 +225,9 @@ export async function openDesktopShop(options, dependencies = {}) {
         try {
           desktop.focus(ready.window);
         } catch (error) {
-          throw fail('LOGIN_CLICK_FAILED', 'Could not bring the selected Ecom window to the foreground.', {
+          const message = error.diagnostics?.desktopKind === 'lease_directory_untrusted'
+            ? error.message : 'Could not bring the selected Ecom window to the foreground.';
+          throw fail('LOGIN_CLICK_FAILED', message, {
             executed: false, diagnostics: error.diagnostics,
           });
         }
@@ -262,8 +264,11 @@ export async function openDesktopShop(options, dependencies = {}) {
       return ['backend-page', 'verification-required', 'tab-crashed'].includes(state?.status) ? state : null;
     }, clickError?.executed === false ? 0 : 12000);
     if (result?.status === 'tab-crashed') throw fail('TAB_CRASHED', 'The selected container tab shows Ecom’s crash page.', {executed: true});
-    if (clickError && !result) throw fail('LOGIN_CLICK_FAILED', 'The headed click failed or its delivery could not be confirmed. Inspect the current tab before retrying.',
-      {executed: clickError.executed, diagnostics: clickError.diagnostics});
+    if (clickError && !result) {
+      const message = clickError.diagnostics?.desktopKind === 'lease_directory_untrusted'
+        ? clickError.message : 'The headed click failed or its delivery could not be confirmed. Inspect the current tab before retrying.';
+      throw fail('LOGIN_CLICK_FAILED', message, {executed: clickError.executed, diagnostics: clickError.diagnostics});
+    }
     const observed = result ?? state;
     return receipt(observed?.status ?? 'unconfirmed', observed?.host ? {host: observed.host} : {});
   } catch (error) {

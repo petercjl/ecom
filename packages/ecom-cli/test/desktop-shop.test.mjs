@@ -280,6 +280,25 @@ test('Windows only clicks fresh foreground bounds for the form-scoped Login butt
   assert.deepEqual(unknown.clicks, [[-60, 100]]);
 });
 
+test('Windows reports an untrusted interaction lock without retrying desktop input', async () => {
+  const message = 'agent-desktop rejected the Windows interaction lock directory before desktop input.';
+  const leaseError = command => fail('DESKTOP_OPERATION_FAILED', message, {
+    executed: false, diagnostics: {command, desktopCode: 'INTERNAL', desktopKind: 'lease_directory_untrusted'},
+  });
+  const boundedPage = [login[0], login[1], node('form', '登录', [
+    node('button', '登录', [], {ref_id: '@fresh:login', bounds: {x: 20, y: 90, width: 40, height: 20}}),
+  ])];
+  const options = {windowsPointer: true, nativeNavigation: true, boundedPage};
+  const focus = scenario({...options, focused: false, focusError: leaseError('focus-window')});
+  const click = scenario({...options, clickError: leaseError('mouse-click')});
+  for (const [flow, command, pointers] of [[focus, 'focus-window', []], [click, 'mouse-click', [[40, 100]]]]) {
+    await assert.rejects(flow.run(), error => error.code === 'LOGIN_CLICK_FAILED' &&
+      error.message === message && error.executed === false &&
+      error.diagnostics.command === command && error.diagnostics.desktopKind === 'lease_directory_untrusted');
+    assert.deepEqual(flow.clicks, pointers);
+  }
+});
+
 test('account name is exact and duplicate matches stop before opening', async () => {
   const initial = ['Ecom · 账号管理', 'ecom://shops', node('table', '', [row(name), row(name, '@table:other')])];
   const duplicated = scenario({initial});

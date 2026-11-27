@@ -53,11 +53,17 @@ export function createDesktop(session) {
     let reply;
     try { reply = JSON.parse(result.stdout); } catch {}
     if (result.status !== 0 || reply?.ok !== true) {
-      const {code, disposition} = reply?.error ?? {};
-      throw fail('DESKTOP_OPERATION_FAILED', `agent-desktop could not complete ${command}.`, {
+      const {code, disposition, details} = reply?.error ?? {};
+      // Forward only the structured identifier from the provider details.
+      const desktopKind = typeof details?.kind === 'string' && /^[a-z0-9_]{1,100}$/.test(details.kind)
+        ? details.kind : undefined;
+      const leaseRejected = desktopKind === 'lease_directory_untrusted';
+      throw fail('DESKTOP_OPERATION_FAILED', leaseRejected
+        ? 'agent-desktop rejected the Windows interaction lock directory before desktop input. Check the current user’s lock directory and its access permissions.'
+        : `agent-desktop could not complete ${command}.`, {
         desktopCode: code,
-        executed: disposition?.delivery === 'not_delivered' ? false : executed,
-        diagnostics: {command, desktopCode: code ?? null},
+        executed: leaseRejected || disposition?.delivery === 'not_delivered' ? false : executed,
+        diagnostics: {command, desktopCode: code ?? null, ...(desktopKind ? {desktopKind} : {})},
       });
     }
     return reply.data;
