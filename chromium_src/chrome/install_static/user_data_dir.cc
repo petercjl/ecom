@@ -26,7 +26,7 @@ std::optional<std::wstring> EcomDevProfile() {
   executable.resize(size);
   const auto file = executable.rfind(L'\\');
   if (file == std::wstring::npos ||
-      ::_wcsicmp(executable.c_str() + file + 1, L"Ecom Dev.exe") != 0) {
+      ::_wcsicmp(executable.substr(file + 1).c_str(), L"Ecom Dev.exe") != 0) {
     return std::nullopt;
   }
 
