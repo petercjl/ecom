@@ -8,13 +8,13 @@ Windows Dev 验收使用 `node ecom/build-windows.mjs --dev`。它复用同一 R
 
 ## CLI 候选包联调
 
-提交 CLI 源码后，在 Mac 运行 `node ecom/sync-windows-cli-dev.mjs`。它打包当前 CLI，通过已有 SSH 别名把包传到 peter-new，校验 SHA-512，隔离安装 CLI 和 Skill，并验证独立运行时。只有验证通过，才切换固定发现文件 `E:\ecom-build-x64\repo\.brave-build\cli-candidates\CURRENT.json`。候选目录按提交和包哈希区分。脚本同时报告当前是否能连接 Windows Dev。
+提交 CLI 源码后，在 Mac 运行 `node ecom/sync-windows-cli-dev.mjs`。它打包当前 CLI，通过已有 SSH 别名把包传到 peter-new，校验 SHA-512，并在 `E:\codex\测试\.ecom-cli-candidates` 中隔离安装 CLI 和 Skill。独立运行时通过验证后，才更新该目录的 `CURRENT.json`。候选目录按提交和包哈希区分。脚本同时报告当前是否能连接 Windows Dev。
 
-在 peter-new 的调试对话中，将下面这段话发给 Codex。
+在 peter-new 的 `E:\codex\测试` 项目打开 Codex 对话。项目根目录的 `AGENTS.md` 指定候选包入口。如果调试对话已经打开，可以发下面这句话让它重新读取项目规则。
 
-> 本对话用 Ecom CLI 候选包调试。每次开始测试前，读取 `E:\ecom-build-x64\repo\.brave-build\cli-candidates\CURRENT.json`，加载其中 `skill` 指向的说明，并使用 `entry` 和 `environment` 执行 CLI。测试 Dev 时用其中的 `devProfile`。先报告候选提交号，然后继续我交代的测试。
+> 请重新读取当前项目的 AGENTS.md，按项目规则使用最新的 Ecom CLI 候选包，报出候选提交号后继续测试。
 
-测试正式浏览器时明确指定正式版。桌面登录默认连接正式版。候选 CLI 和 Skill 独立于日常安装，Windows 验收通过后再按 npm 发布流程准备稳定版本。
+验证稳定包时，在测试项目目录树之外新开项目，使用日常安装的 Ecom CLI 和 Skill。需要对照 npm `latest` 时，先用日常更新入口核对该安装的版本。候选 CLI 可以测试正式浏览器或 Dev，桌面登录默认连接正式浏览器。Windows 验收通过后再按 npm 发布流程准备稳定版本。
 
 配置为 `ecom/windows-release-config.json`，公开包为 `@lumyne/ecom-windows-x64`。产品发布版本与 Chromium/原生安装版本分别记录。主包包含 `artifact.json`、`LICENSE` 及 npm `package.json`，清单固定同一 npm 包下多个不可变的 `<version>-payload.<index>` 版本。每块原始载荷上限为 50,000,000 字节，单份 npm tarball 上限为 70,000,000 字节。块版本使用 `payload` 标签，完整主版本使用 `next` 或 `latest`。默认只输出 npm 更新载荷。内部生成的原生更新 EXE 用于分片；明确要求首次安装包时加 `--with-installer`，另存与分片重组字节一致的 EXE。打包不包含 Profile、账号或构建机器配置。
 

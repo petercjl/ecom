@@ -6,11 +6,18 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const host = 'peter-new';
-const remoteRoot = 'E:/ecom-build-x64/repo/.brave-build/cli-candidates';
+const remoteProject = 'E:/codex/测试';
+const remoteRoot = remoteProject + '/.ecom-cli-candidates';
+const transferRoot = 'E:/ecom-build-x64/repo/.brave-build/cli-candidates';
+const remoteDevProfile = 'E:/ecom-build-x64/repo/.brave-build/profiles/Ecom-Dev';
 const self = fileURLToPath(import.meta.url);
 const repo = path.dirname(path.dirname(self));
 const name = '@lumyne/ecom-cli';
 const sha512 = file => createHash('sha512').update(fs.readFileSync(file)).digest('hex');
+const projectPolicy = `# Ecom CLI 候选包调试
+
+在本项目中使用 Ecom CLI 时，每次开始测试前读取项目根目录下的 \`.ecom-cli-candidates/CURRENT.json\`。加载其中 \`skill\` 指向的候选 Skill，应用 \`environment\` 中的环境变量，通过 Node 执行 \`entry\` 指向的候选 CLI。报告当前候选 \`revision\` 后继续测试。测试 Ecom Dev 时使用其中的 \`devProfile\`，测试正式版时使用正式浏览器。
+`;
 
 function run(bin, args, options = {}) {
   const result = spawnSync(bin, args, {encoding: 'utf8', windowsHide: true, timeout: 120000, ...options});
@@ -30,7 +37,7 @@ function activate(revision, digest, uploadName) {
       !/^[0-9a-f]{40}$/.test(revision) || !/^[0-9a-f]{128}$/.test(digest) ||
       !/^incoming-[0-9a-f-]{36}$/.test(uploadName)) throw new Error('Invalid Windows candidate activation');
   const root = path.resolve(remoteRoot);
-  const upload = path.join(root, uploadName);
+  const upload = path.join(path.resolve(transferRoot), uploadName);
   const tarball = path.join(upload, 'candidate.tgz');
   if (sha512(tarball) !== digest) throw new Error('Uploaded CLI archive has the wrong SHA-512');
 
@@ -38,7 +45,7 @@ function activate(revision, digest, uploadName) {
   const candidate = path.join(root, id);
   const target = path.join(candidate, 'skill', 'ecom-cli');
   const entry = path.join(target, '.runtime', 'bin', 'ecom-cli.mjs');
-  const devProfile = path.join(path.dirname(root), 'profiles', 'Ecom-Dev');
+  const devProfile = path.resolve(remoteDevProfile);
   const pointer = path.join(root, 'CURRENT.json');
   const record = path.join(candidate, 'candidate.json');
   const temporary = path.join(upload, 'CURRENT.json');
@@ -89,7 +96,15 @@ function activate(revision, digest, uploadName) {
     fs.writeFileSync(temporary, JSON.stringify(published, null, 2) + '\n', {flag: 'wx'});
     fs.renameSync(temporary, pointer);
     created = false;
-    console.log(JSON.stringify({ok: true, pointer, ...published}));
+    const instructions = path.join(path.resolve(remoteProject), 'AGENTS.md');
+    try {
+      fs.writeFileSync(instructions, projectPolicy, {flag: 'wx'});
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+    }
+    const projectUsesCandidate = fs.lstatSync(instructions).isFile() &&
+      fs.readFileSync(instructions, 'utf8').includes('.ecom-cli-candidates/CURRENT.json');
+    console.log(JSON.stringify({ok: true, pointer, instructions, projectUsesCandidate, ...published}));
   } finally {
     fs.closeSync(lock);
     fs.rmSync(lockPath);
@@ -115,10 +130,10 @@ function sync() {
     const file = path.join(stage, pack.filename);
     const digest = sha512(file);
     if (pack.integrity !== 'sha512-' + Buffer.from(digest, 'hex').toString('base64')) throw new Error('Local npm integrity mismatch');
-    sshPowerShell(`$root='${remoteRoot}'; if (!(Test-Path -LiteralPath $root)) {New-Item -Path $root -ItemType Directory | Out-Null}; if ((Get-Item -LiteralPath $root).Attributes -band [IO.FileAttributes]::ReparsePoint) {throw 'Unexpected candidate root'}; New-Item -Path "$root/${upload}" -ItemType Directory | Out-Null`);
-    run('scp', ['-q', '-o', 'BatchMode=yes', file, `${host}:${remoteRoot}/${upload}/candidate.tgz`]);
-    run('scp', ['-q', '-o', 'BatchMode=yes', self, `${host}:${remoteRoot}/${upload}/sync.mjs`]);
-    return sshPowerShell(`& node '${remoteRoot}/${upload}/sync.mjs' --activate '${revision}' '${digest}' '${upload}'; exit $LASTEXITCODE`);
+    sshPowerShell(`$project=Get-Item -LiteralPath '${remoteProject}'; if (!$project.PSIsContainer -or ($project.Attributes -band [IO.FileAttributes]::ReparsePoint)) {throw 'Unexpected project directory'}; foreach ($root in @('${remoteRoot}', '${transferRoot}')) {if (!(Test-Path -LiteralPath $root)) {New-Item -Path $root -ItemType Directory | Out-Null}; $item=Get-Item -LiteralPath $root; if (!$item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {throw 'Unexpected candidate directory'}}; New-Item -Path '${transferRoot}/${upload}' -ItemType Directory | Out-Null`);
+    run('scp', ['-q', '-o', 'BatchMode=yes', file, `${host}:${transferRoot}/${upload}/candidate.tgz`]);
+    run('scp', ['-q', '-o', 'BatchMode=yes', self, `${host}:${transferRoot}/${upload}/sync.mjs`]);
+    return sshPowerShell(`& node '${transferRoot}/${upload}/sync.mjs' --activate '${revision}' '${digest}' '${upload}'; exit $LASTEXITCODE`);
   } finally {
     fs.rmSync(stage, {recursive: true, force: true});
   }
