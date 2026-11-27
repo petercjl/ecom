@@ -126,7 +126,6 @@ export async function openDesktopShop(options, dependencies = {}) {
         {diagnostics: {windowIds: candidates.map(candidate => candidate.id)}});
     }, 12000);
     if (!window) throw fail('DESKTOP_WINDOW_UNAVAILABLE', 'No accessible window in the selected Ecom instance. Check the window and the interactive desktop session.');
-    if (!window.is_focused && desktop.focus) desktop.focus(window);
 
     phase = 'account-manager';
     let manager = isManager(window.title) ? window : null;
@@ -182,7 +181,11 @@ export async function openDesktopShop(options, dependencies = {}) {
       // UI Automation may refuse repeated Open buttons with identical identities.
       // Refresh the uniquely matched row in the foreground before using its bounds.
       if (usePoint) {
-        const current = readWindow();
+        let current = readWindow();
+        if (current && !current.is_focused && desktop.focus) {
+          desktop.focus(current);
+          current = readWindow();
+        }
         const fresh = current?.is_focused && accountRow(current, true);
         const point = fresh?.button && containedPoint(fresh.button, current);
         if (!point || !readWindow()?.is_focused) throw fail('CONTAINER_OPEN_UNAVAILABLE', 'The exact Open button has no safe visible bounds.');

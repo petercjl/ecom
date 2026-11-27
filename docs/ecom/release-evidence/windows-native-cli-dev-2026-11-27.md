@@ -20,3 +20,7 @@ Windows 崩溃转储定位到 Dev 启动检查调用了依赖 User32/GDI32 的�
 在 peter-new 同时运行正式版和 Dev，使用隔离安装的候选 CLI，通过 `agent-desktop` 读取两个实际窗口。默认登录命令选择正式版。Dev 的 Profile 与实例 ID 均解析到同一实际进程。将 Dev 的窗口 ID 传给默认命令、以及将正式版的窗口 ID 传给 Dev 命令，均返回 `DESKTOP_WINDOW_UNAVAILABLE` 和 `loginClick=not-attempted`。
 
 正式版实机覆盖默认桌面入口。显式选择 Windows 正式版需要支持原生通信的浏览器，现有正式实例尚未暴露该入口。真实店铺登录、平台验证及登录后的数据读取分别验收。
+
+peter-new 的交互式 Codex 测试确认 0.6.3 正确选中 Dev，随后在 `focus-window` 得到 `DESKTOP_OPERATION_FAILED`，登录动作状态为 `not-attempted`。修复后，窗口内控件引用由 Windows UI Automation 直接执行。需要按屏幕坐标打开账号行时才检查和取得前台焦点，并重新核对行和控件范围。
+
+候选包在 Dev 处于后台时正确打开账号管理并进入账号查找阶段。使用不存在的测试账号，实机返回 `CONTAINER_NOT_FOUND` 和 `loginClick=not-attempted`。自动化测试覆盖控件可被语义定位时的单次提交，以及无法取得焦点时屏幕坐标分支停止执行。

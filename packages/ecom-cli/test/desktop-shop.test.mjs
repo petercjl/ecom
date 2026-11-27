@@ -28,12 +28,12 @@ const pddForm = (account = 'fixture-account') => ['拼多多商家后台', pddLo
   button('登录', '@form:login'),
 ])];
 
-function scenario({initial = manager('Ecom · 账号管理'), landing = login, after = backend, clickError, wrongContainer, initiallyClosed = false, duplicateOpenRef = false, accountForm, prefill} = {}) {
+function scenario({initial = manager('Ecom · 账号管理'), landing = login, after = backend, clickError, wrongContainer, initiallyClosed = false, duplicateOpenRef = false, accountForm, prefill, focused = true, focusError} = {}) {
   let page = initial;
   let stage = initiallyClosed ? 'closed' : 'initial';
   const clicks = [];
   const desktop = {
-    listWindows: () => stage === 'closed' ? [] : [{...window, title: page[0], bounds: {x: -200, y: 0, width: 400, height: 300}}],
+    listWindows: () => stage === 'closed' ? [] : [{...window, is_focused: focused, title: page[0], bounds: {x: -200, y: 0, width: 400, height: 300}}],
     launch: () => {stage = 'initial';},
     snapshot() {
       const [title, url, ...content] = page;
@@ -63,8 +63,13 @@ function scenario({initial = manager('Ecom · 账号管理'), landing = login, a
     assert.deepEqual(point, [70, 50]);
     return prefill;
   };
+  if (duplicateOpenRef || focusError) {
+    desktop.focus = () => {
+      if (focusError) throw focusError;
+      focused = true;
+    };
+  }
   if (duplicateOpenRef) {
-    desktop.focus = () => {};
     desktop.clickPoint = (x, y) => {clicks.push([x, y]);stage = 'opened';page = landing;};
   }
   const run = () => openDesktopShop({container: name}, {desktop, wait: async check => check() ?? null});
@@ -210,7 +215,7 @@ test('Pinduoduo reports a verification challenge or an existing merchant session
 test('an undelivered Windows UIA Open click can use the matching row’s live bounds', async () => {
   const initial = manager('Ecom · 账号管理');
   initial[2].children[0].children[1].children[0].bounds = {x: -160, y: 100, width: 40, height: 20};
-  const flow = scenario({initial, duplicateOpenRef: true, landing: backend});
+  const flow = scenario({initial, duplicateOpenRef: true, landing: backend, focused: false});
   assert.equal((await flow.run()).status, 'backend-page');
   assert.deepEqual(flow.clicks, [['@table:open', false], [-140, 110]]);
 
@@ -218,6 +223,17 @@ test('an undelivered Windows UIA Open click can use the matching row’s live bo
   const outside = scenario({initial, duplicateOpenRef: true, landing: backend});
   await assert.rejects(outside.run(), {code: 'CONTAINER_OPEN_UNAVAILABLE'});
   assert.deepEqual(outside.clicks, [['@table:open', false]]);
+});
+
+test('Windows semantic login proceeds without requesting foreground focus', async () => {
+  const focusError = fail('DESKTOP_OPERATION_FAILED', 'Windows denied foreground focus', {executed: false});
+  const flow = scenario({focused: false, focusError, initial: ['Neutral page', 'example.com/']});
+  assert.equal((await flow.run()).status, 'backend-page');
+  assert.deepEqual(flow.clicks, [['@toolbar:manager', false], ['@table:open', false], ['@form:login', true]]);
+
+  const pointer = scenario({focused: false, focusError, duplicateOpenRef: true});
+  await assert.rejects(pointer.run(), {code: 'DESKTOP_OPERATION_FAILED'});
+  assert.deepEqual(pointer.clicks, [['@table:open', false]]);
 });
 
 test('account name is exact and duplicate matches stop before opening', async () => {
