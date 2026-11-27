@@ -4,7 +4,7 @@
 
 Mac Dev 负责首先验证共用功能；Windows 原生程序在 peter-new 编译。入口为 `node ecom/build-windows.mjs`，从已提交 main 准备独立构建工作树、构建 Release 并打包到全新的 `.brave-build/windows-release-*/artifacts`。首次迁移的测试基线可显式指定已提交的 `--source-ref`，与候选源代码分别记录。
 
-Windows Dev 验收使用 `node ecom/build-windows.mjs --dev`。它复用同一 Release 增量构建目录，将可运行浏览器复制到新的 `.brave-build/windows-dev-*`，并生成 `Open Ecom Dev.cmd` 和 `dev-build.json`。启动入口使用固定的 `.brave-build/profiles/Ecom-Dev`，CLI 验收通过 `--profile` 指定该目录。正式浏览器的程序和账号数据保留在各自的安装与数据目录。
+Windows Dev 验收使用 `node ecom/build-windows.mjs --dev`。它复用同一 Release 增量构建目录，在新的 `.brave-build/windows-dev-*` 生成 `Ecom Dev.exe`、`Open Ecom Dev.cmd` 和 `dev-build.json`。直接运行可执行文件或通过启动入口打开，均使用固定的 `.brave-build/profiles/Ecom-Dev`。CLI 验收通过 `--profile` 指定该目录。正式版使用 `Ecom.exe`、正式安装目录及正式 Profile，CLI 默认连接正式版。
 
 配置为 `ecom/windows-release-config.json`，公开包为 `@lumyne/ecom-windows-x64`。产品发布版本与 Chromium/原生安装版本分别记录。主包包含 `artifact.json`、`LICENSE` 及 npm `package.json`，清单固定同一 npm 包下多个不可变的 `<version>-payload.<index>` 版本。每块原始载荷上限为 50,000,000 字节，单份 npm tarball 上限为 70,000,000 字节。块版本使用 `payload` 标签，完整主版本使用 `next` 或 `latest`。默认只输出 npm 更新载荷。内部生成的原生更新 EXE 用于分片；明确要求首次安装包时加 `--with-installer`，另存与分片重组字节一致的 EXE。打包不包含 Profile、账号或构建机器配置。
 

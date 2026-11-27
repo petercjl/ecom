@@ -58,10 +58,16 @@ export function windowsInstanceCandidates(rows, {profile, instance} = {}, env = 
   for (const {ProcessId: pid, ExecutablePath: executable, CommandLine: command} of rows) {
     if (!Number.isSafeInteger(pid) || !executable || !command) continue;
     if (/(?:^|[\s"])--(?:type(?:=|[\s"])|remote-debugging|headless|enable-automation)/i.test(command)) continue;
-    const dev = /(?:^|[\s"])--ecom-dev(?=$|[\s"])/i.test(command);
+    const namedDev = win.basename(executable).toLowerCase() === 'ecom dev.exe';
+    const dev = namedDev || /(?:^|[\s"])--ecom-dev(?=$|[\s"])/i.test(command);
     if (dev ? !profile && !instance : !installed.has(normalized(executable))) continue;
     const explicit = command.match(/(?:^|\s)"--user-data-dir=([^"]+)"|(?:^|\s)--user-data-dir=(?:"([^"]+)"|([^"\s]+))/i);
-    const selected = explicit?.slice(1).find(Boolean) ??
+    const run = win.dirname(win.dirname(executable));
+    const root = win.dirname(run);
+    const namedProfile = win.basename(root) === '.brave-build' && win.basename(run).startsWith('windows-dev-')
+      ? win.join(root, 'profiles', 'Ecom-Dev')
+      : env.LOCALAPPDATA && win.join(env.LOCALAPPDATA, 'Ecom Dev', 'User Data');
+    const selected = namedDev ? namedProfile : explicit?.slice(1).find(Boolean) ??
       (!dev && env.LOCALAPPDATA ? win.join(env.LOCALAPPDATA, 'Ecom', 'User Data') : null);
     if (!selected || !win.isAbsolute(selected) || (profile && normalized(selected) !== normalized(profile))) continue;
     candidates.push({pid, executable, profile: selected, channel: dev ? 'dev' : 'stable'});
@@ -74,7 +80,7 @@ export function discoverWindows(options) {
   try {
     processes = JSON.parse(powershell(String.raw`
       $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-      $rows = @(Get-CimInstance Win32_Process -Filter "Name = 'Ecom.exe'" | ForEach-Object {
+      $rows = @(Get-CimInstance Win32_Process -Filter "Name = 'Ecom.exe' OR Name = 'Ecom Dev.exe'" | ForEach-Object {
         if ($_.ExecutablePath -and $_.CommandLine -and
             $_.CommandLine -notmatch '(?:^|[\s"])--type(?:=|[\s"])' -and
             (Invoke-CimMethod -InputObject $_ -MethodName GetOwnerSid).Sid -eq $sid) {

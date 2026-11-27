@@ -35,3 +35,19 @@ test('Windows discovery pins a Dev profile passed as one quoted argument', () =>
     pid: 2, executable: dev, profile: customProfile, channel: 'dev',
   }]);
 });
+
+test('the named Dev executable always uses the isolated Dev profile', () => {
+  const root = 'E:\\repo\\.brave-build';
+  const executable = root + '\\windows-dev-123456\\Ecom Dev\\Ecom Dev.exe';
+  const expected = root + '\\profiles\\Ecom-Dev';
+  const rows = [row(1, installed), row(2, executable,
+    '"--user-data-dir=' + env.LOCALAPPDATA + '\\Ecom\\User Data"')];
+  assert.deepEqual(windowsInstanceCandidates(rows, {profile: expected}, env), [{
+    pid: 2, executable, profile: expected, channel: 'dev',
+  }]);
+  const fallback = env.LOCALAPPDATA + '\\Ecom Dev\\User Data';
+  const moved = 'D:\\Sandbox\\Ecom Dev.exe';
+  assert.deepEqual(windowsInstanceCandidates([row(3, moved)], {instance: 'dev'}, env), [{
+    pid: 3, executable: moved, profile: fallback, channel: 'dev',
+  }]);
+});

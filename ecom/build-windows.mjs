@@ -40,7 +40,8 @@ function stageDev(buildOutput, run, buildRoot, revision) {
     'msvcp140.dll', 'msvcp140_atomic_wait.dll', 'vccorlib140.dll', 'vcruntime140.dll',
     'vcruntime140_1.dll'];
   for (const name of [...required, ...manifests, ...optional.filter(name => fs.existsSync(path.join(buildOutput, name)))]) {
-    fs.cpSync(path.join(buildOutput, name), path.join(app, name), {
+    const destination = name === 'Ecom.exe' ? 'Ecom Dev.exe' : name;
+    fs.cpSync(path.join(buildOutput, name), path.join(app, destination), {
       recursive: true, force: false, errorOnExist: true,
     });
   }
@@ -50,12 +51,12 @@ function stageDev(buildOutput, run, buildRoot, revision) {
   if (sandbox.error || sandbox.status !== 78) {
     throw sandbox.error || new Error('Could not configure the Chromium sandbox for the Dev copy (setup exit ' + sandbox.status + ')');
   }
-  const executable = path.join(app, 'Ecom.exe');
+  const executable = path.join(app, 'Ecom Dev.exe');
   const profile = path.join(buildRoot, 'profiles', 'Ecom-Dev');
   const args = ['--ecom-dev', '--user-data-dir=' + profile];
   const launcher = path.join(run, 'Open Ecom Dev.cmd');
   fs.writeFileSync(launcher,
-    '@echo off\r\nstart "" "%~dp0Ecom Dev\\Ecom.exe" --ecom-dev "--user-data-dir=' + profile + '" %*\r\n',
+    '@echo off\r\nstart "" "%~dp0Ecom Dev\\Ecom Dev.exe" --ecom-dev "--user-data-dir=' + profile + '" %*\r\n',
     {flag: 'wx'});
   const receipt = {channel: 'dev', sourceRevision: revision, executable, profile, args, launcher};
   fs.writeFileSync(path.join(run, 'dev-build.json'), JSON.stringify(receipt, null, 2) + '\n', {flag: 'wx'});
