@@ -10,13 +10,14 @@ const remoteProject = 'E:/codex/测试';
 const remoteRoot = remoteProject + '/.ecom-cli-candidates';
 const transferRoot = 'E:/ecom-build-x64/repo/.brave-build/cli-candidates';
 const remoteDevProfile = 'E:/ecom-build-x64/repo/.brave-build/profiles/Ecom-Dev';
+const windowsNode = 'E:/ecom-build-x64/node-v24.22.2-win-x64/node.exe';
 const self = fileURLToPath(import.meta.url);
 const repo = path.dirname(path.dirname(self));
 const name = '@lumyne/ecom-cli';
 const sha512 = file => createHash('sha512').update(fs.readFileSync(file)).digest('hex');
 const projectPolicy = `# Ecom CLI 候选包调试
 
-在本项目中使用 Ecom CLI 时，每次开始测试前读取项目根目录下的 \`.ecom-cli-candidates/CURRENT.json\`。加载其中 \`skill\` 指向的候选 Skill，应用 \`environment\` 中的环境变量，通过 Node 执行 \`entry\` 指向的候选 CLI。报告当前候选 \`revision\` 后继续测试。测试 Ecom Dev 时使用其中的 \`devProfile\`，测试正式版时使用正式浏览器。
+在本项目中使用 Ecom CLI 时，每次开始测试前读取项目根目录下的 \`.ecom-cli-candidates/CURRENT.json\`。加载其中 \`skill\` 指向的候选 Skill，应用 \`environment\` 中的环境变量，用 \`node\` 字段指定的程序执行 \`entry\` 指向的候选 CLI。报告当前候选 \`revision\` 后继续测试。测试 Ecom Dev 时使用其中的 \`devProfile\`，测试正式版时使用正式浏览器。
 `;
 
 function run(bin, args, options = {}) {
@@ -68,7 +69,7 @@ function activate(revision, digest, uploadName) {
       const manifest = fs.readFileSync(path.join(target, '.runtime', 'package.json'), 'utf8');
       const {version} = JSON.parse(manifest);
       fs.writeFileSync(record, JSON.stringify({schemaVersion: 1, id, package: name, version, revision, sha512: digest,
-        entry, skill: path.join(target, 'SKILL.md'), devProfile,
+        node: process.execPath, entry, skill: path.join(target, 'SKILL.md'), devProfile,
         environment: {ECOM_CLI_UPDATE_CHECK: '0', ECOM_CLI_STATE_DIR: env.ECOM_CLI_STATE_DIR}}, null, 2) + '\n',
       {flag: 'wx'});
     }
@@ -133,7 +134,7 @@ function sync() {
     sshPowerShell(`$project=Get-Item -LiteralPath '${remoteProject}'; if (!$project.PSIsContainer -or ($project.Attributes -band [IO.FileAttributes]::ReparsePoint)) {throw 'Unexpected project directory'}; foreach ($root in @('${remoteRoot}', '${transferRoot}')) {if (!(Test-Path -LiteralPath $root)) {New-Item -Path $root -ItemType Directory | Out-Null}; $item=Get-Item -LiteralPath $root; if (!$item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {throw 'Unexpected candidate directory'}}; New-Item -Path '${transferRoot}/${upload}' -ItemType Directory | Out-Null`);
     run('scp', ['-q', '-o', 'BatchMode=yes', file, `${host}:${transferRoot}/${upload}/candidate.tgz`]);
     run('scp', ['-q', '-o', 'BatchMode=yes', self, `${host}:${transferRoot}/${upload}/sync.mjs`]);
-    return sshPowerShell(`& node '${transferRoot}/${upload}/sync.mjs' --activate '${revision}' '${digest}' '${upload}'; exit $LASTEXITCODE`);
+    return sshPowerShell(`& '${windowsNode}' '${transferRoot}/${upload}/sync.mjs' --activate '${revision}' '${digest}' '${upload}'; exit $LASTEXITCODE`);
   } finally {
     fs.rmSync(stage, {recursive: true, force: true});
   }
