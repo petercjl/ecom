@@ -27,11 +27,12 @@
   "codesignVerified": true,
   "nativeSmokeTest": true,
   "updateRoundTripVerified": false,
-  "published": false,
+  "published": true,
   "evidencePath": "docs/ecom/release-evidence/macos-arm64-0.1.16.md",
   "devValidation": {
     "verified": true,
     "sourceRevision": "1babedefc146cc9ee4a8114b86991421695b39f8",
     "evidencePath": "docs/ecom/release-evidence/dev-desktop-0.1.16.md"
-  }
+  },
+  "integrity": "sha512-3C1GWgNoIDs+gkeDFvkhiSqmX2IP3mxYjnKIeJsoO59BJUroYpoayRFIPo75MJLWalGKVMoWtEd7fuA5e7+Wng=="
 }

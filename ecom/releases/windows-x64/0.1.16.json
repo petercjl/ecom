@@ -92,7 +92,7 @@
   "localUpdateRecoveryVerified": false,
   "updateRoundTripVerified": false,
   "rollbackRoundTripVerified": false,
-  "published": false,
+  "published": true,
   "evidencePath": "docs/ecom/release-evidence/windows-x64-0.1.16.md",
   "devValidation": {
     "verified": true,
