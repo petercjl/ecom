@@ -30,12 +30,16 @@ function stageDev(buildOutput, run, buildRoot, revision) {
   fs.mkdirSync(app);
   const required = ['Ecom.exe', 'chrome.dll', 'chrome_elf.dll', 'icudtl.dat',
     'resources.pak', 'chrome_100_percent.pak', 'chrome_200_percent.pak', 'locales'];
+  const manifests = fs.readdirSync(buildOutput).filter(name => /^\d+\.\d+\.\d+\.\d+\.manifest$/.test(name));
+  if (!manifests.length) throw new Error('Missing Windows browser side-by-side manifest');
   const optional = ['brave_resources.pak', 'brave_100_percent.pak',
     'brave_200_percent.pak', 'v8_context_snapshot.bin', 'snapshot_blob.bin',
     'chrome_wer.dll', 'd3dcompiler_47.dll', 'dxcompiler.dll', 'dxil.dll',
     'libEGL.dll', 'libGLESv2.dll', 'vk_swiftshader.dll', 'vk_swiftshader_icd.json',
-    'vulkan-1.dll', 'IwaKeyDistribution', 'MEIPreload', 'hyphen-data'];
-  for (const name of [...required, ...optional.filter(name => fs.existsSync(path.join(buildOutput, name)))]) {
+    'vulkan-1.dll', 'IwaKeyDistribution', 'MEIPreload', 'hyphen-data',
+    'msvcp140.dll', 'msvcp140_atomic_wait.dll', 'vccorlib140.dll', 'vcruntime140.dll',
+    'vcruntime140_1.dll'];
+  for (const name of [...required, ...manifests, ...optional.filter(name => fs.existsSync(path.join(buildOutput, name)))]) {
     fs.cpSync(path.join(buildOutput, name), path.join(app, name), {
       recursive: true, force: false, errorOnExist: true,
     });
