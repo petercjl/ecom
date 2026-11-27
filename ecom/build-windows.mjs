@@ -44,6 +44,12 @@ function stageDev(buildOutput, run, buildRoot, revision) {
       recursive: true, force: false, errorOnExist: true,
     });
   }
+  // Give sandboxed Chromium processes the same file access as an installation.
+  const sandbox = spawnSync(path.join(buildOutput, 'setup.exe'),
+    ['--configure-browser-in-directory=' + app], {windowsHide: true});
+  if (sandbox.error || sandbox.status !== 78) {
+    throw sandbox.error || new Error('Could not configure the Chromium sandbox for the Dev copy (setup exit ' + sandbox.status + ')');
+  }
   const executable = path.join(app, 'Ecom.exe');
   const profile = path.join(buildRoot, 'profiles', 'Ecom-Dev');
   const args = ['--ecom-dev', '--user-data-dir=' + profile];
@@ -73,7 +79,7 @@ async function main() {
     const workspace=path.join(buildRoot,'src/brave');prepareWorkspace(root,workspace,revision);
     const env=windowsBuildEnvironment(process.env);
     if (values.dev) os.setPriority(os.constants.priority.PRIORITY_BELOW_NORMAL);
-    const args=['build/commands/scripts/build.ts','Release','--target_os','win','--target_arch','x64','--channel','release','--skip_signing','--use_remoteexec','false','--gn','is_official_build:false','--gn','chrome_pgo_phase:0','--gn','use_thin_lto:false','--gn','enable_updater:false','--gn','ecom_source_revision:'+revision,'--target',values.dev?'brave':'brave,mini_installer'];
+    const args=['build/commands/scripts/build.ts','Release','--target_os','win','--target_arch','x64','--channel','release','--skip_signing','--use_remoteexec','false','--gn','is_official_build:false','--gn','chrome_pgo_phase:0','--gn','use_thin_lto:false','--gn','enable_updater:false','--gn','ecom_source_revision:'+revision,'--target',values.dev?'brave,setup':'brave,mini_installer'];
     const result=spawnSync(process.execPath,args,{cwd:workspace,env,stdio:'inherit'});
     if(result.error||result.status!==0)throw result.error||new Error('Native Windows build failed');
     const buildOutput=path.join(buildRoot,'src/out/Release');
