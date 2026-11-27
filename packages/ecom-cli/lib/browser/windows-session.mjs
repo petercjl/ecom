@@ -75,7 +75,9 @@ export function discoverWindows(options) {
     processes = JSON.parse(powershell(String.raw`
       $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
       $rows = @(Get-CimInstance Win32_Process -Filter "Name = 'Ecom.exe'" | ForEach-Object {
-        if ((Invoke-CimMethod -InputObject $_ -MethodName GetOwnerSid).Sid -eq $sid) {
+        if ($_.ExecutablePath -and $_.CommandLine -and
+            $_.CommandLine -notmatch '(?:^|[\s"])--type(?:=|[\s"])' -and
+            (Invoke-CimMethod -InputObject $_ -MethodName GetOwnerSid).Sid -eq $sid) {
           $_ | Select-Object ProcessId, ExecutablePath, CommandLine
         }
       })

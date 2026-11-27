@@ -249,7 +249,7 @@ class PageRead {
     Finish(base::DictValue()
                .Set("ok", true)
                .Set("title", title_)
-               .Set("artifact", path.value())
+               .Set("artifact", path.AsUTF8Unsafe())
                .Set("mimeType", info->mime_type)
                .Set("bytes", static_cast<double>(size)));
   }
