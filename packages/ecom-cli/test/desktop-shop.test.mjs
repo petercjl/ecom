@@ -28,7 +28,7 @@ const pddForm = (account = 'fixture-account') => ['拼多多商家后台', pddLo
   button('登录', '@form:login'),
 ])];
 
-function scenario({initial = manager('Ecom · 账号管理'), landing = login, after = backend, clickError, wrongContainer, initiallyClosed = false, duplicateOpenRef = false, accountForm, prefill, focused = true, focusError} = {}) {
+function scenario({initial = manager('Ecom · 账号管理'), landing = login, after = backend, clickError, wrongContainer, initiallyClosed = false, duplicateOpenRef = false, accountForm, prefill, focused = true, focusError, nativeNavigation = false} = {}) {
   let page = initial;
   let stage = initiallyClosed ? 'closed' : 'initial';
   const clicks = [];
@@ -72,7 +72,12 @@ function scenario({initial = manager('Ecom · 账号管理'), landing = login, a
   if (duplicateOpenRef) {
     desktop.clickPoint = (x, y) => {clicks.push([x, y]);stage = 'opened';page = landing;};
   }
-  const run = () => openDesktopShop({container: name}, {desktop, wait: async check => check() ?? null});
+  const navigate = nativeNavigation ? async target => {
+    assert.equal(target, name);
+    stage = 'opened';
+    page = landing;
+  } : undefined;
+  const run = () => openDesktopShop({container: name}, {desktop, navigate, wait: async check => check() ?? null});
   return {run, clicks};
 }
 
@@ -167,6 +172,18 @@ test('an existing merchant session requires no login click', async () => {
   assert.equal(result.status, 'backend-page');
   assert.equal(result.loginClick, 'not-attempted');
   assert.deepEqual(flow.clicks, [['@table:open', false]]);
+});
+
+test('native account opening checks the target before clicking the desktop login form', async () => {
+  const flow = scenario({nativeNavigation: true});
+  const result = await flow.run();
+  assert.equal(result.navigation, 'native');
+  assert.equal(result.status, 'backend-page');
+  assert.deepEqual(flow.clicks, [['@form:login', true]]);
+
+  const wrong = scenario({nativeNavigation: true, wrongContainer: name + ' 2'});
+  await assert.rejects(wrong.run(), {code: 'CONTAINER_OPEN_UNCONFIRMED'});
+  assert.deepEqual(wrong.clicks, []);
 });
 
 test('recognizes the Tmall Global merchant workbench after a single login click', async () => {

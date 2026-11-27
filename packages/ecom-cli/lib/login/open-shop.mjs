@@ -5,6 +5,7 @@ import {createDesktop, ecomDesktop, selectDesktopInstance} from './desktop-runti
 import {isDocument, isVisible, usableButton, canClick, named, descend, uniqueButton, containedPoint} from './accessibility.mjs';
 import {pinduoduoHost, pinduoduoLoginState} from './pinduoduo.mjs';
 import {qianniuDesktopState} from './qianniu.mjs';
+import {openContainerHome} from '../browser/session.mjs';
 
 const managerLabels = ['账号管理', 'Account manager'];
 const openLabels = ['打开', 'Open'];
@@ -84,15 +85,19 @@ export async function openDesktopShop(options, dependencies = {}) {
   const desktop = dependencies.desktop ?? ecomDesktop(createDesktop(operationId), {instance: selectDesktopInstance(options)});
   const instance = desktop.instance;
   const channel = instance?.channel ?? 'stable';
+  const navigate = dependencies.navigate ?? (instance && process.platform === 'win32'
+    ? container => openContainerHome({instance: instance.id, container})
+    : null);
   const wait = dependencies.wait ?? waitFor;
   const container = options.container;
   let window;
   let phase = 'discover';
   let loginClick = 'not-attempted';
   let launched = false;
+  let navigation = 'desktop';
   const receipt = (status, evidence = {}) => ({
     ok: true, schemaVersion: 1, operationId, transport: 'desktop', channel,
-    windowId: window.id, pid: window.pid, ...(instance ? {instance} : {}),
+    windowId: window.id, pid: window.pid, navigation, ...(instance ? {instance} : {}),
     container: {name: container}, launched, status, loginClick, ...evidence,
   });
   const readWindow = () => desktop.listWindows().find(candidate => candidate.id === window.id &&
@@ -127,71 +132,77 @@ export async function openDesktopShop(options, dependencies = {}) {
     }, 12000);
     if (!window) throw fail('DESKTOP_WINDOW_UNAVAILABLE', 'No accessible window in the selected Ecom instance. Check the window and the interactive desktop session.');
 
-    phase = 'account-manager';
-    let manager = isManager(window.title) ? window : null;
-    if (!manager) {
-      const button = await wait(() => {
-        const current = readWindow();
-        if (!current) return null;
-        const page = snapshot(current, 12);
-        if (!page) return null;
-        const buttons = browserToolbars(page.tree).flatMap(toolbar => [...descend(toolbar)].filter(node =>
-          canClick(node) && named(node, managerLabels)));
-        return uniqueButton(buttons, 'ACCOUNT_MANAGER_AMBIGUOUS', 'Multiple Account manager toolbar buttons matched.');
-      }, 8000);
-      if (!button) throw fail('ACCOUNT_MANAGER_UNAVAILABLE', 'The Account manager toolbar button was unavailable.');
-      let clickError;
-      try { desktop.click(button.ref_id); }
-      catch (error) { if (error.executed === false) throw error; clickError = error; }
-      manager = await wait(() => {
-        const current = readWindow();
-        return isManager(current?.title) ? current : null;
-      }, 10000);
-      if (!manager) throw clickError ?? fail('ACCOUNT_MANAGER_UNCONFIRMED', 'Account manager did not become active in the selected window.', {executed: 'unknown'});
-    }
-
-    phase = 'account-row';
-    let row;
-    const accountRow = (current, bounds = false) => {
-      if (!isManager(current?.title)) return null;
-      const page = snapshot(current, undefined, bounds);
-      const address = page && addressIn(browserToolbars(page.tree));
-      if (!page || address?.protocol !== 'ecom:' || address.hostname !== 'shops') return null;
-      return managerRow(page.tree, container);
-    };
-    const open = await wait(() => {
-      row = accountRow(readWindow());
-      return row?.button && (row.button.ref_id || desktop.clickPoint) ? row.button : null;
-    }, desktop.focus ? 25000 : 7000);
-    if (!open) throw row
-      ? fail('CONTAINER_OPEN_UNAVAILABLE', 'The exact account row has no available Open button.')
-      : fail('CONTAINER_NOT_FOUND', 'The requested exact name was not found in the current account table. Check the selected platform, filters and account name.');
-
-    phase = 'open-container';
     let openError;
-    try {
-      let usePoint = !open.ref_id;
-      if (open.ref_id) {
-        try { desktop.click(open.ref_id); }
-        catch (error) {
-          if (!desktop.clickPoint || error.executed !== false || error.desktopCode !== 'AMBIGUOUS_TARGET') throw error;
-          usePoint = true;
-        }
+    if (navigate && desktop.listWindows().length === 1 && readWindow()) {
+      phase = 'open-container';
+      navigation = 'native';
+      await navigate(container);
+    } else {
+      phase = 'account-manager';
+      let manager = isManager(window.title) ? window : null;
+      if (!manager) {
+        const button = await wait(() => {
+          const current = readWindow();
+          if (!current) return null;
+          const page = snapshot(current, 12);
+          if (!page) return null;
+          const buttons = browserToolbars(page.tree).flatMap(toolbar => [...descend(toolbar)].filter(node =>
+            canClick(node) && named(node, managerLabels)));
+          return uniqueButton(buttons, 'ACCOUNT_MANAGER_AMBIGUOUS', 'Multiple Account manager toolbar buttons matched.');
+        }, 8000);
+        if (!button) throw fail('ACCOUNT_MANAGER_UNAVAILABLE', 'The Account manager toolbar button was unavailable.');
+        let clickError;
+        try { desktop.click(button.ref_id); }
+        catch (error) { if (error.executed === false) throw error; clickError = error; }
+        manager = await wait(() => {
+          const current = readWindow();
+          return isManager(current?.title) ? current : null;
+        }, 10000);
+        if (!manager) throw clickError ?? fail('ACCOUNT_MANAGER_UNCONFIRMED', 'Account manager did not become active in the selected window.', {executed: 'unknown'});
       }
-      // UI Automation may refuse repeated Open buttons with identical identities.
-      // Refresh the uniquely matched row in the foreground before using its bounds.
-      if (usePoint) {
-        let current = readWindow();
-        if (current && !current.is_focused && desktop.focus) {
-          desktop.focus(current);
-          current = readWindow();
+
+      phase = 'account-row';
+      let row;
+      const accountRow = (current, bounds = false) => {
+        if (!isManager(current?.title)) return null;
+        const page = snapshot(current, undefined, bounds);
+        const address = page && addressIn(browserToolbars(page.tree));
+        if (!page || address?.protocol !== 'ecom:' || address.hostname !== 'shops') return null;
+        return managerRow(page.tree, container);
+      };
+      const open = await wait(() => {
+        row = accountRow(readWindow());
+        return row?.button && (row.button.ref_id || desktop.clickPoint) ? row.button : null;
+      }, desktop.focus ? 25000 : 7000);
+      if (!open) throw row
+        ? fail('CONTAINER_OPEN_UNAVAILABLE', 'The exact account row has no available Open button.')
+        : fail('CONTAINER_NOT_FOUND', 'The requested exact name was not found in the current account table. Check the selected platform, filters and account name.');
+
+      phase = 'open-container';
+      try {
+        let usePoint = !open.ref_id;
+        if (open.ref_id) {
+          try { desktop.click(open.ref_id); }
+          catch (error) {
+            if (!desktop.clickPoint || error.executed !== false || error.desktopCode !== 'AMBIGUOUS_TARGET') throw error;
+            usePoint = true;
+          }
         }
-        const fresh = current?.is_focused && accountRow(current, true);
-        const point = fresh?.button && containedPoint(fresh.button, current);
-        if (!point || !readWindow()?.is_focused) throw fail('CONTAINER_OPEN_UNAVAILABLE', 'The exact Open button has no safe visible bounds.');
-        desktop.clickPoint(...point);
-      }
-    } catch (error) { if (error.executed !== 'unknown') throw error; openError = error; }
+        // UI Automation may refuse repeated Open buttons with identical identities.
+        // Refresh the uniquely matched row in the foreground before using its bounds.
+        if (usePoint) {
+          let current = readWindow();
+          if (current && !current.is_focused && desktop.focus) {
+            desktop.focus(current);
+            current = readWindow();
+          }
+          const fresh = current?.is_focused && accountRow(current, true);
+          const point = fresh?.button && containedPoint(fresh.button, current);
+          if (!point || !readWindow()?.is_focused) throw fail('CONTAINER_OPEN_UNAVAILABLE', 'The exact Open button has no safe visible bounds.');
+          desktop.clickPoint(...point);
+        }
+      } catch (error) { if (error.executed !== 'unknown') throw error; openError = error; }
+    }
     let state;
     let ready = await wait(() => {
       state = readPage();
@@ -230,7 +241,7 @@ export async function openDesktopShop(options, dependencies = {}) {
     return receipt(observed?.status ?? 'unconfirmed', observed?.host ? {host: observed.host} : {});
   } catch (error) {
     error.operationId ??= operationId;
-    error.diagnostics = {...error.diagnostics, phase, loginClick, channel, pid: window?.pid ?? instance?.pid,
+    error.diagnostics = {...error.diagnostics, phase, loginClick, channel, navigation, pid: window?.pid ?? instance?.pid,
       instanceId: instance?.id, windowId: window?.id, launched};
     throw error;
   }
