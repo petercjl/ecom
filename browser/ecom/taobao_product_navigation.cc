@@ -135,6 +135,9 @@ class ProductPageCheck final : public base::SupportsUserData::Data,
   }
   ~ProductPageCheck() override {
     weak_.InvalidateWeakPtrs();
+    if (web_contents() && !web_contents()->IsBeingDestroyed()) {
+      ClearManualRoute();
+    }
     Observe(nullptr);
   }
 
@@ -143,9 +146,13 @@ class ProductPageCheck final : public base::SupportsUserData::Data,
     route_.Reset();
     poll_.Stop();
     weak_.InvalidateWeakPtrs();
+    ClearManualRoute();
+  }
+  void ClearManualRoute() {
     if (manual_infobar_ && *manual_infobar_) {
       (*manual_infobar_)->Remove();
     }
+    manual_infobar_.reset();
   }
   void DidStartNavigation(content::NavigationHandle* handle) override {
     if (!route_ || !handle->IsInPrimaryMainFrame() || handle->IsSameDocument())
@@ -159,6 +166,7 @@ class ProductPageCheck final : public base::SupportsUserData::Data,
   void DidFinishNavigation(content::NavigationHandle* handle) override {
     if (!route_ || !handle->IsInPrimaryMainFrame() || handle->IsSameDocument() ||
         !handle->HasCommitted()) return;
+    ClearManualRoute();
     if (handle->IsErrorPage() ||
         !IsMerchantProductOwnershipPage(handle->GetURL(), item_id_)) {
       Stop();
