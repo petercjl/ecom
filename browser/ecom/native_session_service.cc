@@ -1,9 +1,21 @@
 #include "brave/browser/ecom/native_session_service.h"
 #include "brave/browser/ecom/url_routing.h"
 
+#include "build/build_config.h"
+
+#if BUILDFLAG(IS_WIN)
+#include <windows.h>
+
+#include "base/base_paths.h"
+#include "base/path_service.h"
+#include "base/win/access_token.h"
+#include "base/win/scoped_handle.h"
+#include "base/win/security_descriptor.h"
+#else
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
 
 #include <array>
 #include <map>
@@ -29,6 +41,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/message_loop/message_pump_type.h"
 #include "base/no_destructor.h"
+#include "base/process/process_handle.h"
 #include "base/strings/string_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/single_thread_task_runner.h"
@@ -42,7 +55,9 @@
 #include "brave/browser/ecom/page_read.h"
 #include "brave/browser/ecom/shop_container_service.h"
 #include "brave/browser/ecom/sycm_read_registry.h"
+#if BUILDFLAG(IS_MAC)
 #include "brave/browser/ecom/xhs_note_service.h"
+#endif
 #include "brave/components/containers/content/browser/storage_partition_utils.h"
 #include "brave/components/containers/core/browser/pref_names.h"
 #include "brave/components/containers/core/browser/prefs.h"
@@ -68,12 +83,86 @@
 namespace ecom {
 namespace {
 
+#if BUILDFLAG(IS_WIN)
+const std::optional<base::win::Sid>& MailboxUser() {
+  static const base::NoDestructor<std::optional<base::win::Sid>> user([] {
+    auto token = base::win::AccessToken::FromCurrentProcess();
+    return token ? std::optional(token->User()) : std::nullopt;
+  }());
+  return *user;
+}
+
+bool PrivatePath(const base::FilePath& path, bool directory) {
+  const auto& user = MailboxUser();
+  base::win::ScopedHandle handle(::CreateFileW(
+      path.value().c_str(), READ_CONTROL | FILE_READ_ATTRIBUTES,
+      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+      OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+      nullptr));
+  BY_HANDLE_FILE_INFORMATION info;
+  if (!user || !handle.is_valid() ||
+      !::GetFileInformationByHandle(handle.get(), &info) ||
+      (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) ||
+      !!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != directory ||
+      (!directory && info.nNumberOfLinks != 1)) {
+    return false;
+  }
+  auto security = base::win::SecurityDescriptor::FromHandle(
+      handle.get(), base::win::SecurityObjectType::kFile,
+      OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION);
+  if (!security || !security->dacl() || !security->dacl()->get() ||
+      security->dacl()->get()->AceCount != 1 ||
+      (directory && (!security->dacl_protected() ||
+                     security->owner() != user))) {
+    return false;
+  }
+  void* raw_ace = nullptr;
+  if (!::GetAce(security->dacl()->get(), 0, &raw_ace)) {
+    return false;
+  }
+  const auto* ace = static_cast<ACCESS_ALLOWED_ACE*>(raw_ace);
+  const BYTE flags =
+      directory ? CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE : INHERITED_ACE;
+  return ace->Header.AceType == ACCESS_ALLOWED_ACE_TYPE &&
+         ace->Header.AceFlags == flags && ace->Mask == FILE_ALL_ACCESS &&
+         ::EqualSid(const_cast<DWORD*>(&ace->SidStart), user->GetPSID());
+}
+
+bool CreateMailbox(const base::FilePath& path) {
+  const auto& user = MailboxUser();
+  if (!user) {
+    return false;
+  }
+  auto security = base::win::SecurityDescriptor::CreateWithEmptyDacl();
+  security.set_owner(*user);
+  security.set_dacl_protected(true);
+  if (!security.SetDaclEntry(*user, base::win::SecurityAccessMode::kGrant,
+                             FILE_ALL_ACCESS,
+                             CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE)) {
+    return false;
+  }
+  auto descriptor = security.ToAbsolute();
+  SECURITY_ATTRIBUTES attributes{sizeof(attributes), &descriptor, FALSE};
+  return ::CreateDirectoryW(path.value().c_str(), &attributes) ||
+         ::GetLastError() == ERROR_ALREADY_EXISTS;
+}
+
+bool WriteExclusive(const base::FilePath& path, const std::string& text) {
+  base::File file(path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  return file.IsValid() &&
+         file.WriteAtCurrentPos(base::as_byte_span(text)) == text.size();
+}
+#else
 bool PrivatePath(const base::FilePath& path, bool directory) {
   struct stat info;
   return lstat(path.value().c_str(), &info) == 0 && info.st_uid == getuid() &&
          (info.st_mode & 0777) == (directory ? 0700 : 0600) &&
          (directory ? S_ISDIR(info.st_mode)
                     : S_ISREG(info.st_mode) && info.st_nlink == 1);
+}
+
+bool CreateMailbox(const base::FilePath& path) {
+  return mkdir(path.value().c_str(), 0700) == 0 || base::PathExists(path);
 }
 
 bool WriteExclusive(const base::FilePath& path, const std::string& text) {
@@ -93,6 +182,7 @@ bool WriteExclusive(const base::FilePath& path, const std::string& text) {
   }
   return close(fd) == 0;
 }
+#endif  // BUILDFLAG(IS_WIN)
 
 bool SensitiveKey(const std::string& name) {
   std::string key = base::ToLowerASCII(name);
@@ -156,7 +246,9 @@ class NativeSessionService final : public ProfileObserver {
     weak_.InvalidateWeakPtrs();
     requests_.clear();
     business_reads_.clear();
+#if BUILDFLAG(IS_MAC)
     xhs_notes_.reset();
+#endif
     pages_.clear();
     profile_->RemoveObserver(this);
     profile_ = nullptr;
@@ -170,11 +262,7 @@ class NativeSessionService final : public ProfileObserver {
 
  private:
   void StartIO() {
-    if (mkdir(folder_.value().c_str(), 0700) != 0 &&
-        !base::PathExists(folder_)) {
-      return;
-    }
-    if (!PrivatePath(folder_, true)) {
+    if (!CreateMailbox(folder_) || !PrivatePath(folder_, true)) {
       return;
     }
     auto endpoint = folder_.AppendASCII("endpoint.json");
@@ -197,7 +285,7 @@ class NativeSessionService final : public ProfileObserver {
     metadata.Set("schemaVersion", 1);
     metadata.Set("instanceId", instance_);
     metadata.Set("authToken", auth_);
-    metadata.Set("pid", static_cast<int>(getpid()));
+    metadata.Set("pid", static_cast<int>(base::GetCurrentProcId()));
     metadata.Set("product", "Ecom");
     metadata.Set("memorySnapshotProtocol", 1);
     metadata.Set("autoTabMemoryProtocol", 1);
@@ -205,9 +293,17 @@ class NativeSessionService final : public ProfileObserver {
     metadata.Set("manualTabMemoryProtocol", 1);
     metadata.Set("urlRoutingProtocol", 1);
     metadata.Set("itemMediaTargetProtocol", 1);
-    metadata.Set("executable",
-                 base::CommandLine::ForCurrentProcess()->GetProgram().value());
-    metadata.Set("userDataDir", folder_.DirName().DirName().value());
+#if BUILDFLAG(IS_WIN)
+    base::FilePath executable;
+    if (!base::PathService::Get(base::FILE_EXE, &executable)) {
+      return;
+    }
+#else
+    const auto& executable =
+        base::CommandLine::ForCurrentProcess()->GetProgram();
+#endif
+    metadata.Set("executable", executable.AsUTF8Unsafe());
+    metadata.Set("userDataDir", folder_.DirName().DirName().AsUTF8Unsafe());
     metadata.Set("allowedOrigin", origin_.Serialize());
     if (origin_.Serialize() == "https://sycm.taobao.com") {
       metadata.Set("businessReadProtocol", 1);
@@ -217,8 +313,10 @@ class NativeSessionService final : public ProfileObserver {
         metadata.Set("xhsPageSearchProtocol", 1);
         metadata.Set("backgroundPageProtocol", 1);
       }
+#if BUILDFLAG(IS_MAC)
       metadata.Set("xhsNoteProtocol", 1);
       metadata.Set("xhsNoteReviewProtocol", 1);
+#endif
       metadata.Set("businessPageOpenProtocol", 1);
       metadata.Set("businessReadRegistryHash", kSycmReadRegistryHash);
     }
@@ -231,6 +329,7 @@ class NativeSessionService final : public ProfileObserver {
 
   void StopIO() { watcher_.reset(); }
 
+#if BUILDFLAG(IS_MAC)
   // Read only authenticated one-use files in the existing private mailbox.
   // Do not give a renderer access to a local path.
   bool LoadXhsMedia(base::DictValue& request) {
@@ -284,6 +383,7 @@ class NativeSessionService final : public ProfileObserver {
     request.Set("files", std::move(files));
     return true;
   }
+#endif
 
   void ScanIO(const base::FilePath&, bool error) {
     if (error || !PrivatePath(folder_, true)) {
@@ -292,7 +392,7 @@ class NativeSessionService final : public ProfileObserver {
     base::FileEnumerator files(folder_, false, base::FileEnumerator::FILES,
                                FILE_PATH_LITERAL("*.request.json"));
     for (auto file = files.Next(); !file.empty(); file = files.Next()) {
-      std::string name = file.BaseName().value();
+      std::string name = file.BaseName().AsUTF8Unsafe();
       std::string id = name.substr(0, name.size() - 13);
       if (!base::Uuid::ParseLowercase(id).is_valid() ||
           !PrivatePath(file, false)) {
@@ -325,6 +425,7 @@ class NativeSessionService final : public ProfileObserver {
         continue;
       }
       base::DeleteFile(file);
+#if BUILDFLAG(IS_MAC)
       auto* method = message->GetDict().FindString("method");
       if (method && (*method == "xhs.note.prepare" || *method == "xhs.note.upload") &&
           (origin_.Serialize() != "https://sycm.taobao.com" ||
@@ -336,6 +437,7 @@ class NativeSessionService final : public ProfileObserver {
                                                   .Set("executed", false)));
         continue;
       }
+#endif
       ui_->PostTask(FROM_HERE,
                     base::BindOnce(&NativeSessionService::Dispatch, ui_weak_,
                                    id, std::move(message->GetDict())));
@@ -471,6 +573,7 @@ class NativeSessionService final : public ProfileObserver {
       task->Start(profile_);
       return;
     }
+#if BUILDFLAG(IS_MAC)
     if (method && method->starts_with("xhs.note.")) {
       if (origin_.Serialize() != "https://sycm.taobao.com") {
         Fail(id, "XHS_NOTE_UNSUPPORTED");
@@ -486,6 +589,7 @@ class NativeSessionService final : public ProfileObserver {
           &NativeSessionService::Respond, weak_.GetWeakPtr(), id));
       return;
     }
+#endif
     if (method && *method == "business.read") {
       Business(id, std::move(request));
       return;
@@ -686,7 +790,9 @@ class NativeSessionService final : public ProfileObserver {
   std::map<std::string, std::unique_ptr<network::SimpleURLLoader>> requests_;
   std::map<std::string, std::unique_ptr<BusinessRead>> business_reads_;
   base::WeakPtr<NativeSessionService> ui_weak_;
+#if BUILDFLAG(IS_MAC)
   std::unique_ptr<XhsNoteService> xhs_notes_;
+#endif
   std::map<std::string, std::unique_ptr<PageRead>> pages_;
   base::WeakPtrFactory<NativeSessionService> weak_{this};
 };

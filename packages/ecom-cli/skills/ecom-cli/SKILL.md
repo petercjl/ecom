@@ -124,7 +124,8 @@ Require matching instance/container/tab and post-action status. `discarded` repo
 - INSTANCE_CHANGED: no request was submitted; rediscover before returning to step 3.
 - UNSAFE_ENDPOINT, PROTOCOL_MISMATCH or BROWSER_ERROR: stop and report the exact code. Preserve browser state and request identity.
 - OPERATION_TIMEOUT: retain the operation ID and report unknown completion. Inspect the instance and operation files under the protected endpoint before any retry; never blindly repeat an unknown operation.
-- PLATFORM_UNSUPPORTED: report the limitation. Browser integration currently supports macOS. Windows package mechanics and generic host format are separate from actual browser support.
+- PLATFORM_UNSUPPORTED: report the limitation of the command or host. Native mailbox commands require a compatible macOS or Windows x64 Ecom build. Select Windows Ecom Dev explicitly by profile or instance.
+- INSTANCE_DISCOVERY_FAILED: Windows could not enumerate browser processes under the current Windows user. Run the CLI from the same Windows account as Ecom and retry discovery after the process query works.
 
 ## Installation and update branch
 

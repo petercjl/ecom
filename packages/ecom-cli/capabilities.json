@@ -2085,11 +2085,12 @@
   "compatibility": {
     "agents": "Any Agent with terminal, Node.js and Skill discovery capabilities; generic adapter",
     "macos": "Native container list, account inspection and authorized session GET verified on macOS arm64 Ecom Dev. Formal Ecom desktop navigation with an existing merchant session verified on macOS arm64. Host discovery is checked separately.",
-    "windows": "Formal Ecom desktop navigation implemented; live container and login verification pending. Native mailbox transport unsupported.",
+    "windows": "Native mailbox transport requires a compatible Windows x64 Ecom build. Formal desktop login and native mailbox access are separate capabilities. Native Xiaohongshu note operations remain macOS-only.",
     "historicalUpdater": "Actual published 0.1.1, 0.1.2, 0.1.3 and 0.2.0 updater entries verified with real npm, preserved prior versions, isolated targets and failure recovery"
   },
   "errors": [
     "INSTANCE_NOT_RUNNING",
+    "INSTANCE_DISCOVERY_FAILED",
     "INSTANCE_AMBIGUOUS",
     "INSTANCE_CHANGED",
     "UNSAFE_ENDPOINT",

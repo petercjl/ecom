@@ -5,7 +5,9 @@ import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {setTimeout as pause} from 'node:timers/promises';
 import {fail,privatePath,writeNew,exists} from '../common.mjs';
+import {discoverWindows, windowsMailboxPath} from './windows-session.mjs';
 const ps=(args)=>execFileSync('/bin/ps',args,{encoding:'utf8',timeout:3000,maxBuffer:4*1024*1024});
+const checkMailboxPath = process.platform === 'win32' ? windowsMailboxPath : privatePath;
 export function processProfile(executable,command) {
   const explicit=command.match(/(?:^| )--user-data-dir=(.*?)(?= --|$)/)?.[1];
   if(explicit)return explicit;
@@ -13,7 +15,16 @@ export function processProfile(executable,command) {
   return null;
 }
 export function discover({profile,instance}={}, {allowFixedDevCdp=false}={}) {
-  if(process.platform!=='darwin') throw fail('PLATFORM_UNSUPPORTED','Browser transport currently supports macOS; no debugging fallback is available');
+  if (process.platform === 'win32') {
+    const candidates = discoverWindows({profile, instance});
+    if (candidates.length !== 1) {
+      throw fail(candidates.length ? 'INSTANCE_AMBIGUOUS' : 'INSTANCE_NOT_RUNNING',
+        candidates.length ? 'Multiple Ecom instances; specify --profile or --instance' :
+          'Open a compatible Ecom build in normal desktop mode; select Windows Ecom Dev by profile');
+    }
+    return candidates[0];
+  }
+  if(process.platform!=='darwin') throw fail('PLATFORM_UNSUPPORTED','Browser transport supports macOS and Windows');
   const candidates=[];
   for(const line of ps(['-axo','pid=,uid=,comm=']).split('\n')) {
     const m=line.trim().match(/^(\d+)\s+(\d+)\s+(.+)$/);
@@ -175,7 +186,7 @@ function safeDiagnostics(value) {
   return Object.keys(result).length?result:undefined;
 }
 export async function callMailbox({folder,endpoint},payload,timeoutMs=10000) {
-  privatePath(folder,true);privatePath(path.join(folder,'endpoint.json'));
+  checkMailboxPath(folder,true);checkMailboxPath(path.join(folder,'endpoint.json'));
   const current=JSON.parse(fs.readFileSync(path.join(folder,'endpoint.json'),'utf8'));
   if(current.pid!==endpoint.pid || current.instanceId!==endpoint.instanceId || current.authToken!==endpoint.authToken) throw fail('INSTANCE_CHANGED','Instance changed before submission; discover it again');
   const id=crypto.randomUUID(), request=path.join(folder,id+'.request.json'), temporary=path.join(folder,id+'.request.tmp'), response=path.join(folder,id+'.response.json');
@@ -185,7 +196,7 @@ export async function callMailbox({folder,endpoint},payload,timeoutMs=10000) {
   const end=Date.now()+timeoutMs;
   while(Date.now()<end) {
     if(exists(response)) {
-      privatePath(response);
+      checkMailboxPath(response);
       const raw=fs.readFileSync(response,'utf8');
       if(Buffer.byteLength(raw)>(['session.get','business.read'].includes(payload.method)?2*1024*1024+65536:1024*1024)) throw fail('PROTOCOL_MISMATCH','Oversized response',{operationId:id,executed:'unknown'});
       let body;try{body=JSON.parse(raw);}catch{await pause(25);continue;}

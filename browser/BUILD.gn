@@ -111,6 +111,8 @@ source_set("core") {
       "ecom/memory_auto.h",
       "ecom/memory_restore.cc",
       "ecom/memory_restore.h",
+      "ecom/native_session_service.cc",
+      "ecom/native_session_service.h",
       "ecom/shop_container_service.cc",
       "ecom/shop_container_service.h",
       "ecom/shop_check_schedule.cc",
@@ -128,8 +130,6 @@ source_set("core") {
   }
   if (is_mac) {
     sources += [
-      "ecom/native_session_service.cc",
-      "ecom/native_session_service.h",
       "ecom/xhs_note_service.cc",
       "ecom/xhs_note_service.h",
       "ecom/xhs_note_script.h",

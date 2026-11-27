@@ -8,7 +8,7 @@
 #include "brave/browser/ecom/memory_restore.h"
 #include "build/build_config.h"
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "brave/browser/ecom/native_session_service.h"
 #endif
 #if BUILDFLAG(IS_WIN)
@@ -206,7 +206,7 @@ void ChromeBrowserMainParts::PostProfileInit(Profile* profile,
   ecom::StartAutoMemory(profile);
   ecom::StartMemoryRestore(profile);
 
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
   if (is_initial_profile) ecom::StartNativeSessionService(profile);
 #endif
 #if BUILDFLAG(IS_WIN)

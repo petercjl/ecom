@@ -1,6 +1,6 @@
 # Ecom CLI
 
-Agent CLI and portable Skill for the Ecom desktop browser. List existing containers, inspect a selected account’s platform/homepage/login status, and perform explicitly authorized HTTPS JSON GET operations through that container’s native session, preserving the active tab. Ecom must already be running in normal desktop mode. The browser transport currently supports macOS; Windows browser integration is not implemented.
+Agent CLI and portable Skill for the Ecom desktop browser. List existing containers, inspect a selected account’s platform/homepage/login status, and perform explicitly authorized HTTPS JSON GET operations through that container’s native session, preserving the active tab. Run a compatible macOS or Windows x64 Ecom build in normal desktop mode. Select a Windows Dev build with `--profile` or `--instance`.
 
 ## Install
 
