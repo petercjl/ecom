@@ -2,6 +2,7 @@
 #include "brave/browser/ecom/taobao_product_navigation.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -58,8 +59,8 @@ constexpr char kProductPageCheck[] = "ecom.product-page-check";
 // Native UI owns this action; page scripts never receive a routing capability.
 class ProductRouteInfoBar final : public ConfirmInfoBarDelegate {
  public:
-  ProductRouteInfoBar(Profile* profile, base::OnceClosure route)
-      : route_(std::move(route)) {
+  ProductRouteInfoBar(Profile* profile, bool denial, base::OnceClosure route)
+      : denial_(denial), route_(std::move(route)) {
     prefs_.Init(profile->GetPrefs());
     prefs_.Add(kUrlRoutingPref, base::BindRepeating(
         &ProductRouteInfoBar::RulesChanged, base::Unretained(this)));
@@ -68,7 +69,7 @@ class ProductRouteInfoBar final : public ConfirmInfoBarDelegate {
     return ECOM_PRODUCT_ROUTE_INFOBAR_DELEGATE;
   }
   std::u16string GetMessageText() const override {
-    return u"商品详情可能不完整";
+    return denial_ ? u"商家账号无法打开此商品详情" : u"商品详情可能不完整";
   }
   int GetButtons() const override { return BUTTON_OK; }
   std::u16string GetButtonLabel(InfoBarButton button) const override {
@@ -80,13 +81,19 @@ class ProductRouteInfoBar final : public ConfirmInfoBarDelegate {
         FROM_HERE, std::move(route_));
     return true;
   }
+  base::WeakPtr<ProductRouteInfoBar> GetWeakPtr() { return weak_.GetWeakPtr(); }
+  void Remove() {
+    if (infobar()) infobar()->RemoveSelf();
+  }
  private:
   void RulesChanged() {
     route_.Reset();
-    if (infobar()) infobar()->RemoveSelf();
+    Remove();
   }
+  const bool denial_;
   base::OnceClosure route_;
   PrefChangeRegistrar prefs_;
+  base::WeakPtrFactory<ProductRouteInfoBar> weak_{this};
 };
 
 constexpr char16_t kReadMerchantVerdict[] = uR"JS(JSON.stringify((() => {
@@ -136,6 +143,9 @@ class ProductPageCheck final : public base::SupportsUserData::Data,
     route_.Reset();
     poll_.Stop();
     weak_.InvalidateWeakPtrs();
+    if (manual_infobar_ && *manual_infobar_) {
+      (*manual_infobar_)->Remove();
+    }
   }
   void DidStartNavigation(content::NavigationHandle* handle) override {
     if (!route_ || !handle->IsInPrimaryMainFrame() || handle->IsSameDocument())
@@ -159,7 +169,7 @@ class ProductPageCheck final : public base::SupportsUserData::Data,
   void Schedule() {
     if (!route_) return;
     if (base::TimeTicks::Now() - started_ > base::Seconds(15)) {
-      Stop();
+      if (!manual_infobar_) Stop();
       return;
     }
     poll_.Start(FROM_HERE, base::Milliseconds(150),
@@ -195,8 +205,8 @@ class ProductPageCheck final : public base::SupportsUserData::Data,
     }
     auto state = base::JSONReader::ReadDict(result.GetString(), base::JSON_PARSE_RFC);
     if (!state) { Schedule(); return; }
-    if (auto_route_other_shop_ &&
-        IsOtherShopProductVerdict(url, item_id_, *state)) {
+    const bool denied = IsOtherShopProductVerdict(url, item_id_, *state);
+    if (auto_route_other_shop_ && denied) {
       auto route = std::move(route_);
       Stop();
       std::move(route).Run(/*require_search=*/false);
@@ -206,10 +216,24 @@ class ProductPageCheck final : public base::SupportsUserData::Data,
       Stop();
       return;
     }
+    const bool gallery = state->FindBool("gallery").value_or(false);
+    const bool settled = state->FindBool("settled").value_or(false);
+    if (IsMerchantDenialTemplateUrl(url)) {
+      // Offer the native action even if the template's markup has changed.
+      // Continue the bounded check so late markup can still route automatically.
+      std::string action;
+      if (settled && !gallery && !manual_infobar_ &&
+          (denied || (net::GetValueForKeyInQuery(url, "action", &action) &&
+                      action == "deny"))) {
+        OfferManualRoute(document, url, /*denial=*/true);
+      }
+      Schedule();
+      return;
+    }
     const bool abnormal = state->FindBool("abnormal").value_or(false);
-    if (abnormal || state->FindBool("gallery").value_or(false)) {
+    if (abnormal || gallery) {
       // Use the settled gallery without loading any additional resources.
-      if (!abnormal && !state->FindBool("settled").value_or(false) &&
+      if (!abnormal && !settled &&
           base::TimeTicks::Now() - started_ < base::Seconds(5)) {
         Schedule();
         return;
@@ -217,23 +241,29 @@ class ProductPageCheck final : public base::SupportsUserData::Data,
       const int count = state->FindInt("imageCount").value_or(0);
       if ((abnormal || (count > 0 && count <= 3)) &&
           GetTaobaoProductId(url) == item_id_ &&
-          GetPlaceholderTabStrip(web_contents())) {
-        auto* manager =
-            infobars::ContentInfoBarManager::FromWebContents(web_contents());
-        if (manager) {
-          manager->AddInfoBar(CreateConfirmInfoBar(
-              std::make_unique<ProductRouteInfoBar>(
-                  Profile::FromBrowserContext(web_contents()->GetBrowserContext()),
-                  base::BindOnce(&ProductPageCheck::RouteManually,
-                                 weak_.GetWeakPtr(), document, url))));
-          poll_.Stop();
-          return;
-        }
+          OfferManualRoute(document, url, /*denial=*/false)) {
+        return;
       }
       Stop();
       return;
     }
     Schedule();
+  }
+  bool OfferManualRoute(content::WeakDocumentPtr document, const GURL& url,
+                        bool denial) {
+    auto* manager =
+        infobars::ContentInfoBarManager::FromWebContents(web_contents());
+    if (!manager || !GetPlaceholderTabStrip(web_contents())) return false;
+    auto delegate = std::make_unique<ProductRouteInfoBar>(
+        Profile::FromBrowserContext(web_contents()->GetBrowserContext()),
+        denial, base::BindOnce(&ProductPageCheck::RouteManually,
+                              weak_.GetWeakPtr(), document, url));
+    auto weak = delegate->GetWeakPtr();
+    if (!manager->AddInfoBar(CreateConfirmInfoBar(std::move(delegate)))) {
+      return false;
+    }
+    manual_infobar_ = std::move(weak);
+    return true;
   }
   void RouteManually(content::WeakDocumentPtr document, const GURL& url) {
     if (!route_ || !web_contents() ||
@@ -251,6 +281,7 @@ class ProductPageCheck final : public base::SupportsUserData::Data,
   const std::string container_;
   base::OnceCallback<void(bool)> route_;
   const base::TimeTicks started_;
+  std::optional<base::WeakPtr<ProductRouteInfoBar>> manual_infobar_;
   base::OneShotTimer poll_;
   PrefChangeRegistrar prefs_;
   base::WeakPtrFactory<ProductPageCheck> weak_{this};

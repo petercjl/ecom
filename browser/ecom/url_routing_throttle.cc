@@ -189,6 +189,18 @@ content::NavigationThrottle::ThrottleCheckResult UrlRoutingThrottle::Route() {
       ObserveProductPage(*handle, product,
                          ResolveUrlRouting(profile, product, source_container),
                          /*auto_route_other_shop=*/true);
+    } else {
+      // A server redirect may pass through an intermediate URL. Use the
+      // nearest product in this chain for the user-confirmed action only.
+      const auto& chain = handle->GetRedirectChain();
+      for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
+        if (!GetTaobaoProductId(*it).empty()) {
+          ObserveProductPage(*handle, *it,
+                             ResolveUrlRouting(profile, *it, std::nullopt),
+                             /*auto_route_other_shop=*/false);
+          break;
+        }
+      }
     }
     return PROCEED;
   }
